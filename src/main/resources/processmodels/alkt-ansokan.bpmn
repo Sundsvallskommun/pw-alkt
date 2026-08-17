@@ -4,25 +4,38 @@
     <bpmn:documentation>Skelett för ansökningsprocessen. Varje fas är en tom subprocess som fylls med aktiviteter allteftersom verksamhetslogiken implementeras.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
-      <bpmn:outgoing>flow_start_process_to_actualization</bpmn:outgoing>
+      <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:sequenceFlow id="flow_start_process_to_actualization" sourceRef="start_process" targetRef="actualization_phase" />
-    <bpmn:subProcess id="actualization_phase" name="Actualization">
-      <bpmn:documentation>Aktualisering</bpmn:documentation>
-      <bpmn:incoming>flow_start_process_to_actualization</bpmn:incoming>
-      <bpmn:outgoing>flow_actualization_to_investigation</bpmn:outgoing>
-      <bpmn:startEvent id="start_actualization_phase" name="Start actualization phase">
-        <bpmn:outgoing>flow_actualization_start_to_end</bpmn:outgoing>
+    <bpmn:sequenceFlow id="flow_start_process_to_registration" sourceRef="start_process" targetRef="registration_phase" />
+    <bpmn:subProcess id="registration_phase" name="Registration">
+      <bpmn:documentation>Registrera</bpmn:documentation>
+      <bpmn:incoming>flow_start_process_to_registration</bpmn:incoming>
+      <bpmn:outgoing>flow_registration_to_review</bpmn:outgoing>
+      <bpmn:startEvent id="start_registration_phase" name="Start registration phase">
+        <bpmn:outgoing>flow_registration_start_to_end</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_actualization_start_to_end" sourceRef="start_actualization_phase" targetRef="end_actualization_phase" />
-      <bpmn:endEvent id="end_actualization_phase" name="End actualization phase">
-        <bpmn:incoming>flow_actualization_start_to_end</bpmn:incoming>
+      <bpmn:sequenceFlow id="flow_registration_start_to_end" sourceRef="start_registration_phase" targetRef="end_registration_phase" />
+      <bpmn:endEvent id="end_registration_phase" name="End registration phase">
+        <bpmn:incoming>flow_registration_start_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
-    <bpmn:sequenceFlow id="flow_actualization_to_investigation" sourceRef="actualization_phase" targetRef="investigation_phase" />
+    <bpmn:sequenceFlow id="flow_registration_to_review" sourceRef="registration_phase" targetRef="review_phase" />
+    <bpmn:subProcess id="review_phase" name="Review">
+      <bpmn:documentation>Granska</bpmn:documentation>
+      <bpmn:incoming>flow_registration_to_review</bpmn:incoming>
+      <bpmn:outgoing>flow_review_to_investigation</bpmn:outgoing>
+      <bpmn:startEvent id="start_review_phase" name="Start review phase">
+        <bpmn:outgoing>flow_review_start_to_end</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_review_start_to_end" sourceRef="start_review_phase" targetRef="end_review_phase" />
+      <bpmn:endEvent id="end_review_phase" name="End review phase">
+        <bpmn:incoming>flow_review_start_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_review_to_investigation" sourceRef="review_phase" targetRef="investigation_phase" />
     <bpmn:subProcess id="investigation_phase" name="Investigation">
-      <bpmn:documentation>Utredning</bpmn:documentation>
-      <bpmn:incoming>flow_actualization_to_investigation</bpmn:incoming>
+      <bpmn:documentation>Utreda</bpmn:documentation>
+      <bpmn:incoming>flow_review_to_investigation</bpmn:incoming>
       <bpmn:outgoing>flow_investigation_to_decision</bpmn:outgoing>
       <bpmn:startEvent id="start_investigation_phase" name="Start investigation phase">
         <bpmn:outgoing>flow_investigation_start_to_end</bpmn:outgoing>
@@ -36,7 +49,7 @@
     <bpmn:subProcess id="decision_phase" name="Decision">
       <bpmn:documentation>Beslut</bpmn:documentation>
       <bpmn:incoming>flow_investigation_to_decision</bpmn:incoming>
-      <bpmn:outgoing>flow_decision_to_execution</bpmn:outgoing>
+      <bpmn:outgoing>flow_decision_to_follow_up</bpmn:outgoing>
       <bpmn:startEvent id="start_decision_phase" name="Start decision phase">
         <bpmn:outgoing>flow_decision_start_to_end</bpmn:outgoing>
       </bpmn:startEvent>
@@ -45,24 +58,11 @@
         <bpmn:incoming>flow_decision_start_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
-    <bpmn:sequenceFlow id="flow_decision_to_execution" sourceRef="decision_phase" targetRef="execution_phase" />
-    <bpmn:subProcess id="execution_phase" name="Execution">
-      <bpmn:documentation>Verkställande</bpmn:documentation>
-      <bpmn:incoming>flow_decision_to_execution</bpmn:incoming>
-      <bpmn:outgoing>flow_execution_to_follow_up</bpmn:outgoing>
-      <bpmn:startEvent id="start_execution_phase" name="Start execution phase">
-        <bpmn:outgoing>flow_execution_start_to_end</bpmn:outgoing>
-      </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_execution_start_to_end" sourceRef="start_execution_phase" targetRef="end_execution_phase" />
-      <bpmn:endEvent id="end_execution_phase" name="End execution phase">
-        <bpmn:incoming>flow_execution_start_to_end</bpmn:incoming>
-      </bpmn:endEvent>
-    </bpmn:subProcess>
-    <bpmn:sequenceFlow id="flow_execution_to_follow_up" sourceRef="execution_phase" targetRef="follow_up_phase" />
+    <bpmn:sequenceFlow id="flow_decision_to_follow_up" sourceRef="decision_phase" targetRef="follow_up_phase" />
     <bpmn:subProcess id="follow_up_phase" name="Follow up">
       <bpmn:documentation>Uppföljning</bpmn:documentation>
-      <bpmn:incoming>flow_execution_to_follow_up</bpmn:incoming>
-      <bpmn:outgoing>flow_follow_up_to_end_process</bpmn:outgoing>
+      <bpmn:incoming>flow_decision_to_follow_up</bpmn:incoming>
+      <bpmn:outgoing>flow_follow_up_to_closure</bpmn:outgoing>
       <bpmn:startEvent id="start_follow_up_phase" name="Start follow up phase">
         <bpmn:outgoing>flow_follow_up_start_to_end</bpmn:outgoing>
       </bpmn:startEvent>
@@ -71,10 +71,23 @@
         <bpmn:incoming>flow_follow_up_start_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
-    <bpmn:sequenceFlow id="flow_follow_up_to_end_process" sourceRef="follow_up_phase" targetRef="end_process" />
+    <bpmn:sequenceFlow id="flow_follow_up_to_closure" sourceRef="follow_up_phase" targetRef="closure_phase" />
+    <bpmn:subProcess id="closure_phase" name="Closure">
+      <bpmn:documentation>Avsluta</bpmn:documentation>
+      <bpmn:incoming>flow_follow_up_to_closure</bpmn:incoming>
+      <bpmn:outgoing>flow_closure_to_end_process</bpmn:outgoing>
+      <bpmn:startEvent id="start_closure_phase" name="Start closure phase">
+        <bpmn:outgoing>flow_closure_start_to_end</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_closure_start_to_end" sourceRef="start_closure_phase" targetRef="end_closure_phase" />
+      <bpmn:endEvent id="end_closure_phase" name="End closure phase">
+        <bpmn:incoming>flow_closure_start_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_closure_to_end_process" sourceRef="closure_phase" targetRef="end_process" />
     <bpmn:endEvent id="end_process" name="End process">
       <bpmn:documentation>The end of the process execution</bpmn:documentation>
-      <bpmn:incoming>flow_follow_up_to_end_process</bpmn:incoming>
+      <bpmn:incoming>flow_closure_to_end_process</bpmn:incoming>
     </bpmn:endEvent>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_alkt_ansokan">
@@ -85,50 +98,57 @@
           <dc:Bounds x="141" y="142" width="61" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_actualization_phase" bpmnElement="actualization_phase" isExpanded="false">
+      <bpmndi:BPMNShape id="BPMNShape_registration_phase" bpmnElement="registration_phase" isExpanded="false">
         <dc:Bounds x="240" y="77" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_investigation_phase" bpmnElement="investigation_phase" isExpanded="false">
+      <bpmndi:BPMNShape id="BPMNShape_review_phase" bpmnElement="review_phase" isExpanded="false">
         <dc:Bounds x="390" y="77" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_decision_phase" bpmnElement="decision_phase" isExpanded="false">
+      <bpmndi:BPMNShape id="BPMNShape_investigation_phase" bpmnElement="investigation_phase" isExpanded="false">
         <dc:Bounds x="540" y="77" width="100" height="80" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_execution_phase" bpmnElement="execution_phase" isExpanded="false">
+      <bpmndi:BPMNShape id="BPMNShape_decision_phase" bpmnElement="decision_phase" isExpanded="false">
         <dc:Bounds x="690" y="77" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_follow_up_phase" bpmnElement="follow_up_phase" isExpanded="false">
         <dc:Bounds x="840" y="77" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_closure_phase" bpmnElement="closure_phase" isExpanded="false">
+        <dc:Bounds x="990" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_process" bpmnElement="end_process">
-        <dc:Bounds x="992" y="99" width="36" height="36" />
+        <dc:Bounds x="1142" y="99" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="983" y="142" width="55" height="14" />
+          <dc:Bounds x="1133" y="142" width="55" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_start_process_to_actualization" bpmnElement="flow_start_process_to_actualization">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_start_process_to_registration" bpmnElement="flow_start_process_to_registration">
         <di:waypoint x="188" y="117" />
         <di:waypoint x="240" y="117" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_actualization_to_investigation" bpmnElement="flow_actualization_to_investigation">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_to_review" bpmnElement="flow_registration_to_review">
         <di:waypoint x="340" y="117" />
         <di:waypoint x="390" y="117" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_to_decision" bpmnElement="flow_investigation_to_decision">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_to_investigation" bpmnElement="flow_review_to_investigation">
         <di:waypoint x="490" y="117" />
         <di:waypoint x="540" y="117" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_to_execution" bpmnElement="flow_decision_to_execution">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_to_decision" bpmnElement="flow_investigation_to_decision">
         <di:waypoint x="640" y="117" />
         <di:waypoint x="690" y="117" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_execution_to_follow_up" bpmnElement="flow_execution_to_follow_up">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_to_follow_up" bpmnElement="flow_decision_to_follow_up">
         <di:waypoint x="790" y="117" />
         <di:waypoint x="840" y="117" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_follow_up_to_end_process" bpmnElement="flow_follow_up_to_end_process">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_follow_up_to_closure" bpmnElement="flow_follow_up_to_closure">
         <di:waypoint x="940" y="117" />
-        <di:waypoint x="992" y="117" />
+        <di:waypoint x="990" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_closure_to_end_process" bpmnElement="flow_closure_to_end_process">
+        <di:waypoint x="1090" y="117" />
+        <di:waypoint x="1142" y="117" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

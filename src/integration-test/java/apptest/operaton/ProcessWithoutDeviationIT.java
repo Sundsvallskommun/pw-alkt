@@ -1,11 +1,12 @@
 package apptest.operaton;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
-import static apptest.verification.ProcessPathway.actualizationPathway;
+import static apptest.verification.ProcessPathway.closurePathway;
 import static apptest.verification.ProcessPathway.decisionPathway;
-import static apptest.verification.ProcessPathway.executionPathway;
 import static apptest.verification.ProcessPathway.followUpPathway;
 import static apptest.verification.ProcessPathway.investigationPathway;
+import static apptest.verification.ProcessPathway.registrationPathway;
+import static apptest.verification.ProcessPathway.reviewPathway;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -77,11 +78,12 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 		// Verify process pathway.
 		assertProcessPathway(startResponse.getProcessId(), false, Tuples.create()
 			.with(tuple("Start process", "start_process"))
-			.with(actualizationPathway())
+			.with(registrationPathway())
+			.with(reviewPathway())
 			.with(investigationPathway())
 			.with(decisionPathway())
-			.with(executionPathway())
 			.with(followUpPathway())
+			.with(closurePathway())
 			.with(tuple("End process", "end_process")));
 	}
 }
