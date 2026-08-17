@@ -9,11 +9,18 @@ import static org.assertj.core.api.Assertions.tuple;
  */
 public class ProcessPathway {
 
-	public static Tuples actualizationPathway() {
+	public static Tuples registrationPathway() {
 		return Tuples.create()
-			.with(tuple("Actualization", "actualization_phase"))
-			.with(tuple("Start actualization phase", "start_actualization_phase"))
-			.with(tuple("End actualization phase", "end_actualization_phase"));
+			.with(tuple("Registration", "registration_phase"))
+			.with(tuple("Start registration phase", "start_registration_phase"))
+			.with(tuple("End registration phase", "end_registration_phase"));
+	}
+
+	public static Tuples reviewPathway() {
+		return Tuples.create()
+			.with(tuple("Review", "review_phase"))
+			.with(tuple("Start review phase", "start_review_phase"))
+			.with(tuple("End review phase", "end_review_phase"));
 	}
 
 	public static Tuples investigationPathway() {
@@ -30,17 +37,17 @@ public class ProcessPathway {
 			.with(tuple("End decision phase", "end_decision_phase"));
 	}
 
-	public static Tuples executionPathway() {
-		return Tuples.create()
-			.with(tuple("Execution", "execution_phase"))
-			.with(tuple("Start execution phase", "start_execution_phase"))
-			.with(tuple("End execution phase", "end_execution_phase"));
-	}
-
 	public static Tuples followUpPathway() {
 		return Tuples.create()
 			.with(tuple("Follow up", "follow_up_phase"))
 			.with(tuple("Start follow up phase", "start_follow_up_phase"))
 			.with(tuple("End follow up phase", "end_follow_up_phase"));
+	}
+
+	public static Tuples closurePathway() {
+		return Tuples.create()
+			.with(tuple("Closure", "closure_phase"))
+			.with(tuple("Start closure phase", "start_closure_phase"))
+			.with(tuple("End closure phase", "end_closure_phase"));
 	}
 }
