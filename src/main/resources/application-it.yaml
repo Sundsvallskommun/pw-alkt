@@ -1,0 +1,29 @@
+#========================================
+# Integration test specific settings
+#========================================
+#----------------------------------------
+# Spring settings
+#----------------------------------------
+spring:
+  application:
+    name: pw-alkt-it
+  main:
+    banner-mode: "off"
+#----------------------------------------
+# Integration settings
+#----------------------------------------
+config:
+  common:
+    token-uri: http://localhost:${wiremock.server.port}/api-gateway/token
+    client-id: the-client-id
+    client-secret: the-client-secret
+  operaton:
+    base-url: http://localhost:${wiremock.server.port}/api-operaton/engine-rest
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
+  support-management:
+    base-url: http://localhost:${wiremock.server.port}/api-support-management
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}

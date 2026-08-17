@@ -1,0 +1,16 @@
+{
+	"metadata": {
+		"comment": "Boot-time stub, unlike the programmatic mockApiGatewayToken() used elsewhere. WireMock auto-loads files under mappings/ when the server starts - before the Spring context initializes. When process-engine.type=operaton, TenantAwareAutoDeployment deploys via OperatonClient in @PostConstruct, which goes through the OAuth2 interceptor and needs a token during context initialization. A programmatic stub registered in the test lifecycle (@BeforeEach/@Test) is registered too late for that, so the token endpoint must be stubbed here instead."
+	},
+	"request": {
+		"method": "POST",
+		"url": "/api-gateway/token"
+	},
+	"response": {
+		"status": 200,
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"bodyFileName": "common/responses/api-gateway-retrieve-token.json"
+	}
+}

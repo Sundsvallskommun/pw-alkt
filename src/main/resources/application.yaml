@@ -1,0 +1,99 @@
+spring:
+  application:
+    name: pw-alkt
+  security:
+    oauth2:
+      client:
+        provider:
+          operaton:
+            token-uri: ${config.operaton.token-uri}
+          support-management:
+            token-uri: ${config.support-management.token-uri}
+        registration:
+          operaton:
+            authorization-grant-type: client_credentials
+            provider: operaton
+            client-id: ${config.operaton.client-id}
+            client-secret: ${config.operaton.client-secret}
+          support-management:
+            authorization-grant-type: client_credentials
+            provider: support-management
+            client-id: ${config.support-management.client-id}
+            client-secret: ${config.support-management.client-secret}
+
+#----------------------------------------
+# Open API
+#----------------------------------------
+openapi:
+  name: ${spring.application.name}
+  title: ${spring.application.name}
+  version: '@project.version@'
+
+#-------------------------------------------
+# Log config
+#-------------------------------------------
+logging:
+  level:
+    root: INFO
+logbook:
+  body-filters:
+    json-path:
+      - key: '$..attachments[*].file'
+        value: '[base64]'
+
+#----------------------------------------
+# External task client
+# The camunda-bpm external task client polls the Operaton engine, which is API compatible with Camunda 7. Its poll URL
+# is the same engine the workers write to through the Operaton REST client.
+#----------------------------------------
+camunda:
+  bpm:
+    client:
+      base-url: ${config.operaton.base-url}
+      backoff:
+        initTime: 500
+        factor: 2
+        maxTime: 15000
+  worker:
+    max:
+      retries: 3
+    retry:
+      timeout: 10
+
+#----------------------------------------
+# Process deployment
+# The resource patterns match every process model in the service, so an added schema (ansokan, anmalan, tillsyn) is
+# deployed to the tenant without a configuration change.
+#----------------------------------------
+process-engine:
+  deployment:
+    processes:
+      - name: Alkt processes
+        tenant: ALKT
+        bpmnResourcePattern: classpath*:processmodels/*.bpmn
+        dmnResourcePattern: classpath*:processmodels/*.dmn
+        formResourcePattern: classpath*:processmodels/*.form
+
+#----------------------------------------
+# Integration settings
+#----------------------------------------
+# Rest client
+integration:
+  operaton:
+    url: ${config.operaton.base-url}
+    connectTimeout: 5
+    readTimeout: 20
+  support-management:
+    url: ${config.support-management.base-url}
+    connectTimeout: 5
+    readTimeout: 20
+
+#----------------------------------------
+# Circuit breakers
+#----------------------------------------
+resilience4j.circuitbreaker:
+  instances:
+    operaton:
+      ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
+    support-management:
+      ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem

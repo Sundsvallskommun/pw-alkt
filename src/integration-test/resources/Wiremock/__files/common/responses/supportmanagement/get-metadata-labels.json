@@ -1,0 +1,16 @@
+{
+	"labelStructure": [
+		{
+			"id": "ALKT_ID",
+			"resourcePath": "ALKT",
+			"resourceName": "ALKT",
+			"labels": [
+				{
+					"id": "ALKT/ANSOKAN_ID",
+					"resourcePath": "ALKT/ANSOKAN",
+					"resourceName": "ANSOKAN"
+				}
+			]
+		}
+	]
+}

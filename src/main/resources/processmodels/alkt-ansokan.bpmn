@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_alkt_ansokan" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:process id="alkt-ansokan" name="PROCESS Ansökan" isExecutable="true" camunda:historyTimeToLive="P30D">
+    <bpmn:documentation>Skelett för ansökningsprocessen. Varje fas är en tom subprocess som fylls med aktiviteter allteftersom verksamhetslogiken implementeras.</bpmn:documentation>
+    <bpmn:startEvent id="start_process" name="Start process">
+      <bpmn:documentation>The start of the process execution</bpmn:documentation>
+      <bpmn:outgoing>flow_start_process_to_actualization</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="flow_start_process_to_actualization" sourceRef="start_process" targetRef="actualization_phase" />
+    <bpmn:subProcess id="actualization_phase" name="Actualization">
+      <bpmn:documentation>Aktualisering</bpmn:documentation>
+      <bpmn:incoming>flow_start_process_to_actualization</bpmn:incoming>
+      <bpmn:outgoing>flow_actualization_to_investigation</bpmn:outgoing>
+      <bpmn:startEvent id="start_actualization_phase" name="Start actualization phase">
+        <bpmn:outgoing>flow_actualization_start_to_end</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_actualization_start_to_end" sourceRef="start_actualization_phase" targetRef="end_actualization_phase" />
+      <bpmn:endEvent id="end_actualization_phase" name="End actualization phase">
+        <bpmn:incoming>flow_actualization_start_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_actualization_to_investigation" sourceRef="actualization_phase" targetRef="investigation_phase" />
+    <bpmn:subProcess id="investigation_phase" name="Investigation">
+      <bpmn:documentation>Utredning</bpmn:documentation>
+      <bpmn:incoming>flow_actualization_to_investigation</bpmn:incoming>
+      <bpmn:outgoing>flow_investigation_to_decision</bpmn:outgoing>
+      <bpmn:startEvent id="start_investigation_phase" name="Start investigation phase">
+        <bpmn:outgoing>flow_investigation_start_to_end</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_investigation_start_to_end" sourceRef="start_investigation_phase" targetRef="end_investigation_phase" />
+      <bpmn:endEvent id="end_investigation_phase" name="End investigation phase">
+        <bpmn:incoming>flow_investigation_start_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_investigation_to_decision" sourceRef="investigation_phase" targetRef="decision_phase" />
+    <bpmn:subProcess id="decision_phase" name="Decision">
+      <bpmn:documentation>Beslut</bpmn:documentation>
+      <bpmn:incoming>flow_investigation_to_decision</bpmn:incoming>
+      <bpmn:outgoing>flow_decision_to_execution</bpmn:outgoing>
+      <bpmn:startEvent id="start_decision_phase" name="Start decision phase">
+        <bpmn:outgoing>flow_decision_start_to_end</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_decision_start_to_end" sourceRef="start_decision_phase" targetRef="end_decision_phase" />
+      <bpmn:endEvent id="end_decision_phase" name="End decision phase">
+        <bpmn:incoming>flow_decision_start_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_decision_to_execution" sourceRef="decision_phase" targetRef="execution_phase" />
+    <bpmn:subProcess id="execution_phase" name="Execution">
+      <bpmn:documentation>Verkställande</bpmn:documentation>
+      <bpmn:incoming>flow_decision_to_execution</bpmn:incoming>
+      <bpmn:outgoing>flow_execution_to_follow_up</bpmn:outgoing>
+      <bpmn:startEvent id="start_execution_phase" name="Start execution phase">
+        <bpmn:outgoing>flow_execution_start_to_end</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_execution_start_to_end" sourceRef="start_execution_phase" targetRef="end_execution_phase" />
+      <bpmn:endEvent id="end_execution_phase" name="End execution phase">
+        <bpmn:incoming>flow_execution_start_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_execution_to_follow_up" sourceRef="execution_phase" targetRef="follow_up_phase" />
+    <bpmn:subProcess id="follow_up_phase" name="Follow up">
+      <bpmn:documentation>Uppföljning</bpmn:documentation>
+      <bpmn:incoming>flow_execution_to_follow_up</bpmn:incoming>
+      <bpmn:outgoing>flow_follow_up_to_end_process</bpmn:outgoing>
+      <bpmn:startEvent id="start_follow_up_phase" name="Start follow up phase">
+        <bpmn:outgoing>flow_follow_up_start_to_end</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_follow_up_start_to_end" sourceRef="start_follow_up_phase" targetRef="end_follow_up_phase" />
+      <bpmn:endEvent id="end_follow_up_phase" name="End follow up phase">
+        <bpmn:incoming>flow_follow_up_start_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_follow_up_to_end_process" sourceRef="follow_up_phase" targetRef="end_process" />
+    <bpmn:endEvent id="end_process" name="End process">
+      <bpmn:documentation>The end of the process execution</bpmn:documentation>
+      <bpmn:incoming>flow_follow_up_to_end_process</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_alkt_ansokan">
+    <bpmndi:BPMNPlane id="BPMNPlane_alkt_ansokan" bpmnElement="alkt-ansokan">
+      <bpmndi:BPMNShape id="BPMNShape_start_process" bpmnElement="start_process">
+        <dc:Bounds x="152" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="141" y="142" width="61" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_actualization_phase" bpmnElement="actualization_phase" isExpanded="false">
+        <dc:Bounds x="240" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_investigation_phase" bpmnElement="investigation_phase" isExpanded="false">
+        <dc:Bounds x="390" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_decision_phase" bpmnElement="decision_phase" isExpanded="false">
+        <dc:Bounds x="540" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_execution_phase" bpmnElement="execution_phase" isExpanded="false">
+        <dc:Bounds x="690" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_follow_up_phase" bpmnElement="follow_up_phase" isExpanded="false">
+        <dc:Bounds x="840" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_process" bpmnElement="end_process">
+        <dc:Bounds x="992" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="983" y="142" width="55" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_start_process_to_actualization" bpmnElement="flow_start_process_to_actualization">
+        <di:waypoint x="188" y="117" />
+        <di:waypoint x="240" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_actualization_to_investigation" bpmnElement="flow_actualization_to_investigation">
+        <di:waypoint x="340" y="117" />
+        <di:waypoint x="390" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_to_decision" bpmnElement="flow_investigation_to_decision">
+        <di:waypoint x="490" y="117" />
+        <di:waypoint x="540" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_to_execution" bpmnElement="flow_decision_to_execution">
+        <di:waypoint x="640" y="117" />
+        <di:waypoint x="690" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_execution_to_follow_up" bpmnElement="flow_execution_to_follow_up">
+        <di:waypoint x="790" y="117" />
+        <di:waypoint x="840" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_follow_up_to_end_process" bpmnElement="flow_follow_up_to_end_process">
+        <di:waypoint x="940" y="117" />
+        <di:waypoint x="992" y="117" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

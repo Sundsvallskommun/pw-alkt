@@ -1,0 +1,49 @@
+#========================================
+# Unit test specific settings
+#========================================
+#----------------------------------------
+# Spring settings
+#----------------------------------------
+spring:
+  main:
+    banner-mode: "off"
+
+#----------------------------------------
+# External task client settings
+#----------------------------------------
+camunda:
+  bpm:
+    client:
+      disable-auto-fetching: true
+process-engine:
+  deployment:
+    autoDeployEnabled: false
+    processes:
+      - name: process_name_1
+        tenant: tenant_id_1
+        bpmnResourcePattern: bpmnResourcePattern_1
+        dmnResourcePattern: dmnResourcePattern_1
+        formResourcePattern: formResourcePattern_1
+      - name: process_name_2
+        tenant: tenant_id_2
+        bpmnResourcePattern: bpmnResourcePattern_2
+        dmnResourcePattern: dmnResourcePattern_2
+        formResourcePattern: formResourcePattern_2
+#----------------------------------------
+# Integration settings
+#----------------------------------------
+config:
+  common:
+    token-uri: token.url
+    client-id: client.id
+    client-secret: client.secret
+  operaton:
+    base-url: operaton.base.url
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
+  support-management:
+    base-url: support-management.base.url
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
