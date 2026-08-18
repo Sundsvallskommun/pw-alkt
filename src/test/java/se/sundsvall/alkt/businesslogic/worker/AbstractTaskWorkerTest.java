@@ -105,17 +105,17 @@ class AbstractTaskWorkerTest {
 		// Setup
 		final var municipalityId = "2281";
 		final var namespace = "ALKT";
-		final var caseNumber = 123L;
+		final var errandId = UUID.randomUUID().toString();
 
 		// Mock
 		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(municipalityId);
 		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_NAMESPACE)).thenReturn(namespace);
-		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_CASE_NUMBER)).thenReturn(caseNumber);
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_ERRAND_ID)).thenReturn(errandId);
 
 		// Act and assert
 		assertThat(worker.getMunicipalityId(externalTaskMock)).isEqualTo(municipalityId);
 		assertThat(worker.getNamespace(externalTaskMock)).isEqualTo(namespace);
-		assertThat(worker.getCaseNumber(externalTaskMock)).isEqualTo(caseNumber);
+		assertThat(worker.getErrandId(externalTaskMock)).isEqualTo(errandId);
 	}
 
 	@Test

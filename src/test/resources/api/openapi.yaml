@@ -7,7 +7,7 @@ info:
     url: https://opensource.org/licenses/MIT
   version: "1.0"
 servers:
-- url: http://localhost:54352
+- url: http://localhost:58580
   description: Generated server url
 tags:
 - name: Process endpoints
@@ -68,11 +68,11 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
-  /{municipalityId}/{namespace}/process/start/{caseNumber}:
+  /{municipalityId}/{namespace}/process/start/{errandId}:
     post:
       tags:
       - Process endpoints
-      description: Start a new process instance for the provided caseNumber
+      description: Start a new process instance for the provided errandId
       operationId: startProcess
       parameters:
       - name: municipalityId
@@ -89,13 +89,13 @@ paths:
         schema:
           type: string
         example: my.namespace
-      - name: caseNumber
+      - name: errandId
         in: path
+        description: Support Management errand ID
         required: true
         schema:
-          type: integer
-          format: int64
-          exclusiveMinimum: 0
+          type: string
+        example: f0882f1d-06bc-47fd-b017-1d8307f5ce95
       responses:
         "202":
           description: Accepted

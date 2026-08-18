@@ -5,7 +5,6 @@ import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import generated.se.sundsvall.operaton.VariableValueDto;
-import java.util.Random;
 import org.camunda.bpm.engine.variable.type.ValueType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,7 +55,7 @@ class ProcessServiceTest {
 		final var tenant = "ALKT";
 		final var municipalityId = "2281";
 		final var namespace = "ALKT";
-		final var caseNumber = new Random().nextLong();
+		final var errandId = randomUUID().toString();
 		final var uuid = randomUUID().toString();
 		final var logId = randomUUID().toString();
 		final var processInstance = new ProcessInstanceWithVariablesDto().id(uuid);
@@ -68,21 +67,21 @@ class ProcessServiceTest {
 			requestIdMock.when(RequestId::get).thenReturn(logId);
 
 			// Act
-			assertThat(processService.startProcess(municipalityId, namespace, caseNumber)).isEqualTo(uuid);
+			assertThat(processService.startProcess(municipalityId, namespace, errandId)).isEqualTo(uuid);
 		}
 
 		// Assert
 		verify(operatonClientMock).startProcessWithTenant(eq(process), eq(tenant), startProcessArgumentCaptor.capture());
 		verifyNoMoreInteractions(operatonClientMock);
-		assertThat(startProcessArgumentCaptor.getValue().getBusinessKey()).isEqualTo(String.valueOf(caseNumber));
+		assertThat(startProcessArgumentCaptor.getValue().getBusinessKey()).isEqualTo(errandId);
 		assertThat(startProcessArgumentCaptor.getValue().getVariables()).hasSize(4)
-			.containsKeys("municipalityId", "namespace", "caseNumber", "requestId")
-			.extractingByKeys("municipalityId", "namespace", "caseNumber", "requestId")
+			.containsKeys("municipalityId", "namespace", "errandId", "requestId")
+			.extractingByKeys("municipalityId", "namespace", "errandId", "requestId")
 			.extracting(VariableValueDto::getType, VariableValueDto::getValue)
 			.contains(
 				tuple(ValueType.STRING.getName(), municipalityId),
 				tuple(ValueType.STRING.getName(), namespace),
-				tuple(ValueType.LONG.getName(), caseNumber),
+				tuple(ValueType.STRING.getName(), errandId),
 				tuple(ValueType.STRING.getName(), logId));
 	}
 
@@ -97,13 +96,13 @@ class ProcessServiceTest {
 		final var tenant = "ALKT";
 		final var municipalityId = "2281";
 		final var namespace = "ALKT";
-		final var caseNumber = 123L;
+		final var errandId = randomUUID().toString();
 		final var uuid = randomUUID().toString();
 
 		when(operatonClientMock.startProcessWithTenant(any(), any(), any())).thenReturn(new ProcessInstanceWithVariablesDto().id(uuid));
 
 		// Act
-		final var result = processService.startProcess(process, municipalityId, namespace, caseNumber);
+		final var result = processService.startProcess(process, municipalityId, namespace, errandId);
 
 		// Assert
 		assertThat(result).isEqualTo(uuid);

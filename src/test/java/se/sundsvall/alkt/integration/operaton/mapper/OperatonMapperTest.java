@@ -19,26 +19,26 @@ class OperatonMapperTest {
 		// Arrange
 		final var municipalityId = "2281";
 		final var namespace = "ALKT";
-		final var caseNumber = 123L;
+		final var errandId = UUID.randomUUID().toString();
 		final var requestId = UUID.randomUUID().toString();
 
 		// Act
 		final generated.se.sundsvall.operaton.StartProcessInstanceDto result;
 		try (MockedStatic<RequestId> requestIdMock = mockStatic(RequestId.class)) {
 			requestIdMock.when(RequestId::get).thenReturn(requestId);
-			result = OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, caseNumber);
+			result = OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandId);
 		}
 
 		// Assert
-		assertThat(result.getBusinessKey()).isEqualTo("123");
+		assertThat(result.getBusinessKey()).isEqualTo(errandId);
 		assertThat(result.getVariables())
 			.hasSize(4)
-			.extractingByKeys("municipalityId", "namespace", "caseNumber", "requestId")
+			.extractingByKeys("municipalityId", "namespace", "errandId", "requestId")
 			.extracting(VariableValueDto::getType, VariableValueDto::getValue)
 			.containsExactly(
 				tuple(ValueType.STRING.getName(), municipalityId),
 				tuple(ValueType.STRING.getName(), namespace),
-				tuple(ValueType.LONG.getName(), caseNumber),
+				tuple(ValueType.STRING.getName(), errandId),
 				tuple(ValueType.STRING.getName(), requestId));
 	}
 

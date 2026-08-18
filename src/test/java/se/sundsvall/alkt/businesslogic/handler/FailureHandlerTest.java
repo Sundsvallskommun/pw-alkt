@@ -12,6 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import se.sundsvall.alkt.Application;
 
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -19,6 +20,8 @@ import static org.mockito.Mockito.when;
 @SpringBootTest(classes = Application.class)
 @ActiveProfiles("junit")
 class FailureHandlerTest {
+
+	private static final long EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS = 10_000;
 
 	@Autowired
 	private FailureHandler failureHandler;
@@ -34,13 +37,11 @@ class FailureHandlerTest {
 		// Setup
 		final var message = "message";
 		final var id = UUID.randomUUID().toString();
-		final var workerId = UUID.randomUUID().toString();
 		final var retriesLeft = 2;
 		final Map<String, Object> variables = Map.of("key", "value");
 
 		// Mock
 		when(externalTaskMock.getId()).thenReturn(id);
-		when(externalTaskMock.getWorkerId()).thenReturn(workerId);
 		when(externalTaskMock.getRetries()).thenReturn(retriesLeft);
 
 		// Act
@@ -48,8 +49,7 @@ class FailureHandlerTest {
 
 		// Assert and verify
 		verify(externalTaskMock).getId();
-		verify(externalTaskMock).getWorkerId();
-		verify(externalTaskServiceMock).handleFailure(id, workerId, message, retriesLeft - 1, 10, variables, Collections.emptyMap());
+		verify(externalTaskServiceMock).handleFailure(id, message, null, retriesLeft - 1, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS, variables, Collections.emptyMap());
 		verifyNoMoreInteractions(externalTaskServiceMock);
 	}
 
@@ -58,12 +58,10 @@ class FailureHandlerTest {
 		// Setup
 		final var message = "message";
 		final var id = UUID.randomUUID().toString();
-		final var workerId = UUID.randomUUID().toString();
 		final var retriesLeft = 2;
 
 		// Mock
 		when(externalTaskMock.getId()).thenReturn(id);
-		when(externalTaskMock.getWorkerId()).thenReturn(workerId);
 		when(externalTaskMock.getRetries()).thenReturn(retriesLeft);
 
 		// Act
@@ -71,8 +69,7 @@ class FailureHandlerTest {
 
 		// Assert and verify
 		verify(externalTaskMock).getId();
-		verify(externalTaskMock).getWorkerId();
-		verify(externalTaskServiceMock).handleFailure(id, workerId, message, retriesLeft - 1, 10);
+		verify(externalTaskServiceMock).handleFailure(id, message, null, retriesLeft - 1, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verifyNoMoreInteractions(externalTaskServiceMock);
 	}
 
@@ -81,11 +78,9 @@ class FailureHandlerTest {
 		// Setup
 		final var message = "message";
 		final var id = UUID.randomUUID().toString();
-		final var workerId = UUID.randomUUID().toString();
 
 		// Mock
 		when(externalTaskMock.getId()).thenReturn(id);
-		when(externalTaskMock.getWorkerId()).thenReturn(workerId);
 		when(externalTaskMock.getRetries()).thenReturn(null);
 
 		// Act
@@ -93,8 +88,30 @@ class FailureHandlerTest {
 
 		// Assert and verify
 		verify(externalTaskMock).getId();
-		verify(externalTaskMock).getWorkerId();
-		verify(externalTaskServiceMock).handleFailure(id, workerId, message, 3, 10);
+		verify(externalTaskServiceMock).handleFailure(id, message, null, 3, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
+		verifyNoMoreInteractions(externalTaskServiceMock);
+	}
+
+	/**
+	 * The worker id must not be passed to {@code handleFailure} - the second parameter is the error message, which
+	 * becomes the incident message once the retries are exhausted.
+	 */
+	@Test
+	void doesNotUseWorkerIdAsErrorMessage() {
+		// Setup
+		final var message = "message";
+		final var id = UUID.randomUUID().toString();
+
+		// Mock
+		when(externalTaskMock.getId()).thenReturn(id);
+		when(externalTaskMock.getRetries()).thenReturn(1);
+
+		// Act
+		failureHandler.handleException(externalTaskServiceMock, externalTaskMock, message);
+
+		// Assert and verify
+		verify(externalTaskMock, never()).getWorkerId();
+		verify(externalTaskServiceMock).handleFailure(id, message, null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verifyNoMoreInteractions(externalTaskServiceMock);
 	}
 }

@@ -11,7 +11,7 @@ import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static se.sundsvall.alkt.Constants.FALSE;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_CASE_NUMBER;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
@@ -80,7 +80,7 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		return externalTask.getVariable(PROCESS_VARIABLE_NAMESPACE);
 	}
 
-	protected Long getCaseNumber(final ExternalTask externalTask) {
-		return externalTask.getVariable(PROCESS_VARIABLE_CASE_NUMBER);
+	protected String getErrandId(final ExternalTask externalTask) {
+		return externalTask.getVariable(PROCESS_VARIABLE_ERRAND_ID);
 	}
 }

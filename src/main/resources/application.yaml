@@ -35,30 +35,40 @@ openapi:
 logging:
   level:
     root: INFO
-logbook:
-  body-filters:
-    json-path:
-      - key: '$..attachments[*].file'
-        value: '[base64]'
 
 #----------------------------------------
 # External task client
 # The camunda-bpm external task client polls the Operaton engine, which is API compatible with Camunda 7. Its poll URL
 # is the same engine the workers write to through the Operaton REST client.
+#
+# Not every key below belongs to the client library. Of the keys this service sets, only base-url is bound by its
+# ClientProperties - as is disable-auto-fetching, which the junit profile and OpenApiSpecificationIT set to keep
+# tests from polling. The library's own backoff knob is the boolean disable-backoff-strategy; it has no backoff.*
+# or worker.* keys. Those two sub-trees are this service's own configuration, bound by our own classes; see the
+# comment at each of them.
 #----------------------------------------
 camunda:
   bpm:
     client:
       base-url: ${config.operaton.base-url}
+      # Bound by se.sundsvall.alkt.integration.operaton.configuration.BackoffProperties, not by the client
+      # library, even though it is nested under the library's prefix. BackoffConfiguration feeds these values into
+      # the @Primary ExponentialBackoffStrategy that decides how long the client waits between polls that return
+      # no task.
       backoff:
         initTime: 500
         factor: 2
         maxTime: 15000
+  # Also this service's own configuration, read with @Value in FailureHandler - the client library has no
+  # worker.* keys of its own.
   worker:
     max:
       retries: 3
     retry:
-      timeout: 10
+      # Milliseconds - this is handed straight to ExternalTaskService.handleFailure(), whose retryTimeout is in
+      # milliseconds. With 3 retries the task is given up on after roughly 30 seconds, which lets a transient
+      # gateway or engine hiccup pass without raising an incident.
+      timeout: 10000
 
 #----------------------------------------
 # Process deployment

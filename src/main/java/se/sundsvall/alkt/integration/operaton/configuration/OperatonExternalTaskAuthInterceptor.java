@@ -5,7 +5,6 @@ import org.camunda.bpm.client.interceptor.ClientRequestInterceptor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 
 import static java.util.Objects.isNull;
 import static se.sundsvall.alkt.integration.operaton.configuration.OperatonConfiguration.CLIENT_ID;
@@ -13,26 +12,24 @@ import static se.sundsvall.alkt.integration.operaton.configuration.OperatonConfi
 /**
  * Adds a WSO2 client-credentials bearer token to every external task request (fetchAndLock/complete/handleFailure) so
  * the service can poll api-service-operaton, which sits behind the OAuth2-secured gateway.
+ * <p>
+ * The token is cached by the authorized client manager and renewed once it is within the configured clock skew of
+ * expiry (see {@link OperatonExternalTaskClientConfiguration}). It is deliberately <b>not</b> evicted per request: the
+ * external task client polls continuously, and when tasks are available the backoff is reset to zero, so a forced
+ * re-issue would mean one WSO2 token round trip per poll iteration.
  */
 class OperatonExternalTaskAuthInterceptor implements ClientRequestInterceptor {
 
-	private static final String PRINCIPAL = "operaton-external-task-client";
+	static final String PRINCIPAL = "operaton-external-task-client";
 
 	private final OAuth2AuthorizedClientManager authorizedClientManager;
-	private final OAuth2AuthorizedClientService authorizedClientService;
 
-	OperatonExternalTaskAuthInterceptor(final OAuth2AuthorizedClientManager authorizedClientManager, final OAuth2AuthorizedClientService authorizedClientService) {
+	OperatonExternalTaskAuthInterceptor(final OAuth2AuthorizedClientManager authorizedClientManager) {
 		this.authorizedClientManager = authorizedClientManager;
-		this.authorizedClientService = authorizedClientService;
 	}
 
 	@Override
 	public void intercept(final ClientRequestContext requestContext) {
-		// Evict any cached token before authorizing so every poll forces a freshly issued token. The manager only renews
-		// near the nominal expiresAt, but WSO2 may invalidate a token server-side early (gateway restart, revocation,
-		// clock drift); since this interceptor never sees the response it cannot detect a 401 and evict afterwards.
-		authorizedClientService.removeAuthorizedClient(CLIENT_ID, PRINCIPAL);
-
 		final var authorizedClient = authorizedClientManager.authorize(
 			OAuth2AuthorizeRequest.withClientRegistrationId(CLIENT_ID).principal(PRINCIPAL).build());
 

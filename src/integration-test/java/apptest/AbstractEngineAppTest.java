@@ -31,8 +31,8 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
 
 /**
- * Engine-neutral base for the testcontainer-driven process tests. Holds the shared assertion and await helpers; the
- * per-engine base classes (in the {@code apptest.operaton} package) pick the engine by delegating their
+ * Base for the testcontainer-driven process tests. Holds the shared assertion and await helpers; the base class in the
+ * {@code apptest.operaton} package points the application at the engine container by delegating its
  * {@code @DynamicPropertySource} to {@link apptest.engine.EngineTestProperties}. The {@code operatonClient} is used
  * purely as a read client for process history.
  *
@@ -69,6 +69,11 @@ public abstract class AbstractEngineAppTest extends AbstractAppTest {
 		final var listRequest = HttpRequest.newBuilder(URI.create(engineBaseUrl + "/process-instance?tenantIdIn=" + TENANT_ID_ALKT)).GET().build();
 		final var listResponse = HTTP_CLIENT.send(listRequest, HttpResponse.BodyHandlers.ofString());
 		final JsonNode instances = OBJECT_MAPPER.readTree(listResponse.body());
+		// An error response is a JSON object, not an array - iterating it would yield field values and NPE below,
+		// hiding the actual engine error behind a stack trace from this @BeforeEach.
+		if (!instances.isArray()) {
+			throw new IllegalStateException("Unexpected response when listing process instances (HTTP " + listResponse.statusCode() + "): " + listResponse.body());
+		}
 		for (final JsonNode instance : instances) {
 			final var deleteRequest = HttpRequest.newBuilder(
 				URI.create(engineBaseUrl + "/process-instance/" + instance.get("id").asText() + "?skipCustomListeners=true&skipIoMappings=true&failIfNotExists=false"))
