@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,8 +38,8 @@ class ProcessResource {
 		this.service = service;
 	}
 
-	@PostMapping(path = "start/{caseNumber}", produces = APPLICATION_JSON_VALUE)
-	@Operation(description = "Start a new process instance for the provided caseNumber")
+	@PostMapping(path = "start/{errandId}", produces = APPLICATION_JSON_VALUE)
+	@Operation(description = "Start a new process instance for the provided errandId")
 	@ApiResponse(responseCode = "202", description = "Accepted", useReturnTypeSchema = true)
 	@ApiResponse(responseCode = "400", description = "Bad request", content = @Content(mediaType = APPLICATION_PROBLEM_JSON_VALUE, schema = @Schema(oneOf = {
 		Problem.class, ConstraintViolationProblem.class
@@ -51,9 +50,9 @@ class ProcessResource {
 	ResponseEntity<StartProcessResponse> startProcess(
 		@Parameter(name = "municipalityId", description = "Municipality ID", example = "2281") @ValidMunicipalityId @PathVariable final String municipalityId,
 		@Parameter(name = "namespace", description = "Namespace", example = "my.namespace") @ValidNamespace @PathVariable final String namespace,
-		@Parameter(name = "caseNumber") @PathVariable @Positive final Long caseNumber) {
+		@Parameter(name = "errandId", description = "Support Management errand ID", example = "f0882f1d-06bc-47fd-b017-1d8307f5ce95") @ValidUuid @PathVariable final String errandId) {
 
-		final var startProcessResponse = new StartProcessResponse(service.startProcess(municipalityId, namespace, caseNumber));
+		final var startProcessResponse = new StartProcessResponse(service.startProcess(municipalityId, namespace, errandId));
 
 		return accepted().body(startProcessResponse);
 	}

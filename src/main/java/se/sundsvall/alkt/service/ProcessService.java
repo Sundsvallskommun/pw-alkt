@@ -15,7 +15,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_UPDATE_AVAILABLE;
-import static se.sundsvall.alkt.Constants.TENANTID_TEMPLATE;
+import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 
 @Service
 public class ProcessService {
@@ -26,8 +26,8 @@ public class ProcessService {
 		this.operatonClient = operatonClient;
 	}
 
-	public String startProcess(final String municipalityId, final String namespace, final Long caseNumber) {
-		return startProcess(PROCESS_KEY_ANSOKAN, municipalityId, namespace, caseNumber);
+	public String startProcess(final String municipalityId, final String namespace, final String errandId) {
+		return startProcess(PROCESS_KEY_ANSOKAN, municipalityId, namespace, errandId);
 	}
 
 	/**
@@ -35,8 +35,8 @@ public class ProcessService {
 	 * and tillsyn processes are started through this method with their own key, so only the caller has to know which
 	 * process a request maps to.
 	 */
-	String startProcess(final String processKey, final String municipalityId, final String namespace, final Long caseNumber) {
-		return operatonClient.startProcessWithTenant(processKey, TENANTID_TEMPLATE, OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, caseNumber)).getId();
+	String startProcess(final String processKey, final String municipalityId, final String namespace, final String errandId) {
+		return operatonClient.startProcessWithTenant(processKey, TENANT_ID_ALKT, OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandId)).getId();
 	}
 
 	public void updateProcess(final String municipalityId, final String namespace, final String processInstanceId) {

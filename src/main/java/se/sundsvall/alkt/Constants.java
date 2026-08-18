@@ -12,15 +12,17 @@ public final class Constants {
 	 */
 	public static final String PROCESS_KEY_ANSOKAN = "alkt-ansokan";
 
-	public static final String TENANTID_TEMPLATE = "ALKT"; // Namespace where the processes are deployed, a.k.a tenant (must match setting in application.yaml)
+	// Namespace where the processes are deployed, a.k.a tenant. Must match process-engine.deployment.processes[].tenant
+	// in application.yaml - the integration test covers the pairing.
+	public static final String TENANT_ID_ALKT = "ALKT";
 
-	public static final String PROCESS_VARIABLE_CASE_NUMBER = "caseNumber";
+	// The errand this process instance drives, identified the way Support Management identifies it: a UUID string.
+	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";
 	public static final String PROCESS_VARIABLE_UPDATE_AVAILABLE = "updateAvailable";
 
-	public static final VariableValueDto TRUE = new VariableValueDto().type(ValueType.BOOLEAN.getName()).value(true);
 	public static final VariableValueDto FALSE = new VariableValueDto().type(ValueType.BOOLEAN.getName()).value(false);
 
 	private Constants() {}

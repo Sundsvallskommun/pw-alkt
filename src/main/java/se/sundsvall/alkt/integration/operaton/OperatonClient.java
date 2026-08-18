@@ -68,13 +68,13 @@ public interface OperatonClient {
 	@GetMapping(path = "deployment", produces = APPLICATION_JSON_VALUE)
 	List<DeploymentDto> getDeployments(@RequestParam("source") String source, @RequestParam("nameLike") String nameLike, @RequestParam("tenantIdIn") String tenantIdIn);
 
-	@GetMapping(path = "process-instance/{id}", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
+	@GetMapping(path = "process-instance/{id}", produces = APPLICATION_JSON_VALUE)
 	Optional<ProcessInstanceDto> getProcessInstance(@PathVariable String id);
 
-	@GetMapping(path = "history/process-instance/{id}", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
+	@GetMapping(path = "history/process-instance/{id}", produces = APPLICATION_JSON_VALUE)
 	HistoricProcessInstanceDto getHistoricProcessInstance(@PathVariable String id);
 
-	@GetMapping(path = "history/activity-instance", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
+	@GetMapping(path = "history/activity-instance", produces = APPLICATION_JSON_VALUE)
 	List<HistoricActivityInstanceDto> getHistoricActivities(@RequestParam("processInstanceId") String processInstanceId);
 
 	@GetMapping(path = "event-subscription", produces = APPLICATION_JSON_VALUE)

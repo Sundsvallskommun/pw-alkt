@@ -42,6 +42,8 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 
 	private static final int DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS = 30;
 	private static final String TENANT_ID_ALKT = "ALKT";
+	// Support Management identifies an errand by a UUID, so that is what the process is started with
+	private static final String ERRAND_ID = "f0882f1d-06bc-47fd-b017-1d8307f5ce95";
 
 	@BeforeEach
 	void setup() {
@@ -63,7 +65,7 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 
 		// Start process
 		final var startResponse = setupCall()
-			.withServicePath("/2281/ALKT/process/start/123")
+			.withServicePath("/2281/ALKT/process/start/" + ERRAND_ID)
 			.withHttpMethod(POST)
 			.withExpectedResponseStatus(ACCEPTED)
 			.sendRequest()

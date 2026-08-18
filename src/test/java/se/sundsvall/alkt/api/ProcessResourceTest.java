@@ -43,13 +43,13 @@ class ProcessResourceTest {
 		// Arrange
 		final var municipalityId = "2281";
 		final var namespace = "ALKT";
-		final var caseNumber = 123L;
+		final var errandId = randomUUID().toString();
 		final var uuid = randomUUID().toString();
 
 		when(processServiceMock.startProcess(any(), any(), any())).thenReturn(uuid);
 
 		// Act
-		final var response = webTestClient.post().uri(PATH + "/process/start/" + caseNumber)
+		final var response = webTestClient.post().uri(PATH + "/process/start/" + errandId)
 			.exchange()
 			.expectStatus().isAccepted()
 			.expectHeader().contentType(APPLICATION_JSON)
@@ -59,7 +59,7 @@ class ProcessResourceTest {
 
 		// Assert
 		assertThat(response.getProcessId()).isEqualTo(uuid);
-		verify(processServiceMock).startProcess(municipalityId, namespace, caseNumber);
+		verify(processServiceMock).startProcess(municipalityId, namespace, errandId);
 		verifyNoMoreInteractions(processServiceMock);
 	}
 

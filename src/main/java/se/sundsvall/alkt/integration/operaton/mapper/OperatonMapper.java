@@ -7,7 +7,7 @@ import java.util.Map;
 import org.camunda.bpm.engine.variable.type.ValueType;
 import se.sundsvall.dept44.requestid.RequestId;
 
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_CASE_NUMBER;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
@@ -16,13 +16,13 @@ public final class OperatonMapper {
 
 	private OperatonMapper() {}
 
-	public static StartProcessInstanceDto toStartProcessInstanceDto(final String municipalityId, final String namespace, final Long caseNumber) {
+	public static StartProcessInstanceDto toStartProcessInstanceDto(final String municipalityId, final String namespace, final String errandId) {
 		return new StartProcessInstanceDto()
-			.businessKey(Long.toString(caseNumber))
+			.businessKey(errandId)
 			.variables(Map.of(
 				PROCESS_VARIABLE_MUNICIPALITY_ID, toVariableValueDto(ValueType.STRING, municipalityId),
 				PROCESS_VARIABLE_NAMESPACE, toVariableValueDto(ValueType.STRING, namespace),
-				PROCESS_VARIABLE_CASE_NUMBER, toVariableValueDto(ValueType.LONG, caseNumber),
+				PROCESS_VARIABLE_ERRAND_ID, toVariableValueDto(ValueType.STRING, errandId),
 				PROCESS_VARIABLE_REQUEST_ID, toVariableValueDto(ValueType.STRING, RequestId.get())));
 	}
 

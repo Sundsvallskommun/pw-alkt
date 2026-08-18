@@ -101,6 +101,9 @@ public class TenantAwareAutoDeployment {
 			return processResource.getFilename();
 		}
 
-		return md5DigestAsHex(processResource.getInputStream()) + '.' + type;
+		// DigestUtils does not close the stream it reads, so it has to be closed here
+		try (var inputStream = processResource.getInputStream()) {
+			return md5DigestAsHex(inputStream) + '.' + type;
+		}
 	}
 }

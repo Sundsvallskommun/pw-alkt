@@ -10,10 +10,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.alkt.service.ProcessService;
-import se.sundsvall.dept44.problem.Problem;
 import se.sundsvall.dept44.problem.violations.ConstraintViolationProblem;
 import se.sundsvall.dept44.problem.violations.Violation;
 
+import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -34,14 +34,17 @@ class ProcessResourceFailuresTest {
 	@LocalServerPort
 	private int port;
 
+	/**
+	 * The errand id is Support Management's errand identifier, a UUID string - not a numeric case number.
+	 */
 	@Test
-	void startProcessInvalidCaseNumberIsNegative() {
+	void startProcessInvalidErrandIdIsNotUUID() {
 
 		// Arrange
-		final var caseNumber = -123L;
+		final var errandId = "invalid";
 
 		// Act
-		final var response = webTestClient.post().uri("/2281/ALKT/process/start/" + caseNumber)
+		final var response = webTestClient.post().uri("/2281/ALKT/process/start/" + errandId)
 			.exchange()
 			.expectStatus().isBadRequest()
 			.expectBody(ConstraintViolationProblem.class)
@@ -54,30 +57,7 @@ class ProcessResourceFailuresTest {
 		assertThat(response.getStatus()).isEqualTo(BAD_REQUEST);
 		assertThat(response.getViolations())
 			.extracting(Violation::field, Violation::message)
-			.containsExactly(tuple("startProcess.caseNumber", "must be greater than 0"));
-
-		verifyNoInteractions(processServiceMock);
-	}
-
-	@Test
-	void startProcessInvalidCaseNumberIsString() {
-
-		// Arrange
-		final var caseNumber = "invalid";
-
-		// Act
-		final var response = webTestClient.post().uri("/2281/ALKT/process/start/" + caseNumber)
-			.exchange()
-			.expectStatus().isBadRequest()
-			.expectBody(Problem.class)
-			.returnResult()
-			.getResponseBody();
-
-		// Assert
-		assertThat(response).isNotNull();
-		assertThat(response.getTitle()).isEqualTo("Bad Request");
-		assertThat(response.getStatus()).isEqualTo(BAD_REQUEST);
-		assertThat(response.getDetail()).isEqualTo("Failed to convert 'caseNumber' with value: 'invalid'");
+			.containsExactly(tuple("startProcess.errandId", "not a valid UUID"));
 
 		verifyNoInteractions(processServiceMock);
 	}
@@ -86,11 +66,11 @@ class ProcessResourceFailuresTest {
 	void startProcessInvalidNamespace() {
 
 		// Arrange
-		final var caseNumber = 123L;
+		final var errandId = randomUUID().toString();
 		final var namespace = "SBK.ALKT";
 
 		// Act
-		final var response = webTestClient.post().uri("/2281/" + namespace + "/process/start/" + caseNumber)
+		final var response = webTestClient.post().uri("/2281/" + namespace + "/process/start/" + errandId)
 			.exchange()
 			.expectStatus().isBadRequest()
 			.expectBody(ConstraintViolationProblem.class)
