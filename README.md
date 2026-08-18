@@ -45,9 +45,9 @@ process models are empty phase structures and no task workers have been implemen
 	</thead>
 	<tbody>
 		<tr>
-			<td class="code">camunda.bpm.client.base-url</td>
-			<td>URL address to the process engine rest api the external task client polls. Points at the same Operaton
-			engine as the rest client, so polling always hits the engine this instance targets</td>
+			<td class="code">integration.operaton.url</td>
+			<td>URL address to the Operaton rest api that process resources are deployed to. The same rest client is used
+			when starting and updating process instances; the external task client's poll url is a separate setting</td>
 			<td><strong>null</strong></td>
 		</tr>
 		<tr>
@@ -64,7 +64,7 @@ process models are empty phase structures and no task workers have been implemen
 			<td class="code">process-engine.deployment.processes</td>
 			<td>When deployment node is present, the processes node should contain a list<br />
 			of one or more processes to deploy (in one or more tenant namespaces)</td>
-			<td><strong>emtpy list</strong></td>
+			<td><strong>null</strong> (behaves as an empty list)</td>
 		</tr>
 	</tbody>
 </table>
@@ -78,6 +78,8 @@ process models are empty phase structures and no task workers have been implemen
 			<th>Description</th>
 			<th>Default&nbsp;value</th>
 		</tr>
+	</thead>
+	<tbody>
 		<tr>
 			<td class="code">name</td>
 			<td>Human readable name of the process, must not be null or empty</td>
@@ -116,7 +118,7 @@ process models are empty phase structures and no task workers have been implemen
 			</td>
 			<td><strong>classpath*:**/*.form</strong></td>
 		</tr>
-	</thead>
+	</tbody>
 </table>
 
 <p>Below is an example definition for a single process for tenant id "my_namespace" with defined process models in the awesome directory:</p>
