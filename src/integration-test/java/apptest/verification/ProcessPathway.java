@@ -3,9 +3,10 @@ package apptest.verification;
 import static org.assertj.core.api.Assertions.tuple;
 
 /**
- * The activities each phase of the ansokan process is expected to pass through. Every phase is still an empty
- * subprocess, so a pathway only holds the subprocess itself and its start and end events; the activities of a phase are
- * added here as they are added to the schema.
+ * The activities each phase of a process is expected to pass through. The phases are identical across the process
+ * schemas of the domain, so one pathway serves them all. A phase holds no work of its own yet - only its start event,
+ * the message catch event where it waits for the user interface to move the errand on, and its end event. The
+ * activities of a phase are added here as they are added to the schema.
  */
 public class ProcessPathway {
 
@@ -13,6 +14,7 @@ public class ProcessPathway {
 		return Tuples.create()
 			.with(tuple("Registration", "registration_phase"))
 			.with(tuple("Start registration phase", "start_registration_phase"))
+			.with(tuple("Registration completed", "await_registration_completed"))
 			.with(tuple("End registration phase", "end_registration_phase"));
 	}
 
@@ -20,6 +22,7 @@ public class ProcessPathway {
 		return Tuples.create()
 			.with(tuple("Review", "review_phase"))
 			.with(tuple("Start review phase", "start_review_phase"))
+			.with(tuple("Review completed", "await_review_completed"))
 			.with(tuple("End review phase", "end_review_phase"));
 	}
 
@@ -27,6 +30,7 @@ public class ProcessPathway {
 		return Tuples.create()
 			.with(tuple("Investigation", "investigation_phase"))
 			.with(tuple("Start investigation phase", "start_investigation_phase"))
+			.with(tuple("Investigation completed", "await_investigation_completed"))
 			.with(tuple("End investigation phase", "end_investigation_phase"));
 	}
 
@@ -34,6 +38,7 @@ public class ProcessPathway {
 		return Tuples.create()
 			.with(tuple("Decision", "decision_phase"))
 			.with(tuple("Start decision phase", "start_decision_phase"))
+			.with(tuple("Decision completed", "await_decision_completed"))
 			.with(tuple("End decision phase", "end_decision_phase"));
 	}
 
@@ -41,6 +46,7 @@ public class ProcessPathway {
 		return Tuples.create()
 			.with(tuple("Follow up", "follow_up_phase"))
 			.with(tuple("Start follow up phase", "start_follow_up_phase"))
+			.with(tuple("Follow up completed", "await_follow_up_completed"))
 			.with(tuple("End follow up phase", "end_follow_up_phase"));
 	}
 
@@ -48,6 +54,7 @@ public class ProcessPathway {
 		return Tuples.create()
 			.with(tuple("Closure", "closure_phase"))
 			.with(tuple("Start closure phase", "start_closure_phase"))
+			.with(tuple("Closure completed", "await_closure_completed"))
 			.with(tuple("End closure phase", "end_closure_phase"));
 	}
 }

@@ -51,7 +51,7 @@ class ProcessServiceTest {
 	void startProcess() {
 
 		// Arrange
-		final var process = "alkt-ansokan";
+		final var process = "alcohol-serving";
 		final var tenant = "ALKT";
 		final var municipalityId = "2281";
 		final var namespace = "ALKT";
@@ -86,13 +86,13 @@ class ProcessServiceTest {
 	}
 
 	/**
-	 * The upcoming anmalan and tillsyn processes are started through the same plumbing, with their own process key.
+	 * Every process of the domain is started through the same plumbing, with its own process key.
 	 */
 	@Test
 	void startProcessWithExplicitProcessKey() {
 
 		// Arrange
-		final var process = "alkt-anmalan";
+		final var process = "supervision";
 		final var tenant = "ALKT";
 		final var municipalityId = "2281";
 		final var namespace = "ALKT";

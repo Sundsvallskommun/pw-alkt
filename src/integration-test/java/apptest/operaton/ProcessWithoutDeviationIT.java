@@ -1,12 +1,6 @@
 package apptest.operaton;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
-import static apptest.verification.ProcessPathway.closurePathway;
-import static apptest.verification.ProcessPathway.decisionPathway;
-import static apptest.verification.ProcessPathway.followUpPathway;
-import static apptest.verification.ProcessPathway.investigationPathway;
-import static apptest.verification.ProcessPathway.registrationPathway;
-import static apptest.verification.ProcessPathway.reviewPathway;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -33,8 +27,10 @@ import se.sundsvall.alkt.api.model.StartProcessResponse;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 
 /**
- * Standard happy-path flow without deviations. Every phase of the ansokan process is still an empty subprocess, so the
- * process runs straight through; the assertions grow as the phases are implemented.
+ * Standard happy-path flow without deviations. Each phase ends in a message catch event that the user interface
+ * correlates when a case worker moves the errand on, so a started process parks in the registration phase and stays
+ * there. The test asserts that it gets that far and waits where it should; driving it through the remaining phases
+ * needs message correlation, which the service cannot do yet.
  */
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/Wiremock/", classes = Application.class)
@@ -42,6 +38,10 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 
 	private static final int DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS = 30;
 	private static final String TENANT_ID_ALKT = "ALKT";
+	// One deployment per process model in processmodels/ - bump this when a process schema is added or removed
+	private static final int EXPECTED_DEPLOYMENTS = 10;
+	// The catch event ending the registration phase, where a started process comes to rest
+	private static final String AWAIT_REGISTRATION_COMPLETED = "await_registration_completed";
 	// Support Management identifies an errand by a UUID, so that is what the process is started with
 	private static final String ERRAND_ID = "f0882f1d-06bc-47fd-b017-1d8307f5ce95";
 
@@ -54,7 +54,7 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 		await()
 			.ignoreExceptions()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.getDeployments(null, null, TENANT_ID_ALKT).size(), equalTo(1));
+			.until(() -> operatonClient.getDeployments(null, null, TENANT_ID_ALKT).size(), equalTo(EXPECTED_DEPLOYMENTS));
 	}
 
 	@Test
@@ -71,21 +71,16 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 			.sendRequest()
 			.andReturnBody(StartProcessResponse.class);
 
-		// Wait for process to finish
-		awaitProcessCompleted(startResponse.getProcessId(), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		// Wait for the process to park on the message the registration phase ends with
+		awaitProcessState(startResponse.getProcessId(), AWAIT_REGISTRATION_COMPLETED, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// Verify wiremock stubs
 		verifyAllStubs();
 
-		// Verify process pathway.
+		// The route holds the events that have completed. The registration phase and its catch event are still running, so
+		// neither is in it yet.
 		assertProcessPathway(startResponse.getProcessId(), false, Tuples.create()
 			.with(tuple("Start process", "start_process"))
-			.with(registrationPathway())
-			.with(reviewPathway())
-			.with(investigationPathway())
-			.with(decisionPathway())
-			.with(followUpPathway())
-			.with(closurePathway())
-			.with(tuple("End process", "end_process")));
+			.with(tuple("Start registration phase", "start_registration_phase")));
 	}
 }

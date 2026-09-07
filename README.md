@@ -1,8 +1,8 @@
 # PwAlkt
 
 <p>Alkt is a service which integrates with the Operaton process engine for starting and updating processes. It hosts the
-process definitions of the alkohol domain - <strong>ansokan</strong> today, with <strong>anmalan</strong> and
-<strong>tillsyn</strong> to follow - together with the business logic and integrations they need.</p>
+process definitions of the alkohol- och tobaksverksamheten - the permit processes and the supervision process - together
+with the business logic and integrations they need.</p>
 
 <p>The service is a skeleton: the API, the engine integration and the integration test harness are in place, while the
 process models are empty phase structures and no task workers have been implemented yet.</p>
@@ -24,9 +24,54 @@ process models are empty phase structures and no task workers have been implemen
 	</thead>
 	<tbody>
 		<tr>
-			<td class="code">alkt-ansokan.bpmn</td>
-			<td class="code">alkt-ansokan</td>
-			<td>Ansökan</td>
+			<td class="code">alcohol-serving.bpmn</td>
+			<td class="code">alcohol-serving</td>
+			<td>Servering av alkoholdrycker</td>
+		</tr>
+		<tr>
+			<td class="code">alcohol-serving-change.bpmn</td>
+			<td class="code">alcohol-serving-change</td>
+			<td>Förändring av befintligt serveringstillstånd</td>
+		</tr>
+		<tr>
+			<td class="code">alcohol-serving-addition.bpmn</td>
+			<td class="code">alcohol-serving-addition</td>
+			<td>Tillägg av befintligt serveringstillstånd</td>
+		</tr>
+		<tr>
+			<td class="code">tobacco-sales.bpmn</td>
+			<td class="code">tobacco-sales</td>
+			<td>Försäljning av tobaksvaror</td>
+		</tr>
+		<tr>
+			<td class="code">tobacco-sales-change.bpmn</td>
+			<td class="code">tobacco-sales-change</td>
+			<td>Ändring av tillståndspliktig försäljning av tobaksvaror</td>
+		</tr>
+		<tr>
+			<td class="code">tobacco-sales-closure.bpmn</td>
+			<td class="code">tobacco-sales-closure</td>
+			<td>Avslut av tillståndspliktig försäljning av tobaksvaror</td>
+		</tr>
+		<tr>
+			<td class="code">e-cigarette-sales.bpmn</td>
+			<td class="code">e-cigarette-sales</td>
+			<td>Försäljning av elektroniska cigaretter och påfyllnadsbehållare</td>
+		</tr>
+		<tr>
+			<td class="code">low-alcohol-beer-serving.bpmn</td>
+			<td class="code">low-alcohol-beer-serving</td>
+			<td>Servering av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
+		</tr>
+		<tr>
+			<td class="code">low-alcohol-beer-sales.bpmn</td>
+			<td class="code">low-alcohol-beer-sales</td>
+			<td>Försäljning av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
+		</tr>
+		<tr>
+			<td class="code">supervision.bpmn</td>
+			<td class="code">supervision</td>
+			<td>Tillsyn</td>
 		</tr>
 	</tbody>
 </table>

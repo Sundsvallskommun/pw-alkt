@@ -10,7 +10,7 @@ import se.sundsvall.dept44.problem.Problem;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ANSOKAN;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
@@ -27,13 +27,13 @@ public class ProcessService {
 	}
 
 	public String startProcess(final String municipalityId, final String namespace, final String errandId) {
-		return startProcess(PROCESS_KEY_ANSOKAN, municipalityId, namespace, errandId);
+		return startProcess(PROCESS_KEY_ALCOHOL_SERVING, municipalityId, namespace, errandId);
 	}
 
 	/**
-	 * Starts the process definition matching the provided key in the tenant owned by this service. The upcoming anmalan
-	 * and tillsyn processes are started through this method with their own key, so only the caller has to know which
-	 * process a request maps to.
+	 * Starts the process definition matching the provided key in the tenant owned by this service. Every process of the
+	 * domain is started through this method with its own key, so only the caller has to know which process a request maps
+	 * to.
 	 */
 	String startProcess(final String processKey, final String municipalityId, final String namespace, final String errandId) {
 		return operatonClient.startProcessWithTenant(processKey, TENANT_ID_ALKT, OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandId)).getId();

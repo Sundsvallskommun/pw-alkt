@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
 class TenantAwareAutoDeploymentTest {
 
 	private static final String PROCESSMODEL_PATH = "processmodels/";
-	private static final String PROCESSMODEL_FILE = "alkt-ansokan.bpmn";
+	private static final String PROCESSMODEL_FILE = "alcohol-serving.bpmn";
 
 	private static final String DEFAULT_PATTERN_PREFIX = "classpath*:**/*.";
 	private static final String FILETYPE_BPMN = "bpmn";

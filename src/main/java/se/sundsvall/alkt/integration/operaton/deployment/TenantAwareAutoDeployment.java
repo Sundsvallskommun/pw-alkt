@@ -19,7 +19,7 @@ import static se.sundsvall.dept44.util.ResourceUtils.requireNotBlank;
 
 /**
  * Deploys every process resource matched by the configured patterns to the tenant that owns it, at startup. All process
- * definitions of this service (ansokan, and later anmalan and tillsyn) are picked up by the same resource pattern, so
+ * definitions of this service are picked up by the same resource pattern, so
  * adding a schema to {@code processmodels/} is enough to have it deployed.
  */
 @Configuration
