@@ -27,12 +27,6 @@ public final class OperatonMapper {
 				PROCESS_VARIABLE_REQUEST_ID, toVariableValueDto(ValueType.STRING, RequestId.get())));
 	}
 
-	/**
-	 * Builds the correlation body that wakes the instance driving the given errand. {@code all} is set to false here and
-	 * nowhere else: correlating to several executions at once would silently fan a message out across parallel branches,
-	 * which the process models are not allowed to have. With the flag off, Operaton answers 400 instead and the breach
-	 * becomes visible.
-	 */
 	public static CorrelationMessageDto toCorrelationMessageDto(final String messageName, final String errandId, final String tenantId) {
 		return new CorrelationMessageDto()
 			.messageName(messageName)
