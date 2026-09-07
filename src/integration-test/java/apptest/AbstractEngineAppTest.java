@@ -106,12 +106,12 @@ public abstract class AbstractEngineAppTest extends AbstractAppTest {
 			.until(() -> operatonClient.getHistoricProcessInstance(processId).getState(), equalTo(COMPLETED));
 	}
 
-	protected void awaitProcessState(String state, long timeoutInSeconds) {
+	protected void awaitProcessState(String processInstanceId, String state, long timeoutInSeconds) {
 		await()
 			.ignoreExceptions()
 			.atMost(timeoutInSeconds, SECONDS)
 			.failFast("Wiremock has mismatch!", () -> !wiremock.findNearMissesForUnmatchedRequests().getNearMisses().isEmpty())
-			.until(() -> operatonClient.getEventSubscriptions().stream().filter(eventSubscription -> state.equals(eventSubscription.getActivityId())).count(), equalTo(1L));
+			.until(() -> operatonClient.getEventSubscriptions(processInstanceId, null).stream().filter(eventSubscription -> state.equals(eventSubscription.getActivityId())).count(), equalTo(1L));
 	}
 
 	protected void assertProcessPathway(String processId, boolean acceptDuplication, ArrayList<Tuple> list) {

@@ -78,5 +78,5 @@ public interface OperatonClient {
 	List<HistoricActivityInstanceDto> getHistoricActivities(@RequestParam("processInstanceId") String processInstanceId);
 
 	@GetMapping(path = "event-subscription", produces = APPLICATION_JSON_VALUE)
-	List<EventSubscriptionDto> getEventSubscriptions();
+	List<EventSubscriptionDto> getEventSubscriptions(@RequestParam("processInstanceId") String processInstanceId, @RequestParam("eventType") String eventType);
 }
