@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.integration.operaton.mapper;
 
+import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.PatchVariablesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import generated.se.sundsvall.operaton.VariableValueDto;
@@ -24,6 +25,20 @@ public final class OperatonMapper {
 				PROCESS_VARIABLE_NAMESPACE, toVariableValueDto(ValueType.STRING, namespace),
 				PROCESS_VARIABLE_ERRAND_ID, toVariableValueDto(ValueType.STRING, errandId),
 				PROCESS_VARIABLE_REQUEST_ID, toVariableValueDto(ValueType.STRING, RequestId.get())));
+	}
+
+	/**
+	 * Builds the correlation body that wakes the instance driving the given errand. {@code all} is set to false here and
+	 * nowhere else: correlating to several executions at once would silently fan a message out across parallel branches,
+	 * which the process models are not allowed to have. With the flag off, Operaton answers 400 instead and the breach
+	 * becomes visible.
+	 */
+	public static CorrelationMessageDto toCorrelationMessageDto(final String messageName, final String errandId, final String tenantId) {
+		return new CorrelationMessageDto()
+			.messageName(messageName)
+			.businessKey(errandId)
+			.tenantId(tenantId)
+			.all(false);
 	}
 
 	public static VariableValueDto toVariableValueDto(final ValueType valueType, final Object value) {

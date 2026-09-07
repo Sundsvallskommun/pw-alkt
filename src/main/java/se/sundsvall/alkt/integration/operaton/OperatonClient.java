@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.operaton;
 
 import feign.form.FormData;
+import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.DeploymentDto;
 import generated.se.sundsvall.operaton.DeploymentWithDefinitionsDto;
 import generated.se.sundsvall.operaton.EventSubscriptionDto;
@@ -38,6 +39,9 @@ public interface OperatonClient {
 
 	@PostMapping(path = "process-definition/key/{key}/tenant-id/{tenantId}/start", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
 	ProcessInstanceWithVariablesDto startProcessWithTenant(@PathVariable String key, @PathVariable String tenantId, StartProcessInstanceDto startProcessInstanceDto);
+
+	@PostMapping(path = "message", consumes = APPLICATION_JSON_VALUE)
+	void correlateMessage(CorrelationMessageDto correlationMessageDto);
 
 	@PostMapping(path = "process-instance/{id}/variables", consumes = APPLICATION_JSON_VALUE)
 	void setProcessInstanceVariables(@PathVariable String id, PatchVariablesDto patchVariablesDto);
