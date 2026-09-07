@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.operaton;
 
 import feign.form.FormData;
+import generated.se.sundsvall.operaton.ActivityInstanceDto;
 import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.DeploymentDto;
 import generated.se.sundsvall.operaton.DeploymentWithDefinitionsDto;
@@ -81,6 +82,9 @@ public interface OperatonClient {
 		@RequestParam("businessKey") String businessKey,
 		@RequestParam("processDefinitionKey") String processDefinitionKey,
 		@RequestParam("tenantIdIn") String tenantIdIn);
+
+	@GetMapping(path = "process-instance/{id}/activity-instances", produces = APPLICATION_JSON_VALUE)
+	ActivityInstanceDto getProcessActivityInstance(@PathVariable String id);
 
 	@DeleteMapping(path = "process-instance/{id}")
 	void deleteProcessInstance(@PathVariable String id, @RequestParam("failIfNotExists") boolean failIfNotExists);
