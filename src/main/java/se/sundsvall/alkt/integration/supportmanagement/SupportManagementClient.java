@@ -22,20 +22,12 @@ import static se.sundsvall.alkt.integration.supportmanagement.configuration.Supp
 @CircuitBreaker(name = CLIENT_ID)
 public interface SupportManagementClient {
 
-	/**
-	 * Export errand to support management.
-	 *
-	 * @param errand with attributes for create an errand.
-	 */
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createErrand(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@RequestBody Errand errand);
 
-	/**
-	 * Export file to support management.
-	 */
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createAttachment(
 		@PathVariable String municipalityId,

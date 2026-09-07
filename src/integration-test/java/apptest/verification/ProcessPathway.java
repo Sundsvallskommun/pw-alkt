@@ -2,12 +2,6 @@ package apptest.verification;
 
 import static org.assertj.core.api.Assertions.tuple;
 
-/**
- * The activities each phase of a process is expected to pass through. The phases are identical across the process
- * schemas of the domain, so one pathway serves them all. A phase holds no work of its own yet - only its start event,
- * the message catch event where it waits for the user interface to move the errand on, and its end event. The
- * activities of a phase are added here as they are added to the schema.
- */
 public class ProcessPathway {
 
 	public static Tuples registrationPathway() {

@@ -1,11 +1,9 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
-import generated.se.sundsvall.operaton.VariableValueDto;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
-import org.camunda.bpm.engine.variable.type.ValueType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +13,6 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.Constants;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
-import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,8 +27,8 @@ class AbstractTaskWorkerTest {
 
 	private static class Worker extends AbstractTaskWorker { // Test class extending the abstract class under test
 
-		Worker(OperatonClient operatonClient, FailureHandler failureHandler) {
-			super(operatonClient, failureHandler);
+		Worker(FailureHandler failureHandler) {
+			super(failureHandler);
 		}
 
 		@Override
@@ -40,9 +36,6 @@ class AbstractTaskWorkerTest {
 			// Do nothing
 		}
 	}
-
-	@Mock
-	private OperatonClient operatonClientMock;
 
 	@Mock
 	private ExternalTask externalTaskMock;
@@ -62,42 +55,6 @@ class AbstractTaskWorkerTest {
 		for (var i = 0; (i < 10) && (RequestId.get() != null); i++) {
 			RequestId.reset();
 		}
-	}
-
-	@Test
-	void clearUpdateAvailable() {
-		// Setup
-		final var uuid = UUID.randomUUID().toString();
-		final var key = "updateAvailable";
-		final var value = new VariableValueDto().type(ValueType.BOOLEAN.getName()).value(false);
-
-		// Mock
-		when(externalTaskMock.getProcessInstanceId()).thenReturn(uuid);
-
-		// Act
-		worker.clearUpdateAvailable(externalTaskMock);
-
-		// Assert and verify
-		verify(operatonClientMock).setProcessInstanceVariable(uuid, key, value);
-		verifyNoMoreInteractions(operatonClientMock);
-	}
-
-	@Test
-	void setProcessInstanceVariable() {
-		// Setup
-		final var uuid = UUID.randomUUID().toString();
-		final var key = "aVariable";
-		final var value = new VariableValueDto().type(ValueType.STRING.getName()).value("aValue");
-
-		// Mock
-		when(externalTaskMock.getProcessInstanceId()).thenReturn(uuid);
-
-		// Act
-		worker.setProcessInstanceVariable(externalTaskMock, key, value);
-
-		// Assert and verify
-		verify(operatonClientMock).setProcessInstanceVariable(uuid, key, value);
-		verifyNoMoreInteractions(operatonClientMock);
 	}
 
 	@Test
@@ -155,7 +112,7 @@ class AbstractTaskWorkerTest {
 		final var secondRequestId = UUID.randomUUID().toString();
 		final var observedRequestIds = new ArrayList<String>();
 
-		final var recordingWorker = new AbstractTaskWorker(operatonClientMock, failureHandlerMock) {
+		final var recordingWorker = new AbstractTaskWorker(failureHandlerMock) {
 			@Override
 			protected void executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				observedRequestIds.add(RequestId.get());
@@ -177,7 +134,7 @@ class AbstractTaskWorkerTest {
 	void executeClearsRequestIdWhenBusinessLogicThrows() {
 		// Arrange
 		final var requestId = UUID.randomUUID().toString();
-		final var throwingWorker = new AbstractTaskWorker(operatonClientMock, failureHandlerMock) {
+		final var throwingWorker = new AbstractTaskWorker(failureHandlerMock) {
 			@Override
 			protected void executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				throw new IllegalStateException("Boom");
