@@ -1,6 +1,8 @@
 package se.sundsvall.alkt.integration.operaton;
 
 import feign.form.FormData;
+import generated.se.sundsvall.operaton.ActivityInstanceDto;
+import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.DeploymentDto;
 import generated.se.sundsvall.operaton.DeploymentWithDefinitionsDto;
 import generated.se.sundsvall.operaton.EventSubscriptionDto;
@@ -16,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +40,9 @@ public interface OperatonClient {
 
 	@PostMapping(path = "process-definition/key/{key}/tenant-id/{tenantId}/start", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
 	ProcessInstanceWithVariablesDto startProcessWithTenant(@PathVariable String key, @PathVariable String tenantId, StartProcessInstanceDto startProcessInstanceDto);
+
+	@PostMapping(path = "message", consumes = APPLICATION_JSON_VALUE)
+	void correlateMessage(CorrelationMessageDto correlationMessageDto);
 
 	@PostMapping(path = "process-instance/{id}/variables", consumes = APPLICATION_JSON_VALUE)
 	void setProcessInstanceVariables(@PathVariable String id, PatchVariablesDto patchVariablesDto);
@@ -71,6 +77,18 @@ public interface OperatonClient {
 	@GetMapping(path = "process-instance/{id}", produces = APPLICATION_JSON_VALUE)
 	Optional<ProcessInstanceDto> getProcessInstance(@PathVariable String id);
 
+	@GetMapping(path = "process-instance", produces = APPLICATION_JSON_VALUE)
+	List<ProcessInstanceDto> findProcessInstances(
+		@RequestParam("businessKey") String businessKey,
+		@RequestParam("processDefinitionKey") String processDefinitionKey,
+		@RequestParam("tenantIdIn") String tenantIdIn);
+
+	@GetMapping(path = "process-instance/{id}/activity-instances", produces = APPLICATION_JSON_VALUE)
+	ActivityInstanceDto getProcessActivityInstance(@PathVariable String id);
+
+	@DeleteMapping(path = "process-instance/{id}")
+	void deleteProcessInstance(@PathVariable String id, @RequestParam("failIfNotExists") boolean failIfNotExists);
+
 	@GetMapping(path = "history/process-instance/{id}", produces = APPLICATION_JSON_VALUE)
 	HistoricProcessInstanceDto getHistoricProcessInstance(@PathVariable String id);
 
@@ -78,5 +96,5 @@ public interface OperatonClient {
 	List<HistoricActivityInstanceDto> getHistoricActivities(@RequestParam("processInstanceId") String processInstanceId);
 
 	@GetMapping(path = "event-subscription", produces = APPLICATION_JSON_VALUE)
-	List<EventSubscriptionDto> getEventSubscriptions();
+	List<EventSubscriptionDto> getEventSubscriptions(@RequestParam("processInstanceId") String processInstanceId, @RequestParam("eventType") String eventType);
 }

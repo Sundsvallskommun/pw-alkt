@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.integration.operaton.mapper;
 
+import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.PatchVariablesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import generated.se.sundsvall.operaton.VariableValueDto;
@@ -24,6 +25,14 @@ public final class OperatonMapper {
 				PROCESS_VARIABLE_NAMESPACE, toVariableValueDto(ValueType.STRING, namespace),
 				PROCESS_VARIABLE_ERRAND_ID, toVariableValueDto(ValueType.STRING, errandId),
 				PROCESS_VARIABLE_REQUEST_ID, toVariableValueDto(ValueType.STRING, RequestId.get())));
+	}
+
+	public static CorrelationMessageDto toCorrelationMessageDto(final String messageName, final String errandId, final String tenantId) {
+		return new CorrelationMessageDto()
+			.messageName(messageName)
+			.businessKey(errandId)
+			.tenantId(tenantId)
+			.all(false);
 	}
 
 	public static VariableValueDto toVariableValueDto(final ValueType valueType, final Object value) {

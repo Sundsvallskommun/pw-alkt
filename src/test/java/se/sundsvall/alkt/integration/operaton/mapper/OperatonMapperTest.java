@@ -43,6 +43,24 @@ class OperatonMapperTest {
 	}
 
 	@Test
+	void toCorrelationMessageDto() {
+		// Arrange
+		final var messageName = "errandUpdated";
+		final var errandId = UUID.randomUUID().toString();
+		final var tenantId = "ALKT";
+
+		// Act
+		final var result = OperatonMapper.toCorrelationMessageDto(messageName, errandId, tenantId);
+
+		// Assert
+		assertThat(result.getMessageName()).isEqualTo(messageName);
+		assertThat(result.getBusinessKey()).isEqualTo(errandId);
+		assertThat(result.getTenantId()).isEqualTo(tenantId);
+		// Correlating to more than one execution would fan the message out across parallel branches instead of failing
+		assertThat(result.getAll()).isFalse();
+	}
+
+	@Test
 	void toVariableValueDto() {
 		// Act
 		final var result = OperatonMapper.toVariableValueDto(ValueType.BOOLEAN, true);
