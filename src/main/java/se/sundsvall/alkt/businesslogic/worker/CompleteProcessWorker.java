@@ -9,6 +9,7 @@ import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 
 import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
+import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
  * The last step of a process, sitting immediately before its end event. Support Management only learns that a process
@@ -24,7 +25,7 @@ public class CompleteProcessWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStatus executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		logInfo("Process instance {} of errand {} reached its end", externalTask.getProcessInstanceId(), getErrandId(externalTask));
+		logInfo("Process instance {} of errand {} reached its end", sanitizeForLogging(externalTask.getProcessInstanceId()), sanitizeForLogging(getErrandId(externalTask)));
 
 		return COMPLETED;
 	}

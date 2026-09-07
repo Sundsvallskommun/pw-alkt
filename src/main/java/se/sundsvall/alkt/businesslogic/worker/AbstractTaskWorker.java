@@ -14,6 +14,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
+import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 
@@ -52,7 +53,8 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	}
 
 	protected void logException(final ExternalTask externalTask, final Exception exception) {
-		logger.error("Exception occurred in {} for task with id {} and businesskey {}", this.getClass().getSimpleName(), externalTask.getId(), externalTask.getBusinessKey(), exception);
+		logger.error("Exception occurred in {} for task with id {} and businesskey {}", this.getClass().getSimpleName(), sanitizeForLogging(externalTask.getId()),
+			sanitizeForLogging(externalTask.getBusinessKey()), exception);
 	}
 
 	protected String getMunicipalityId(final ExternalTask externalTask) {

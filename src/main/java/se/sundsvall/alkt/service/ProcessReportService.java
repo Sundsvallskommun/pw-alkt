@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.api.model.ProcessStatus;
 
+import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
+
 @Service
 public class ProcessReportService {
 
@@ -16,6 +18,7 @@ public class ProcessReportService {
 	// process finished and leaves its row on RUNNING for good.
 	public void report(final ExternalTask externalTask, final ProcessStatus status, final String message) {
 		LOG.info("Process instance {} of errand {} reports {} at activity {}: {}",
-			externalTask.getProcessInstanceId(), externalTask.getBusinessKey(), status, externalTask.getActivityId(), message);
+			sanitizeForLogging(externalTask.getProcessInstanceId()), sanitizeForLogging(externalTask.getBusinessKey()), status,
+			sanitizeForLogging(externalTask.getActivityId()), sanitizeForLogging(message));
 	}
 }
