@@ -13,7 +13,6 @@ import se.sundsvall.alkt.service.ProcessService;
 
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
@@ -53,7 +52,7 @@ class ProcessResourceTest {
 			.expectBody().isEmpty();
 
 		// Assert
-		verify(processServiceMock).handleErrandEvent(eq("2281"), eq("ALKT"), eq(errandEvent));
+		verify(processServiceMock).handleErrandEvent("2281", "ALKT", errandEvent);
 		verifyNoMoreInteractions(processServiceMock);
 	}
 
@@ -78,6 +77,6 @@ class ProcessResourceTest {
 
 		// Assert
 		assertThat(errandEvent.permitsStart()).isFalse();
-		verify(processServiceMock).handleErrandEvent(eq("2281"), eq("ALKT"), eq(errandEvent));
+		verify(processServiceMock).handleErrandEvent("2281", "ALKT", errandEvent);
 	}
 }
