@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -70,6 +71,15 @@ public interface OperatonClient {
 
 	@GetMapping(path = "process-instance/{id}", produces = APPLICATION_JSON_VALUE)
 	Optional<ProcessInstanceDto> getProcessInstance(@PathVariable String id);
+
+	@GetMapping(path = "process-instance", produces = APPLICATION_JSON_VALUE)
+	List<ProcessInstanceDto> findProcessInstances(
+		@RequestParam("businessKey") String businessKey,
+		@RequestParam("processDefinitionKey") String processDefinitionKey,
+		@RequestParam("tenantIdIn") String tenantIdIn);
+
+	@DeleteMapping(path = "process-instance/{id}")
+	void deleteProcessInstance(@PathVariable String id, @RequestParam("failIfNotExists") boolean failIfNotExists);
 
 	@GetMapping(path = "history/process-instance/{id}", produces = APPLICATION_JSON_VALUE)
 	HistoricProcessInstanceDto getHistoricProcessInstance(@PathVariable String id);
