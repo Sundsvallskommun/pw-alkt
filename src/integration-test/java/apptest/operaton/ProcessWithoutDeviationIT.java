@@ -94,6 +94,7 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 			.with(decisionPathway())
 			.with(followUpPathway())
 			.with(closurePathway())
+			.with(tuple("Complete process", "external_task_complete_process"))
 			.with(tuple("End process", "end_process")));
 	}
 

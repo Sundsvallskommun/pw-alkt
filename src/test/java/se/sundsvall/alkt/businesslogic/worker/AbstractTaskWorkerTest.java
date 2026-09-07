@@ -12,13 +12,16 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.Constants;
+import se.sundsvall.alkt.api.model.ProcessStatus;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
+import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,13 +30,13 @@ class AbstractTaskWorkerTest {
 
 	private static class Worker extends AbstractTaskWorker { // Test class extending the abstract class under test
 
-		Worker(FailureHandler failureHandler) {
-			super(failureHandler);
+		Worker(ProcessReportService processReportService, FailureHandler failureHandler) {
+			super(processReportService, failureHandler);
 		}
 
 		@Override
-		public void executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-			// Do nothing
+		public ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			return ProcessStatus.COMPLETED;
 		}
 	}
 
@@ -42,6 +45,9 @@ class AbstractTaskWorkerTest {
 
 	@Mock
 	private ExternalTaskService externalTaskServiceMock;
+
+	@Mock
+	private ProcessReportService processReportServiceMock;
 
 	@Mock
 	private FailureHandler failureHandlerMock;
@@ -112,10 +118,11 @@ class AbstractTaskWorkerTest {
 		final var secondRequestId = UUID.randomUUID().toString();
 		final var observedRequestIds = new ArrayList<String>();
 
-		final var recordingWorker = new AbstractTaskWorker(failureHandlerMock) {
+		final var recordingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
-			protected void executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				observedRequestIds.add(RequestId.get());
+				return ProcessStatus.COMPLETED;
 			}
 		};
 
@@ -131,23 +138,24 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
-	void executeClearsRequestIdWhenBusinessLogicThrows() {
+	void executeHandsAFailingStepToTheFailureHandlerAndClearsRequestId() {
 		// Arrange
 		final var requestId = UUID.randomUUID().toString();
-		final var throwingWorker = new AbstractTaskWorker(failureHandlerMock) {
+		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
-			protected void executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				throw new IllegalStateException("Boom");
 			}
 		};
 
 		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(requestId);
 
-		// Act
-		assertThatThrownBy(() -> throwingWorker.execute(externalTaskMock, externalTaskServiceMock))
-			.isInstanceOf(IllegalStateException.class);
+		// Act - the engine is told about the failure, so nothing escapes to the task client
+		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
 		// Assert
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Boom");
+		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
 	}
 }

@@ -117,7 +117,7 @@
     <bpmn:subProcess id="closure_phase" name="Closure">
       <bpmn:documentation>Closes the errand.</bpmn:documentation>
       <bpmn:incoming>flow_follow_up_to_closure</bpmn:incoming>
-      <bpmn:outgoing>flow_closure_to_end_process</bpmn:outgoing>
+      <bpmn:outgoing>flow_closure_to_complete_process</bpmn:outgoing>
       <bpmn:startEvent id="start_closure_phase" name="Start closure phase">
         <bpmn:outgoing>flow_closure_start_to_await</bpmn:outgoing>
       </bpmn:startEvent>
@@ -133,10 +133,16 @@
         <bpmn:incoming>flow_closure_await_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
-    <bpmn:sequenceFlow id="flow_closure_to_end_process" sourceRef="closure_phase" targetRef="end_process" />
+    <bpmn:sequenceFlow id="flow_closure_to_complete_process" sourceRef="closure_phase" targetRef="external_task_complete_process" />
+    <bpmn:serviceTask id="external_task_complete_process" name="Complete process" camunda:type="external" camunda:topic="CompleteProcessTask">
+      <bpmn:documentation>Reports the process as completed to Support Management. A branch that ends without this step leaves the errand on a row saying RUNNING for good.</bpmn:documentation>
+      <bpmn:incoming>flow_closure_to_complete_process</bpmn:incoming>
+      <bpmn:outgoing>flow_complete_process_to_end_process</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="flow_complete_process_to_end_process" sourceRef="external_task_complete_process" targetRef="end_process" />
     <bpmn:endEvent id="end_process" name="End process">
       <bpmn:documentation>The end of the process execution</bpmn:documentation>
-      <bpmn:incoming>flow_closure_to_end_process</bpmn:incoming>
+      <bpmn:incoming>flow_complete_process_to_end_process</bpmn:incoming>
     </bpmn:endEvent>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_e_cigarette_sales">
@@ -166,9 +172,9 @@
         <dc:Bounds x="990" y="77" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_process" bpmnElement="end_process">
-        <dc:Bounds x="1142" y="99" width="36" height="36" />
+        <dc:Bounds x="1292" y="99" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1133" y="142" width="55" height="14" />
+          <dc:Bounds x="1283" y="142" width="55" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_start_process_to_registration" bpmnElement="flow_start_process_to_registration">
@@ -195,9 +201,16 @@
         <di:waypoint x="940" y="117" />
         <di:waypoint x="990" y="117" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_closure_to_end_process" bpmnElement="flow_closure_to_end_process">
+      <bpmndi:BPMNShape id="BPMNShape_external_task_complete_process" bpmnElement="external_task_complete_process">
+        <dc:Bounds x="1140" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_closure_to_complete_process" bpmnElement="flow_closure_to_complete_process">
         <di:waypoint x="1090" y="117" />
-        <di:waypoint x="1142" y="117" />
+        <di:waypoint x="1140" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_complete_process_to_end_process" bpmnElement="flow_complete_process_to_end_process">
+        <di:waypoint x="1240" y="117" />
+        <di:waypoint x="1292" y="117" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
