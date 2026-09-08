@@ -4,24 +4,22 @@ import java.util.Map;
 import java.util.Optional;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.service.ProcessReportService;
 
 import static java.util.Collections.emptyMap;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.RETRYING;
 
-/**
- * Reports a failed external task back to the engine, decrementing the remaining retries.
- * <p>
- * Note the parameter order of {@link ExternalTaskService#handleFailure}: the second argument is the
- * <b>error message</b>, not the worker id (no overload takes a worker id - the engine already knows which worker holds
- * the lock). The error message becomes the message of the incident that is raised once the retries are exhausted, so it
- * has to carry the failure reason for the incident list to be usable.
- */
 @Component
 public class FailureHandler {
+
+	// TODO: no error-code taxonomy exists yet; this is a placeholder until one does.
+	private static final String ERROR_CODE_TASK_FAILED = "TASK_FAILED";
+
+	private static final Logger LOG = LoggerFactory.getLogger(FailureHandler.class);
 
 	private final int maxRetries;
 
@@ -61,7 +59,22 @@ public class FailureHandler {
 	}
 
 	private void reportFailure(final ExternalTask externalTask, final String message) {
-		processReportService.report(externalTask, calculateRetries(externalTask) > 0 ? RETRYING : FAILED, message);
+		final var report = toFailureReport(externalTask, message);
+
+		try {
+			processReportService.reportProcessState(externalTask, report);
+		} catch (final Exception e) {
+			// Must not stop handleFailure from running below - that would leave the task locked with its retries
+			// never decremented.
+			LOG.error("Could not report {} for task {} to Support Management", report.status(), externalTask.getId(), e);
+		}
+	}
+
+	private ProcessStateReport toFailureReport(final ExternalTask externalTask, final String message) {
+		if (calculateRetries(externalTask) > 0) {
+			return ProcessStateReport.retrying(ERROR_CODE_TASK_FAILED, message);
+		}
+		return ProcessStateReport.failed(ERROR_CODE_TASK_FAILED, message);
 	}
 
 	private int calculateRetries(ExternalTask externalTask) {

@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import se.sundsvall.alkt.Application;
+import se.sundsvall.alkt.service.ProcessReportService;
 
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,9 @@ class FailureHandlerTest {
 
 	@MockitoBean
 	private ExternalTask externalTaskMock;
+
+	@MockitoBean
+	private ProcessReportService processReportServiceMock;
 
 	@Test
 	void handleExceptionWithVariables() {

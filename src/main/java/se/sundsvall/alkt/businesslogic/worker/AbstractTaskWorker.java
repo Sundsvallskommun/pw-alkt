@@ -5,7 +5,7 @@ import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sundsvall.alkt.api.model.ProcessStatus;
+import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.dept44.requestid.RequestId;
@@ -30,16 +30,18 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	}
 
 	/** The state the process is in once the step is done. Returning it is how a step reports, so it cannot be skipped. */
-	protected abstract ProcessStatus executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
+	protected abstract ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
 
 	@Override
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init(externalTask.getVariable(PROCESS_VARIABLE_REQUEST_ID));
 		try {
-			final var status = executeBusinessLogic(externalTask, externalTaskService);
+			processReportService.reportProcessState(externalTask, ProcessStateReport.running(externalTask.getActivityId(), null));
 
-			processReportService.report(externalTask, status, null);
-			externalTaskService.complete(externalTask);
+			final var report = executeBusinessLogic(externalTask, externalTaskService);
+
+			processReportService.reportProcessState(externalTask, report);
+			externalTaskService.complete(externalTask, report.variables());
 		} catch (final Exception e) {
 			logException(externalTask, e);
 			failureHandler.handleException(externalTaskService, externalTask, e.getMessage());
@@ -53,7 +55,7 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	}
 
 	protected void logException(final ExternalTask externalTask, final Exception exception) {
-		logger.error("Exception occurred in {} for task with id {} and businesskey {}", this.getClass().getSimpleName(), sanitizeForLogging(externalTask.getId()),
+		logger.error("Exception occurred in {} for task with id {} and business key {}", this.getClass().getSimpleName(), sanitizeForLogging(externalTask.getId()),
 			sanitizeForLogging(externalTask.getBusinessKey()), exception);
 	}
 

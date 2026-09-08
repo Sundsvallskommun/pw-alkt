@@ -1,19 +1,21 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.UUID;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.Constants;
-import se.sundsvall.alkt.api.model.ProcessStatus;
+import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,8 +40,8 @@ class AbstractTaskWorkerTest {
 		}
 
 		@Override
-		public ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-			return ProcessStatus.COMPLETED;
+		public ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			return ProcessStateReport.completed();
 		}
 	}
 
@@ -122,9 +125,9 @@ class AbstractTaskWorkerTest {
 
 		final var recordingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
-			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				observedRequestIds.add(RequestId.get());
-				return ProcessStatus.COMPLETED;
+				return ProcessStateReport.completed();
 			}
 		};
 
@@ -140,12 +143,50 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
+	void executeWritesTheStepsResultVariablesWhenCompleting() {
+		final var variables = Map.<String, Object>of("decision", "APPROVED");
+		final var variableWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				return ProcessStateReport.completed().withVariables(variables);
+			}
+		};
+
+		variableWorker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(externalTaskServiceMock).complete(externalTaskMock, variables);
+	}
+
+	@Test
+	void executeCompletesWithAnEmptyMapWhenTheStepReturnsNoVariables() {
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+	}
+
+	@Test
+	void reportsTheVersionTheStepReadWhenTheStepOnlyReads() {
+		final var readOnlyWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				return ProcessStateReport.completed().withErrandVersion(7L);
+			}
+		};
+
+		readOnlyWorker.execute(externalTaskMock, externalTaskServiceMock);
+
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+		verify(processReportServiceMock, times(2)).reportProcessState(any(), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().errandVersion()).isEqualTo(7L);
+	}
+
+	@Test
 	void executeHandsAFailingStepToTheFailureHandlerAndClearsRequestId() {
 		// Arrange
 		final var requestId = UUID.randomUUID().toString();
 		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
-			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				throw new IllegalStateException("Boom");
 			}
 		};
@@ -155,7 +196,9 @@ class AbstractTaskWorkerTest {
 		// Act - the engine is told about the failure, so nothing escapes to the task client
 		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
-		// Assert
+		// Assert - RUNNING went out before the throw, and it's the only report from execute() itself
+		verify(processReportServiceMock, times(1)).reportProcessState(any(), any());
+		verify(processReportServiceMock).reportProcessState(externalTaskMock, ProcessStateReport.running(null, null));
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Boom");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
@@ -167,7 +210,7 @@ class AbstractTaskWorkerTest {
 		final var requestId = UUID.randomUUID().toString();
 		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
-			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				throw new ClientProblem(HttpStatus.BAD_GATEWAY, "Precondition Failed");
 			}
 		};
