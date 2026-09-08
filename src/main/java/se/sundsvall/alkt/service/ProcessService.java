@@ -83,6 +83,7 @@ public class ProcessService {
 
 		try {
 			operatonClient.correlateMessage(OperatonMapper.toCorrelationMessageDto(messageName, errandEvent.getErrandId(), TENANT_ID_ALKT));
+			LOG.info("Correlated '{}' for errand {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()));
 		} catch (final ClientProblem e) {
 			LOG.info("Message '{}' correlated to no running wait state of errand {}: {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()),
 				sanitizeForLogging(e.getMessage()));
