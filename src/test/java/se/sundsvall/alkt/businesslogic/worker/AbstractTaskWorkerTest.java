@@ -11,10 +11,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.Constants;
 import se.sundsvall.alkt.api.model.ProcessStatus;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 import se.sundsvall.dept44.support.Identifier;
 
@@ -160,6 +162,27 @@ class AbstractTaskWorkerTest {
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
 		assertThat(Identifier.get()).isNull();
+	}
+
+	@Test
+	void executeHandsAPreconditionFailedWriteToTheFailureHandler() {
+		// Arrange - the shape of the exception a patchErrand call throws when Support Management answers 412
+		final var requestId = UUID.randomUUID().toString();
+		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				throw new ClientProblem(HttpStatus.BAD_GATEWAY, "Precondition Failed");
+			}
+		};
+
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(requestId);
+
+		// Act
+		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert - not caught anywhere between patchErrand and here, so the task is retried rather than completed
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Bad Gateway: Precondition Failed");
+		verify(externalTaskServiceMock, never()).complete(any(), any());
 	}
 
 	@Test
