@@ -9,7 +9,6 @@ import se.sundsvall.alkt.api.model.ProcessStatus;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.dept44.requestid.RequestId;
-import se.sundsvall.dept44.support.Identifier;
 
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
@@ -18,9 +17,6 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 public abstract class AbstractTaskWorker implements ExternalTaskHandler {
-
-	// Sent as X-Sent-By on every outgoing Feign call, via dept44's FeignMultiCustomizer.
-	private static final String IDENTIFIER = "pw-alkt; type=processEngine";
 
 	private final Logger logger;
 
@@ -39,7 +35,6 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	@Override
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init(externalTask.getVariable(PROCESS_VARIABLE_REQUEST_ID));
-		Identifier.set(Identifier.parse(IDENTIFIER));
 		try {
 			final var status = executeBusinessLogic(externalTask, externalTaskService);
 
@@ -49,7 +44,6 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 			logException(externalTask, e);
 			failureHandler.handleException(externalTaskService, externalTask, e.getMessage());
 		} finally {
-			Identifier.remove();
 			RequestId.reset();
 		}
 	}

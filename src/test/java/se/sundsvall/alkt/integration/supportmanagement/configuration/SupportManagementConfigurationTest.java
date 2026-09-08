@@ -20,6 +20,7 @@ import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration.CLIENT_ID;
@@ -74,7 +75,7 @@ class SupportManagementConfigurationTest {
 		verify(feignMultiCustomizerSpy).withErrorDecoder(errorDecoderCaptor.capture());
 		verify(feignMultiCustomizerSpy).withRequestTimeoutsInSeconds(connectTimeout, readTimeout);
 		verify(feignMultiCustomizerSpy).withRetryableOAuth2InterceptorForClientRegistration(clientRegistrationMock);
-		verify(feignMultiCustomizerSpy).withRequestInterceptor(requestInterceptorCaptor.capture());
+		verify(feignMultiCustomizerSpy, times(2)).withRequestInterceptor(requestInterceptorCaptor.capture());
 		verify(feignMultiCustomizerSpy).composeCustomizersToOne();
 
 		// Assert ErrorDecoder
@@ -82,13 +83,14 @@ class SupportManagementConfigurationTest {
 			.isInstanceOf(ProblemErrorDecoder.class)
 			.hasFieldOrPropertyWithValue("integrationName", CLIENT_ID);
 
-		// Assert RequestInterceptor
+		// Assert RequestInterceptors
 		RequestId.init("test-request-id");
 		try {
 			final var requestTemplate = new RequestTemplate();
-			requestInterceptorCaptor.getValue().apply(requestTemplate);
+			requestInterceptorCaptor.getAllValues().forEach(interceptor -> interceptor.apply(requestTemplate));
 
 			assertThat(requestTemplate.headers().get("X-Request-Group-Id")).containsExactly("test-request-id");
+			assertThat(requestTemplate.headers().get("X-Sent-By")).containsExactly("pw-alkt; type=processEngine");
 			assertThat(requestTemplate.headers()).doesNotContainKey("X-Trigger-Process");
 		} finally {
 			RequestId.reset();

@@ -10,7 +10,6 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementClient;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
-import se.sundsvall.dept44.support.Identifier;
 import se.sundsvall.dept44.test.AbstractAppTest;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 
@@ -46,12 +45,10 @@ class SupportManagementClientIT extends AbstractAppTest {
 	@BeforeEach
 	void setIdentity() {
 		RequestId.init("test-request-id");
-		Identifier.set(Identifier.parse("pw-alkt; type=processEngine"));
 	}
 
 	@AfterEach
 	void clearIdentity() {
-		Identifier.remove();
 		RequestId.reset();
 	}
 

@@ -18,7 +18,6 @@ import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
-import se.sundsvall.dept44.support.Identifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -64,7 +63,6 @@ class AbstractTaskWorkerTest {
 		for (var i = 0; (i < 10) && (RequestId.get() != null); i++) {
 			RequestId.reset();
 		}
-		Identifier.remove();
 	}
 
 	@Test
@@ -161,7 +159,6 @@ class AbstractTaskWorkerTest {
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Boom");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
-		assertThat(Identifier.get()).isNull();
 	}
 
 	@Test
@@ -183,25 +180,5 @@ class AbstractTaskWorkerTest {
 		// Assert - not caught anywhere between patchErrand and here, so the task is retried rather than completed
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Bad Gateway: Precondition Failed");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
-	}
-
-	@Test
-	void executeSetsIdentifierDuringExecutionAndClearsItAfterwards() {
-		// Arrange
-		final var observedIdentifiers = new ArrayList<Identifier>();
-		final var recordingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
-			@Override
-			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-				observedIdentifiers.add(Identifier.get());
-				return ProcessStatus.COMPLETED;
-			}
-		};
-
-		// Act
-		recordingWorker.execute(externalTaskMock, externalTaskServiceMock);
-
-		// Assert
-		assertThat(observedIdentifiers).singleElement().satisfies(identifier -> assertThat(identifier.toHeaderValue()).isEqualTo("pw-alkt; type=processEngine"));
-		assertThat(Identifier.get()).isNull();
 	}
 }
