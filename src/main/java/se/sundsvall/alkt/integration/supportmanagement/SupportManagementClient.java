@@ -6,9 +6,11 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration;
@@ -26,6 +28,7 @@ public interface SupportManagementClient {
 	ResponseEntity<Void> createErrand(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
 		@RequestBody Errand errand);
 
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
@@ -39,5 +42,23 @@ public interface SupportManagementClient {
 	ResponseEntity<Labels> getLabels(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<Errand> getErrand(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
+
+	@PatchMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<Errand> patchErrand(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@RequestHeader("If-Match") String ifMatch,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestBody Errand errand);
+
+	// TODO: add putDecision for PUT /{municipalityId}/{namespace}/errands/{errandId}/decision once Support Management
+	// exposes it (DRAKEN-4744). Needed for a process to write an AUTOMATIC decision back to the errand.
 
 }

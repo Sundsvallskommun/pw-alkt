@@ -217,6 +217,28 @@ class ProcessServiceTest {
 			.containsExactly("review_completed", errandId);
 	}
 
+	/** Support Management's casing of eventSubType is not guaranteed, so the SIGNAL check must not be case-sensitive. */
+	@Test
+	void correlatesTheNamedGateForASignalRegardlessOfCase() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType("signal");
+		errandEvent.setSignalName("review_completed");
+
+		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		verify(operatonClientMock).correlateMessage(correlationMessageCaptor.capture());
+		assertThat(correlationMessageCaptor.getValue())
+			.extracting(CorrelationMessageDto::getMessageName, CorrelationMessageDto::getBusinessKey)
+			.containsExactly("review_completed", errandId);
+	}
+
 	/** A signal without a name can never become correlatable, so redelivering it would be pointless. */
 	@Test
 	void acceptsASignalWithoutANameWithoutCorrelating() {

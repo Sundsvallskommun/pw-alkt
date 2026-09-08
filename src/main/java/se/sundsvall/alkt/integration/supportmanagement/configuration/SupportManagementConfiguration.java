@@ -7,11 +7,17 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import se.sundsvall.dept44.configuration.feign.FeignConfiguration;
 import se.sundsvall.dept44.configuration.feign.FeignMultiCustomizer;
 import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
+import se.sundsvall.dept44.requestid.RequestId;
+import se.sundsvall.dept44.support.Identifier;
 
 @Import(FeignConfiguration.class)
 public class SupportManagementConfiguration {
 
 	public static final String CLIENT_ID = "support-management";
+
+	// Identifies pw-alkt to Support Management specifically, regardless of any Identifier set elsewhere on the calling
+	// thread.
+	private static final String SENT_BY = "pw-alkt; type=processEngine";
 
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, SupportManagementProperties properties) {
@@ -19,6 +25,8 @@ public class SupportManagementConfiguration {
 			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))
+			.withRequestInterceptor(template -> template.header("X-Request-Group-Id", RequestId.get()))
+			.withRequestInterceptor(template -> template.header(Identifier.HEADER_NAME, SENT_BY))
 			.composeCustomizersToOne();
 	}
 }
