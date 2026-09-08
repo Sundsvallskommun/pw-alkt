@@ -16,6 +16,7 @@ import se.sundsvall.alkt.api.model.ProcessStatus;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.dept44.requestid.RequestId;
+import se.sundsvall.dept44.support.Identifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -61,6 +62,7 @@ class AbstractTaskWorkerTest {
 		for (var i = 0; (i < 10) && (RequestId.get() != null); i++) {
 			RequestId.reset();
 		}
+		Identifier.remove();
 	}
 
 	@Test
@@ -157,5 +159,26 @@ class AbstractTaskWorkerTest {
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Boom");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
+		assertThat(Identifier.get()).isNull();
+	}
+
+	@Test
+	void executeSetsIdentifierDuringExecutionAndClearsItAfterwards() {
+		// Arrange
+		final var observedIdentifiers = new ArrayList<Identifier>();
+		final var recordingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				observedIdentifiers.add(Identifier.get());
+				return ProcessStatus.COMPLETED;
+			}
+		};
+
+		// Act
+		recordingWorker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert
+		assertThat(observedIdentifiers).singleElement().satisfies(identifier -> assertThat(identifier.toHeaderValue()).isEqualTo("pw-alkt; type=processEngine"));
+		assertThat(Identifier.get()).isNull();
 	}
 }

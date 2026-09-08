@@ -7,6 +7,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import se.sundsvall.dept44.configuration.feign.FeignConfiguration;
 import se.sundsvall.dept44.configuration.feign.FeignMultiCustomizer;
 import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
+import se.sundsvall.dept44.requestid.RequestId;
 
 @Import(FeignConfiguration.class)
 public class SupportManagementConfiguration {
@@ -19,6 +20,10 @@ public class SupportManagementConfiguration {
 			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))
+			.withRequestInterceptor(template -> {
+				template.header("X-Request-Group-Id", RequestId.get());
+				template.header("X-Trigger-Process", "false");
+			})
 			.composeCustomizersToOne();
 	}
 }
