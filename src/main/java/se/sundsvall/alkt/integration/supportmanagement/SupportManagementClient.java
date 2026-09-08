@@ -56,4 +56,7 @@ public interface SupportManagementClient {
 		@RequestHeader("If-Match") String ifMatch,
 		@RequestBody Errand errand);
 
+	// TODO: add putDecision for PUT /{municipalityId}/{namespace}/errands/{errandId}/decision once Support Management
+	// exposes it (DRAKEN-4744). Needed for a process to write an AUTOMATIC decision back to the errand.
+
 }
