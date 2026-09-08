@@ -1,7 +1,6 @@
 package se.sundsvall.alkt.integration.operaton.mapper;
 
 import generated.se.sundsvall.operaton.CorrelationMessageDto;
-import generated.se.sundsvall.operaton.PatchVariablesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import generated.se.sundsvall.operaton.VariableValueDto;
 import java.util.Map;
@@ -39,10 +38,5 @@ public final class OperatonMapper {
 		return new VariableValueDto()
 			.type(valueType.getName())
 			.value(value);
-	}
-
-	public static PatchVariablesDto toPatchVariablesDto(final Map<String, VariableValueDto> variablesToUpdate) {
-		return new PatchVariablesDto()
-			.modifications(variablesToUpdate);
 	}
 }

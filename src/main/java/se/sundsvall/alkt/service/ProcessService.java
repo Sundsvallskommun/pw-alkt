@@ -1,24 +1,27 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.operaton.PatchVariablesDto;
-import java.util.Map;
-import org.camunda.bpm.engine.variable.type.ValueType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.alkt.integration.operaton.mapper.OperatonMapper;
+import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
-import se.sundsvall.dept44.requestid.RequestId;
 
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ANSOKAN;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_UPDATE_AVAILABLE;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
+import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
+import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Service
 public class ProcessService {
+
+	private static final Logger LOG = LoggerFactory.getLogger(ProcessService.class);
+
+	private static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
+	private static final String SUB_TYPE_SIGNAL = "SIGNAL";
 
 	private final OperatonClient operatonClient;
 
@@ -26,32 +29,63 @@ public class ProcessService {
 		this.operatonClient = operatonClient;
 	}
 
-	public String startProcess(final String municipalityId, final String namespace, final String errandId) {
-		return startProcess(PROCESS_KEY_ANSOKAN, municipalityId, namespace, errandId);
-	}
-
-	/**
-	 * Starts the process definition matching the provided key in the tenant owned by this service. The upcoming anmalan
-	 * and tillsyn processes are started through this method with their own key, so only the caller has to know which
-	 * process a request maps to.
-	 */
-	String startProcess(final String processKey, final String municipalityId, final String namespace, final String errandId) {
-		return operatonClient.startProcessWithTenant(processKey, TENANT_ID_ALKT, OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandId)).getId();
-	}
-
-	public void updateProcess(final String municipalityId, final String namespace, final String processInstanceId) {
-		if (operatonClient.getProcessInstance(processInstanceId).isEmpty()) {
-			throw Problem.valueOf(NOT_FOUND, "Process instance with ID '%s' does not exist!".formatted(processInstanceId));
+	public void handleErrandEvent(final String municipalityId, final String namespace, final ErrandEvent errandEvent) {
+		if (errandEvent.getEventType() == ErrandEvent.EventType.DELETE) {
+			deleteProcess(errandEvent);
+			return;
 		}
 
-		operatonClient.setProcessInstanceVariables(processInstanceId, updateVariables(municipalityId, namespace));
+		if (operatonClient.findProcessInstances(errandEvent.getErrandId(), errandEvent.getProcessKey(), TENANT_ID_ALKT).isEmpty()) {
+			startProcess(municipalityId, namespace, errandEvent);
+		} else {
+			correlateMessage(errandEvent);
+		}
 	}
 
-	private PatchVariablesDto updateVariables(final String municipalityId, final String namespace) {
-		return OperatonMapper.toPatchVariablesDto(Map.of(
-			PROCESS_VARIABLE_MUNICIPALITY_ID, OperatonMapper.toVariableValueDto(ValueType.STRING, municipalityId),
-			PROCESS_VARIABLE_NAMESPACE, OperatonMapper.toVariableValueDto(ValueType.STRING, namespace),
-			PROCESS_VARIABLE_UPDATE_AVAILABLE, OperatonMapper.toVariableValueDto(ValueType.BOOLEAN, true),
-			PROCESS_VARIABLE_REQUEST_ID, OperatonMapper.toVariableValueDto(ValueType.STRING, RequestId.get())));
+	private void deleteProcess(final ErrandEvent errandEvent) {
+		operatonClient.findProcessInstances(errandEvent.getErrandId(), null, TENANT_ID_ALKT)
+			.forEach(processInstance -> {
+				LOG.info("Deleting process instance {} of deleted errand {}", sanitizeForLogging(processInstance.getId()), sanitizeForLogging(errandEvent.getErrandId()));
+				operatonClient.deleteProcessInstance(processInstance.getId(), false);
+			});
+	}
+
+	private void startProcess(final String municipalityId, final String namespace, final ErrandEvent errandEvent) {
+		if (isBlank(errandEvent.getProcessKey())) {
+			LOG.info("Errand {} carries no process key, so there is no process to start", sanitizeForLogging(errandEvent.getErrandId()));
+			return;
+		}
+
+		if (!errandEvent.isStartAllowed()) {
+			LOG.info("Event {} on errand {} is not allowed to start a process", sanitizeForLogging(errandEvent.getEventId()), sanitizeForLogging(errandEvent.getErrandId()));
+			return;
+		}
+
+		if (!PROCESS_KEYS.contains(errandEvent.getProcessKey())) {
+			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Process key '%s' matches no deployed process definition".formatted(errandEvent.getProcessKey()));
+		}
+
+		final var processInstance = operatonClient.startProcessWithTenant(errandEvent.getProcessKey(), TENANT_ID_ALKT,
+			OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandEvent.getErrandId()));
+
+		LOG.info("Started process {} as instance {} for errand {}", sanitizeForLogging(errandEvent.getProcessKey()), sanitizeForLogging(processInstance.getId()),
+			sanitizeForLogging(errandEvent.getErrandId()));
+	}
+
+	private void correlateMessage(final ErrandEvent errandEvent) {
+		final var messageName = SUB_TYPE_SIGNAL.equalsIgnoreCase(errandEvent.getEventSubType()) ? errandEvent.getSignalName() : MESSAGE_ERRAND_UPDATED;
+
+		if (isBlank(messageName)) {
+			LOG.error("Event {} on errand {} is a signal without a name, so there is no gate to open", sanitizeForLogging(errandEvent.getEventId()),
+				sanitizeForLogging(errandEvent.getErrandId()));
+			return;
+		}
+
+		try {
+			operatonClient.correlateMessage(OperatonMapper.toCorrelationMessageDto(messageName, errandEvent.getErrandId(), TENANT_ID_ALKT));
+		} catch (final ClientProblem e) {
+			LOG.info("Message '{}' correlated to no running wait state of errand {}: {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()),
+				sanitizeForLogging(e.getMessage()));
+		}
 	}
 }

@@ -1,7 +1,6 @@
 package se.sundsvall.alkt.integration.operaton.mapper;
 
 import generated.se.sundsvall.operaton.VariableValueDto;
-import java.util.Map;
 import java.util.UUID;
 import org.camunda.bpm.engine.variable.type.ValueType;
 import org.junit.jupiter.api.Test;
@@ -70,15 +69,4 @@ class OperatonMapperTest {
 		assertThat(result.getValue()).isEqualTo(true);
 	}
 
-	@Test
-	void toPatchVariablesDto() {
-		// Arrange
-		final var variable = OperatonMapper.toVariableValueDto(ValueType.STRING, "value");
-
-		// Act
-		final var result = OperatonMapper.toPatchVariablesDto(Map.of("key", variable));
-
-		// Assert
-		assertThat(result.getModifications()).containsExactly(Map.entry("key", variable));
-	}
 }
