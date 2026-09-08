@@ -1,19 +1,25 @@
 package apptest.supportmanagement;
 
+import generated.se.sundsvall.supportmanagement.Errand;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.TestPropertySource;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementClient;
+import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.test.AbstractAppTest;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.patch;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.HttpStatus.OK;
 
 @WireMockAppTestSuite(files = "classpath:/Wiremock/", classes = Application.class)
@@ -40,5 +46,30 @@ class SupportManagementClientIT extends AbstractAppTest {
 
 		assertThat(response.getStatusCode()).isEqualTo(OK);
 		assertThat(response.getHeaders().getETag()).isEqualTo("\"7\"");
+	}
+
+	@Test
+	void patchErrandSendsTheEtagAsIfMatch() {
+		mockApiGatewayToken();
+		stubFor(patch(urlEqualTo("/api-support-management/%s/%s/errands/%s".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)))
+			.withHeader("If-Match", equalTo("\"7\""))
+			.willReturn(okJson("{}").withHeader("Content-Encoding", "identity")));
+
+		final var response = supportManagementClient.patchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "\"7\"", new Errand());
+
+		assertThat(response.getStatusCode()).isEqualTo(OK);
+	}
+
+	@Test
+	void patchErrandWithAStaleIfMatchThrows() {
+		mockApiGatewayToken();
+		stubFor(patch(urlEqualTo("/api-support-management/%s/%s/errands/%s".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)))
+			.willReturn(aResponse()
+				.withStatus(412)
+				.withHeader("Content-Type", "application/problem+json")
+				.withBody("{\"title\":\"Precondition Failed\",\"status\":412}")));
+
+		assertThatThrownBy(() -> supportManagementClient.patchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "\"6\"", new Errand()))
+			.isInstanceOf(ClientProblem.class);
 	}
 }
