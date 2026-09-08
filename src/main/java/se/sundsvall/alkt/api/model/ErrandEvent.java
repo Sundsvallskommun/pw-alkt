@@ -43,8 +43,8 @@ public class ErrandEvent {
 		since a process that already ran to its end is invisible to this service. Read as false when absent: a process
 		that starts when it should not spends the one process life the errand has, whereas a start that fails to happen
 		shows up in the user interface as a button waiting to be pressed.
-		""", requiredMode = REQUIRED)
-	private Boolean startAllowed;
+		""")
+	private boolean startAllowed;
 
 	@Schema(description = """
 		Name of the message to correlate, set only when eventSubType is SIGNAL. It is the name of the gate in the process
@@ -95,16 +95,12 @@ public class ErrandEvent {
 		this.processKey = processKey;
 	}
 
-	public Boolean getStartAllowed() {
+	public boolean isStartAllowed() {
 		return startAllowed;
 	}
 
-	public void setStartAllowed(final Boolean startAllowed) {
+	public void setStartAllowed(final boolean startAllowed) {
 		this.startAllowed = startAllowed;
-	}
-
-	public boolean permitsStart() {
-		return Boolean.TRUE.equals(startAllowed);
 	}
 
 	public String getSignalName() {
@@ -132,7 +128,7 @@ public class ErrandEvent {
 			return false;
 		}
 		return Objects.equals(eventId, that.eventId) && eventType == that.eventType && Objects.equals(eventSubType, that.eventSubType)
-			&& Objects.equals(errandId, that.errandId) && Objects.equals(processKey, that.processKey) && Objects.equals(startAllowed, that.startAllowed)
+			&& Objects.equals(errandId, that.errandId) && Objects.equals(processKey, that.processKey) && startAllowed == that.startAllowed
 			&& Objects.equals(signalName, that.signalName) && Objects.equals(occurredAt, that.occurredAt);
 	}
 

@@ -64,7 +64,9 @@ class ProcessServiceTest {
 		errandEvent.setEventSubType("ERRAND");
 		errandEvent.setErrandId(errandId);
 		errandEvent.setProcessKey(processKey);
-		errandEvent.setStartAllowed(startAllowed);
+		if (startAllowed != null) {
+			errandEvent.setStartAllowed(startAllowed);
+		}
 		return errandEvent;
 	}
 

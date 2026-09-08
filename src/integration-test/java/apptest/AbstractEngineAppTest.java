@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
@@ -21,7 +19,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static generated.se.sundsvall.operaton.HistoricProcessInstanceDto.StateEnum.COMPLETED;
-import static java.util.Collections.reverseOrder;
 import static java.util.Comparator.comparing;
 import static java.util.Objects.isNull;
 import static java.util.concurrent.TimeUnit.SECONDS;

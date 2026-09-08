@@ -57,8 +57,8 @@ class ProcessResourceTest {
 	}
 
 	/**
-	 * The permission is documented as required but is not validated as such: a publisher that omits it should leave the
-	 * errand waiting to be started by hand, not produce a delivery that keeps being retried.
+	 * Omitting the permission is valid and reads as false: a publisher that omits it should leave the errand waiting to
+	 * be started by hand, not produce a delivery that keeps being retried.
 	 */
 	@Test
 	void acceptsAnEventWithoutTheStartPermission() {
@@ -76,7 +76,7 @@ class ProcessResourceTest {
 			.expectStatus().isAccepted();
 
 		// Assert
-		assertThat(errandEvent.permitsStart()).isFalse();
+		assertThat(errandEvent.isStartAllowed()).isFalse();
 		verify(processServiceMock).handleErrandEvent("2281", "ALKT", errandEvent);
 	}
 }

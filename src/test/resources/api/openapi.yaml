@@ -143,7 +143,6 @@ components:
       - errandId
       - eventId
       - eventType
-      - startAllowed
     Problem:
       type: object
       properties:
