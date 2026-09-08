@@ -4,8 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.api.model.ErrandEvent;
-import se.sundsvall.alkt.integration.operaton.OperatonClient;
-import se.sundsvall.alkt.integration.operaton.mapper.OperatonMapper;
+import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
@@ -23,10 +22,10 @@ public class ProcessService {
 	private static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
 	private static final String SUB_TYPE_SIGNAL = "SIGNAL";
 
-	private final OperatonClient operatonClient;
+	private final OperatonIntegration operatonIntegration;
 
-	ProcessService(OperatonClient operatonClient) {
-		this.operatonClient = operatonClient;
+	ProcessService(OperatonIntegration operatonIntegration) {
+		this.operatonIntegration = operatonIntegration;
 	}
 
 	public void handleErrandEvent(final String municipalityId, final String namespace, final ErrandEvent errandEvent) {
@@ -35,7 +34,7 @@ public class ProcessService {
 			return;
 		}
 
-		if (operatonClient.findProcessInstances(errandEvent.getErrandId(), errandEvent.getProcessKey(), TENANT_ID_ALKT).isEmpty()) {
+		if (operatonIntegration.findProcessInstances(errandEvent.getErrandId(), errandEvent.getProcessKey(), TENANT_ID_ALKT).isEmpty()) {
 			startProcess(municipalityId, namespace, errandEvent);
 		} else {
 			correlateMessage(errandEvent);
@@ -43,10 +42,10 @@ public class ProcessService {
 	}
 
 	private void deleteProcess(final ErrandEvent errandEvent) {
-		operatonClient.findProcessInstances(errandEvent.getErrandId(), null, TENANT_ID_ALKT)
+		operatonIntegration.findProcessInstances(errandEvent.getErrandId(), null, TENANT_ID_ALKT)
 			.forEach(processInstance -> {
 				LOG.info("Deleting process instance {} of deleted errand {}", sanitizeForLogging(processInstance.getId()), sanitizeForLogging(errandEvent.getErrandId()));
-				operatonClient.deleteProcessInstance(processInstance.getId(), false);
+				operatonIntegration.deleteProcessInstance(processInstance.getId());
 			});
 	}
 
@@ -65,10 +64,9 @@ public class ProcessService {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Process key '%s' matches no deployed process definition".formatted(errandEvent.getProcessKey()));
 		}
 
-		final var processInstance = operatonClient.startProcessWithTenant(errandEvent.getProcessKey(), TENANT_ID_ALKT,
-			OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandEvent.getErrandId()));
+		final var processInstanceId = operatonIntegration.startProcess(municipalityId, namespace, errandEvent.getErrandId(), errandEvent.getProcessKey(), TENANT_ID_ALKT);
 
-		LOG.info("Started process {} as instance {} for errand {}", sanitizeForLogging(errandEvent.getProcessKey()), sanitizeForLogging(processInstance.getId()),
+		LOG.info("Started process {} as instance {} for errand {}", sanitizeForLogging(errandEvent.getProcessKey()), sanitizeForLogging(processInstanceId),
 			sanitizeForLogging(errandEvent.getErrandId()));
 	}
 
@@ -82,7 +80,7 @@ public class ProcessService {
 		}
 
 		try {
-			operatonClient.correlateMessage(OperatonMapper.toCorrelationMessageDto(messageName, errandEvent.getErrandId(), TENANT_ID_ALKT));
+			operatonIntegration.correlateMessage(messageName, errandEvent.getErrandId(), TENANT_ID_ALKT);
 			LOG.info("Correlated '{}' for errand {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()));
 		} catch (final ClientProblem e) {
 			LOG.info("Message '{}' correlated to no running wait state of errand {}: {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()),
