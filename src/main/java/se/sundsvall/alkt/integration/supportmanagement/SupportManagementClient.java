@@ -40,4 +40,10 @@ public interface SupportManagementClient {
 		@PathVariable String municipalityId,
 		@PathVariable String namespace);
 
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<Errand> getErrand(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
+
 }
