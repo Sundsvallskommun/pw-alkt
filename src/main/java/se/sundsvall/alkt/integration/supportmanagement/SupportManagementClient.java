@@ -28,6 +28,7 @@ public interface SupportManagementClient {
 	ResponseEntity<Void> createErrand(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
 		@RequestBody Errand errand);
 
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
@@ -54,6 +55,7 @@ public interface SupportManagementClient {
 		@PathVariable String namespace,
 		@PathVariable String errandId,
 		@RequestHeader("If-Match") String ifMatch,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
 		@RequestBody Errand errand);
 
 	// TODO: add putDecision for PUT /{municipalityId}/{namespace}/errands/{errandId}/decision once Support Management

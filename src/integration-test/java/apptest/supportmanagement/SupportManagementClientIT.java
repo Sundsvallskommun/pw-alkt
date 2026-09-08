@@ -70,13 +70,15 @@ class SupportManagementClientIT extends AbstractAppTest {
 	@Test
 	void patchErrandSendsTheEtagAsIfMatch() {
 		mockApiGatewayToken();
-		stubFor(patch(urlEqualTo("/api-support-management/%s/%s/errands/%s".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)))
-			.withHeader("If-Match", equalTo("\"7\""))
-			.willReturn(okJson("{}").withHeader("Content-Encoding", "identity")));
+		final var errandPath = "/api-support-management/%s/%s/errands/%s".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		stubFor(get(urlEqualTo(errandPath)).willReturn(okJson("{}").withHeader("ETag", "\"7\"").withHeader("Content-Encoding", "identity")));
+		stubFor(patch(urlEqualTo(errandPath)).willReturn(okJson("{}").withHeader("Content-Encoding", "identity")));
 
-		final var response = supportManagementClient.patchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "\"7\"", new Errand());
+		final var etag = supportManagementClient.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID).getHeaders().getETag();
+		final var response = supportManagementClient.patchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, etag, null, new Errand());
 
 		assertThat(response.getStatusCode()).isEqualTo(OK);
+		verify(patchRequestedFor(urlEqualTo(errandPath)).withHeader("If-Match", equalTo("\"7\"")));
 	}
 
 	@Test
@@ -88,7 +90,7 @@ class SupportManagementClientIT extends AbstractAppTest {
 				.withHeader("Content-Type", "application/problem+json")
 				.withBody("{\"title\":\"Precondition Failed\",\"status\":412}")));
 
-		assertThatThrownBy(() -> supportManagementClient.patchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "\"6\"", new Errand()))
+		assertThatThrownBy(() -> supportManagementClient.patchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "\"6\"", null, new Errand()))
 			.isInstanceOf(ClientProblem.class);
 	}
 
@@ -100,7 +102,7 @@ class SupportManagementClientIT extends AbstractAppTest {
 		stubFor(patch(urlEqualTo(errandPath)).willReturn(okJson("{}").withHeader("Content-Encoding", "identity")));
 
 		supportManagementClient.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		supportManagementClient.patchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "\"7\"", new Errand());
+		supportManagementClient.patchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "\"7\"", false, new Errand());
 
 		verify(getRequestedFor(urlEqualTo(errandPath)).withHeader("X-Sent-By", equalTo("pw-alkt; type=processEngine")));
 		verify(patchRequestedFor(urlEqualTo(errandPath)).withHeader("X-Sent-By", equalTo("pw-alkt; type=processEngine")));

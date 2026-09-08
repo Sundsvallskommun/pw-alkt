@@ -20,10 +20,7 @@ public class SupportManagementConfiguration {
 			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))
-			.withRequestInterceptor(template -> {
-				template.header("X-Request-Group-Id", RequestId.get());
-				template.header("X-Trigger-Process", "false");
-			})
+			.withRequestInterceptor(template -> template.header("X-Request-Group-Id", RequestId.get()))
 			.composeCustomizersToOne();
 	}
 }

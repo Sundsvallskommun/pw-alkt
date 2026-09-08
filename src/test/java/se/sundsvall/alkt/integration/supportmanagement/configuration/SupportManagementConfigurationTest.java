@@ -1,5 +1,7 @@
 package se.sundsvall.alkt.integration.supportmanagement.configuration;
 
+import feign.RequestInterceptor;
+import feign.RequestTemplate;
 import feign.codec.ErrorDecoder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import se.sundsvall.dept44.configuration.feign.FeignMultiCustomizer;
 import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
+import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -38,6 +41,9 @@ class SupportManagementConfigurationTest {
 
 	@Captor
 	private ArgumentCaptor<ErrorDecoder> errorDecoderCaptor;
+
+	@Captor
+	private ArgumentCaptor<RequestInterceptor> requestInterceptorCaptor;
 
 	@InjectMocks
 	private SupportManagementConfiguration configuration;
@@ -68,11 +74,24 @@ class SupportManagementConfigurationTest {
 		verify(feignMultiCustomizerSpy).withErrorDecoder(errorDecoderCaptor.capture());
 		verify(feignMultiCustomizerSpy).withRequestTimeoutsInSeconds(connectTimeout, readTimeout);
 		verify(feignMultiCustomizerSpy).withRetryableOAuth2InterceptorForClientRegistration(clientRegistrationMock);
+		verify(feignMultiCustomizerSpy).withRequestInterceptor(requestInterceptorCaptor.capture());
 		verify(feignMultiCustomizerSpy).composeCustomizersToOne();
 
 		// Assert ErrorDecoder
 		assertThat(errorDecoderCaptor.getValue())
 			.isInstanceOf(ProblemErrorDecoder.class)
 			.hasFieldOrPropertyWithValue("integrationName", CLIENT_ID);
+
+		// Assert RequestInterceptor
+		RequestId.init("test-request-id");
+		try {
+			final var requestTemplate = new RequestTemplate();
+			requestInterceptorCaptor.getValue().apply(requestTemplate);
+
+			assertThat(requestTemplate.headers().get("X-Request-Group-Id")).containsExactly("test-request-id");
+			assertThat(requestTemplate.headers()).doesNotContainKey("X-Trigger-Process");
+		} finally {
+			RequestId.reset();
+		}
 	}
 }
