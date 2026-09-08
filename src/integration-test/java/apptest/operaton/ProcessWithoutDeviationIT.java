@@ -13,6 +13,7 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
+import static apptest.mock.api.SupportManagement.mockPatchErrand;
 import static apptest.verification.ProcessPathway.closurePathway;
 import static apptest.verification.ProcessPathway.decisionPathway;
 import static apptest.verification.ProcessPathway.followUpPathway;
@@ -63,6 +64,7 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 
 		// Setup mocks
 		mockApiGatewayToken();
+		mockPatchErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 
 		// The errand was created and Support Management allows the event to start a process
 		sendErrandEvent("""
