@@ -35,7 +35,7 @@ class ErrandEventTest {
 
 	@Test
 	void testNoDirtOnCreatedBean() {
-		assertThat(new ErrandEvent()).hasAllNullFieldsOrProperties();
+		assertThat(new ErrandEvent()).hasAllNullFieldsOrPropertiesExcept("startAllowed");
 	}
 
 	@Test
@@ -60,8 +60,7 @@ class ErrandEventTest {
 		assertThat(bean.getEventSubType()).isEqualTo("SIGNAL");
 		assertThat(bean.getErrandId()).isEqualTo(errandId);
 		assertThat(bean.getProcessKey()).isEqualTo("alcohol-serving");
-		assertThat(bean.getStartAllowed()).isTrue();
-		assertThat(bean.permitsStart()).isTrue();
+		assertThat(bean.isStartAllowed()).isTrue();
 		assertThat(bean.getSignalName()).isEqualTo("review_completed");
 		assertThat(bean.getOccurredAt()).isEqualTo(occurredAt);
 	}
@@ -69,6 +68,6 @@ class ErrandEventTest {
 	/** An absent permission reads as no permission, since a process started in error cannot be taken back. */
 	@Test
 	void startAllowedDefaultsToFalseWhenAbsent() {
-		assertThat(new ErrandEvent().permitsStart()).isFalse();
+		assertThat(new ErrandEvent().isStartAllowed()).isFalse();
 	}
 }

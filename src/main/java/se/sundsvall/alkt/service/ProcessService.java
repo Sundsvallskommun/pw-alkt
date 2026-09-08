@@ -56,7 +56,7 @@ public class ProcessService {
 			return;
 		}
 
-		if (!errandEvent.permitsStart()) {
+		if (!errandEvent.isStartAllowed()) {
 			LOG.info("Event {} on errand {} is not allowed to start a process", sanitizeForLogging(errandEvent.getEventId()), sanitizeForLogging(errandEvent.getErrandId()));
 			return;
 		}
@@ -73,7 +73,7 @@ public class ProcessService {
 	}
 
 	private void correlateMessage(final ErrandEvent errandEvent) {
-		final var messageName = SUB_TYPE_SIGNAL.equals(errandEvent.getEventSubType()) ? errandEvent.getSignalName() : MESSAGE_ERRAND_UPDATED;
+		final var messageName = SUB_TYPE_SIGNAL.equalsIgnoreCase(errandEvent.getEventSubType()) ? errandEvent.getSignalName() : MESSAGE_ERRAND_UPDATED;
 
 		if (isBlank(messageName)) {
 			LOG.error("Event {} on errand {} is a signal without a name, so there is no gate to open", sanitizeForLogging(errandEvent.getEventId()),
