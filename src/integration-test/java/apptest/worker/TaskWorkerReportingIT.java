@@ -37,6 +37,7 @@ import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -151,5 +152,30 @@ class TaskWorkerReportingIT extends AbstractAppTest {
 
 		verify(taskService).complete(any(), any());
 		verify(exactly(2), getRequestedFor(urlEqualTo(ERRAND_PATH)));
+	}
+
+	@Test
+	void executeBusinessLogicThrowingReportsRetryingAndDoesNotComplete() {
+		mockApiGatewayToken();
+		stubFor(patch(urlEqualTo(ERRAND_PATH)).willReturn(okJson("{}").withHeader("Content-Encoding", "identity")));
+
+		final var task = mockTask();
+		final var taskService = mock(ExternalTaskService.class);
+
+		final var throwingWorker = new AbstractTaskWorker(processReportService, failureHandler) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
+				throw new IllegalStateException("Boom");
+			}
+		};
+
+		throwingWorker.execute(task, taskService);
+
+		// RUNNING went out before the throw, RETRYING went out from FailureHandler.reportFailure after it - the
+		// count is what proves the real PATCH round-trip happened rather than being skipped (see B1 in the review:
+		// neither patch carries a status field yet, so the body itself can't distinguish RETRYING from RUNNING).
+		verify(exactly(2), patchRequestedFor(urlEqualTo(ERRAND_PATH)));
+		verify(taskService).handleFailure(nullable(String.class), eq("Boom"), any(), anyInt(), anyLong());
+		verify(taskService, never()).complete(any(), any());
 	}
 }
