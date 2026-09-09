@@ -11,8 +11,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import se.sundsvall.alkt.Application;
+import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.service.ProcessReportService;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -55,6 +58,7 @@ class FailureHandlerTest {
 		verify(externalTaskMock).getId();
 		verify(externalTaskServiceMock).handleFailure(id, message, null, retriesLeft - 1, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS, variables, Collections.emptyMap());
 		verifyNoMoreInteractions(externalTaskServiceMock);
+		verify(processReportServiceMock).reportProcessState(externalTaskMock, ProcessStateReport.retrying("TASK_FAILED", message));
 	}
 
 	@Test
@@ -75,6 +79,7 @@ class FailureHandlerTest {
 		verify(externalTaskMock).getId();
 		verify(externalTaskServiceMock).handleFailure(id, message, null, retriesLeft - 1, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verifyNoMoreInteractions(externalTaskServiceMock);
+		verify(processReportServiceMock).reportProcessState(externalTaskMock, ProcessStateReport.retrying("TASK_FAILED", message));
 	}
 
 	@Test
@@ -94,6 +99,7 @@ class FailureHandlerTest {
 		verify(externalTaskMock).getId();
 		verify(externalTaskServiceMock).handleFailure(id, message, null, 3, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verifyNoMoreInteractions(externalTaskServiceMock);
+		verify(processReportServiceMock).reportProcessState(externalTaskMock, ProcessStateReport.retrying("TASK_FAILED", message));
 	}
 
 	/**
@@ -116,6 +122,31 @@ class FailureHandlerTest {
 		// Assert and verify
 		verify(externalTaskMock, never()).getWorkerId();
 		verify(externalTaskServiceMock).handleFailure(id, message, null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
+		verifyNoMoreInteractions(externalTaskServiceMock);
+		verify(processReportServiceMock).reportProcessState(externalTaskMock, ProcessStateReport.failed("TASK_FAILED", message));
+	}
+
+	/**
+	 * A Support Management outage while reporting the failure must not stop handleFailure from running -
+	 * that would leave the task locked with its retries never decremented.
+	 */
+	@Test
+	void handleExceptionStillHandlesFailureWhenReportingFails() {
+		// Setup
+		final var message = "message";
+		final var id = UUID.randomUUID().toString();
+		final var retriesLeft = 2;
+
+		// Mock
+		when(externalTaskMock.getId()).thenReturn(id);
+		when(externalTaskMock.getRetries()).thenReturn(retriesLeft);
+		doThrow(new RuntimeException("boom")).when(processReportServiceMock).reportProcessState(any(), any());
+
+		// Act
+		failureHandler.handleException(externalTaskServiceMock, externalTaskMock, message);
+
+		// Assert and verify
+		verify(externalTaskServiceMock).handleFailure(id, message, null, retriesLeft - 1, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verifyNoMoreInteractions(externalTaskServiceMock);
 	}
 }

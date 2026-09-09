@@ -24,6 +24,8 @@ import se.sundsvall.dept44.requestid.RequestId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -223,5 +225,48 @@ class AbstractTaskWorkerTest {
 		// Assert - not caught anywhere between patchErrand and here, so the task is retried rather than completed
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Bad Gateway: Precondition Failed");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
+	}
+
+	@Test
+	void executeStillRunsTheStepWhenTheRunningReportFails() {
+		// Arrange - Support Management being unreachable for the RUNNING report must not fail the business task
+		doThrow(new IllegalStateException("Support Management down")).when(processReportServiceMock).reportProcessState(any(), any());
+
+		// Act
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert - the step still ran and completed, and the failure handler was never invoked
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+		verify(failureHandlerMock, never()).handleException(any(), any(), any());
+	}
+
+	@Test
+	void executeStillCompletesWhenTheFinalReportFails() {
+		// Arrange - the RUNNING report succeeds, the COMPLETED report fails; the failure must not undo the completion
+		doNothing()
+			.doThrow(new IllegalStateException("Support Management down"))
+			.when(processReportServiceMock).reportProcessState(any(), any());
+
+		// Act
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+		verify(failureHandlerMock, never()).handleException(any(), any(), any());
+	}
+
+	@Test
+	void executeStillCompletesWhenTheFinalReportGetsAPreconditionFailed() {
+		// Arrange - a 412 on the report is swallowed the same as any other report failure (see AbstractTaskWorker)
+		doNothing()
+			.doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
+			.when(processReportServiceMock).reportProcessState(any(), any());
+
+		// Act
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+		verify(failureHandlerMock, never()).handleException(any(), any(), any());
 	}
 }

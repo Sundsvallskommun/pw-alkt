@@ -36,17 +36,30 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init(externalTask.getVariable(PROCESS_VARIABLE_REQUEST_ID));
 		try {
-			processReportService.reportProcessState(externalTask, ProcessStateReport.running(externalTask.getActivityId(), null));
+			reportProcessState(externalTask, ProcessStateReport.running(externalTask.getActivityId(), null));
 
 			final var report = executeBusinessLogic(externalTask, externalTaskService);
 
-			processReportService.reportProcessState(externalTask, report);
+			reportProcessState(externalTask, report);
 			externalTaskService.complete(externalTask, report.variables());
 		} catch (final Exception e) {
 			logException(externalTask, e);
 			failureHandler.handleException(externalTaskService, externalTask, e.getMessage());
 		} finally {
 			RequestId.reset();
+		}
+	}
+
+	// A failed report must not fail the business task - same rule FailureHandler.reportFailure applies on the failure
+	// path. This also swallows a 412 (the errand moved under us): dept44's Feign error decoder collapses every
+	// upstream error into ClientProblem(BAD_GATEWAY, ...), so there is no clean signal here to single a 412 out and
+	// retry on. Once DRAKEN-4736 lands a step that writes to the errand and reports a real errandVersion, a swallowed
+	// 412 means that write is silently lost - revisit then.
+	private void reportProcessState(final ExternalTask externalTask, final ProcessStateReport report) {
+		try {
+			processReportService.reportProcessState(externalTask, report);
+		} catch (final Exception e) {
+			logger.error("Could not report {} for task {}", report.status(), sanitizeForLogging(externalTask.getId()), e);
 		}
 	}
 
