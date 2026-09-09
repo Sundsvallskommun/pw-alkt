@@ -256,8 +256,10 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
-	void executeStillCompletesWhenTheFinalReportGetsAPreconditionFailed() {
-		// Arrange - a 412 on the report is swallowed the same as any other report failure (see AbstractTaskWorker)
+	void executeDoesNotCompleteWhenTheFinalReportGetsAPreconditionFailed() {
+		// Arrange - a 412 means the errand moved under us; the step must retry rather than complete on stale data.
+		// dept44's Feign error decoder collapses every upstream error into ClientProblem(BAD_GATEWAY, ...), so this
+		// is the shape a real 412 from Support Management actually takes by the time it reaches this class.
 		doNothing()
 			.doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
 			.when(processReportServiceMock).reportProcessState(any(), any());
@@ -266,7 +268,8 @@ class AbstractTaskWorkerTest {
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
 		// Assert
-		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
-		verify(failureHandlerMock, never()).handleException(any(), any(), any());
+		verify(externalTaskServiceMock, never()).complete(any(), any());
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock,
+			"Bad Gateway: support-management error: {status=412 Precondition Failed, title=Precondition Failed}");
 	}
 }

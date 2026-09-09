@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
@@ -51,16 +52,25 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	}
 
 	// A failed report must not fail the business task - same rule FailureHandler.reportFailure applies on the failure
-	// path. This also swallows a 412 (the errand moved under us): dept44's Feign error decoder collapses every
-	// upstream error into ClientProblem(BAD_GATEWAY, ...), so there is no clean signal here to single a 412 out and
-	// retry on. Once DRAKEN-4736 lands a step that writes to the errand and reports a real errandVersion, a swallowed
-	// 412 means that write is silently lost - revisit then.
+	// path. Exception: a 412 means the errand moved under us, so it is left to propagate - the step reruns and its
+	// second attempt rereads the errand. dept44's Feign error decoder collapses every upstream error into
+	// ClientProblem(BAD_GATEWAY, ...), so there is no typed status to match on here; the original status only
+	// survives in the message text.
 	private void reportProcessState(final ExternalTask externalTask, final ProcessStateReport report) {
 		try {
 			processReportService.reportProcessState(externalTask, report);
+		} catch (final ClientProblem e) {
+			if (isPreconditionFailed(e)) {
+				throw e;
+			}
+			logger.error("Could not report {} for task {}", report.status(), sanitizeForLogging(externalTask.getId()), e);
 		} catch (final Exception e) {
 			logger.error("Could not report {} for task {}", report.status(), sanitizeForLogging(externalTask.getId()), e);
 		}
+	}
+
+	private static boolean isPreconditionFailed(final ClientProblem e) {
+		return (e.getMessage() != null) && e.getMessage().contains("412");
 	}
 
 	protected void logInfo(final String msg, final Object... arguments) {
