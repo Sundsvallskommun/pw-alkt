@@ -1,23 +1,15 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
-import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
-import generated.se.sundsvall.operaton.StartProcessInstanceDto;
-import generated.se.sundsvall.operaton.VariableValueDto;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.api.model.ErrandEvent;
-import se.sundsvall.alkt.integration.operaton.OperatonClient;
+import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
 import se.sundsvall.dept44.exception.ClientProblem;
-import se.sundsvall.dept44.requestid.RequestId;
 
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +19,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -46,16 +37,10 @@ class ProcessServiceTest {
 	private static final String PROCESS_KEY = "alcohol-serving";
 
 	@Mock
-	private OperatonClient operatonClientMock;
+	private OperatonIntegration operatonIntegrationMock;
 
 	@InjectMocks
 	private ProcessService processService;
-
-	@Captor
-	private ArgumentCaptor<StartProcessInstanceDto> startProcessCaptor;
-
-	@Captor
-	private ArgumentCaptor<CorrelationMessageDto> correlationMessageCaptor;
 
 	private static ErrandEvent event(final ErrandEvent.EventType eventType, final String errandId, final String processKey, final Boolean startAllowed) {
 		final var errandEvent = new ErrandEvent();
@@ -76,25 +61,15 @@ class ProcessServiceTest {
 		// Arrange
 		final var errandId = randomUUID().toString();
 		final var processInstanceId = randomUUID().toString();
-		final var logId = randomUUID().toString();
 
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
-		when(operatonClientMock.startProcessWithTenant(any(), any(), any())).thenReturn(new ProcessInstanceWithVariablesDto().id(processInstanceId));
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID)).thenReturn(processInstanceId);
 
 		// Act
-		try (MockedStatic<RequestId> requestIdMock = mockStatic(RequestId.class)) {
-			requestIdMock.when(RequestId::get).thenReturn(logId);
-			processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(CREATE, errandId, PROCESS_KEY, true));
-		}
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(CREATE, errandId, PROCESS_KEY, true));
 
 		// Assert
-		verify(operatonClientMock).startProcessWithTenant(eq(PROCESS_KEY), eq(TENANT_ID), startProcessCaptor.capture());
-		assertThat(startProcessCaptor.getValue().getBusinessKey()).isEqualTo(errandId);
-		assertThat(startProcessCaptor.getValue().getVariables())
-			.containsKeys("municipalityId", "namespace", "errandId", "requestId")
-			.extractingByKeys("municipalityId", "namespace", "errandId", "requestId")
-			.extracting(VariableValueDto::getValue)
-			.containsExactly(MUNICIPALITY_ID, NAMESPACE, errandId, logId);
+		verify(operatonIntegrationMock).startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID);
 	}
 
 	/**
@@ -107,14 +82,14 @@ class ProcessServiceTest {
 		// Arrange
 		final var errandId = randomUUID().toString();
 
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
-		when(operatonClientMock.startProcessWithTenant(any(), any(), any())).thenReturn(new ProcessInstanceWithVariablesDto().id(randomUUID().toString()));
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.startProcess(any(), any(), any(), any(), any())).thenReturn(randomUUID().toString());
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, true));
 
 		// Assert
-		verify(operatonClientMock).startProcessWithTenant(eq(PROCESS_KEY), eq(TENANT_ID), any());
+		verify(operatonIntegrationMock).startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID);
 	}
 
 	@Test
@@ -122,14 +97,14 @@ class ProcessServiceTest {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		when(operatonClientMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of());
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, null, true));
 
 		// Assert
-		verify(operatonClientMock).findProcessInstances(errandId, null, TENANT_ID);
-		verifyNoMoreInteractions(operatonClientMock);
+		verify(operatonIntegrationMock).findProcessInstances(errandId, null, TENANT_ID);
+		verifyNoMoreInteractions(operatonIntegrationMock);
 	}
 
 	@Test
@@ -137,14 +112,14 @@ class ProcessServiceTest {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
 
 		// Assert
-		verify(operatonClientMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
-		verifyNoMoreInteractions(operatonClientMock);
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verifyNoMoreInteractions(operatonIntegrationMock);
 	}
 
 	/** An absent permission is no permission: a process started in error spends the one process life the errand has. */
@@ -153,14 +128,14 @@ class ProcessServiceTest {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, null));
 
 		// Assert
-		verify(operatonClientMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
-		verifyNoMoreInteractions(operatonClientMock);
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verifyNoMoreInteractions(operatonIntegrationMock);
 	}
 
 	@Test
@@ -168,7 +143,7 @@ class ProcessServiceTest {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		when(operatonClientMock.findProcessInstances(errandId, "no-such-process", TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.findProcessInstances(errandId, "no-such-process", TENANT_ID)).thenReturn(List.of());
 
 		// Act
 		final var problem = assertThrows(se.sundsvall.dept44.problem.ThrowableProblem.class,
@@ -176,7 +151,7 @@ class ProcessServiceTest {
 
 		// Assert
 		assertThat(problem.getStatus().value()).isEqualTo(422);
-		verify(operatonClientMock, never()).startProcessWithTenant(any(), any(), any());
+		verify(operatonIntegrationMock, never()).startProcess(any(), any(), any(), any(), any());
 	}
 
 	@Test
@@ -184,16 +159,13 @@ class ProcessServiceTest {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
 
 		// Assert
-		verify(operatonClientMock).correlateMessage(correlationMessageCaptor.capture());
-		assertThat(correlationMessageCaptor.getValue())
-			.extracting(CorrelationMessageDto::getMessageName, CorrelationMessageDto::getBusinessKey, CorrelationMessageDto::getTenantId, CorrelationMessageDto::getAll)
-			.containsExactly("errandUpdated", errandId, TENANT_ID, false);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
 	}
 
 	@Test
@@ -205,16 +177,13 @@ class ProcessServiceTest {
 		errandEvent.setEventSubType("SIGNAL");
 		errandEvent.setSignalName("review_completed");
 
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
 
 		// Assert
-		verify(operatonClientMock).correlateMessage(correlationMessageCaptor.capture());
-		assertThat(correlationMessageCaptor.getValue())
-			.extracting(CorrelationMessageDto::getMessageName, CorrelationMessageDto::getBusinessKey)
-			.containsExactly("review_completed", errandId);
+		verify(operatonIntegrationMock).correlateMessage("review_completed", errandId, TENANT_ID);
 	}
 
 	/** Support Management's casing of eventSubType is not guaranteed, so the SIGNAL check must not be case-sensitive. */
@@ -227,16 +196,13 @@ class ProcessServiceTest {
 		errandEvent.setEventSubType("signal");
 		errandEvent.setSignalName("review_completed");
 
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
 
 		// Assert
-		verify(operatonClientMock).correlateMessage(correlationMessageCaptor.capture());
-		assertThat(correlationMessageCaptor.getValue())
-			.extracting(CorrelationMessageDto::getMessageName, CorrelationMessageDto::getBusinessKey)
-			.containsExactly("review_completed", errandId);
+		verify(operatonIntegrationMock).correlateMessage("review_completed", errandId, TENANT_ID);
 	}
 
 	/** A signal without a name can never become correlatable, so redelivering it would be pointless. */
@@ -248,13 +214,13 @@ class ProcessServiceTest {
 		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
 		errandEvent.setEventSubType("SIGNAL");
 
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
 
 		// Assert
-		verify(operatonClientMock, never()).correlateMessage(any());
+		verify(operatonIntegrationMock, never()).correlateMessage(any(), any(), any());
 	}
 
 	/** The process was between two wait states when the change arrived. Ordinary, and not something a retry can mend. */
@@ -263,8 +229,8 @@ class ProcessServiceTest {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		when(operatonClientMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
-		doThrow(new ClientProblem(BAD_GATEWAY, "No matching wait state")).when(operatonClientMock).correlateMessage(any());
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
+		doThrow(new ClientProblem(BAD_GATEWAY, "No matching wait state")).when(operatonIntegrationMock).correlateMessage(any(), any(), any());
 
 		// Act and assert
 		assertThatNoException().isThrownBy(() -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
@@ -276,15 +242,15 @@ class ProcessServiceTest {
 		// Arrange
 		final var errandId = randomUUID().toString();
 		final var processInstanceId = randomUUID().toString();
-		when(operatonClientMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(processInstanceId)));
+		when(operatonIntegrationMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(processInstanceId)));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(DELETE, errandId, null, false));
 
 		// Assert
-		verify(operatonClientMock).findProcessInstances(errandId, null, TENANT_ID);
-		verify(operatonClientMock).deleteProcessInstance(processInstanceId, false);
-		verifyNoMoreInteractions(operatonClientMock);
+		verify(operatonIntegrationMock).findProcessInstances(errandId, null, TENANT_ID);
+		verify(operatonIntegrationMock).deleteProcessInstance(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
 	}
 
 	/** The key of a deleted errand cannot always be resolved, so the instance is matched on its business key alone. */
@@ -294,13 +260,13 @@ class ProcessServiceTest {
 		// Arrange
 		final var errandId = randomUUID().toString();
 		final var errandEvent = event(DELETE, errandId, "some-key", false);
-		when(operatonClientMock.findProcessInstances(eq(errandId), isNull(), eq(TENANT_ID))).thenReturn(List.of(new ProcessInstanceDto().id("instance")));
+		when(operatonIntegrationMock.findProcessInstances(eq(errandId), isNull(), eq(TENANT_ID))).thenReturn(List.of(new ProcessInstanceDto().id("instance")));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
 
 		// Assert
-		verify(operatonClientMock).deleteProcessInstance("instance", false);
+		verify(operatonIntegrationMock).deleteProcessInstance("instance");
 	}
 
 	@Test
@@ -308,13 +274,13 @@ class ProcessServiceTest {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		when(operatonClientMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of());
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(DELETE, errandId, null, false));
 
 		// Assert
-		verify(operatonClientMock).findProcessInstances(errandId, null, TENANT_ID);
-		verifyNoMoreInteractions(operatonClientMock);
+		verify(operatonIntegrationMock).findProcessInstances(errandId, null, TENANT_ID);
+		verifyNoMoreInteractions(operatonIntegrationMock);
 	}
 }

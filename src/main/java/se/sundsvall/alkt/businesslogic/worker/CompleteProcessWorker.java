@@ -4,17 +4,12 @@ import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.springframework.stereotype.Component;
-import se.sundsvall.alkt.api.model.ProcessStatus;
+import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 
-import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
-/**
- * The last step of a process, sitting immediately before its end event. Support Management only learns that a process
- * is over through a report, and reports come from work steps.
- */
 @Component
 @ExternalTaskSubscription("CompleteProcessTask")
 public class CompleteProcessWorker extends AbstractTaskWorker {
@@ -24,9 +19,9 @@ public class CompleteProcessWorker extends AbstractTaskWorker {
 	}
 
 	@Override
-	protected ProcessStatus executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
+	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		logInfo("Process instance {} of errand {} reached its end", sanitizeForLogging(externalTask.getProcessInstanceId()), sanitizeForLogging(getErrandId(externalTask)));
 
-		return COMPLETED;
+		return ProcessStateReport.completed();
 	}
 }
