@@ -33,6 +33,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 
 @WireMockAppTestSuite(files = "classpath:/Wiremock/", classes = Application.class)
@@ -160,6 +161,22 @@ class SupportManagementClientIT extends AbstractAppTest {
 		assertThatThrownBy(() -> supportManagementClient.reportProcess(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, report))
 			.isInstanceOf(ClientProblem.class)
 			.hasMessageContaining("Precondition Failed");
+	}
+
+	/** An errand that is gone is an answer the reconciliation acts on, so 404 keeps its status instead of becoming 502. */
+	@Test
+	void getErrandProcessesOfAMissingErrandThrowsNotFound() {
+		mockApiGatewayToken();
+		stubFor(get(urlEqualTo("/api-support-management/%s/%s/errands/%s/processes".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)))
+			.willReturn(aResponse()
+				.withStatus(404)
+				.withHeader("Content-Type", "application/problem+json")
+				.withBody("{\"title\":\"Not Found\",\"status\":404}")));
+
+		assertThatThrownBy(() -> supportManagementClient.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(ClientProblem.class)
+			.extracting(problem -> ((ClientProblem) problem).getStatus())
+			.isEqualTo(NOT_FOUND);
 	}
 
 	@Test

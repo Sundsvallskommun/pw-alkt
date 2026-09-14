@@ -36,6 +36,10 @@ public final class Constants {
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES,
 		PROCESS_KEY_SUPERVISION);
 
+	// The scheduler of this service, see README "Process reconciliation". Deployed with the others but not in PROCESS_KEYS:
+	// it belongs to no errand and must not be startable from an errand event.
+	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
+
 	// How this service names itself in a process report. Support Management checks it against the process consumer
 	// configured for the namespace and rejects a report from anyone else.
 	public static final String PROCESS_SERVICE = "pw-alkt";

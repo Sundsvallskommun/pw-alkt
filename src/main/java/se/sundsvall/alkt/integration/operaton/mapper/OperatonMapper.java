@@ -10,6 +10,7 @@ import java.util.Map;
 import org.camunda.bpm.engine.variable.type.ValueType;
 import se.sundsvall.dept44.requestid.RequestId;
 
+import static java.util.stream.Collectors.joining;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -50,8 +51,8 @@ public final class OperatonMapper {
 		return OPERATON_TIMESTAMP.format(timestamp);
 	}
 
-	/** The *In query parameters take a comma separated list. */
+	/** The *In query parameters take a comma separated list. Sorted, so the same set always gives the same query. */
 	public static String toProcessDefinitionKeyIn(final Collection<String> processKeys) {
-		return String.join(",", processKeys);
+		return processKeys.stream().sorted().collect(joining(","));
 	}
 }

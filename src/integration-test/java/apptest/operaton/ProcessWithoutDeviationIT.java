@@ -50,8 +50,9 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String TENANT_ID_ALKT = "ALKT";
-	// One deployment per process model in processmodels/ - bump this when a process schema is added or removed
-	private static final int EXPECTED_DEPLOYMENTS = 10;
+	// One deployment per process model in processmodels/ - bump this when a process schema is added or removed. Ten
+	// errand processes plus process-reconciliation.
+	private static final int EXPECTED_DEPLOYMENTS = 11;
 	// Support Management identifies an errand by a UUID, so that is what the process is started with
 	private static final String ERRAND_ID = "f0882f1d-06bc-47fd-b017-1d8307f5ce95";
 	private static final String PROCESS_KEY = "alcohol-serving";
