@@ -1,6 +1,8 @@
 package se.sundsvall.alkt.integration.supportmanagement;
 
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.ErrandProcess;
+import generated.se.sundsvall.supportmanagement.ErrandProcesses;
 import generated.se.sundsvall.supportmanagement.Labels;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -57,6 +60,24 @@ public interface SupportManagementClient {
 		@RequestHeader("If-Match") String ifMatch,
 		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
 		@RequestBody Errand errand);
+
+	/**
+	 * Reports the state of a process instance. Creates the row on the errand the first time (201) and updates it after
+	 * that (200). No X-Trigger-Process: a report is not an errand write and never wakes the process.
+	 */
+	@PutMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/processes/{processInstanceId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<ErrandProcess> reportProcess(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String processInstanceId,
+		@RequestBody ErrandProcess report);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/processes", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<ErrandProcesses> getErrandProcesses(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
 
 	// TODO: add putDecision for PUT /{municipalityId}/{namespace}/errands/{errandId}/decision once Support Management
 	// exposes it (DRAKEN-4744). Needed for a process to write an AUTOMATIC decision back to the errand.
