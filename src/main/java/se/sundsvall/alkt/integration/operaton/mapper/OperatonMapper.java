@@ -3,6 +3,9 @@ package se.sundsvall.alkt.integration.operaton.mapper;
 import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import generated.se.sundsvall.operaton.VariableValueDto;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.Map;
 import org.camunda.bpm.engine.variable.type.ValueType;
 import se.sundsvall.dept44.requestid.RequestId;
@@ -13,6 +16,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
 
 public final class OperatonMapper {
+
+	private static final DateTimeFormatter OPERATON_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 
 	private OperatonMapper() {}
 
@@ -38,5 +43,15 @@ public final class OperatonMapper {
 		return new VariableValueDto()
 			.type(valueType.getName())
 			.value(value);
+	}
+
+	/** The format Operaton's REST API takes for timestamps, e.g. 2013-01-01T00:00:00.000+0200. */
+	public static String toOperatonTimestamp(final OffsetDateTime timestamp) {
+		return OPERATON_TIMESTAMP.format(timestamp);
+	}
+
+	/** The *In query parameters take a comma separated list. */
+	public static String toProcessDefinitionKeyIn(final Collection<String> processKeys) {
+		return String.join(",", processKeys);
 	}
 }
