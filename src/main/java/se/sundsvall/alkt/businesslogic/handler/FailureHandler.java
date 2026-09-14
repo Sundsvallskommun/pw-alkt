@@ -4,13 +4,17 @@ import java.util.Map;
 import java.util.Optional;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static java.util.Collections.emptyMap;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.RETRYING;
+import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
+import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
+import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
  * Reports a failed external task back to the engine, decrementing the remaining retries.
@@ -22,6 +26,8 @@ import static se.sundsvall.alkt.api.model.ProcessStatus.RETRYING;
  */
 @Component
 public class FailureHandler {
+
+	private static final Logger LOG = LoggerFactory.getLogger(FailureHandler.class);
 
 	private final int maxRetries;
 
@@ -60,8 +66,22 @@ public class FailureHandler {
 			emptyMap());
 	}
 
+	/**
+	 * Reports before handleFailure so that the message lands on the errand where the case worker sees it. A report that
+	 * fails is logged and nothing more: handleFailure has to run regardless, or the task keeps its lock until it expires
+	 * and Support Management is down anyway.
+	 */
 	private void reportFailure(final ExternalTask externalTask, final String message) {
-		processReportService.report(externalTask, calculateRetries(externalTask) > 0 ? RETRYING : FAILED, message);
+		final var report = calculateRetries(externalTask) > 0
+			? ProcessStateReport.retrying(ERROR_CODE_RETRY, message)
+			: ProcessStateReport.failed(ERROR_CODE_INCIDENT, message);
+
+		try {
+			processReportService.report(externalTask, report);
+		} catch (final Exception e) {
+			LOG.error("Could not report {} for task {} of process instance {} to Support Management", report.status(), sanitizeForLogging(externalTask.getId()),
+				sanitizeForLogging(externalTask.getProcessInstanceId()), e);
+		}
 	}
 
 	private int calculateRetries(ExternalTask externalTask) {

@@ -1,5 +1,6 @@
 package apptest.operaton;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
 import java.time.Duration;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +14,13 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static apptest.verification.ProcessPathway.closurePathway;
 import static apptest.verification.ProcessPathway.decisionPathway;
 import static apptest.verification.ProcessPathway.followUpPathway;
@@ -63,6 +71,8 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 
 		// Setup mocks
 		mockApiGatewayToken();
+		final var reportPath = "/api-support-management/%s/%s/errands/%s/processes/[^/]+".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		stubFor(put(urlPathMatching(reportPath)).willReturn(okJson("{}").withHeader("Content-Encoding", "identity")));
 
 		// The errand was created and Support Management allows the event to start a process
 		sendErrandEvent("""
@@ -82,8 +92,12 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
-		// Verify wiremock stubs
+		// Verify wiremock stubs - the last work step is the one that tells Support Management the process is over
 		verifyAllStubs();
+		verify(putRequestedFor(urlPathMatching(reportPath))
+			.withHeader("X-Sent-By", WireMock.equalTo("pw-alkt; type=processEngine"))
+			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("COMPLETED")))
+			.withRequestBody(matchingJsonPath("$.processKey", WireMock.equalTo(PROCESS_KEY))));
 
 		// Verify process pathway.
 		assertProcessPathway(processInstanceId, false, Tuples.create()

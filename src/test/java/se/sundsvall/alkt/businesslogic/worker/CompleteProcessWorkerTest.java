@@ -9,11 +9,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
 
 @ExtendWith(MockitoExtension.class)
 class CompleteProcessWorkerTest {
@@ -35,7 +35,7 @@ class CompleteProcessWorkerTest {
 
 	@Test
 	void reportsTheProcessAsCompleted() {
-		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock)).isEqualTo(COMPLETED);
+		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock)).isEqualTo(ProcessStateReport.completed());
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 
@@ -43,7 +43,7 @@ class CompleteProcessWorkerTest {
 	void executeReportsOnceAndCompletesTheTask() {
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(processReportServiceMock).report(externalTaskMock, COMPLETED, null);
+		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
 		verify(externalTaskServiceMock).complete(externalTaskMock);
 		verifyNoInteractions(failureHandlerMock);
 	}

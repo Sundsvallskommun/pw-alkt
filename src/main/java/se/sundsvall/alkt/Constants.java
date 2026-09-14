@@ -36,6 +36,14 @@ public final class Constants {
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES,
 		PROCESS_KEY_SUPERVISION);
 
+	// How this service names itself in a process report. Support Management checks it against the process consumer
+	// configured for the namespace and rejects a report from anyone else.
+	public static final String PROCESS_SERVICE = "pw-alkt";
+
+	// Error codes carried in a process report. Support Management stores them without interpreting them.
+	public static final String ERROR_CODE_RETRY = "RETRY";
+	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
+
 	// Namespace where the processes are deployed, a.k.a tenant. Must match process-engine.deployment.processes[].tenant
 	// in application.yaml - the integration test covers the pairing.
 	public static final String TENANT_ID_ALKT = "ALKT";

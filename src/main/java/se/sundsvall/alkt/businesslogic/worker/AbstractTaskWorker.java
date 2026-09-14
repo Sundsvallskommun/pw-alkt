@@ -5,9 +5,9 @@ import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sundsvall.alkt.api.model.ProcessStatus;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
@@ -30,15 +30,20 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	}
 
 	/** The state the process is in once the step is done. Returning it is how a step reports, so it cannot be skipped. */
-	protected abstract ProcessStatus executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
+	protected abstract ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
 
+	/**
+	 * A report that Support Management refuses is a failed step: the task is not completed but handed to the failure
+	 * handler, which lets the engine run it again. That is what a 412 is for, since the step is to redo its work against
+	 * the errand as it now is.
+	 */
 	@Override
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init(externalTask.getVariable(PROCESS_VARIABLE_REQUEST_ID));
 		try {
-			final var status = executeBusinessLogic(externalTask, externalTaskService);
+			final var report = executeBusinessLogic(externalTask, externalTaskService);
 
-			processReportService.report(externalTask, status, null);
+			processReportService.report(externalTask, report);
 			externalTaskService.complete(externalTask);
 		} catch (final Exception e) {
 			logException(externalTask, e);

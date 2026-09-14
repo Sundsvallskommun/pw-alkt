@@ -13,18 +13,21 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.Constants;
-import se.sundsvall.alkt.api.model.ProcessStatus;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,8 +40,8 @@ class AbstractTaskWorkerTest {
 		}
 
 		@Override
-		public ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-			return ProcessStatus.COMPLETED;
+		public ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			return ProcessStateReport.completed();
 		}
 	}
 
@@ -122,9 +125,9 @@ class AbstractTaskWorkerTest {
 
 		final var recordingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
-			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				observedRequestIds.add(RequestId.get());
-				return ProcessStatus.COMPLETED;
+				return ProcessStateReport.completed();
 			}
 		};
 
@@ -140,12 +143,39 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
+	void executeReportsWhatTheStepReturnedAndThenCompletesTheTask() {
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(UUID.randomUUID().toString());
+
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		final var inOrder = inOrder(processReportServiceMock, externalTaskServiceMock);
+		inOrder.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
+		inOrder.verify(externalTaskServiceMock).complete(externalTaskMock);
+		verifyNoInteractions(failureHandlerMock);
+	}
+
+	@Test
+	void executeHandsARefusedReportToTheFailureHandlerWithoutCompletingTheTask() {
+		// Arrange - Support Management answers 412 on the report: the errand moved under the step
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(UUID.randomUUID().toString());
+		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Precondition Failed")).when(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
+
+		// Act
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert - the step is run again by the engine rather than completed with a state Support Management never took
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Bad Gateway: Precondition Failed");
+		verify(externalTaskServiceMock, never()).complete(any());
+		verify(externalTaskServiceMock, never()).complete(any(), any());
+	}
+
+	@Test
 	void executeHandsAFailingStepToTheFailureHandlerAndClearsRequestId() {
 		// Arrange
 		final var requestId = UUID.randomUUID().toString();
 		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
-			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				throw new IllegalStateException("Boom");
 			}
 		};
@@ -167,7 +197,7 @@ class AbstractTaskWorkerTest {
 		final var requestId = UUID.randomUUID().toString();
 		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
-			protected ProcessStatus executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				throw new ClientProblem(HttpStatus.BAD_GATEWAY, "Precondition Failed");
 			}
 		};

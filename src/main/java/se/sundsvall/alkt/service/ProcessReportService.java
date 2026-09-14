@@ -4,21 +4,44 @@ import org.camunda.bpm.client.task.ExternalTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import se.sundsvall.alkt.api.model.ProcessStatus;
+import se.sundsvall.alkt.integration.supportmanagement.SupportManagementClient;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ReportTarget;
 
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandProcess;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toReportTarget;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
+/**
+ * The one way the state of a process reaches Support Management. Work steps report through it once they are done, the
+ * failure handler when they are not, and the reconciliation when nobody else did.
+ */
 @Service
 public class ProcessReportService {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProcessReportService.class);
 
-	// TODO: call PUT /{municipalityId}/{namespace}/errands/{errandId}/processes/{processInstanceId} once Support Management
-	// exposes it (DRAKEN-4736). Until then the state is only logged, so Support Management never learns that a
-	// process finished and leaves its row on RUNNING for good.
-	public void report(final ExternalTask externalTask, final ProcessStatus status, final String message) {
-		LOG.info("Process instance {} of errand {} reports {} at activity {}: {}",
-			sanitizeForLogging(externalTask.getProcessInstanceId()), sanitizeForLogging(externalTask.getBusinessKey()), status,
-			sanitizeForLogging(externalTask.getActivityId()), sanitizeForLogging(message));
+	private final SupportManagementClient supportManagementClient;
+
+	ProcessReportService(final SupportManagementClient supportManagementClient) {
+		this.supportManagementClient = supportManagementClient;
+	}
+
+	public void report(final ExternalTask externalTask, final ProcessStateReport report) {
+		report(toReportTarget(externalTask), report);
+	}
+
+	/**
+	 * Sends the report. Anything Support Management answers with other than success is thrown as a
+	 * {@code ClientProblem}: a 412 means the errand moved under the step and the step is to be run again, and the rest
+	 * are faults the caller decides what to do about.
+	 */
+	public void report(final ReportTarget target, final ProcessStateReport report) {
+		LOG.info("Process instance {} of errand {} reports {} at activity {}",
+			sanitizeForLogging(target.processInstanceId()), sanitizeForLogging(target.errandId()), report.status(),
+			sanitizeForLogging(report.currentActivityId()));
+
+		supportManagementClient.reportProcess(target.municipalityId(), target.namespace(), target.errandId(), target.processInstanceId(),
+			toErrandProcess(target, report));
 	}
 }

@@ -4,11 +4,10 @@ import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.springframework.stereotype.Component;
-import se.sundsvall.alkt.api.model.ProcessStatus;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 
-import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
@@ -24,9 +23,9 @@ public class CompleteProcessWorker extends AbstractTaskWorker {
 	}
 
 	@Override
-	protected ProcessStatus executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
+	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		logInfo("Process instance {} of errand {} reached its end", sanitizeForLogging(externalTask.getProcessInstanceId()), sanitizeForLogging(getErrandId(externalTask)));
 
-		return COMPLETED;
+		return ProcessStateReport.completed();
 	}
 }
