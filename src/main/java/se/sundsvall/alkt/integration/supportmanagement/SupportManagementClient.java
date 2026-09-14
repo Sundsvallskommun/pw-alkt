@@ -61,10 +61,7 @@ public interface SupportManagementClient {
 		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
 		@RequestBody Errand errand);
 
-	/**
-	 * Reports the state of a process instance. Creates the row on the errand the first time (201) and updates it after
-	 * that (200). No X-Trigger-Process: a report is not an errand write and never wakes the process.
-	 */
+	/** 201 the first time, 200 after that. No X-Trigger-Process, a report is not an errand write. */
 	@PutMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/processes/{processInstanceId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<ErrandProcess> reportProcess(
 		@PathVariable String municipalityId,

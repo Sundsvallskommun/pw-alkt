@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -69,14 +70,35 @@ class ProcessReportServiceTest {
 		when(externalTaskMock.getProcessInstanceId()).thenReturn(PROCESS_INSTANCE_ID);
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY);
 		when(externalTaskMock.getId()).thenReturn(EXTERNAL_TASK_ID);
+		when(externalTaskMock.getActivityId()).thenReturn("external_task_complete_process");
 		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
 
 		service.report(externalTaskMock, ProcessStateReport.completed());
 
 		verify(supportManagementClientMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		verifyNoMoreInteractions(supportManagementClientMock);
 		assertThat(captor.getValue().getProcessStatus()).isEqualTo("COMPLETED");
 		assertThat(captor.getValue().getProcessKey()).isEqualTo(PROCESS_KEY);
 		assertThat(captor.getValue().getExternalTaskId()).isEqualTo(EXTERNAL_TASK_ID);
+		// A report naming no activity is placed at the task's, so the row does not lose the one it has
+		assertThat(captor.getValue().getCurrentActivityId()).isEqualTo("external_task_complete_process");
+	}
+
+	@Test
+	void keepsTheActivityAReportAlreadyNames() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
+		when(externalTaskMock.getProcessInstanceId()).thenReturn(PROCESS_INSTANCE_ID);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY);
+		when(externalTaskMock.getId()).thenReturn(EXTERNAL_TASK_ID);
+		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+
+		service.report(externalTaskMock, ProcessStateReport.completed().atActivity("closure_phase"));
+
+		verify(supportManagementClientMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getCurrentActivityId()).isEqualTo("closure_phase");
+		verify(externalTaskMock, never()).getActivityId();
 	}
 
 	/** A refused report is the caller's problem to handle, so nothing is swallowed here. */

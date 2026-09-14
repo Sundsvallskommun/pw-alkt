@@ -10,6 +10,8 @@ import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
 import se.sundsvall.dept44.requestid.RequestId;
 import se.sundsvall.dept44.support.Identifier;
 
+import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
+
 @Import(FeignConfiguration.class)
 public class SupportManagementConfiguration {
 
@@ -17,7 +19,7 @@ public class SupportManagementConfiguration {
 
 	// Identifies pw-alkt to Support Management specifically, regardless of any Identifier set elsewhere on the calling
 	// thread.
-	private static final String SENT_BY = "pw-alkt; type=processEngine";
+	private static final String SENT_BY = PROCESS_SERVICE + "; type=processEngine";
 
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, SupportManagementProperties properties) {

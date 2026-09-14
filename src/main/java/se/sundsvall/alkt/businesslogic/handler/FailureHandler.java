@@ -45,34 +45,32 @@ public class FailureHandler {
 	}
 
 	public void handleException(ExternalTaskService externalTaskService, ExternalTask externalTask, String message) {
-		reportFailure(externalTask, message);
+		final var retries = calculateRetries(externalTask);
+		reportFailure(externalTask, message, retries);
 
 		externalTaskService.handleFailure(externalTask.getId(),
 			message, // errorMessage - surfaces as the incident message
 			null, // errorDetails
-			calculateRetries(externalTask),
+			retries,
 			retryTimeoutInMilliseconds);
 	}
 
 	public void handleException(ExternalTaskService externalTaskService, ExternalTask externalTask, String message, Map<String, Object> variables) {
-		reportFailure(externalTask, message);
+		final var retries = calculateRetries(externalTask);
+		reportFailure(externalTask, message, retries);
 
 		externalTaskService.handleFailure(externalTask.getId(),
 			message, // errorMessage - surfaces as the incident message
 			null, // errorDetails
-			calculateRetries(externalTask),
+			retries,
 			retryTimeoutInMilliseconds,
 			variables,
 			emptyMap());
 	}
 
-	/**
-	 * Reports before handleFailure so that the message lands on the errand where the case worker sees it. A report that
-	 * fails is logged and nothing more: handleFailure has to run regardless, or the task keeps its lock until it expires
-	 * and Support Management is down anyway.
-	 */
-	private void reportFailure(final ExternalTask externalTask, final String message) {
-		final var report = calculateRetries(externalTask) > 0
+	/** Best effort. A failed report is only logged, handleFailure must run regardless or the task keeps its lock. */
+	private void reportFailure(final ExternalTask externalTask, final String message, final int retries) {
+		final var report = retries > 0
 			? ProcessStateReport.retrying(ERROR_CODE_RETRY, message)
 			: ProcessStateReport.failed(ERROR_CODE_INCIDENT, message);
 

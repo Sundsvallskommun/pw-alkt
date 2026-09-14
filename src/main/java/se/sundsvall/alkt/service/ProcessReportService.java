@@ -12,10 +12,6 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toReportTarget;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
-/**
- * The one way the state of a process reaches Support Management. Work steps report through it once they are done, the
- * failure handler when they are not, and the reconciliation when nobody else did.
- */
 @Service
 public class ProcessReportService {
 
@@ -27,19 +23,19 @@ public class ProcessReportService {
 		this.supportManagementClient = supportManagementClient;
 	}
 
+	/**
+	 * A report without an activity gets the task's, since Support Management overwrites the row's activity with null
+	 * otherwise.
+	 */
 	public void report(final ExternalTask externalTask, final ProcessStateReport report) {
-		report(toReportTarget(externalTask), report);
+		report(toReportTarget(externalTask), report.currentActivityId() == null ? report.atActivity(externalTask.getActivityId()) : report);
 	}
 
-	/**
-	 * Sends the report. Anything Support Management answers with other than success is thrown as a
-	 * {@code ClientProblem}: a 412 means the errand moved under the step and the step is to be run again, and the rest
-	 * are faults the caller decides what to do about.
-	 */
+	/** A refused report throws ClientProblem. The caller decides what that means. */
 	public void report(final ReportTarget target, final ProcessStateReport report) {
-		LOG.info("Process instance {} of errand {} reports {} at activity {}",
+		LOG.info("Process instance {} of errand {} reports {} at activity {}{}",
 			sanitizeForLogging(target.processInstanceId()), sanitizeForLogging(target.errandId()), report.status(),
-			sanitizeForLogging(report.currentActivityId()));
+			sanitizeForLogging(report.currentActivityId()), report.error() == null ? "" : ": " + sanitizeForLogging(report.error().getMessage()));
 
 		supportManagementClient.reportProcess(target.municipalityId(), target.namespace(), target.errandId(), target.processInstanceId(),
 			toErrandProcess(target, report));

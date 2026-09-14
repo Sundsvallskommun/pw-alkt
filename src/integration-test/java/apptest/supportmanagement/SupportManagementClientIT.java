@@ -21,6 +21,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.patch;
 import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
@@ -148,6 +149,7 @@ class SupportManagementClientIT extends AbstractAppTest {
 	void reportProcessAtAStaleErrandVersionThrows() {
 		mockApiGatewayToken();
 		stubFor(put(urlEqualTo("/api-support-management/%s/%s/errands/%s/processes/%s".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID)))
+			.withRequestBody(matchingJsonPath("$.errandVersion", equalTo("99")))
 			.willReturn(aResponse()
 				.withStatus(412)
 				.withHeader("Content-Type", "application/problem+json")
@@ -156,7 +158,8 @@ class SupportManagementClientIT extends AbstractAppTest {
 		final var report = new ErrandProcess().processService("pw-alkt").processKey("alcohol-serving").processStatus("COMPLETED").errandVersion(99L);
 
 		assertThatThrownBy(() -> supportManagementClient.reportProcess(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, report))
-			.isInstanceOf(ClientProblem.class);
+			.isInstanceOf(ClientProblem.class)
+			.hasMessageContaining("Precondition Failed");
 	}
 
 	@Test

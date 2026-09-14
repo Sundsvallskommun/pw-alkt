@@ -14,11 +14,14 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
+import static com.github.tomakehurst.wiremock.client.WireMock.absent;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static apptest.verification.ProcessPathway.closurePathway;
@@ -94,10 +97,14 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 
 		// Verify wiremock stubs - the last work step is the one that tells Support Management the process is over
 		verifyAllStubs();
-		verify(putRequestedFor(urlPathMatching(reportPath))
+		verify(putRequestedFor(urlPathEqualTo("/api-support-management/%s/%s/errands/%s/processes/%s".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, processInstanceId)))
 			.withHeader("X-Sent-By", WireMock.equalTo("pw-alkt; type=processEngine"))
+			.withRequestBody(matchingJsonPath("$.processService", WireMock.equalTo("pw-alkt")))
+			.withRequestBody(matchingJsonPath("$.processKey", WireMock.equalTo(PROCESS_KEY)))
 			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("COMPLETED")))
-			.withRequestBody(matchingJsonPath("$.processKey", WireMock.equalTo(PROCESS_KEY))));
+			.withRequestBody(matchingJsonPath("$.currentActivityId", WireMock.equalTo("external_task_complete_process")))
+			.withRequestBody(matchingJsonPath("$.externalTaskId", matching("[0-9a-f-]{36}")))
+			.withRequestBody(matchingJsonPath("$.processInstanceId", absent())));
 
 		// Verify process pathway.
 		assertProcessPathway(processInstanceId, false, Tuples.create()

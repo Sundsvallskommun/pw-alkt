@@ -33,9 +33,8 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	protected abstract ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
 
 	/**
-	 * A report that Support Management refuses is a failed step: the task is not completed but handed to the failure
-	 * handler, which lets the engine run it again. That is what a 412 is for, since the step is to redo its work against
-	 * the errand as it now is.
+	 * A refused report (412, or Support Management down) is a failed step: the engine runs it again. Steps must
+	 * therefore tolerate being run again after doing their work. Revisited in DRAKEN-4745.
 	 */
 	@Override
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
