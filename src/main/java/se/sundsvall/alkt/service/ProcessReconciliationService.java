@@ -21,6 +21,7 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 
+import static java.time.ZoneOffset.UTC;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
@@ -100,7 +101,7 @@ public class ProcessReconciliationService {
 
 	/** An instance that ended without a final report leaves the errand on RUNNING for good. */
 	private void settleEndedInstances() {
-		final var finishedAfter = toOperatonTimestamp(OffsetDateTime.now().minus(properties.lookback()));
+		final var finishedAfter = toOperatonTimestamp(OffsetDateTime.now(UTC).minus(properties.lookback()));
 		final var instances = operatonClient.findHistoricProcessInstances(TENANT_ID_ALKT, toProcessDefinitionKeyIn(PROCESS_KEYS), true, finishedAfter);
 		if (!instances.isEmpty()) {
 			LOG.info("Found {} instances in tenant {} that ended after {}", instances.size(), TENANT_ID_ALKT, finishedAfter);
