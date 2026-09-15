@@ -4,8 +4,9 @@
 process definitions of the alkohol- och tobaksverksamheten - the permit processes and the supervision process - together
 with the business logic and integrations they need.</p>
 
-<p>The service is a skeleton: the API, the engine integration and the integration test harness are in place, while the
-process models are empty phase structures and no task workers have been implemented yet.</p>
+<p>The service is a skeleton: the API, the engine integration, the reporting to Support Management and the integration
+test harness are in place, while the process models are empty phase structures. The only work steps so far are the one
+that reports a process as completed and the reconciliation described below.</p>
 
 <h3>Process definitions</h3>
 
@@ -72,6 +73,12 @@ process models are empty phase structures and no task workers have been implemen
 			<td class="code">supervision.bpmn</td>
 			<td class="code">supervision</td>
 			<td>Tillsyn</td>
+		</tr>
+		<tr>
+			<td class="code">reconciliation/process-reconciliation.bpmn</td>
+			<td class="code">process-reconciliation</td>
+			<td>The scheduler of the service, see below. Belongs to no errand, is not in <span class="code">PROCESS_KEYS</span>
+			and cannot be started from an errand event</td>
 		</tr>
 	</tbody>
 </table>
@@ -188,6 +195,52 @@ process models are empty phase structures and no task workers have been implemen
 				&nbsp; &nbsp; &nbsp; &nbsp; formResourcePattern: classpath*:processmodels/awesome/*.form
 			</span>
 			</td>
+		</tr>
+	</tbody>
+</table>
+
+<h3>Process reconciliation</h3>
+
+<p>Support Management only learns the state of a process through reports, and reports come from work steps. Two things
+leave the row wrong for good: an incident (the engine gave up on a step, no worker runs any more) and an instance that
+ended without a final report. The reconciliation is the net under both. Every run reports each incident in the tenant
+as <span class="code">FAILED</span> with code <span class="code">INCIDENT</span>, unless the row already says so, and
+settles each instance that ended within <span class="code">reconciliation.lookback</span> and whose row is still live:
+<span class="code">COMPLETED</span> for an end the model chose, <span class="code">FAILED</span> with code
+<span class="code">TERMINATED</span> for one cancelled from outside. An errand that is gone (404) is left alone.</p>
+
+<p>It runs as a process of its own, <span class="code">process-reconciliation.bpmn</span>: a timer start event
+(<span class="code">0 0/5 * * * ?</span>, every five minutes) followed by the external task
+<span class="code">ReconcileProcessesTask</span>. That is what makes a run happen once even though the service runs in
+two pods: the engine fires the timer once per cycle and locks the task for one worker. No database and no shedlock.
+Each run leaves an instance in the history of the engine, kept for one day through
+<span class="code">historyTimeToLive</span>, so history cleanup has to be on in Operaton. History level
+<span class="code">audit</span> or above is needed, since the errand identity of an instance is read from its historic
+variables.</p>
+
+<p>Runs show up in Cockpit as instances of <span class="code">process-reconciliation</span>. A run that fails raises
+an incident on itself right away, since the next cycle is a new attempt anyway.</p>
+
+<table class="settings">
+	<thead>
+		<tr>
+			<th>Setting</th>
+			<th>Description</th>
+			<th>Default&nbsp;value</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td class="code">reconciliation.lookback</td>
+			<td>How far back in the history of the engine each run looks for instances that ended. An end further back than
+			this while the service was down is not settled</td>
+			<td><strong>PT24H</strong></td>
+		</tr>
+		<tr>
+			<td class="code">reconciliation.worker.enabled</td>
+			<td>Set to <strong>false</strong> to stop polling for the task. The timer keeps firing in the engine and the
+			tasks wait there. The integration test profile uses it to keep the shared engine quiet</td>
+			<td><strong>true</strong></td>
 		</tr>
 	</tbody>
 </table>
