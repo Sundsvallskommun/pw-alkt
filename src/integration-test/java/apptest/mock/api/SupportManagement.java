@@ -29,13 +29,25 @@ public class SupportManagement {
 			.willReturn(okJson("{}").withHeader("Content-Encoding", "identity")));
 	}
 
-	/** Refuses every report on the errand with 500, the way a Support Management outage looks to a work step. */
-	public static void mockReportProcessFails(final String municipalityId, final String namespace, final String errandId) {
+	/** Answers every report on the errand with 500, the way a Support Management outage looks to a work step. */
+	public static void mockReportProcessDown(final String municipalityId, final String namespace, final String errandId) {
 		stubFor(put(urlPathMatching(processesPath(municipalityId, namespace, errandId) + "/[^/]+")).atPriority(SPECIFIC)
 			.willReturn(aResponse()
 				.withStatus(500)
 				.withHeader("Content-Type", "application/problem+json")
 				.withBody("{\"title\":\"Internal Server Error\",\"status\":500}")));
+	}
+
+	/**
+	 * Refuses every report on the errand with 412: the errand moved under the step. The one refusal a work step does not
+	 * swallow, so with no retries the engine raises an incident.
+	 */
+	public static void mockReportProcessRefused(final String municipalityId, final String namespace, final String errandId) {
+		stubFor(put(urlPathMatching(processesPath(municipalityId, namespace, errandId) + "/[^/]+")).atPriority(SPECIFIC)
+			.willReturn(aResponse()
+				.withStatus(412)
+				.withHeader("Content-Type", "application/problem+json")
+				.withBody("{\"title\":\"Precondition Failed\",\"status\":412}")));
 	}
 
 	/** One row on the errand, in the given state, with or without an error code. */

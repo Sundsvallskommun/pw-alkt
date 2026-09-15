@@ -222,7 +222,7 @@ public class ProcessReconciliationService {
 			.errorCode(errorCode)
 			.message(message)
 			.occurredAt(occurredAt);
-		return new ProcessStateReport(report.status(), null, null, report.error(), List.of(activity));
+		return new ProcessStateReport(report.status(), null, null, null, report.error(), List.of(activity), null);
 	}
 
 	private static ProcessStateReport toIncidentReport(final IncidentDto incident) {
@@ -235,6 +235,6 @@ public class ProcessReconciliationService {
 			.message(failed.error().getMessage())
 			.occurredAt(incident.getIncidentTimestamp());
 
-		return new ProcessStateReport(FAILED, incident.getActivityId(), null, failed.error(), List.of(activity));
+		return new ProcessStateReport(FAILED, incident.getActivityId(), null, null, failed.error(), List.of(activity), null);
 	}
 }

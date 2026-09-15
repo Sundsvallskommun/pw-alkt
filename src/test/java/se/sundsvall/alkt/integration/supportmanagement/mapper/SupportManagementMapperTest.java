@@ -4,6 +4,7 @@ import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import generated.se.sundsvall.supportmanagement.ProcessError;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
@@ -44,7 +45,7 @@ class SupportManagementMapperTest {
 		final var occurredAt = OffsetDateTime.now();
 		final var activity = new ProcessActivity().activityType("INCIDENT").activityId("investigation_phase").severity("ERROR").occurredAt(occurredAt);
 		final var error = new ProcessError().code("INCIDENT").message("Timeout");
-		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", error, List.of(activity));
+		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), Map.of());
 
 		final var result = SupportManagementMapper.toErrandProcess(target, report);
 
@@ -55,6 +56,7 @@ class SupportManagementMapperTest {
 		assertThat(result.getCurrentActivityId()).isEqualTo("investigation_phase");
 		assertThat(result.getCurrentActivityName()).isEqualTo("Investigation");
 		assertThat(result.getExternalTaskId()).isEqualTo(externalTaskId);
+		assertThat(result.getErrandVersion()).isEqualTo(7L);
 		assertThat(result.getError()).isSameAs(error);
 		assertThat(result.getActivities()).containsExactly(activity);
 	}
@@ -68,6 +70,7 @@ class SupportManagementMapperTest {
 		assertThat(result.getProcessStatus()).isEqualTo("COMPLETED");
 		assertThat(result.getCurrentActivityId()).isNull();
 		assertThat(result.getExternalTaskId()).isNull();
+		assertThat(result.getErrandVersion()).isNull();
 		assertThat(result.getError()).isNull();
 		assertThat(result.getActivities()).isEmpty();
 	}

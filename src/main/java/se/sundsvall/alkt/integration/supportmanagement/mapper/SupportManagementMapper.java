@@ -24,7 +24,10 @@ public final class SupportManagementMapper {
 			externalTask.getId());
 	}
 
-	/** The instance id is left out of the body: Support Management takes it from the path and rejects a different one. */
+	/**
+	 * The instance id is left out of the body: Support Management takes it from the path and rejects a different one.
+	 * errandVersion stands in for an If-Match for a step that only read the errand; null skips the version check.
+	 */
 	public static ErrandProcess toErrandProcess(final ReportTarget target, final ProcessStateReport report) {
 		return new ErrandProcess()
 			.processService(PROCESS_SERVICE)
@@ -33,6 +36,7 @@ public final class SupportManagementMapper {
 			.currentActivityId(report.currentActivityId())
 			.currentActivityName(report.currentActivityName())
 			.externalTaskId(target.externalTaskId())
+			.errandVersion(report.errandVersion())
 			.error(report.error())
 			.activities(report.activities());
 	}

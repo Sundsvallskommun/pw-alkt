@@ -1,12 +1,14 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.UUID;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -22,10 +24,12 @@ import se.sundsvall.dept44.requestid.RequestId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -143,30 +147,47 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
-	void executeReportsWhatTheStepReturnedAndThenCompletesTheTask() {
+	void executeReportsRunningThenWhatTheStepReturnedAndThenCompletesTheTask() {
 		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(UUID.randomUUID().toString());
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
 		final var inOrder = inOrder(processReportServiceMock, externalTaskServiceMock);
+		inOrder.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
 		inOrder.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
-		inOrder.verify(externalTaskServiceMock).complete(externalTaskMock);
+		inOrder.verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
 		verifyNoInteractions(failureHandlerMock);
 	}
 
 	@Test
-	void executeHandsARefusedReportToTheFailureHandlerWithoutCompletingTheTask() {
-		// Arrange - Support Management answers 412 on the report: the errand moved under the step
-		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(UUID.randomUUID().toString());
-		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Precondition Failed")).when(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
+	void executeWritesTheStepsResultVariablesWhenCompleting() {
+		final var variables = Map.<String, Object>of("decision", "APPROVED");
+		final var variableWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				return ProcessStateReport.completed().withVariables(variables);
+			}
+		};
 
-		// Act
-		worker.execute(externalTaskMock, externalTaskServiceMock);
+		variableWorker.execute(externalTaskMock, externalTaskServiceMock);
 
-		// Assert - the step is run again by the engine rather than completed with a state Support Management never took
-		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Bad Gateway: Precondition Failed");
-		verify(externalTaskServiceMock, never()).complete(any());
-		verify(externalTaskServiceMock, never()).complete(any(), any());
+		verify(externalTaskServiceMock).complete(externalTaskMock, variables);
+	}
+
+	@Test
+	void reportsTheVersionTheStepReadWhenTheStepOnlyReads() {
+		final var readOnlyWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				return ProcessStateReport.completed().withErrandVersion(7L);
+			}
+		};
+
+		readOnlyWorker.execute(externalTaskMock, externalTaskServiceMock);
+
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+		verify(processReportServiceMock, times(2)).report(any(ExternalTask.class), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().errandVersion()).isEqualTo(7L);
 	}
 
 	@Test
@@ -185,7 +206,9 @@ class AbstractTaskWorkerTest {
 		// Act - the engine is told about the failure, so nothing escapes to the task client
 		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
-		// Assert
+		// Assert - RUNNING went out before the throw, and it's the only report from execute() itself
+		verify(processReportServiceMock, times(1)).report(any(ExternalTask.class), any());
+		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Boom");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
@@ -193,7 +216,7 @@ class AbstractTaskWorkerTest {
 
 	@Test
 	void executeHandsAPreconditionFailedWriteToTheFailureHandler() {
-		// Arrange - the shape of the exception a patchErrand call throws when Support Management answers 412
+		// Arrange - the shape of the exception a reportProcess call throws when Support Management answers 412
 		final var requestId = UUID.randomUUID().toString();
 		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
@@ -207,8 +230,54 @@ class AbstractTaskWorkerTest {
 		// Act
 		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
-		// Assert - not caught anywhere between patchErrand and here, so the task is retried rather than completed
+		// Assert - not caught anywhere between reportProcess and here, so the task is retried rather than completed
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Bad Gateway: Precondition Failed");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
+	}
+
+	@Test
+	void executeStillRunsTheStepWhenTheRunningReportFails() {
+		// Arrange - Support Management being unreachable for the RUNNING report must not fail the business task
+		doThrow(new IllegalStateException("Support Management down")).when(processReportServiceMock).report(any(ExternalTask.class), any());
+
+		// Act
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert - the step still ran and completed, and the failure handler was never invoked
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+		verify(failureHandlerMock, never()).handleException(any(), any(), any());
+	}
+
+	@Test
+	void executeStillCompletesWhenTheFinalReportFails() {
+		// Arrange - the RUNNING report succeeds, the COMPLETED report fails; the failure must not undo the completion
+		doNothing()
+			.doThrow(new IllegalStateException("Support Management down"))
+			.when(processReportServiceMock).report(any(ExternalTask.class), any());
+
+		// Act
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+		verify(failureHandlerMock, never()).handleException(any(), any(), any());
+	}
+
+	@Test
+	void executeDoesNotCompleteWhenTheFinalReportGetsAPreconditionFailed() {
+		// Arrange - a 412 means the errand moved under us; the step must retry rather than complete on stale data.
+		// dept44's Feign error decoder collapses every upstream error into ClientProblem(BAD_GATEWAY, ...), so this
+		// is the shape a real 412 from Support Management actually takes by the time it reaches this class.
+		doNothing()
+			.doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
+			.when(processReportServiceMock).report(any(ExternalTask.class), any());
+
+		// Act
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		// Assert
+		verify(externalTaskServiceMock, never()).complete(any(), any());
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock,
+			"Bad Gateway: support-management error: {status=412 Precondition Failed, title=Precondition Failed}");
 	}
 }

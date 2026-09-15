@@ -12,6 +12,7 @@ import tools.jackson.core.JacksonException;
 import java.time.Duration;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
+import static apptest.mock.api.SupportManagement.mockReportProcess;
 import static apptest.verification.ProcessPathway.closurePathway;
 import static apptest.verification.ProcessPathway.decisionPathway;
 import static apptest.verification.ProcessPathway.followUpPathway;
@@ -21,12 +22,8 @@ import static apptest.verification.ProcessPathway.reviewPathway;
 import static com.github.tomakehurst.wiremock.client.WireMock.absent;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -73,8 +70,7 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 
 		// Setup mocks
 		mockApiGatewayToken();
-		final var reportPath = "/api-support-management/%s/%s/errands/%s/processes/[^/]+".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		stubFor(put(urlPathMatching(reportPath)).willReturn(okJson("{}").withHeader("Content-Encoding", "identity")));
+		mockReportProcess(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 
 		// The errand was created and Support Management allows the event to start a process
 		sendErrandEvent("""

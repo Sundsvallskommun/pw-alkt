@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
+import java.util.Map;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.Test;
@@ -12,7 +13,7 @@ import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,11 +41,13 @@ class CompleteProcessWorkerTest {
 	}
 
 	@Test
-	void executeReportsOnceAndCompletesTheTask() {
+	void executeReportsRunningThenCompletedAndCompletesTheTask() {
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
-		verify(externalTaskServiceMock).complete(externalTaskMock);
+		final var order = inOrder(processReportServiceMock, externalTaskServiceMock);
+		order.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
+		order.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
+		order.verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
 		verifyNoInteractions(failureHandlerMock);
 	}
 }

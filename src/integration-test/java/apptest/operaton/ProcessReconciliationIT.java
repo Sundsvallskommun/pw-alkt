@@ -16,7 +16,8 @@ import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
 import static apptest.mock.api.SupportManagement.mockGetErrandProcesses;
 import static apptest.mock.api.SupportManagement.mockOtherErrandsGone;
 import static apptest.mock.api.SupportManagement.mockReportProcess;
-import static apptest.mock.api.SupportManagement.mockReportProcessFails;
+import static apptest.mock.api.SupportManagement.mockReportProcessDown;
+import static apptest.mock.api.SupportManagement.mockReportProcessRefused;
 import static apptest.mock.api.SupportManagement.reportPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
@@ -36,7 +37,7 @@ import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 
-/** The reconciliation is started by hand, not waited for. max.retries=0 makes the first failing report an incident. */
+/** The reconciliation is started by hand, not waited for. max.retries=0 makes the first failing step an incident. */
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/Wiremock/", classes = Application.class)
 @TestPropertySource(properties = {
@@ -53,6 +54,9 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	private static final String PROCESS_KEY = "alcohol-serving";
 	private static final String ERRAND_EVENTS_PATH = "/%s/%s/process/errand-events".formatted(MUNICIPALITY_ID, NAMESPACE);
 	private static final String ALL_PROCESS_KEYS = "alcohol-serving,alcohol-serving-addition,alcohol-serving-change,e-cigarette-sales,low-alcohol-beer-sales,low-alcohol-beer-serving,supervision,tobacco-sales,tobacco-sales-change,tobacco-sales-closure";
+	private static final String[] PHASES = {
+		"registration", "review", "investigation", "decision", "follow_up", "closure"
+	};
 
 	@BeforeEach
 	void setup() {
@@ -72,18 +76,17 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		mockApiGatewayToken();
 		mockOtherErrandsGone();
 
-		// The last step cannot report: Support Management is down, and with no retries the engine raises an incident
-		mockReportProcessFails(MUNICIPALITY_ID, NAMESPACE, errandId);
+		// The last step is refused with 412: the errand moved under it. That is the one refusal a step does not swallow,
+		// and with no retries the engine raises an incident
+		mockReportProcessRefused(MUNICIPALITY_ID, NAMESPACE, errandId);
 		final var processInstanceId = startProcess(errandId);
-		for (final var phase : new String[] {
-			"registration", "review", "investigation", "decision", "follow_up", "closure"
-		}) {
+		for (final var phase : PHASES) {
 			completePhase(errandId, processInstanceId, phase);
 		}
 		await().until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, ALL_PROCESS_KEYS).stream().anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
 
-		// Support Management is back and still says RUNNING, so the reconciliation reports the incident. The timer of
-		// the shared engine may run a sweep of its own meanwhile, so counts are relative, never exact.
+		// Support Management accepts reports again and still says RUNNING, so the reconciliation reports the incident.
+		// The timer of the shared engine may run a sweep of its own meanwhile, so counts are relative, never exact.
 		wiremock.resetRequests();
 		mockReportProcess(MUNICIPALITY_ID, NAMESPACE, errandId);
 		mockGetErrandProcesses(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, "RUNNING", null);
@@ -123,6 +126,31 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		verify(moreThanOrExactly(1), putRequestedFor(urlPathEqualTo(reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId)))
 			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("FAILED")))
 			.withRequestBody(matchingJsonPath("$.error.code", WireMock.equalTo("TERMINATED")))
+			.withRequestBody(matchingJsonPath("$.activities[0].activityType", WireMock.equalTo("RECONCILIATION"))));
+	}
+
+	/** Support Management being down does not fail a step, so the instance ends and its row stays RUNNING until settled. */
+	@Test
+	void test003_instanceThatEndedWhileSupportManagementWasDownIsSettled() throws JacksonException {
+		final var errandId = randomId();
+		mockApiGatewayToken();
+		mockOtherErrandsGone();
+
+		mockReportProcessDown(MUNICIPALITY_ID, NAMESPACE, errandId);
+		final var processInstanceId = startProcess(errandId);
+		for (final var phase : PHASES) {
+			completePhase(errandId, processInstanceId, phase);
+		}
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		// Support Management is back and never heard the process end
+		wiremock.resetRequests();
+		mockReportProcess(MUNICIPALITY_ID, NAMESPACE, errandId);
+		mockGetErrandProcesses(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, "RUNNING", null);
+		runReconciliation();
+
+		verify(moreThanOrExactly(1), putRequestedFor(urlPathEqualTo(reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId)))
+			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("COMPLETED")))
 			.withRequestBody(matchingJsonPath("$.activities[0].activityType", WireMock.equalTo("RECONCILIATION"))));
 	}
 
