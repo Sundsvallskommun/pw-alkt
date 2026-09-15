@@ -18,6 +18,6 @@ class ReconciliationPropertiesTest {
 
 	@Test
 	void testProperties() {
-		assertThat(properties.lookback()).isEqualTo(Duration.ofHours(24));
+		assertThat(properties.lookback()).isEqualTo(Duration.ofHours(2));
 	}
 }

@@ -218,8 +218,9 @@ Each run leaves an instance in the history of the engine, kept for one day throu
 <span class="code">audit</span> or above is needed, since the errand identity of an instance is read from its historic
 variables.</p>
 
-<p>Runs show up in Cockpit as instances of <span class="code">process-reconciliation</span>. A run that fails raises
-an incident on itself right away, since the next cycle is a new attempt anyway.</p>
+<p>Runs show up in Cockpit as instances of <span class="code">process-reconciliation</span>. A run that fails is
+logged as an error and completed anyway: the next cycle is the retry, and an incident would only leave an instance
+standing in the engine. The failure of a single errand never stops the rest of a run.</p>
 
 <table class="settings">
 	<thead>
@@ -232,9 +233,10 @@ an incident on itself right away, since the next cycle is a new attempt anyway.<
 	<tbody>
 		<tr>
 			<td class="code">reconciliation.lookback</td>
-			<td>How far back in the history of the engine each run looks for instances that ended. An end further back than
-			this while the service was down is not settled</td>
-			<td><strong>PT24H</strong></td>
+			<td>How far back in the history of the engine each run looks for instances that ended. Every instance in the window
+			costs a lookup in Support Management per run, so the window is kept short; an end further back than this while
+			the service was down is not settled</td>
+			<td><strong>PT2H</strong></td>
 		</tr>
 		<tr>
 			<td class="code">reconciliation.worker.enabled</td>

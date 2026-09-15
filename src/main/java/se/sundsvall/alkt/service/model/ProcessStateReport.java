@@ -3,13 +3,12 @@ package se.sundsvall.alkt.service.model;
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import generated.se.sundsvall.supportmanagement.ProcessError;
 import java.util.List;
-import se.sundsvall.alkt.api.model.ProcessStatus;
 
 import static java.util.Objects.requireNonNullElse;
 import static org.apache.commons.lang3.StringUtils.abbreviate;
-import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.RETRYING;
+import static se.sundsvall.alkt.service.model.ProcessStatus.COMPLETED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RETRYING;
 
 /**
  * What a work step tells Support Management once it is done. Use the factories, they know which statuses are terminal.

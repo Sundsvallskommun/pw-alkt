@@ -77,7 +77,9 @@ process-engine:
 # lookback: how far back in the engine history each run looks for instances that ended without a final report
 #----------------------------------------
 reconciliation:
-  lookback: PT24H
+  lookback: PT2H
+  worker:
+    enabled: true
 
 #----------------------------------------
 # Integration settings

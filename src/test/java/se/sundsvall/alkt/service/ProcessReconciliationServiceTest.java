@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,13 +37,14 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
-import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.COMPLETED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
 
 @ExtendWith(MockitoExtension.class)
 class ProcessReconciliationServiceTest {
@@ -55,7 +57,7 @@ class ProcessReconciliationServiceTest {
 	private static final String PROCESS_INSTANCE_ID = UUID.randomUUID().toString();
 	private static final String PROCESS_KEY = "alcohol-serving";
 	private static final String EXTERNAL_TASK_ID = UUID.randomUUID().toString();
-	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now();
+	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now().minusMinutes(10);
 	private static final OffsetDateTime END_TIME = OffsetDateTime.now().minusMinutes(3);
 
 	@Mock
@@ -71,8 +73,171 @@ class ProcessReconciliationServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new ProcessReconciliationService(operatonClientMock, supportManagementClientMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(24)));
+		service = new ProcessReconciliationService(operatonClientMock, supportManagementClientMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2)));
 	}
+
+	// Incidents
+
+	@Test
+	void reportsAnIncidentAsFailedOnTheErrand() {
+		mockIncident(incident());
+		mockErrandProcesses(row("RUNNING", null));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), reportCaptor.capture());
+		final var report = reportCaptor.getValue();
+		assertThat(report.status()).isEqualTo(FAILED);
+		assertThat(report.currentActivityId()).isEqualTo("external_task_complete_process");
+		assertThat(report.error().getCode()).isEqualTo("INCIDENT");
+		assertThat(report.error().getMessage()).isEqualTo("Timeout against Support Management");
+		assertThat(report.activities()).singleElement().satisfies(activity -> {
+			assertThat(activity.getActivityType()).isEqualTo("INCIDENT");
+			assertThat(activity.getActivityId()).isEqualTo("external_task_complete_process");
+			assertThat(activity.getSeverity()).isEqualTo("ERROR");
+			assertThat(activity.getErrorCode()).isEqualTo("INCIDENT");
+			assertThat(activity.getMessage()).isEqualTo("Timeout against Support Management");
+			assertThat(activity.getOccurredAt()).isEqualTo(INCIDENT_TIMESTAMP);
+		});
+		verifyNoMoreInteractions(processReportServiceMock, supportManagementClientMock);
+	}
+
+	@Test
+	void skipsAnIncidentAlreadyOnTheErrand() {
+		mockIncident(incident());
+		mockErrandProcesses(row("FAILED", "INCIDENT"));
+
+		service.reconcile();
+
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	/** The step was retried and moved on after the list was fetched. The incident is history, not news. */
+	@Test
+	void skipsAnIncidentWhenTheRowWasTouchedSince() {
+		mockIncident(incident());
+		mockErrandProcesses(row("RUNNING", null).modified(INCIDENT_TIMESTAMP.plusSeconds(1)));
+
+		service.reconcile();
+
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void reportsWhenTheRowWasTouchedBeforeTheIncident() {
+		mockIncident(incident());
+		mockErrandProcesses(row("RETRYING", "RETRY").modified(INCIDENT_TIMESTAMP.minusSeconds(1)));
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(any(ReportTarget.class), any());
+	}
+
+	/** A FAILED row for another reason, without an error, or for another instance does not count as reported. */
+	@Test
+	void reportsWhenNoRowSaysIncidentForThisInstance() {
+		mockIncident(incident());
+		final var otherInstance = row("FAILED", "INCIDENT").processInstanceId(UUID.randomUUID().toString());
+		mockErrandProcesses(row("FAILED", "TERMINATED"), row("FAILED", null), otherInstance);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(any(ReportTarget.class), any());
+	}
+
+	@Test
+	void reportsWhenSupportManagementAnswersWithoutABody() {
+		mockIncident(incident());
+		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(any(ReportTarget.class), any());
+	}
+
+	@Test
+	void leavesTheExternalTaskIdOutForAFailedJob() {
+		mockIncident(incident().incidentType("failedJob"));
+		mockErrandProcesses(row("RUNNING", null));
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
+	}
+
+	@Test
+	void skipsAnIncidentWhoseErrandIsGone() {
+		mockIncident(incident());
+		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
+
+		service.reconcile();
+
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	/** Support Management refuses the instance for good, e.g. the errand already has a completed process. */
+	@Test
+	void acceptsARefusedReport() {
+		mockIncident(incident());
+		mockErrandProcesses(row("RUNNING", null));
+		doThrow(new ClientProblem(HttpStatus.CONFLICT, "Process life over")).when(processReportServiceMock).report(any(ReportTarget.class), any());
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(any(ReportTarget.class), any());
+	}
+
+	@Test
+	void skipsAnInstanceWithoutAnErrandIdentity() {
+		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident()));
+		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)));
+		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(List.of(
+			variable(PROCESS_VARIABLE_REQUEST_ID, "abc"),
+			variable(PROCESS_VARIABLE_ERRAND_ID, null)));
+
+		service.reconcile();
+
+		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
+	}
+
+	@Test
+	void skipsAnIncidentWhoseInstanceIsGoneFromTheEngine() {
+		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident()));
+		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.empty());
+
+		service.reconcile();
+
+		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
+	}
+
+	/** A fault on one incident must not stop the next one. */
+	@Test
+	void carriesOnWhenOneIncidentCannotBeReported() {
+		final var secondInstanceId = UUID.randomUUID().toString();
+		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident(), incident().processInstanceId(secondInstanceId)));
+		when(operatonClientMock.getHistoricProcessInstance(any())).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)));
+		when(operatonClientMock.getHistoricVariableInstances(any())).thenReturn(identity());
+		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcesses()));
+		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Support Management is down")).when(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), any());
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), any());
+		verify(processReportServiceMock).report(eq(target(secondInstanceId, EXTERNAL_TASK_ID)), any());
+	}
+
+	@Test
+	void doesNothingWithoutIncidentsOrEndedInstances() {
+		service.reconcile();
+
+		verify(operatonClientMock).findIncidents(TENANT, ALL_PROCESS_KEYS);
+		verify(operatonClientMock).findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any());
+		verifyNoMoreInteractions(operatonClientMock);
+		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
+	}
+
+	// Ended instances
 
 	@Test
 	void looksBackAsFarAsConfiguredForEndedInstances() {
@@ -82,7 +247,7 @@ class ProcessReconciliationServiceTest {
 
 		verify(operatonClientMock).findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), captor.capture());
 		final var finishedAfter = OffsetDateTime.parse(captor.getValue(), DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
-		assertThat(finishedAfter).isCloseTo(OffsetDateTime.now().minusHours(24), within(1, ChronoUnit.MINUTES));
+		assertThat(finishedAfter).isCloseTo(OffsetDateTime.now().minusHours(2), within(1, ChronoUnit.MINUTES));
 	}
 
 	@Test
@@ -93,7 +258,7 @@ class ProcessReconciliationServiceTest {
 
 		service.reconcile();
 
-		verify(processReportServiceMock).report(eq(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, PROCESS_KEY, null)), reportCaptor.capture());
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
 		final var report = reportCaptor.getValue();
 		assertThat(report.status()).isEqualTo(COMPLETED);
 		assertThat(report.error()).isNull();
@@ -104,6 +269,7 @@ class ProcessReconciliationServiceTest {
 			assertThat(activity.getMessage()).contains("COMPLETED");
 			assertThat(activity.getOccurredAt()).isEqualTo(END_TIME);
 		});
+		verifyNoMoreInteractions(processReportServiceMock, supportManagementClientMock);
 	}
 
 	@Test
@@ -137,9 +303,19 @@ class ProcessReconciliationServiceTest {
 	}
 
 	@Test
-	void leavesAnEndedInstanceWhoseRowIsAlreadyTerminal() {
+	void leavesAnEndedInstanceWhoseRowIsAlreadyCompleted() {
 		mockEndedInstance(StateEnum.COMPLETED);
 		mockErrandProcesses(row("COMPLETED", null));
+
+		service.reconcile();
+
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void leavesAnEndedInstanceWhoseRowIsAlreadyFailed() {
+		mockEndedInstance(StateEnum.EXTERNALLY_TERMINATED);
+		mockErrandProcesses(row("FAILED", "INCIDENT"));
 
 		service.reconcile();
 
@@ -156,82 +332,12 @@ class ProcessReconciliationServiceTest {
 		verifyNoInteractions(processReportServiceMock);
 	}
 
+	/** finished=true should keep these out, but a state that is not an end is never reported. */
 	@Test
-	void reportsAnIncidentAsFailedOnTheErrand() {
-		mockInstanceWithIdentity();
-		mockErrandProcesses(row("RUNNING", null));
-		final var targetCaptor = ArgumentCaptor.forClass(ReportTarget.class);
-		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
-
-		service.reconcile();
-
-		verify(processReportServiceMock).report(targetCaptor.capture(), reportCaptor.capture());
-		assertThat(targetCaptor.getValue()).isEqualTo(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, PROCESS_KEY, EXTERNAL_TASK_ID));
-		final var report = reportCaptor.getValue();
-		assertThat(report.status()).isEqualTo(FAILED);
-		assertThat(report.currentActivityId()).isEqualTo("external_task_complete_process");
-		assertThat(report.error().getCode()).isEqualTo("INCIDENT");
-		assertThat(report.error().getMessage()).isEqualTo("Timeout against Support Management");
-		assertThat(report.activities()).singleElement().satisfies(activity -> {
-			assertThat(activity.getActivityType()).isEqualTo("INCIDENT");
-			assertThat(activity.getActivityId()).isEqualTo("external_task_complete_process");
-			assertThat(activity.getSeverity()).isEqualTo("ERROR");
-			assertThat(activity.getErrorCode()).isEqualTo("INCIDENT");
-			assertThat(activity.getMessage()).isEqualTo("Timeout against Support Management");
-			assertThat(activity.getOccurredAt()).isEqualTo(INCIDENT_TIMESTAMP);
-		});
-		verify(operatonClientMock).findIncidents(TENANT, ALL_PROCESS_KEYS);
-	}
-
-	@Test
-	void skipsAnIncidentAlreadyOnTheErrand() {
-		mockInstanceWithIdentity();
-		mockErrandProcesses(row("FAILED", "INCIDENT"));
-
-		service.reconcile();
-
-		verifyNoInteractions(processReportServiceMock);
-	}
-
-	/** A FAILED row for another reason, or an older instance of the errand, does not count as reported. */
-	@Test
-	void reportsWhenTheFailedRowIsNotAnIncidentOrNotThisInstance() {
-		mockInstanceWithIdentity();
-		final var otherInstance = row("FAILED", "INCIDENT").processInstanceId(UUID.randomUUID().toString());
-		mockErrandProcesses(row("FAILED", "TERMINATED"), otherInstance);
-
-		service.reconcile();
-
-		verify(processReportServiceMock).report(any(ReportTarget.class), any());
-	}
-
-	@Test
-	void skipsAnIncidentWhoseErrandIsGone() {
-		mockInstanceWithIdentity();
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
-
-		service.reconcile();
-
-		verifyNoInteractions(processReportServiceMock);
-	}
-
-	@Test
-	void skipsAnInstanceWithoutAnErrandIdentity() {
-		final var incident = incident();
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident));
-		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY));
-		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(List.of(variable(PROCESS_VARIABLE_REQUEST_ID, "abc")));
-
-		service.reconcile();
-
-		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
-	}
-
-	@Test
-	void skipsAnIncidentWhoseInstanceIsGoneFromTheEngine() {
-		final var incident = incident();
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident));
-		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(null);
+	void leavesAnInstanceThatHasNotEnded() {
+		final var active = new HistoricProcessInstanceDto().id(PROCESS_INSTANCE_ID).processDefinitionKey(PROCESS_KEY).state(StateEnum.ACTIVE);
+		final var unknown = new HistoricProcessInstanceDto().id(UUID.randomUUID().toString()).processDefinitionKey(PROCESS_KEY);
+		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any())).thenReturn(List.of(active, unknown));
 
 		service.reconcile();
 
@@ -239,47 +345,41 @@ class ProcessReconciliationServiceTest {
 		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
 	}
 
-	/** A refused report on one incident must not stop the next one. */
+	/** A fault on one instance must not stop the next one. */
 	@Test
-	void carriesOnWhenOneReportIsRefused() {
-		final var first = incident();
+	void carriesOnWhenOneInstanceCannotBeSettled() {
 		final var secondInstanceId = UUID.randomUUID().toString();
-		final var second = incident().processInstanceId(secondInstanceId);
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(first, second));
-		when(operatonClientMock.getHistoricProcessInstance(any())).thenReturn(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY));
+		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any()))
+			.thenReturn(List.of(endedInstance(PROCESS_INSTANCE_ID, StateEnum.COMPLETED), endedInstance(secondInstanceId, StateEnum.COMPLETED)));
 		when(operatonClientMock.getHistoricVariableInstances(any())).thenReturn(identity());
 		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcesses()));
-		doThrow(new ClientProblem(HttpStatus.CONFLICT, "Another live instance")).when(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID)), any());
+		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Support Management is down")).when(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
 
 		service.reconcile();
 
-		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID)), any());
-		verify(processReportServiceMock).report(eq(target(secondInstanceId)), any());
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
+		verify(processReportServiceMock).report(eq(target(secondInstanceId, null)), any());
 	}
 
-	@Test
-	void doesNothingWithoutIncidents() {
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of());
+	// Helpers
 
-		service.reconcile();
-
-		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
-	}
-
-	private void mockEndedInstance(final StateEnum state) {
-		final var instance = new HistoricProcessInstanceDto().id(PROCESS_INSTANCE_ID).processDefinitionKey(PROCESS_KEY).businessKey(ERRAND_ID).state(state).endTime(END_TIME);
-		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any())).thenReturn(List.of(instance));
+	private void mockIncident(final IncidentDto incident) {
+		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident));
+		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)));
 		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(identity());
 	}
 
-	private void mockInstanceWithIdentity() {
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident()));
-		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY));
+	private void mockEndedInstance(final StateEnum state) {
+		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any())).thenReturn(List.of(endedInstance(PROCESS_INSTANCE_ID, state)));
 		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(identity());
 	}
 
 	private void mockErrandProcesses(final ErrandProcess... rows) {
 		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcesses().processes(List.of(rows))));
+	}
+
+	private static HistoricProcessInstanceDto endedInstance(final String processInstanceId, final StateEnum state) {
+		return new HistoricProcessInstanceDto().id(processInstanceId).processDefinitionKey(PROCESS_KEY).businessKey(ERRAND_ID).state(state).endTime(END_TIME);
 	}
 
 	private static IncidentDto incident() {
@@ -316,7 +416,7 @@ class ProcessReconciliationServiceTest {
 		return row;
 	}
 
-	private static ReportTarget target(final String processInstanceId) {
-		return new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, processInstanceId, PROCESS_KEY, EXTERNAL_TASK_ID);
+	private static ReportTarget target(final String processInstanceId, final String externalTaskId) {
+		return new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, processInstanceId, PROCESS_KEY, externalTaskId);
 	}
 }

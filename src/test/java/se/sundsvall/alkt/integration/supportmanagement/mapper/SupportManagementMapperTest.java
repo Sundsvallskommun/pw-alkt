@@ -16,7 +16,7 @@ import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
 
 class SupportManagementMapperTest {
 

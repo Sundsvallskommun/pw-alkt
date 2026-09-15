@@ -3,6 +3,7 @@ package apptest.operaton;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import java.time.Duration;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
@@ -17,7 +18,7 @@ import static apptest.mock.api.SupportManagement.mockOtherErrandsGone;
 import static apptest.mock.api.SupportManagement.mockReportProcess;
 import static apptest.mock.api.SupportManagement.mockReportProcessFails;
 import static apptest.mock.api.SupportManagement.reportPath;
-import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.moreThanOrExactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -25,6 +26,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Awaitility.setDefaultPollDelay;
 import static org.awaitility.Awaitility.setDefaultPollInterval;
@@ -34,10 +36,7 @@ import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 
-/**
- * The reconciliation is started by hand rather than waited for: its timer fires every five minutes, and the test has
- * no reason to wait that long. max.retries=0 makes the first failing report raise an incident right away.
- */
+/** The reconciliation is started by hand, not waited for. max.retries=0 makes the first failing report an incident. */
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/Wiremock/", classes = Application.class)
 @TestPropertySource(properties = {
@@ -83,13 +82,15 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		}
 		await().until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, ALL_PROCESS_KEYS).stream().anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
 
-		// Support Management is back and still says RUNNING, so the reconciliation reports the incident
+		// Support Management is back and still says RUNNING, so the reconciliation reports the incident. The timer of
+		// the shared engine may run a sweep of its own meanwhile, so counts are relative, never exact.
 		wiremock.resetRequests();
 		mockReportProcess(MUNICIPALITY_ID, NAMESPACE, errandId);
 		mockGetErrandProcesses(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, "RUNNING", null);
 		runReconciliation();
 
-		verify(exactly(1), putRequestedFor(urlPathEqualTo(reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId)))
+		final var reportPath = reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId);
+		verify(moreThanOrExactly(1), putRequestedFor(urlPathEqualTo(reportPath))
 			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("FAILED")))
 			.withRequestBody(matchingJsonPath("$.error.code", WireMock.equalTo("INCIDENT")))
 			.withRequestBody(matchingJsonPath("$.currentActivityId", WireMock.equalTo("external_task_complete_process")))
@@ -98,9 +99,10 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 		// Now the row says so, and the next run leaves it alone
 		mockGetErrandProcesses(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, "FAILED", "INCIDENT");
+		final var reportsBefore = countReports(reportPath);
 		runReconciliation();
 
-		verify(exactly(1), putRequestedFor(urlPathEqualTo(reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId))));
+		assertThat(countReports(reportPath)).isEqualTo(reportsBefore);
 	}
 
 	@Test
@@ -118,10 +120,14 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		mockGetErrandProcesses(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, "RUNNING", null);
 		runReconciliation();
 
-		verify(exactly(1), putRequestedFor(urlPathEqualTo(reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId)))
+		verify(moreThanOrExactly(1), putRequestedFor(urlPathEqualTo(reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId)))
 			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("FAILED")))
 			.withRequestBody(matchingJsonPath("$.error.code", WireMock.equalTo("TERMINATED")))
 			.withRequestBody(matchingJsonPath("$.activities[0].activityType", WireMock.equalTo("RECONCILIATION"))));
+	}
+
+	private int countReports(final String reportPath) {
+		return wiremock.findAll(putRequestedFor(urlPathEqualTo(reportPath))).size();
 	}
 
 	private void runReconciliation() {
@@ -161,6 +167,6 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	}
 
 	private static String randomId() {
-		return java.util.UUID.randomUUID().toString();
+		return UUID.randomUUID().toString();
 	}
 }

@@ -23,19 +23,24 @@ public class ProcessReportService {
 		this.supportManagementClient = supportManagementClient;
 	}
 
-	/**
-	 * A report without an activity gets the task's, since Support Management overwrites the row's activity with null
-	 * otherwise.
-	 */
+	/** A report without an activity gets the task's, or Support Management overwrites the row's activity with null. */
 	public void report(final ExternalTask externalTask, final ProcessStateReport report) {
-		report(toReportTarget(externalTask), report.currentActivityId() == null ? report.atActivity(externalTask.getActivityId()) : report);
+		var placed = report;
+		if (report.currentActivityId() == null) {
+			placed = report.atActivity(externalTask.getActivityId());
+		}
+		report(toReportTarget(externalTask), placed);
 	}
 
 	/** A refused report throws ClientProblem. The caller decides what that means. */
 	public void report(final ReportTarget target, final ProcessStateReport report) {
+		var error = "";
+		if (report.error() != null) {
+			error = ": " + sanitizeForLogging(report.error().getMessage());
+		}
 		LOG.info("Process instance {} of errand {} reports {} at activity {}{}",
 			sanitizeForLogging(target.processInstanceId()), sanitizeForLogging(target.errandId()), report.status(),
-			sanitizeForLogging(report.currentActivityId()), report.error() == null ? "" : ": " + sanitizeForLogging(report.error().getMessage()));
+			sanitizeForLogging(report.currentActivityId()), error);
 
 		supportManagementClient.reportProcess(target.municipalityId(), target.namespace(), target.errandId(), target.processInstanceId(),
 			toErrandProcess(target, report));

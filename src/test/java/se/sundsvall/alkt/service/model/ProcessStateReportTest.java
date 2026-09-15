@@ -6,9 +6,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.RETRYING;
+import static se.sundsvall.alkt.service.model.ProcessStatus.COMPLETED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RETRYING;
 
 class ProcessStateReportTest {
 

@@ -72,7 +72,7 @@ public interface OperatonClient {
 	void deleteProcessInstance(@PathVariable String id, @RequestParam("failIfNotExists") boolean failIfNotExists);
 
 	@GetMapping(path = "history/process-instance/{id}", produces = APPLICATION_JSON_VALUE)
-	HistoricProcessInstanceDto getHistoricProcessInstance(@PathVariable String id);
+	Optional<HistoricProcessInstanceDto> getHistoricProcessInstance(@PathVariable String id);
 
 	@GetMapping(path = "history/activity-instance", produces = APPLICATION_JSON_VALUE)
 	List<HistoricActivityInstanceDto> getHistoricActivities(@RequestParam("processInstanceId") String processInstanceId);

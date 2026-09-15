@@ -17,12 +17,8 @@ import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
- * Reports a failed external task back to the engine, decrementing the remaining retries.
- * <p>
- * Note the parameter order of {@link ExternalTaskService#handleFailure}: the second argument is the
- * <b>error message</b>, not the worker id (no overload takes a worker id - the engine already knows which worker holds
- * the lock). The error message becomes the message of the incident that is raised once the retries are exhausted, so it
- * has to carry the failure reason for the incident list to be usable.
+ * Reports a failed external task back to the engine. The second argument of handleFailure is the error message, not
+ * the worker id; it becomes the incident message once the retries are exhausted.
  */
 @Component
 public class FailureHandler {
@@ -70,9 +66,10 @@ public class FailureHandler {
 
 	/** Best effort. A failed report is only logged, handleFailure must run regardless or the task keeps its lock. */
 	private void reportFailure(final ExternalTask externalTask, final String message, final int retries) {
-		final var report = retries > 0
-			? ProcessStateReport.retrying(ERROR_CODE_RETRY, message)
-			: ProcessStateReport.failed(ERROR_CODE_INCIDENT, message);
+		var report = ProcessStateReport.failed(ERROR_CODE_INCIDENT, message);
+		if (retries > 0) {
+			report = ProcessStateReport.retrying(ERROR_CODE_RETRY, message);
+		}
 
 		try {
 			processReportService.report(externalTask, report);
