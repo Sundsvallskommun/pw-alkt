@@ -1,22 +1,27 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
+import generated.se.sundsvall.operaton.HistoricProcessInstanceDto.StateEnum;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcesses;
 import generated.se.sundsvall.supportmanagement.ProcessError;
+import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementClient;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
@@ -24,6 +29,7 @@ import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -35,6 +41,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
+import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
 import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,6 +56,7 @@ class ProcessReconciliationServiceTest {
 	private static final String PROCESS_KEY = "alcohol-serving";
 	private static final String EXTERNAL_TASK_ID = UUID.randomUUID().toString();
 	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now();
+	private static final OffsetDateTime END_TIME = OffsetDateTime.now().minusMinutes(3);
 
 	@Mock
 	private OperatonClient operatonClientMock;
@@ -59,8 +67,94 @@ class ProcessReconciliationServiceTest {
 	@Mock
 	private ProcessReportService processReportServiceMock;
 
-	@InjectMocks
 	private ProcessReconciliationService service;
+
+	@BeforeEach
+	void setUp() {
+		service = new ProcessReconciliationService(operatonClientMock, supportManagementClientMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(24)));
+	}
+
+	@Test
+	void looksBackAsFarAsConfiguredForEndedInstances() {
+		final var captor = ArgumentCaptor.forClass(String.class);
+
+		service.reconcile();
+
+		verify(operatonClientMock).findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), captor.capture());
+		final var finishedAfter = OffsetDateTime.parse(captor.getValue(), DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
+		assertThat(finishedAfter).isCloseTo(OffsetDateTime.now().minusHours(24), within(1, ChronoUnit.MINUTES));
+	}
+
+	@Test
+	void settlesAnInstanceThatCompletedWithoutAFinalReport() {
+		mockEndedInstance(StateEnum.COMPLETED);
+		mockErrandProcesses(row("RUNNING", null));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(eq(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, PROCESS_KEY, null)), reportCaptor.capture());
+		final var report = reportCaptor.getValue();
+		assertThat(report.status()).isEqualTo(COMPLETED);
+		assertThat(report.error()).isNull();
+		assertThat(report.activities()).singleElement().satisfies(activity -> {
+			assertThat(activity.getActivityType()).isEqualTo("RECONCILIATION");
+			assertThat(activity.getSeverity()).isEqualTo("WARN");
+			assertThat(activity.getErrorCode()).isNull();
+			assertThat(activity.getMessage()).contains("COMPLETED");
+			assertThat(activity.getOccurredAt()).isEqualTo(END_TIME);
+		});
+	}
+
+	@Test
+	void settlesAnInternallyTerminatedInstanceAsCompleted() {
+		mockEndedInstance(StateEnum.INTERNALLY_TERMINATED);
+		mockErrandProcesses(row("WAITING", null));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().status()).isEqualTo(COMPLETED);
+	}
+
+	@Test
+	void settlesAnExternallyTerminatedInstanceAsFailed() {
+		mockEndedInstance(StateEnum.EXTERNALLY_TERMINATED);
+		mockErrandProcesses(row("RUNNING", null));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
+		final var report = reportCaptor.getValue();
+		assertThat(report.status()).isEqualTo(FAILED);
+		assertThat(report.error().getCode()).isEqualTo("TERMINATED");
+		assertThat(report.activities()).singleElement().satisfies(activity -> {
+			assertThat(activity.getSeverity()).isEqualTo("ERROR");
+			assertThat(activity.getErrorCode()).isEqualTo("TERMINATED");
+		});
+	}
+
+	@Test
+	void leavesAnEndedInstanceWhoseRowIsAlreadyTerminal() {
+		mockEndedInstance(StateEnum.COMPLETED);
+		mockErrandProcesses(row("COMPLETED", null));
+
+		service.reconcile();
+
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void leavesAnEndedInstanceWhoseErrandIsGone() {
+		mockEndedInstance(StateEnum.EXTERNALLY_TERMINATED);
+		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
+
+		service.reconcile();
+
+		verifyNoInteractions(processReportServiceMock);
+	}
 
 	@Test
 	void reportsAnIncidentAsFailedOnTheErrand() {
@@ -170,6 +264,12 @@ class ProcessReconciliationServiceTest {
 		service.reconcile();
 
 		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
+	}
+
+	private void mockEndedInstance(final StateEnum state) {
+		final var instance = new HistoricProcessInstanceDto().id(PROCESS_INSTANCE_ID).processDefinitionKey(PROCESS_KEY).businessKey(ERRAND_ID).state(state).endTime(END_TIME);
+		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any())).thenReturn(List.of(instance));
+		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(identity());
 	}
 
 	private void mockInstanceWithIdentity() {

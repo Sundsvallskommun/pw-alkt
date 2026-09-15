@@ -1,19 +1,23 @@
 package apptest.operaton;
 
+import apptest.verification.Tuples;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import java.time.Duration;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
-
-import tools.jackson.core.JacksonException;
-
-import apptest.verification.Tuples;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
+import tools.jackson.core.JacksonException;
+
+import java.time.Duration;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
+import static apptest.verification.ProcessPathway.closurePathway;
+import static apptest.verification.ProcessPathway.decisionPathway;
+import static apptest.verification.ProcessPathway.followUpPathway;
+import static apptest.verification.ProcessPathway.investigationPathway;
+import static apptest.verification.ProcessPathway.registrationPathway;
+import static apptest.verification.ProcessPathway.reviewPathway;
 import static com.github.tomakehurst.wiremock.client.WireMock.absent;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
@@ -24,12 +28,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
-import static apptest.verification.ProcessPathway.closurePathway;
-import static apptest.verification.ProcessPathway.decisionPathway;
-import static apptest.verification.ProcessPathway.followUpPathway;
-import static apptest.verification.ProcessPathway.investigationPathway;
-import static apptest.verification.ProcessPathway.registrationPathway;
-import static apptest.verification.ProcessPathway.reviewPathway;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -124,7 +122,7 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 	 * Waits until the process is parked on the catch event ending the phase, then sends the signal event Support
 	 * Management publishes when a case worker moves the errand on.
 	 */
-	private void completePhase(final String processInstanceId, final String phase) throws JacksonException, ClassNotFoundException {
+	private void completePhase(final String processInstanceId, final String phase) throws JacksonException {
 		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		sendErrandEvent("""

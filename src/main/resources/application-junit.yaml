@@ -29,6 +29,8 @@ process-engine:
         bpmnResourcePattern: bpmnResourcePattern_2
         dmnResourcePattern: dmnResourcePattern_2
         formResourcePattern: formResourcePattern_2
+reconciliation:
+  lookback: PT24H
 #----------------------------------------
 # Integration settings
 #----------------------------------------

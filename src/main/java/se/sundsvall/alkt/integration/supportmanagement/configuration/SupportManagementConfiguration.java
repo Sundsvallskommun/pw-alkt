@@ -19,8 +19,6 @@ public class SupportManagementConfiguration {
 
 	public static final String CLIENT_ID = "support-management";
 
-	// Identifies pw-alkt to Support Management specifically, regardless of any Identifier set elsewhere on the calling
-	// thread.
 	private static final String SENT_BY = PROCESS_SERVICE + "; type=processEngine";
 
 	@Bean

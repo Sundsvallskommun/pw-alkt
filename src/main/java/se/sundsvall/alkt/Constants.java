@@ -36,8 +36,9 @@ public final class Constants {
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES,
 		PROCESS_KEY_SUPERVISION);
 
-	// The scheduler of this service, see README "Process reconciliation". Deployed with the others but not in PROCESS_KEYS:
-	// it belongs to no errand and must not be startable from an errand event.
+	// The scheduler of this service, see README "Process reconciliation". Lives in processmodels/reconciliation/ with a
+	// deployment of its own, and is not in PROCESS_KEYS: it belongs to no errand and must not be startable from an
+	// errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
 
 	// How this service names itself in a process report. Support Management checks it against the process consumer
@@ -47,6 +48,7 @@ public final class Constants {
 	// Error codes carried in a process report. Support Management stores them without interpreting them.
 	public static final String ERROR_CODE_RETRY = "RETRY";
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
+	public static final String ERROR_CODE_TERMINATED = "TERMINATED";
 
 	// Namespace where the processes are deployed, a.k.a tenant. Must match process-engine.deployment.processes[].tenant
 	// in application.yaml - the integration test covers the pairing.
