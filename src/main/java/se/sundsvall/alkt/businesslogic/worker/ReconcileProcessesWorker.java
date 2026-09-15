@@ -6,6 +6,7 @@ import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.service.ProcessReconciliationService;
 import se.sundsvall.dept44.requestid.RequestId;
@@ -19,6 +20,7 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
  * See README, "Process reconciliation".
  */
 @Component
+@ConditionalOnProperty(name = "reconciliation.worker.enabled", matchIfMissing = true)
 @ExternalTaskSubscription(topicName = "ReconcileProcessesTask", lockDuration = ReconcileProcessesWorker.LOCK_DURATION_IN_MILLISECONDS)
 public class ReconcileProcessesWorker implements ExternalTaskHandler {
 

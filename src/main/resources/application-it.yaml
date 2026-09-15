@@ -10,6 +10,14 @@ spring:
   main:
     banner-mode: "off"
 #----------------------------------------
+# Process reconciliation
+# The shared engine fires the reconciliation timer during any test. Off by default so it cannot call WireMock behind a
+# test's back; ProcessReconciliationIT turns it on.
+#----------------------------------------
+reconciliation:
+  worker:
+    enabled: false
+#----------------------------------------
 # Integration settings
 #----------------------------------------
 config:
