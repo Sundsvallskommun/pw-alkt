@@ -46,5 +46,9 @@ public final class Constants {
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";
 
+	// How this service names itself in a process report. Support Management checks it against the process consumer
+	// configured for the namespace and rejects a report from anyone else.
+	public static final String PROCESS_SERVICE = "pw-alkt";
+
 	private Constants() {}
 }

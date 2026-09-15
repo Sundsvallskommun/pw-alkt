@@ -15,12 +15,10 @@ public class SupportManagementConfiguration {
 
 	public static final String CLIENT_ID = "support-management";
 
-	// Identifies pw-alkt to Support Management specifically, regardless of any Identifier set elsewhere on the calling
-	// thread.
 	private static final String SENT_BY = "pw-alkt; type=processEngine";
 
 	@Bean
-	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, SupportManagementProperties properties) {
+	FeignBuilderCustomizer feignBuilderCustomizer(final ClientRegistrationRepository clientRepository, final SupportManagementProperties properties) {
 		return FeignMultiCustomizer.create()
 			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
