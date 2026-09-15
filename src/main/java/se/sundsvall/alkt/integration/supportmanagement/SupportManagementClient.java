@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.supportmanagement;
 
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.Labels;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -54,9 +56,18 @@ public interface SupportManagementClient {
 		@PathVariable final String municipalityId,
 		@PathVariable final String namespace,
 		@PathVariable final String errandId,
-		@RequestHeader(value = "If-Match", required = false) final String ifMatch,
+		@RequestHeader("If-Match") final String ifMatch,
 		@RequestHeader(value = "X-Trigger-Process", required = false) final Boolean triggerProcess,
 		@RequestBody final Errand errand);
+
+	/** 201 the first time, 200 after that. No X-Trigger-Process, a report is not an errand write. */
+	@PutMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/processes/{processInstanceId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<ErrandProcess> reportProcess(
+		@PathVariable final String municipalityId,
+		@PathVariable final String namespace,
+		@PathVariable final String errandId,
+		@PathVariable final String processInstanceId,
+		@RequestBody final ErrandProcess report);
 
 	// TODO: add putDecision for PUT /{municipalityId}/{namespace}/errands/{errandId}/decision once Support Management
 	// exposes it (DRAKEN-4744). Needed for a process to write an AUTOMATIC decision back to the errand.

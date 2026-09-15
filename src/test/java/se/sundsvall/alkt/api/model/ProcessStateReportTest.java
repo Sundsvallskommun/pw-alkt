@@ -1,5 +1,9 @@
 package se.sundsvall.alkt.api.model;
 
+import generated.se.sundsvall.supportmanagement.ProcessActivity;
+import generated.se.sundsvall.supportmanagement.ProcessError;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -51,7 +55,7 @@ class ProcessStateReportTest {
 		final var report = ProcessStateReport.failed("CODE", "message");
 
 		assertThat(report.status()).isEqualTo(FAILED);
-		assertThat(report.error()).isEqualTo(new ProcessError("CODE", "message"));
+		assertThat(report.error()).isEqualTo(new ProcessError().code("CODE").message("message"));
 	}
 
 	@Test
@@ -59,7 +63,44 @@ class ProcessStateReportTest {
 		final var report = ProcessStateReport.retrying("CODE", "message");
 
 		assertThat(report.status()).isEqualTo(RETRYING);
-		assertThat(report.error()).isEqualTo(new ProcessError("CODE", "message"));
+		assertThat(report.error()).isEqualTo(new ProcessError().code("CODE").message("message"));
+	}
+
+	/** Support Management answers 400 on a longer value, and the failure handler would swallow that answer. */
+	@Test
+	void cutsTheErrorToWhatSupportManagementAccepts() {
+		final var report = ProcessStateReport.failed("x".repeat(100), "y".repeat(3000));
+
+		assertThat(report.error().getCode()).hasSize(64).endsWith("...");
+		assertThat(report.error().getMessage()).hasSize(2048).endsWith("...");
+	}
+
+	@Test
+	void nullActivitiesAndVariablesBecomeEmpty() {
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null);
+
+		assertThat(report.activities()).isEmpty();
+		assertThat(report.variables()).isEmpty();
+	}
+
+	@Test
+	void activitiesAreCopied() {
+		final var activities = new ArrayList<>(List.of(new ProcessActivity().activityType("PHASE")));
+
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, activities, null);
+		activities.clear();
+
+		assertThat(report.activities()).hasSize(1);
+	}
+
+	@Test
+	void atActivityReplacesOnlyTheActivityId() {
+		final var report = ProcessStateReport.failed("CODE", "message").withErrandVersion(7L).atActivity("activityId");
+
+		assertThat(report.currentActivityId()).isEqualTo("activityId");
+		assertThat(report.status()).isEqualTo(FAILED);
+		assertThat(report.errandVersion()).isEqualTo(7L);
+		assertThat(report.error().getCode()).isEqualTo("CODE");
 	}
 
 	@Test

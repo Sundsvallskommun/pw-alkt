@@ -1,8 +1,12 @@
 package se.sundsvall.alkt.api.model;
 
+import generated.se.sundsvall.supportmanagement.ProcessActivity;
+import generated.se.sundsvall.supportmanagement.ProcessError;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Objects.requireNonNullElse;
+import static org.apache.commons.lang3.StringUtils.abbreviate;
 import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
 import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
 import static se.sundsvall.alkt.api.model.ProcessStatus.RETRYING;
@@ -19,8 +23,18 @@ public record ProcessStateReport(
 	List<ProcessActivity> activities,
 	Map<String, Object> variables) {
 
+	// The lengths Support Management accepts. A longer value is answered with 400, which the failure handler would swallow
+	// and leave the row in the wrong state, so the report is cut here instead.
+	private static final int MAX_ERROR_CODE_LENGTH = 64;
+	private static final int MAX_ERROR_MESSAGE_LENGTH = 2048;
+
+	public ProcessStateReport {
+		activities = List.copyOf(requireNonNullElse(activities, List.of()));
+		variables = Map.copyOf(requireNonNullElse(variables, Map.of()));
+	}
+
 	private static ProcessStateReport of(final ProcessStatus status, final String activityId, final String activityName, final ProcessError error) {
-		return new ProcessStateReport(status, activityId, activityName, null, error, List.of(), Map.of());
+		return new ProcessStateReport(status, activityId, activityName, null, error, null, null);
 	}
 
 	public static ProcessStateReport running(final String activityId, final String activityName) {
@@ -36,11 +50,15 @@ public record ProcessStateReport(
 	}
 
 	public static ProcessStateReport failed(final String code, final String message) {
-		return of(FAILED, null, null, new ProcessError(code, message));
+		return of(FAILED, null, null, toError(code, message));
 	}
 
 	public static ProcessStateReport retrying(final String code, final String message) {
-		return of(RETRYING, null, null, new ProcessError(code, message));
+		return of(RETRYING, null, null, toError(code, message));
+	}
+
+	public ProcessStateReport atActivity(final String activityId) {
+		return new ProcessStateReport(status, activityId, currentActivityName, errandVersion, error, activities, variables);
 	}
 
 	public ProcessStateReport withErrandVersion(final Long errandVersion) {
@@ -49,5 +67,11 @@ public record ProcessStateReport(
 
 	public ProcessStateReport withVariables(final Map<String, Object> variables) {
 		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, variables);
+	}
+
+	private static ProcessError toError(final String code, final String message) {
+		return new ProcessError()
+			.code(abbreviate(code, MAX_ERROR_CODE_LENGTH))
+			.message(abbreviate(message, MAX_ERROR_MESSAGE_LENGTH));
 	}
 }

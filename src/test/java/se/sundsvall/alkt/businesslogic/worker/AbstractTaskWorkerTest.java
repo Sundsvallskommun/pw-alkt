@@ -208,7 +208,7 @@ class AbstractTaskWorkerTest {
 
 	@Test
 	void executeHandsAPreconditionFailedWriteToTheFailureHandler() {
-		// Arrange - the shape of the exception a patchErrand call throws when Support Management answers 412
+		// Arrange - the shape of the exception a reportProcess call throws when Support Management answers 412
 		final var requestId = UUID.randomUUID().toString();
 		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
@@ -222,7 +222,7 @@ class AbstractTaskWorkerTest {
 		// Act
 		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
-		// Assert - not caught anywhere between patchErrand and here, so the task is retried rather than completed
+		// Assert - not caught anywhere between reportProcess and here, so the task is retried rather than completed
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Bad Gateway: Precondition Failed");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 	}
