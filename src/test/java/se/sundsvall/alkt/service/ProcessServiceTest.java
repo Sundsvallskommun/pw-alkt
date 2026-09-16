@@ -304,7 +304,7 @@ class ProcessServiceTest {
 		// Arrange
 		final var errandId = randomUUID().toString();
 		final var reachedInstanceId = randomUUID().toString();
-		final var reachedInstance = new ProcessInstanceDto().id(reachedInstanceId).definitionId("supervision:1:aaa").definitionKey("supervision");
+		final var reachedInstance = new ProcessInstanceDto().id(reachedInstanceId).definitionId("internal-inspection:1:aaa").definitionKey("internal-inspection");
 
 		// The event names alcohol-serving, the message landed on the inspection running alongside it
 		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
@@ -315,7 +315,7 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
 
 		// Assert
-		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, reachedInstanceId, "supervision", null), "supervision:1:aaa");
+		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, reachedInstanceId, "internal-inspection", null), "internal-inspection:1:aaa");
 	}
 
 	/** The message ran the process to its end, so the engine keeps no runtime row and there is no wait state left. */

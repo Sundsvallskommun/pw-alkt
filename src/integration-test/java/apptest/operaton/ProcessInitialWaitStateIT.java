@@ -41,7 +41,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_SUPERVISION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_EXTERNAL_INSPECTION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_INTERNAL_INSPECTION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
@@ -112,17 +113,22 @@ class ProcessInitialWaitStateIT extends AbstractOperatonAppTest {
 	}
 
 	@Test
-	void test008_supervisionStopsInRegistration() throws JacksonException {
-		assertStopsInRegistration(PROCESS_KEY_SUPERVISION);
+	void test008_externalInspectionStopsInRegistration() throws JacksonException {
+		assertStopsInRegistration(PROCESS_KEY_EXTERNAL_INSPECTION);
 	}
 
 	@Test
-	void test009_lowAlcoholBeerServingRunsToFollowUp() throws JacksonException {
+	void test009_internalInspectionStopsInRegistration() throws JacksonException {
+		assertStopsInRegistration(PROCESS_KEY_INTERNAL_INSPECTION);
+	}
+
+	@Test
+	void test010_lowAlcoholBeerServingRunsToFollowUp() throws JacksonException {
 		assertRunsToFollowUp(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING);
 	}
 
 	@Test
-	void test010_lowAlcoholBeerSalesRunsToFollowUp() throws JacksonException {
+	void test011_lowAlcoholBeerSalesRunsToFollowUp() throws JacksonException {
 		assertRunsToFollowUp(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES);
 	}
 

@@ -36,6 +36,7 @@ import static org.awaitility.Awaitility.setDefaultTimeout;
 import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
+import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 
 /** The reconciliation is started by hand, not waited for. max.retries=0 makes the first failing step an incident. */
@@ -51,10 +52,11 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String TENANT_ID_ALKT = "ALKT";
-	private static final int EXPECTED_DEPLOYMENTS = 11;
+	// The errand processes plus process-reconciliation, which is deployed on its own and has no key in PROCESS_KEYS
+	private static final int EXPECTED_DEPLOYMENTS = PROCESS_KEYS.size() + 1;
 	private static final String PROCESS_KEY = "alcohol-serving";
 	private static final String ERRAND_EVENTS_PATH = "/%s/%s/process/errand-events".formatted(MUNICIPALITY_ID, NAMESPACE);
-	private static final String ALL_PROCESS_KEYS = "alcohol-serving,alcohol-serving-addition,alcohol-serving-change,e-cigarette-sales,low-alcohol-beer-sales,low-alcohol-beer-serving,supervision,tobacco-sales,tobacco-sales-change,tobacco-sales-closure";
+	private static final String ALL_PROCESS_KEYS = "alcohol-serving,alcohol-serving-addition,alcohol-serving-change,e-cigarette-sales,external-inspection,internal-inspection,low-alcohol-beer-sales,low-alcohol-beer-serving,tobacco-sales,tobacco-sales-change,tobacco-sales-closure";
 	private static final String[] PHASES = {
 		"registration", "review", "investigation", "decision", "follow_up", "closure"
 	};

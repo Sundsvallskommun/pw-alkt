@@ -82,7 +82,7 @@ class SupportManagementMapperTest {
 
 	@Test
 	void toErrandProcessFromACompletedReport() {
-		final var target = new ReportTarget("2281", "ALKT", UUID.randomUUID().toString(), UUID.randomUUID().toString(), "supervision", null);
+		final var target = new ReportTarget("2281", "ALKT", UUID.randomUUID().toString(), UUID.randomUUID().toString(), "external-inspection", null);
 
 		final var result = SupportManagementMapper.toErrandProcess(target, ProcessStateReport.completed());
 

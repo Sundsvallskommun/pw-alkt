@@ -51,7 +51,8 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_SUPERVISION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_EXTERNAL_INSPECTION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_INTERNAL_INSPECTION;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/Wiremock/", classes = Application.class)
@@ -66,6 +67,8 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 	private static final String ERRAND_EVENTS_PATH = "/%s/%s/process/errand-events".formatted(MUNICIPALITY_ID, NAMESPACE);
 	// The models holding no wait state before the follow up phase, so nobody signals their first four phases
 	private static final Set<String> PASS_THROUGH_KEYS = Set.of(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING);
+	// The models a case worker starts with Starta handläggning rather than an errand event starting them by itself
+	private static final Set<String> HAND_STARTED_KEYS = Set.of(PROCESS_KEY_EXTERNAL_INSPECTION, PROCESS_KEY_INTERNAL_INSPECTION);
 	// The name attribute every model gives its phase, and the stem of the name its catch event carries
 	private static final Map<String, String> PHASE_DISPLAY_NAMES = Map.of(
 		"registration", "Registration",
@@ -185,11 +188,11 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 	}
 
 	/**
-	 * A supervision is started by hand, and that command reaches this service as an event with subtype PROCESS. The
+	 * An inspection is started by hand, and that command reaches this service as an event with subtype PROCESS. The
 	 * start path never reads the subtype, so the difference between the two events is documentation.
 	 */
 	private static String startEventFor(final String errandId, final String processKey) {
-		if (PROCESS_KEY_SUPERVISION.equals(processKey)) {
+		if (HAND_STARTED_KEYS.contains(processKey)) {
 			return """
 				{"eventId": "%s", "eventType": "UPDATE", "eventSubType": "PROCESS", "errandId": "%s",
 				 "processKey": "%s", "startAllowed": true}""".formatted(randomId(), errandId, processKey);

@@ -1,7 +1,7 @@
 # PwAlkt
 
 <p>Alkt is a service which integrates with the Operaton process engine for starting and updating processes. It hosts the
-process definitions of the alkohol- och tobaksverksamheten - the permit processes and the supervision process - together
+process definitions of the alkohol- och tobaksverksamheten - the permit processes and the inspection processes - together
 with the business logic and integrations they need.</p>
 
 <p>The service is a skeleton: the API, the engine integration, the reporting to Support Management and the integration
@@ -72,9 +72,14 @@ to move it on. See manual gates below.</p>
 			<td>Försäljning av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
 		</tr>
 		<tr>
-			<td class="code">supervision.bpmn</td>
-			<td class="code">supervision</td>
-			<td>Tillsyn</td>
+			<td class="code">external-inspection.bpmn</td>
+			<td class="code">external-inspection</td>
+			<td>Yttre tillsyn, dvs. tillsyn på serveringsstället</td>
+		</tr>
+		<tr>
+			<td class="code">internal-inspection.bpmn</td>
+			<td class="code">internal-inspection</td>
+			<td>Inre tillsyn, dvs. prövning av tillståndshavarens lämplighet</td>
 		</tr>
 		<tr>
 			<td class="code">reconciliation/process-reconciliation.bpmn</td>
@@ -91,24 +96,25 @@ follow up, so Registration through Decision hold no wait state and the process p
 up and Closure keep their catch events, so that is where Support Management sees the errand stop.</p>
 
 <p>The six phases are the same in every process, and stay that way. An errand moves through Registration, Review,
-Investigation, Decision, Follow up and Closure whether it is a permit or a supervision; what separates one process from
+Investigation, Decision, Follow up and Closure whether it is a permit or an inspection; what separates one process from
 another is what happens inside a phase and whether the phase waits for a case worker, as the folköl models show. The
 work inside the phases is not described yet, so the models hold the phases and little else.</p>
 
 <p>A process starts from an errand event that Support Management publishes with
-<span class="code">startAllowed</span>. The supervision is the one started by hand: the Starta handläggning command of
-the case worker arrives as an event with the sub type <span class="code">PROCESS</span>, and this service never reads
+<span class="code">startAllowed</span>. The two inspections are the ones started by hand: the Starta handläggning command
+of the case worker arrives as an event with the sub type <span class="code">PROCESS</span>, and this service never reads
 the sub type. A key it deploys, no instance already running and a permission given is all a start takes, so a manual
 start and an automatic one follow the same path. <span class="code">ProcessWithoutDeviationIT</span> drives every key in
-<span class="code">PROCESS_KEYS</span> from that event to the end of the process, and starts the supervision the way the
+<span class="code">PROCESS_KEYS</span> from that event to the end of the process, and starts the inspections the way the
 command arrives.</p>
 
 <p>Which process an errand gets, and whether it starts by itself, is metadata on the label in Support Management:
 <span class="code">processKey</span> and <span class="code">processStartMode</span>, set per environment through its
 <span class="code">metadata/labels</span> API and not in this repository. The key has to be the exact string in the
-table above. The supervision process is <span class="code">supervision</span>, not
-<span class="code">alkt-tillsyn</span> as the solution document exemplifies with, and an event naming a key this service
-does not deploy is answered with <span class="code">422</span>.</p>
+table above. Tillsyn is two keys rather than one, <span class="code">external-inspection</span> and
+<span class="code">internal-inspection</span>, and neither is <span class="code">alkt-tillsyn</span> as the solution
+document exemplifies with. An event naming a key this service does not deploy is answered with
+<span class="code">422</span>.</p>
 
 <h3>Manual gates and awaiting signals</h3>
 
