@@ -6,7 +6,9 @@ with the business logic and integrations they need.</p>
 
 <p>The service is a skeleton: the API, the engine integration, the reporting to Support Management and the integration
 test harness are in place, while the process models are empty phase structures. The only work steps so far are the one
-that reports a process as completed and the reconciliation described below.</p>
+that reports a process as completed and the reconciliation described below. Support Management does see where a process
+stands from the moment it starts, though, and - once it keeps the list this service sends - what the case worker can do
+to move it on. See manual gates below.</p>
 
 <h3>Process definitions</h3>
 
@@ -107,6 +109,64 @@ command arrives.</p>
 table above. The supervision process is <span class="code">supervision</span>, not
 <span class="code">alkt-tillsyn</span> as the solution document exemplifies with, and an event naming a key this service
 does not deploy is answered with <span class="code">422</span>.</p>
+
+<h3>Manual gates and awaiting signals</h3>
+
+<p>A phase ends when a case worker says so. Support Management publishes that as an errand event with the sub type
+<span class="code">SIGNAL</span> and a <span class="code">signalName</span>, and this service correlates a message of
+that name against the process instance of the errand. Every other event correlates
+<span class="code">errandUpdated</span> instead, which is how a process can be built to react to an attachment or a
+change without a case worker pressing anything. A correlation that matches no wait state is answered with
+<span class="code">202</span> and logged: the process was between two gates when the change arrived, and redelivering
+the event would not change that.</p>
+
+<p>Which gates a process stands at is reported back as <span class="code">awaitingSignals</span> on the process row. The
+list is read from the message subscriptions of the instance in the engine, so a new gate is a change to the BPMN file
+and nothing else. The name of the signal is the name of the message, the label is the <span class="code">name</span>
+attribute of the catch event in the model, and <span class="code">errandUpdated</span> is left out - it is no button
+anyone should see. A phase that waits only for that message is reported as <span class="code">WAITING</span> with an
+empty list, and an activity the model does not name at all is reported with the name of the message as its label.</p>
+
+<p>Support Management does not store the list yet. The field is hand-added to our copy of its specification ahead of
+SM-A10 (see the comment on <span class="code">ErrandProcess.awaitingSignals</span> in
+<span class="code">src/main/resources/integrations/support-management.yaml</span>), so today the list is sent and
+dropped. Once SM-A10 lands, Support Management keeps the list and refuses a signal that is not in it.</p>
+
+<p>Three reports carry the list: the one after a process starts, the one after a wakeup that moved it on, and the one
+after a work step that did not end the process. Every other report replaces the list with an empty one, since the
+process is then working rather than waiting. The activity of such a report is the phase rather than the catch event,
+read from the model as the subprocess enclosing it.</p>
+
+<p>The model of a process definition is read once through
+<span class="code">GET /process-definition/{id}/xml</span> and kept in memory, keyed by definition id. A deployed
+definition never changes, so the entries never go stale; they are gone at restart. If the model cannot be read the
+report still goes out, with the name of the message as the label - a button with a technical name beats no button at
+all.</p>
+
+<p>What the code above needs from a model:</p>
+
+<ul>
+	<li>A manual gate is a named message catch event. No user tasks: the case worker works in Support Management and
+	never logs into the engine, so a task list there would be one nobody opens.</li>
+	<li>Several ways forward are an event-based gateway with one catch event per alternative, so that the choice of the
+	case worker is also the choice of the process. A time limit belongs in the same gateway as a timer catch event.</li>
+	<li>No <span class="code">asyncBefore</span> or <span class="code">asyncAfter</span> between a wakeup and the next
+	wait state. The report is built from what the engine answers once the REST call returns, so a process still on its
+	way somewhere looks like a process waiting for nothing, and no report goes out at all: Support Management keeps the
+	row it already has until something else reports.</li>
+	<li>The <span class="code">name</span> of a catch event is what the case worker reads on the button, and the
+	outermost subprocess around it is the phase Support Management shows. A phase without a name is reported by its id
+	alone, and a boundary event hangs on a phase rather than inside it, so it is reported under its own id.</li>
+	<li>How many phases hold a gate is up to the model. The folköl models pass straight through their first four
+	phases, so the first thing Support Management hears from them is that they wait at Follow up.</li>
+</ul>
+
+<p>Reports carry no sequence number, and a wait state is read after the task that led to it was completed. Two reports
+about the same instance can therefore land out of order: a step completes, the engine parks the instance, and before
+that <span class="code">WAITING</span> report is sent another thread has already reported the next step as
+<span class="code">RUNNING</span>. The window is short and the next report corrects the row, since every report reads
+the state of the instance anew rather than replaying a remembered one. It is worth knowing about before reading a row
+that disagrees with Cockpit.</p>
 
 <h3>Automatic deployment</h3>
 
@@ -226,9 +286,9 @@ does not deploy is answered with <span class="code">422</span>.</p>
 
 <h3>Process reconciliation</h3>
 
-<p>Support Management only learns the state of a process through reports, and reports come from work steps. Two things
-leave the row wrong for good: an incident (the engine gave up on a step, no worker runs any more) and an instance that
-ended without a final report. The reconciliation is the net under both. Every run reports each incident in the tenant
+<p>Support Management only learns the state of a process through reports, and reports come from work steps and from the
+start and wakeup paths. Two things leave the row wrong for good: an incident (the engine gave up on a step, no worker
+runs any more) and an instance that ended without a final report. The reconciliation is the net under both. Every run reports each incident in the tenant
 as <span class="code">FAILED</span> with code <span class="code">INCIDENT</span>, unless the row already says so, and
 settles each instance that ended within <span class="code">reconciliation.lookback</span> and whose row is still live:
 <span class="code">COMPLETED</span> for an end the model chose, <span class="code">FAILED</span> with code
