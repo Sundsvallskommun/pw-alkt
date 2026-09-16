@@ -203,10 +203,7 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 			 "processKey": "%s", "startAllowed": true}""".formatted(randomId(), errandId, processKey);
 	}
 
-	/**
-	 * Waits until the process is parked on the catch event ending the phase, then sends the signal event Support
-	 * Management publishes when a case worker moves the errand on.
-	 */
+	/** The signal event is the one Support Management publishes when a case worker moves the errand on. */
 	private void completePhase(final String errandId, final String processInstanceId, final String processKey, final String phase) throws JacksonException {
 		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

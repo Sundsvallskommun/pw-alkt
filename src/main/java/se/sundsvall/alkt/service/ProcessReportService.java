@@ -27,9 +27,8 @@ public class ProcessReportService {
 	}
 
 	/**
-	 * Reports where the instance stands still, or nothing at all when it waits for no message: it then ended or stands on
-	 * a work step, and the work step reports for itself. A failure is logged and swallowed, since whatever brought the
-	 * process here has already happened and undoing it is not an option.
+	 * Reports nothing when the instance waits for no message: it then ended or stands on a work step, which reports for
+	 * itself. A failure is swallowed, since whatever brought the process here has already happened.
 	 */
 	public void reportWaitState(final ReportTarget target, final String processDefinitionId) {
 		try {

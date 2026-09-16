@@ -2,10 +2,7 @@ package se.sundsvall.alkt.service.model;
 
 import static org.apache.commons.lang3.StringUtils.abbreviate;
 
-/**
- * A gate a process stands at, as the button a case worker presses to move it on. The name is the message the engine
- * waits for, the label what the model calls the catch event.
- */
+/** The name is the message the engine waits for, the label what the model calls the catch event. */
 public record AwaitingSignal(String name, String label) {
 
 	// The lengths Support Management accepts, cut here for the same reason ProcessStateReport cuts the error fields.

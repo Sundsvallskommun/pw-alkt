@@ -4,7 +4,7 @@ import java.util.List;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 
 /**
- * Where a process instance stands still: the phase rather than the catch event, and the signals a case worker can send
- * to move it on. The list is empty for an automatic wait state.
+ * Where a process instance stands still, named by its phase rather than by the catch event. The signals are empty for a
+ * wait state no case worker can answer.
  */
 public record WaitState(String activityId, String activityName, List<AwaitingSignal> awaitingSignals) {}

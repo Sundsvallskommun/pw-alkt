@@ -97,8 +97,8 @@ public class ProcessService {
 			return;
 		}
 
-		// The instance the message reached, not the first of the errand: an errand may run more than one process, and the
-		// correlation picks on the subscription rather than on the key the event carried.
+		// Looked up rather than taken from the event: the correlation picks on the subscription, so the instance it reached
+		// is not always one the process key of the event names.
 		reached.flatMap(operatonIntegration::findProcessInstance)
 			.ifPresentOrElse(
 				instance -> processReportService.reportWaitState(

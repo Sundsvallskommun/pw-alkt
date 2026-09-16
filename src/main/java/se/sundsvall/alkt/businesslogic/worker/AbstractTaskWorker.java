@@ -31,18 +31,9 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		this.failureHandler = failureHandler;
 	}
 
-	/**
-	 * The state the process is in once the step is done. Returning it is how a step reports, so it cannot be skipped. A
-	 * step that failed says so by throwing - a returned report always completes the task, and only COMPLETED and FAILED
-	 * survive it, since anything else is overwritten by the wait state the engine moved on to.
-	 */
+	/** A step that failed says so by throwing: a returned report always completes the task. */
 	protected abstract ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
 
-	/**
-	 * RUNNING goes out before the step, what the step returned after it. A report Support Management refuses does not
-	 * fail the step, except a 412 (see reportProcessState); a final report that never arrived is what the reconciliation
-	 * settles later.
-	 */
 	@Override
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init(externalTask.getVariable(PROCESS_VARIABLE_REQUEST_ID));
@@ -71,11 +62,9 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		}
 	}
 
-	// A failed report must not fail the business task - same rule FailureHandler.reportFailure applies on the failure
-	// path. Exception: a 412 means the errand moved under us, so it is left to propagate - the step reruns and its
-	// second attempt rereads the errand. dept44's Feign error decoder collapses every upstream error into
-	// ClientProblem(BAD_GATEWAY, ...), so there is no typed status to match on here; the original status only
-	// survives in the message text.
+	// A failed report must not fail the business task. The one exception is a 412, which means the errand moved under us:
+	// it propagates so the step reruns and rereads the errand. dept44's Feign decoder collapses every upstream error into
+	// ClientProblem(BAD_GATEWAY), so the status survives in the message text alone and has to be matched there.
 	private void reportProcessState(final ExternalTask externalTask, final ProcessStateReport report) {
 		try {
 			processReportService.report(externalTask, report);
@@ -89,9 +78,7 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		}
 	}
 
-	/**
-	 * Only after complete: the engine moves on when the task completes, so before that there is no subscription to read.
-	 */
+	// Only after complete: the engine moves on when the task completes, so before that there is no subscription to read.
 	private void reportWaitState(final ExternalTask externalTask) {
 		try {
 			processReportService.reportWaitState(

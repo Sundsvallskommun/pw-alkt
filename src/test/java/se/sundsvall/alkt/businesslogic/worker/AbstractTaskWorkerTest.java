@@ -108,12 +108,10 @@ class AbstractTaskWorkerTest {
 
 		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(requestId);
 
-		// Mock static RequestId to verify that static method is being called
 		try (MockedStatic<RequestId> requestIdMock = mockStatic(RequestId.class)) {
 			// Act
 			worker.execute(externalTaskMock, externalTaskServiceMock);
 
-			// Verify static method
 			requestIdMock.verify(() -> RequestId.init(requestId));
 			requestIdMock.verify(RequestId::reset);
 		}
@@ -308,9 +306,7 @@ class AbstractTaskWorkerTest {
 
 	@Test
 	void executeDoesNotCompleteWhenTheFinalReportGetsAPreconditionFailed() {
-		// Arrange - a 412 means the errand moved under us; the step must retry rather than complete on stale data.
-		// dept44's Feign error decoder collapses every upstream error into ClientProblem(BAD_GATEWAY, ...), so this
-		// is the shape a real 412 from Support Management actually takes by the time it reaches this class.
+		// Arrange - dept44's Feign decoder collapses a 412 from Support Management into this ClientProblem(BAD_GATEWAY, ...)
 		doNothing()
 			.doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
 			.when(processReportServiceMock).report(any(ExternalTask.class), any());

@@ -20,8 +20,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
- * What a process model says about itself: the display name of an element, and which phase an element sits in. Read from
- * the deployed XML, since the runtime API answers with ids alone. See the README section on manual gates.
+ * The display name of an element and the phase it sits in, read from the deployed XML because the runtime API answers
+ * with ids alone. See the README section on manual gates.
  */
 @Component
 public class ProcessModelCache {
@@ -33,11 +33,10 @@ public class ProcessModelCache {
 	private static final String ID_ATTRIBUTE = "id";
 	private static final String NAME_ATTRIBUTE = "name";
 
-	// The cap keeps a long-lived pod from holding every version it ever saw.
+	// A deployed definition never changes, so nothing goes stale. The cap is what keeps a long-lived pod from holding
+	// every version it ever saw.
 	private static final int MAX_MODELS = 100;
 
-	// A deployed definition never changes, so an entry never goes stale. One entry per deployed version, and the map is
-	// gone at restart.
 	private final Map<String, ProcessModel> models = new ConcurrentHashMap<>();
 
 	private final OperatonClient operatonClient;
@@ -51,9 +50,7 @@ public class ProcessModelCache {
 			.orElseGet(() -> load(processDefinitionId));
 	}
 
-	// A model that could not be read is not cached: the next report tries again rather than living with empty labels.
-	// That is also why this is not computeIfAbsent, which would keep the failure. Two threads parsing the same model at
-	// once costs one parse and nothing else.
+	// Not computeIfAbsent: a model that could not be read must not be cached, or the labels stay empty until a restart.
 	private ProcessModel load(final String processDefinitionId) {
 		try {
 			final var model = parse(operatonClient.getProcessDefinitionXml(processDefinitionId).getBpmn20Xml());
@@ -113,12 +110,10 @@ public class ProcessModelCache {
 		return BPMN_NAMESPACE.equals(node.getNamespaceURI()) && SUB_PROCESS.equals(node.getLocalName());
 	}
 
-	/** The names and the phase of every element of one process definition. */
 	public record ProcessModel(Map<String, String> names, Map<String, String> phases) {
 
 		public static final ProcessModel EMPTY = new ProcessModel(Map.of(), Map.of());
 
-		/** The fallback is the name of the message, which is what the story asks for when the model says nothing. */
 		public String labelOf(final String activityId, final String fallback) {
 			return Optional.ofNullable(names.get(activityId)).orElse(fallback);
 		}

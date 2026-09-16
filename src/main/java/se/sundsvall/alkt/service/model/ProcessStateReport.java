@@ -13,11 +13,7 @@ import static se.sundsvall.alkt.service.model.ProcessStatus.RETRYING;
 import static se.sundsvall.alkt.service.model.ProcessStatus.RUNNING;
 import static se.sundsvall.alkt.service.model.ProcessStatus.WAITING;
 
-/**
- * What a work step tells Support Management; returning it is what makes reporting unskippable. Use the factories, they
- * know which statuses are terminal. errandVersion is the version a read-only step saw, awaitingSignals what a wait
- * state report carries, and variables what the step hands back to the engine when the task completes.
- */
+/** What a work step tells Support Management; variables is what the step hands back to the engine on complete. */
 public record ProcessStateReport(
 	ProcessStatus status,
 	String currentActivityId,
@@ -28,8 +24,8 @@ public record ProcessStateReport(
 	List<AwaitingSignal> awaitingSignals,
 	Map<String, Object> variables) {
 
-	// The lengths Support Management accepts. A longer value is answered with 400, which the failure handler would swallow
-	// and leave the row in the wrong state, so the report is cut here instead.
+	// The lengths Support Management accepts. A longer value is answered with 400, and that answer is swallowed further
+	// up, so the report is cut here rather than left to fail silently.
 	private static final int MAX_ACTIVITY_LENGTH = 255;
 	private static final int MAX_ERROR_CODE_LENGTH = 64;
 	private static final int MAX_ERROR_MESSAGE_LENGTH = 2048;

@@ -42,10 +42,7 @@ public class OperatonIntegration {
 		return operatonClient.startProcessWithTenant(processKey, tenantId, OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandId));
 	}
 
-	/**
-	 * The instance the message reached. An errand may run more than one process, and the correlation picks among them on
-	 * the subscription rather than on the key the event carried.
-	 */
+	/** The correlation picks among the processes of an errand on the subscription, not on the key the event carried. */
 	public Optional<String> correlateMessage(final String messageName, final String errandId, final String tenantId) {
 		return operatonClient.correlateMessage(OperatonMapper.toCorrelationMessageDto(messageName, errandId, tenantId)).stream()
 			.findFirst()
@@ -65,10 +62,7 @@ public class OperatonIntegration {
 		operatonClient.deleteProcessInstance(processInstanceId, false);
 	}
 
-	/**
-	 * Empty when the instance waits for no message at all, which means it ended or stands on a work step. The activity
-	 * of the wait state is its phase, and the signals are what a case worker can send.
-	 */
+	/** Empty when the instance waits for no message at all, which means it ended or stands on a work step. */
 	public Optional<WaitState> findWaitState(final String processInstanceId, final String processDefinitionId) {
 		// Sorted because the engine answers in no defined order, and an unchanged wait state must report the same way twice.
 		final var subscriptions = operatonClient.getEventSubscriptions(processInstanceId, EVENT_TYPE_MESSAGE).stream()
@@ -79,9 +73,8 @@ public class OperatonIntegration {
 		}
 
 		final var model = processModelCache.modelOf(processDefinitionId);
-		// The gates settle the phase, so that the phase and the buttons reported with it describe the same place. Every
-		// alternative of an event-based gateway sits in the same phase, so the first gate is as good as any. Only an
-		// instance waiting for nothing a case worker answers falls back to the first subscription of all.
+		// A gate settles the phase, so that the phase and the buttons reported with it describe the same place. Every
+		// alternative of an event-based gateway sits in the same phase, so the first gate is as good as any.
 		final var gates = gatesOf(subscriptions);
 		final var activityId = gates.stream().findFirst().orElseGet(subscriptions::getFirst).getActivityId();
 		final var signals = toSignals(gates, model);
@@ -93,11 +86,9 @@ public class OperatonIntegration {
 			.orElseGet(() -> new WaitState(activityId, model.labelOf(activityId, null), signals)));
 	}
 
-	/** What a case worker can answer: a named message that is not the wakeup every errand change correlates. */
 	private static List<EventSubscriptionDto> gatesOf(final List<EventSubscriptionDto> subscriptions) {
 		return subscriptions.stream()
-			// A subscription without a message name would be reported as a signal Support Management answers 400 on, and
-			// that answer costs the whole wait state rather than the one button.
+			// A nameless signal is answered with 400, and that answer costs the whole wait state rather than one button.
 			.filter(subscription -> subscription.getEventName() != null)
 			.filter(subscription -> !MESSAGE_ERRAND_UPDATED.equals(subscription.getEventName()))
 			.toList();
