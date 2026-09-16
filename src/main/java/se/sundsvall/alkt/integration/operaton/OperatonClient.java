@@ -10,6 +10,7 @@ import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
+import generated.se.sundsvall.operaton.ProcessDefinitionDiagramDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
@@ -79,6 +80,9 @@ public interface OperatonClient {
 
 	@GetMapping(path = "event-subscription", produces = APPLICATION_JSON_VALUE)
 	List<EventSubscriptionDto> getEventSubscriptions(@RequestParam("processInstanceId") String processInstanceId, @RequestParam("eventType") String eventType);
+
+	@GetMapping(path = "process-definition/{id}/xml", produces = APPLICATION_JSON_VALUE)
+	ProcessDefinitionDiagramDto getProcessDefinitionXml(@PathVariable String id);
 
 	/** processDefinitionKeyIn is comma separated, see OperatonMapper.toProcessDefinitionKeyIn. */
 	@GetMapping(path = "incident", produces = APPLICATION_JSON_VALUE)
