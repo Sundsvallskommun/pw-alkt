@@ -83,6 +83,11 @@ that reports a process as completed and the reconciliation described below.</p>
 	</tbody>
 </table>
 
+<p>A phase waits for a case worker by default. Each one holds a message catch event that the user interface opens.
+The two folköl models are the exception. A notification of low-alcohol beer sale or serving needs no case worker before the
+follow up, so Registration through Decision hold no wait state and the process passes straight through them. Only Follow
+up and Closure keep their catch events, so that is where Support Management sees the errand stop.</p>
+
 <h3>Automatic deployment</h3>
 
 <p>The automatic deployment interprets properties present in the application yaml file. The following settings are used to configure the automatic deployment mechanism:</p>

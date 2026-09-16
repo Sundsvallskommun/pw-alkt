@@ -221,7 +221,7 @@ public class ProcessReconciliationService {
 			.severity(severity)
 			.errorCode(errorCode)
 			.message(message)
-			.occurredAt(occurredAt);
+			.occurredAt(orNow(occurredAt));
 		return new ProcessStateReport(report.status(), null, null, null, report.error(), List.of(activity), null);
 	}
 
@@ -233,8 +233,13 @@ public class ProcessReconciliationService {
 			.severity(SEVERITY_ERROR)
 			.errorCode(ERROR_CODE_INCIDENT)
 			.message(failed.error().getMessage())
-			.occurredAt(incident.getIncidentTimestamp());
+			.occurredAt(orNow(incident.getIncidentTimestamp()));
 
 		return new ProcessStateReport(FAILED, incident.getActivityId(), null, null, failed.error(), List.of(activity), null);
+	}
+
+	/** Support Management requires occurredAt, but the engine fields it is read from are nullable. */
+	private static OffsetDateTime orNow(final OffsetDateTime occurredAt) {
+		return occurredAt != null ? occurredAt : OffsetDateTime.now(UTC);
 	}
 }

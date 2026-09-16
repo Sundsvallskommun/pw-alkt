@@ -51,4 +51,35 @@ public class ProcessPathway {
 			.with(tuple("Closure completed", "await_closure_completed"))
 			.with(tuple("End closure phase", "end_closure_phase"));
 	}
+
+	// The same phases in a model that holds no wait state in them: the process passes straight through, so the route
+	// carries the phase, its start and its end, but no catch event. See the folkol models in processmodels/.
+
+	public static Tuples registrationPassThroughPathway() {
+		return Tuples.create()
+			.with(tuple("Registration", "registration_phase"))
+			.with(tuple("Start registration phase", "start_registration_phase"))
+			.with(tuple("End registration phase", "end_registration_phase"));
+	}
+
+	public static Tuples reviewPassThroughPathway() {
+		return Tuples.create()
+			.with(tuple("Review", "review_phase"))
+			.with(tuple("Start review phase", "start_review_phase"))
+			.with(tuple("End review phase", "end_review_phase"));
+	}
+
+	public static Tuples investigationPassThroughPathway() {
+		return Tuples.create()
+			.with(tuple("Investigation", "investigation_phase"))
+			.with(tuple("Start investigation phase", "start_investigation_phase"))
+			.with(tuple("End investigation phase", "end_investigation_phase"));
+	}
+
+	public static Tuples decisionPassThroughPathway() {
+		return Tuples.create()
+			.with(tuple("Decision", "decision_phase"))
+			.with(tuple("Start decision phase", "start_decision_phase"))
+			.with(tuple("End decision phase", "end_decision_phase"));
+	}
 }

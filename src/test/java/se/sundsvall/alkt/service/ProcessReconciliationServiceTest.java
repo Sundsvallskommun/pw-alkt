@@ -237,6 +237,20 @@ class ProcessReconciliationServiceTest {
 		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
 	}
 
+	/** Support Management requires occurredAt, but the engine leaves the incident timestamp nullable. */
+	@Test
+	void fallsBackToNowWhenTheIncidentHasNoTimestamp() {
+		mockIncident(incident().incidentTimestamp(null));
+		mockErrandProcesses(row("RUNNING", null));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().activities()).singleElement()
+			.satisfies(activity -> assertThat(activity.getOccurredAt()).isCloseTo(OffsetDateTime.now(), within(1, ChronoUnit.MINUTES)));
+	}
+
 	// Ended instances
 
 	@Test
@@ -359,6 +373,22 @@ class ProcessReconciliationServiceTest {
 
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
 		verify(processReportServiceMock).report(eq(target(secondInstanceId, null)), any());
+	}
+
+	/** Support Management requires occurredAt, but the engine leaves the end time nullable. */
+	@Test
+	void fallsBackToNowWhenTheEndedInstanceHasNoEndTime() {
+		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any()))
+			.thenReturn(List.of(endedInstance(PROCESS_INSTANCE_ID, StateEnum.COMPLETED).endTime(null)));
+		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(identity());
+		mockErrandProcesses(row("RUNNING", null));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().activities()).singleElement()
+			.satisfies(activity -> assertThat(activity.getOccurredAt()).isCloseTo(OffsetDateTime.now(), within(1, ChronoUnit.MINUTES)));
 	}
 
 	// Helpers

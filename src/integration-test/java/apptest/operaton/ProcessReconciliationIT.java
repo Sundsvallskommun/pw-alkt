@@ -3,6 +3,7 @@ package apptest.operaton;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -102,7 +103,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 		// Now the row says so, and the next run leaves it alone
 		mockGetErrandProcesses(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, "FAILED", "INCIDENT");
-		final var reportsBefore = countReports(reportPath);
+		final var reportsBefore = awaitSettledReportCount(reportPath);
 		runReconciliation();
 
 		assertThat(countReports(reportPath)).isEqualTo(reportsBefore);
@@ -152,6 +153,18 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		verify(moreThanOrExactly(1), putRequestedFor(urlPathEqualTo(reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId)))
 			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("COMPLETED")))
 			.withRequestBody(matchingJsonPath("$.activities[0].activityType", WireMock.equalTo("RECONCILIATION"))));
+	}
+
+	/** A sweep started before the stub flipped may still be in flight, so let the count settle before it is a baseline. */
+	private int awaitSettledReportCount(final String reportPath) {
+		final var previous = new AtomicInteger(-1);
+		await()
+			.pollInterval(Duration.ofSeconds(1))
+			.until(() -> {
+				final var current = countReports(reportPath);
+				return current == previous.getAndSet(current);
+			});
+		return previous.get();
 	}
 
 	private int countReports(final String reportPath) {
