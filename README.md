@@ -88,6 +88,26 @@ The two folköl models are the exception. A notification of low-alcohol beer sal
 follow up, so Registration through Decision hold no wait state and the process passes straight through them. Only Follow
 up and Closure keep their catch events, so that is where Support Management sees the errand stop.</p>
 
+<p>The six phases are the same in every process, and stay that way. An errand moves through Registration, Review,
+Investigation, Decision, Follow up and Closure whether it is a permit or a supervision; what separates one process from
+another is what happens inside a phase and whether the phase waits for a case worker, as the folköl models show. The
+work inside the phases is not described yet, so the models hold the phases and little else.</p>
+
+<p>A process starts from an errand event that Support Management publishes with
+<span class="code">startAllowed</span>. The supervision is the one started by hand: the Starta handläggning command of
+the case worker arrives as an event with the sub type <span class="code">PROCESS</span>, and this service never reads
+the sub type. A key it deploys, no instance already running and a permission given is all a start takes, so a manual
+start and an automatic one follow the same path. <span class="code">ProcessWithoutDeviationIT</span> drives every key in
+<span class="code">PROCESS_KEYS</span> from that event to the end of the process, and starts the supervision the way the
+command arrives.</p>
+
+<p>Which process an errand gets, and whether it starts by itself, is metadata on the label in Support Management:
+<span class="code">processKey</span> and <span class="code">processStartMode</span>, set per environment through its
+<span class="code">metadata/labels</span> API and not in this repository. The key has to be the exact string in the
+table above. The supervision process is <span class="code">supervision</span>, not
+<span class="code">alkt-tillsyn</span> as the solution document exemplifies with, and an event naming a key this service
+does not deploy is answered with <span class="code">422</span>.</p>
+
 <h3>Automatic deployment</h3>
 
 <p>The automatic deployment interprets properties present in the application yaml file. The following settings are used to configure the automatic deployment mechanism:</p>
