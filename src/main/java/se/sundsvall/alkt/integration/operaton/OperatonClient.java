@@ -10,6 +10,7 @@ import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
+import generated.se.sundsvall.operaton.MessageCorrelationResultWithVariableDto;
 import generated.se.sundsvall.operaton.ProcessDefinitionDiagramDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
@@ -41,8 +42,9 @@ public interface OperatonClient {
 	@PostMapping(path = "process-definition/key/{key}/tenant-id/{tenantId}/start", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
 	ProcessInstanceWithVariablesDto startProcessWithTenant(@PathVariable String key, @PathVariable String tenantId, StartProcessInstanceDto startProcessInstanceDto);
 
-	@PostMapping(path = "message", consumes = APPLICATION_JSON_VALUE)
-	void correlateMessage(CorrelationMessageDto correlationMessageDto);
+	/** One result, since the correlation is not sent with all=true. */
+	@PostMapping(path = "message", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
+	List<MessageCorrelationResultWithVariableDto> correlateMessage(CorrelationMessageDto correlationMessageDto);
 
 	@PostMapping(path = "deployment/create", produces = APPLICATION_JSON_VALUE, consumes = MULTIPART_FORM_DATA_VALUE)
 	DeploymentWithDefinitionsDto deploy(

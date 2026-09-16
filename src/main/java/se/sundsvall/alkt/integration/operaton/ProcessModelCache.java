@@ -1,21 +1,22 @@
 package se.sundsvall.alkt.integration.operaton;
 
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.xml.sax.ErrorHandler;
-import org.xml.sax.SAXParseException;
+import org.xml.sax.SAXException;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
@@ -26,24 +27,6 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 public class ProcessModelCache {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProcessModelCache.class);
-
-	private static final ErrorHandler RETHROWING = new ErrorHandler() {
-
-		@Override
-		public void warning(final SAXParseException e) {
-			// A warning leaves a usable document, so it is not worth a log line of its own.
-		}
-
-		@Override
-		public void error(final SAXParseException e) throws SAXParseException {
-			throw e;
-		}
-
-		@Override
-		public void fatalError(final SAXParseException e) throws SAXParseException {
-			throw e;
-		}
-	};
 
 	private static final String BPMN_NAMESPACE = "http://www.omg.org/spec/BPMN/20100524/MODEL";
 	private static final String SUB_PROCESS = "subProcess";
@@ -69,6 +52,8 @@ public class ProcessModelCache {
 	}
 
 	// A model that could not be read is not cached: the next report tries again rather than living with empty labels.
+	// That is also why this is not computeIfAbsent, which would keep the failure. Two threads parsing the same model at
+	// once costs one parse and nothing else.
 	private ProcessModel load(final String processDefinitionId) {
 		try {
 			final var model = parse(operatonClient.getProcessDefinitionXml(processDefinitionId).getBpmn20Xml());
@@ -78,24 +63,19 @@ public class ProcessModelCache {
 			}
 			models.put(processDefinitionId, model);
 			return model;
-		} catch (final Exception e) {
+		} catch (final ParserConfigurationException | SAXException | IOException | RuntimeException e) {
 			LOG.warn("Could not read the model of process definition {}, falling back to message names", sanitizeForLogging(processDefinitionId), e);
 			return ProcessModel.EMPTY;
 		}
 	}
 
-	private static ProcessModel parse(final String xml) throws Exception {
+	private static ProcessModel parse(final String xml) throws ParserConfigurationException, SAXException, IOException {
 		final var factory = DocumentBuilderFactory.newInstance();
 		factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
 		factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
 		factory.setNamespaceAware(true);
 
-		final var builder = factory.newDocumentBuilder();
-		// Without a handler of its own the parser prints every fatal error to stderr before throwing, and the throw is
-		// what this class acts on.
-		builder.setErrorHandler(RETHROWING);
-
-		final var document = builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+		final var document = factory.newDocumentBuilder().parse(new ByteArrayInputStream(xml.getBytes(UTF_8)));
 		final var names = new HashMap<String, String>();
 		final var phases = new HashMap<String, String>();
 

@@ -1,6 +1,7 @@
 package apptest.operaton;
 
 import apptest.verification.Tuples;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
@@ -11,10 +12,16 @@ import tools.jackson.core.JacksonException;
 import java.time.Duration;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
+import static apptest.mock.api.SupportManagement.mockReportProcess;
+import static apptest.mock.api.SupportManagement.reportPath;
 import static apptest.verification.ProcessPathway.decisionPassThroughPathway;
 import static apptest.verification.ProcessPathway.investigationPassThroughPathway;
 import static apptest.verification.ProcessPathway.registrationPassThroughPathway;
 import static apptest.verification.ProcessPathway.reviewPassThroughPathway;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static java.time.Duration.ZERO;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -27,6 +34,7 @@ import static org.awaitility.Awaitility.setDefaultTimeout;
 import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
+import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
@@ -39,13 +47,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
 
 /**
- * Where each process first stops when nothing but the start event has happened. One test per process key, so a model
- * that grows work steps gets a place to grow its test with it.
- * <p>
- * No process reports here: the first work step of every model sits after the phases, so a process on its first wait
- * state has told Support Management nothing yet. The token stub is still needed - WireMock is shared by every test in
- * the run and reset between them, and the deployment in the context boot of the next class goes through the OAuth
- * interceptor.
+ * Where each process first stops when nothing but the start event has happened, and what Support Management is told
+ * about it. One test per process key, so a model that grows work steps gets a place to grow its test with it.
  */
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/Wiremock/", classes = Application.class)
@@ -55,9 +58,8 @@ class ProcessInitialWaitStateIT extends AbstractOperatonAppTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String TENANT_ID_ALKT = "ALKT";
-	// One deployment per process model in processmodels/ - bump this when a process schema is added or removed. Ten
-	// errand processes plus process-reconciliation.
-	private static final int EXPECTED_DEPLOYMENTS = 11;
+	// The errand processes plus process-reconciliation, which is deployed on its own and has no key in PROCESS_KEYS
+	private static final int EXPECTED_DEPLOYMENTS = PROCESS_KEYS.size() + 1;
 	private static final String ERRAND_EVENTS_PATH = "/%s/%s/process/errand-events".formatted(MUNICIPALITY_ID, NAMESPACE);
 
 	@BeforeEach
@@ -129,11 +131,14 @@ class ProcessInitialWaitStateIT extends AbstractOperatonAppTest {
 	 * when the process parks, so the route holds the start event and the start of the phase and nothing else.
 	 */
 	private void assertStopsInRegistration(final String processKey) throws JacksonException {
-		final var processInstanceId = startAndAwaitWaitState(processKey, "await_registration_completed");
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = startAndAwaitWaitState(errandId, processKey, "await_registration_completed");
 
 		assertProcessPathway(processInstanceId, false, Tuples.create()
 			.with(tuple("Start process", "start_process"))
 			.with(tuple("Start registration phase", "start_registration_phase")));
+
+		assertWaitStateReported(errandId, processInstanceId, processKey, "registration_phase", "Registration", "registration_completed", "Registration completed");
 	}
 
 	/**
@@ -141,7 +146,8 @@ class ProcessInitialWaitStateIT extends AbstractOperatonAppTest {
 	 * without a case worker, and the process is parked on the follow up gate rather than past it.
 	 */
 	private void assertRunsToFollowUp(final String processKey) throws JacksonException {
-		final var processInstanceId = startAndAwaitWaitState(processKey, "await_follow_up_completed");
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = startAndAwaitWaitState(errandId, processKey, "await_follow_up_completed");
 
 		assertProcessPathway(processInstanceId, false, Tuples.create()
 			.with(tuple("Start process", "start_process"))
@@ -150,11 +156,25 @@ class ProcessInitialWaitStateIT extends AbstractOperatonAppTest {
 			.with(investigationPassThroughPathway())
 			.with(decisionPassThroughPathway())
 			.with(tuple("Start follow up phase", "start_follow_up_phase")));
+
+		assertWaitStateReported(errandId, processInstanceId, processKey, "follow_up_phase", "Follow up", "follow_up_completed", "Follow up completed");
+	}
+
+	/** The phase rather than the catch event, and the button the user interface is to show for it. */
+	private void assertWaitStateReported(final String errandId, final String processInstanceId, final String processKey, final String phaseId, final String phaseName,
+		final String signalName, final String signalLabel) {
+		verify(putRequestedFor(urlPathEqualTo(reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId)))
+			.withRequestBody(matchingJsonPath("$.processKey", WireMock.equalTo(processKey)))
+			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("WAITING")))
+			.withRequestBody(matchingJsonPath("$.currentActivityId", WireMock.equalTo(phaseId)))
+			.withRequestBody(matchingJsonPath("$.currentActivityName", WireMock.equalTo(phaseName)))
+			.withRequestBody(matchingJsonPath("$.awaitingSignals[0].name", WireMock.equalTo(signalName)))
+			.withRequestBody(matchingJsonPath("$.awaitingSignals[0].label", WireMock.equalTo(signalLabel))));
 	}
 
 	/** Starts the process on an errand of its own and returns the instance once the engine has parked it on the gate. */
-	private String startAndAwaitWaitState(final String processKey, final String activityId) throws JacksonException {
-		final var errandId = randomUUID().toString();
+	private String startAndAwaitWaitState(final String errandId, final String processKey, final String activityId) throws JacksonException {
+		mockReportProcess(MUNICIPALITY_ID, NAMESPACE, errandId);
 
 		sendErrandEvent("""
 			{"eventId": "%s", "eventType": "CREATE", "eventSubType": "ERRAND", "errandId": "%s",

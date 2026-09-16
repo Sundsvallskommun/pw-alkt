@@ -1,7 +1,9 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
+import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -9,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
+import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 
 import static java.util.UUID.randomUUID;
@@ -21,6 +24,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
@@ -36,11 +40,30 @@ class ProcessServiceTest {
 	private static final String TENANT_ID = "ALKT";
 	private static final String PROCESS_KEY = "alcohol-serving";
 
+	private static final String DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
+
 	@Mock
 	private OperatonIntegration operatonIntegrationMock;
 
+	@Mock
+	private ProcessReportService processReportServiceMock;
+
 	@InjectMocks
 	private ProcessService processService;
+
+	private static ProcessInstanceWithVariablesDto instance(final String processInstanceId) {
+		return new ProcessInstanceWithVariablesDto()
+			.id(processInstanceId)
+			.definitionId(DEFINITION_ID)
+			.definitionKey(PROCESS_KEY);
+	}
+
+	private static ProcessInstanceDto runningInstance(final String processInstanceId) {
+		return new ProcessInstanceDto()
+			.id(processInstanceId)
+			.definitionId(DEFINITION_ID)
+			.definitionKey(PROCESS_KEY);
+	}
 
 	private static ErrandEvent event(final ErrandEvent.EventType eventType, final String errandId, final String processKey, final Boolean startAllowed) {
 		final var errandEvent = new ErrandEvent();
@@ -63,7 +86,7 @@ class ProcessServiceTest {
 		final var processInstanceId = randomUUID().toString();
 
 		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
-		when(operatonIntegrationMock.startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID)).thenReturn(processInstanceId);
+		when(operatonIntegrationMock.startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID)).thenReturn(instance(processInstanceId));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(CREATE, errandId, PROCESS_KEY, true));
@@ -83,7 +106,7 @@ class ProcessServiceTest {
 		final var errandId = randomUUID().toString();
 
 		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
-		when(operatonIntegrationMock.startProcess(any(), any(), any(), any(), any())).thenReturn(randomUUID().toString());
+		when(operatonIntegrationMock.startProcess(any(), any(), any(), any(), any())).thenReturn(instance(randomUUID().toString()));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, true));
@@ -234,6 +257,99 @@ class ProcessServiceTest {
 
 		// Act and assert
 		assertThatNoException().isThrownBy(() -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
+	}
+
+	@Test
+	void reportsTheWaitStateTheStartedProcessRunsInto() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID)).thenReturn(instance(processInstanceId));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(CREATE, errandId, PROCESS_KEY, true));
+
+		// Assert - the key of a start comes from the event, and the report carries no external task
+		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, PROCESS_KEY, null), DEFINITION_ID);
+	}
+
+	@Test
+	void reportsTheWaitStateASignalMovedTheProcessInto() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType("SIGNAL");
+		errandEvent.setSignalName("registration_completed");
+
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		when(operatonIntegrationMock.correlateMessage("registration_completed", errandId, TENANT_ID)).thenReturn(Optional.of(processInstanceId));
+		when(operatonIntegrationMock.findProcessInstance(processInstanceId)).thenReturn(Optional.of(runningInstance(processInstanceId)));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert - the key of a wakeup comes from the running instance, since the event may carry none
+		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, PROCESS_KEY, null), DEFINITION_ID);
+	}
+
+	/** An errand may run more than one process, and the message picks among them on the subscription, not on the key. */
+	@Test
+	void reportsTheWaitStateOfTheInstanceTheMessageReached() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var reachedInstanceId = randomUUID().toString();
+		final var reachedInstance = new ProcessInstanceDto().id(reachedInstanceId).definitionId("supervision:1:aaa").definitionKey("supervision");
+
+		// The event names alcohol-serving, the message landed on the inspection running alongside it
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.of(reachedInstanceId));
+		when(operatonIntegrationMock.findProcessInstance(reachedInstanceId)).thenReturn(Optional.of(reachedInstance));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, reachedInstanceId, "supervision", null), "supervision:1:aaa");
+	}
+
+	/** The message ran the process to its end, so the engine keeps no runtime row and there is no wait state left. */
+	@Test
+	void reportsNothingWhenTheMessageEndedTheInstanceItReached() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var reachedInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.of(reachedInstanceId));
+		when(operatonIntegrationMock.findProcessInstance(reachedInstanceId)).thenReturn(Optional.empty());
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	/** The process stands where it stood, and Support Management already knows that wait state. */
+	@Test
+	void reportsNothingWhenTheCorrelationMisses() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+		doThrow(new ClientProblem(BAD_GATEWAY, "No matching wait state")).when(operatonIntegrationMock).correlateMessage(any(), any(), any());
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test

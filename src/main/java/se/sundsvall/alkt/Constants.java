@@ -54,6 +54,10 @@ public final class Constants {
 	// in application.yaml - the integration test covers the pairing.
 	public static final String TENANT_ID_ALKT = "ALKT";
 
+	// The message a wakeup correlates when the event is not a named signal. Filtered out of the signal list a wait state
+	// report carries: it is no button a case worker should see.
+	public static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
+
 	// The errand this process instance drives, identified the way Support Management identifies it: a UUID string.
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
