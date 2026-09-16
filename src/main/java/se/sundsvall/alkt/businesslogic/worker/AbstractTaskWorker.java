@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
@@ -30,7 +31,11 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		this.failureHandler = failureHandler;
 	}
 
-	/** The state the process is in once the step is done. Returning it is how a step reports, so it cannot be skipped. */
+	/**
+	 * The state the process is in once the step is done. Returning it is how a step reports, so it cannot be skipped. A
+	 * step that failed says so by throwing - a returned report always completes the task, and only COMPLETED and FAILED
+	 * survive it, since anything else is overwritten by the wait state the engine moved on to.
+	 */
 	protected abstract ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
 
 	/**
@@ -42,15 +47,25 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init(externalTask.getVariable(PROCESS_VARIABLE_REQUEST_ID));
 		try {
-			reportProcessState(externalTask, ProcessStateReport.running(externalTask.getActivityId(), null));
+			final ProcessStateReport report;
+			try {
+				reportProcessState(externalTask, ProcessStateReport.running(externalTask.getActivityId(), null));
 
-			final var report = executeBusinessLogic(externalTask, externalTaskService);
+				report = executeBusinessLogic(externalTask, externalTaskService);
 
-			reportProcessState(externalTask, report);
-			externalTaskService.complete(externalTask, report.variables());
-		} catch (final Exception e) {
-			logException(externalTask, e);
-			failureHandler.handleException(externalTaskService, externalTask, e.getMessage());
+				reportProcessState(externalTask, report);
+				externalTaskService.complete(externalTask, report.variables());
+			} catch (final Exception e) {
+				logException(externalTask, e);
+				failureHandler.handleException(externalTaskService, externalTask, e.getMessage());
+				return;
+			}
+
+			// Outside the catch above on purpose: the task is completed by now, and handing a failure here to the failure
+			// handler would retry a step that already did its work.
+			if (!report.status().isTerminal()) {
+				reportWaitState(externalTask);
+			}
 		} finally {
 			RequestId.reset();
 		}
@@ -71,6 +86,20 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 			logger.error("Could not report {} for task {}", report.status(), sanitizeForLogging(externalTask.getId()), e);
 		} catch (final Exception e) {
 			logger.error("Could not report {} for task {}", report.status(), sanitizeForLogging(externalTask.getId()), e);
+		}
+	}
+
+	/**
+	 * Only after complete: the engine moves on when the task completes, so before that there is no subscription to read.
+	 */
+	private void reportWaitState(final ExternalTask externalTask) {
+		try {
+			processReportService.reportWaitState(
+				new ReportTarget(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), externalTask.getProcessInstanceId(),
+					externalTask.getProcessDefinitionKey(), null),
+				externalTask.getProcessDefinitionId());
+		} catch (final Exception e) {
+			logger.error("Could not report the wait state after task {}", sanitizeForLogging(externalTask.getId()), e);
 		}
 	}
 
