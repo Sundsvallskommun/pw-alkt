@@ -8,8 +8,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
-import se.sundsvall.alkt.api.model.ProcessStateReport;
-import se.sundsvall.alkt.api.model.ReportTarget;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -17,7 +17,7 @@ import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
 
 class SupportManagementMapperTest {
 

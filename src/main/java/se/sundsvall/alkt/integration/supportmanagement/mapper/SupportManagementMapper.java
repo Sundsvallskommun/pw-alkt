@@ -2,8 +2,8 @@ package se.sundsvall.alkt.integration.supportmanagement.mapper;
 
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import org.camunda.bpm.client.task.ExternalTask;
-import se.sundsvall.alkt.api.model.ProcessStateReport;
-import se.sundsvall.alkt.api.model.ReportTarget;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;

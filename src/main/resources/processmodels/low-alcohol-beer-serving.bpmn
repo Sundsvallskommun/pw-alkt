@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_low_alcohol_beer_serving" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
-  <!-- One message per phase exit. The user interface correlates these on the business key of the instance, i.e. the errand id. -->
-  <bpmn:message id="message_registration_completed" name="registration_completed" />
-  <bpmn:message id="message_review_completed" name="review_completed" />
-  <bpmn:message id="message_investigation_completed" name="investigation_completed" />
-  <bpmn:message id="message_decision_completed" name="decision_completed" />
+  <!-- One message per manual phase exit. The user interface correlates these on the business key of the instance, i.e. the errand id. -->
   <bpmn:message id="message_follow_up_completed" name="follow_up_completed" />
   <bpmn:message id="message_closure_completed" name="closure_completed" />
   <bpmn:process id="low-alcohol-beer-serving" name="PROCESS Serving of low-alcohol beer" isExecutable="true" camunda:historyTimeToLive="P30D">
-    <bpmn:documentation>Skeleton of the process. The phases run in sequence and each one waits for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
+    <bpmn:documentation>Skeleton of the process. Registration through Decision hold no wait state, so the process passes through them without a case worker and without reporting - Support Management sees the errand arrive in Follow up. Follow up and Closure wait for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
       <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>
@@ -19,18 +15,11 @@
       <bpmn:incoming>flow_start_process_to_registration</bpmn:incoming>
       <bpmn:outgoing>flow_registration_to_review</bpmn:outgoing>
       <bpmn:startEvent id="start_registration_phase" name="Start registration phase">
-        <bpmn:outgoing>flow_registration_start_to_await</bpmn:outgoing>
+        <bpmn:outgoing>flow_registration_start_to_end</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_registration_start_to_await" sourceRef="start_registration_phase" targetRef="await_registration_completed" />
-      <bpmn:intermediateCatchEvent id="await_registration_completed" name="Registration completed">
-        <bpmn:documentation>Waits until a case worker marks the registration as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
-        <bpmn:incoming>flow_registration_start_to_await</bpmn:incoming>
-        <bpmn:outgoing>flow_registration_await_to_end</bpmn:outgoing>
-        <bpmn:messageEventDefinition id="messagedef_registration_completed" messageRef="message_registration_completed" />
-      </bpmn:intermediateCatchEvent>
-      <bpmn:sequenceFlow id="flow_registration_await_to_end" sourceRef="await_registration_completed" targetRef="end_registration_phase" />
+      <bpmn:sequenceFlow id="flow_registration_start_to_end" sourceRef="start_registration_phase" targetRef="end_registration_phase" />
       <bpmn:endEvent id="end_registration_phase" name="End registration phase">
-        <bpmn:incoming>flow_registration_await_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_registration_start_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_registration_to_review" sourceRef="registration_phase" targetRef="review_phase" />
@@ -39,18 +28,11 @@
       <bpmn:incoming>flow_registration_to_review</bpmn:incoming>
       <bpmn:outgoing>flow_review_to_investigation</bpmn:outgoing>
       <bpmn:startEvent id="start_review_phase" name="Start review phase">
-        <bpmn:outgoing>flow_review_start_to_await</bpmn:outgoing>
+        <bpmn:outgoing>flow_review_start_to_end</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_review_start_to_await" sourceRef="start_review_phase" targetRef="await_review_completed" />
-      <bpmn:intermediateCatchEvent id="await_review_completed" name="Review completed">
-        <bpmn:documentation>Waits until a case worker marks the review as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
-        <bpmn:incoming>flow_review_start_to_await</bpmn:incoming>
-        <bpmn:outgoing>flow_review_await_to_end</bpmn:outgoing>
-        <bpmn:messageEventDefinition id="messagedef_review_completed" messageRef="message_review_completed" />
-      </bpmn:intermediateCatchEvent>
-      <bpmn:sequenceFlow id="flow_review_await_to_end" sourceRef="await_review_completed" targetRef="end_review_phase" />
+      <bpmn:sequenceFlow id="flow_review_start_to_end" sourceRef="start_review_phase" targetRef="end_review_phase" />
       <bpmn:endEvent id="end_review_phase" name="End review phase">
-        <bpmn:incoming>flow_review_await_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_review_start_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_review_to_investigation" sourceRef="review_phase" targetRef="investigation_phase" />
@@ -59,18 +41,11 @@
       <bpmn:incoming>flow_review_to_investigation</bpmn:incoming>
       <bpmn:outgoing>flow_investigation_to_decision</bpmn:outgoing>
       <bpmn:startEvent id="start_investigation_phase" name="Start investigation phase">
-        <bpmn:outgoing>flow_investigation_start_to_await</bpmn:outgoing>
+        <bpmn:outgoing>flow_investigation_start_to_end</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_investigation_start_to_await" sourceRef="start_investigation_phase" targetRef="await_investigation_completed" />
-      <bpmn:intermediateCatchEvent id="await_investigation_completed" name="Investigation completed">
-        <bpmn:documentation>Waits until a case worker marks the investigation as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
-        <bpmn:incoming>flow_investigation_start_to_await</bpmn:incoming>
-        <bpmn:outgoing>flow_investigation_await_to_end</bpmn:outgoing>
-        <bpmn:messageEventDefinition id="messagedef_investigation_completed" messageRef="message_investigation_completed" />
-      </bpmn:intermediateCatchEvent>
-      <bpmn:sequenceFlow id="flow_investigation_await_to_end" sourceRef="await_investigation_completed" targetRef="end_investigation_phase" />
+      <bpmn:sequenceFlow id="flow_investigation_start_to_end" sourceRef="start_investigation_phase" targetRef="end_investigation_phase" />
       <bpmn:endEvent id="end_investigation_phase" name="End investigation phase">
-        <bpmn:incoming>flow_investigation_await_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_investigation_start_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_investigation_to_decision" sourceRef="investigation_phase" targetRef="decision_phase" />
@@ -79,18 +54,11 @@
       <bpmn:incoming>flow_investigation_to_decision</bpmn:incoming>
       <bpmn:outgoing>flow_decision_to_follow_up</bpmn:outgoing>
       <bpmn:startEvent id="start_decision_phase" name="Start decision phase">
-        <bpmn:outgoing>flow_decision_start_to_await</bpmn:outgoing>
+        <bpmn:outgoing>flow_decision_start_to_end</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_decision_start_to_await" sourceRef="start_decision_phase" targetRef="await_decision_completed" />
-      <bpmn:intermediateCatchEvent id="await_decision_completed" name="Decision completed">
-        <bpmn:documentation>Waits until a case worker records the decision in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
-        <bpmn:incoming>flow_decision_start_to_await</bpmn:incoming>
-        <bpmn:outgoing>flow_decision_await_to_end</bpmn:outgoing>
-        <bpmn:messageEventDefinition id="messagedef_decision_completed" messageRef="message_decision_completed" />
-      </bpmn:intermediateCatchEvent>
-      <bpmn:sequenceFlow id="flow_decision_await_to_end" sourceRef="await_decision_completed" targetRef="end_decision_phase" />
+      <bpmn:sequenceFlow id="flow_decision_start_to_end" sourceRef="start_decision_phase" targetRef="end_decision_phase" />
       <bpmn:endEvent id="end_decision_phase" name="End decision phase">
-        <bpmn:incoming>flow_decision_await_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_decision_start_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_decision_to_follow_up" sourceRef="decision_phase" targetRef="follow_up_phase" />

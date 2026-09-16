@@ -1,16 +1,15 @@
 package apptest.operaton;
 
-import java.time.Duration;
-
+import apptest.verification.Tuples;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
-
-import tools.jackson.core.JacksonException;
-
-import apptest.verification.Tuples;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
+import tools.jackson.core.JacksonException;
+
+import java.time.Duration;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
 import static apptest.mock.api.SupportManagement.mockReportProcess;
@@ -20,6 +19,12 @@ import static apptest.verification.ProcessPathway.followUpPathway;
 import static apptest.verification.ProcessPathway.investigationPathway;
 import static apptest.verification.ProcessPathway.registrationPathway;
 import static apptest.verification.ProcessPathway.reviewPathway;
+import static com.github.tomakehurst.wiremock.client.WireMock.absent;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static java.time.Duration.ZERO;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -40,8 +45,9 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String TENANT_ID_ALKT = "ALKT";
-	// One deployment per process model in processmodels/ - bump this when a process schema is added or removed
-	private static final int EXPECTED_DEPLOYMENTS = 10;
+	// One deployment per process model in processmodels/ - bump this when a process schema is added or removed. Ten
+	// errand processes plus process-reconciliation.
+	private static final int EXPECTED_DEPLOYMENTS = 11;
 	// Support Management identifies an errand by a UUID, so that is what the process is started with
 	private static final String ERRAND_ID = "f0882f1d-06bc-47fd-b017-1d8307f5ce95";
 	private static final String PROCESS_KEY = "alcohol-serving";
@@ -84,8 +90,16 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
-		// Verify wiremock stubs
+		// Verify wiremock stubs - the last work step is the one that tells Support Management the process is over
 		verifyAllStubs();
+		verify(putRequestedFor(urlPathEqualTo("/api-support-management/%s/%s/errands/%s/processes/%s".formatted(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, processInstanceId)))
+			.withHeader("X-Sent-By", WireMock.equalTo("pw-alkt; type=processEngine"))
+			.withRequestBody(matchingJsonPath("$.processService", WireMock.equalTo("pw-alkt")))
+			.withRequestBody(matchingJsonPath("$.processKey", WireMock.equalTo(PROCESS_KEY)))
+			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("COMPLETED")))
+			.withRequestBody(matchingJsonPath("$.currentActivityId", WireMock.equalTo("external_task_complete_process")))
+			.withRequestBody(matchingJsonPath("$.externalTaskId", matching("[0-9a-f-]{36}")))
+			.withRequestBody(matchingJsonPath("$.processInstanceId", absent())));
 
 		// Verify process pathway.
 		assertProcessPathway(processInstanceId, false, Tuples.create()
@@ -104,7 +118,7 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 	 * Waits until the process is parked on the catch event ending the phase, then sends the signal event Support
 	 * Management publishes when a case worker moves the errand on.
 	 */
-	private void completePhase(final String processInstanceId, final String phase) throws JacksonException, ClassNotFoundException {
+	private void completePhase(final String processInstanceId, final String phase) throws JacksonException {
 		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		sendErrandEvent("""

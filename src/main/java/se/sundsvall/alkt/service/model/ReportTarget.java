@@ -1,4 +1,4 @@
-package se.sundsvall.alkt.api.model;
+package se.sundsvall.alkt.service.model;
 
 /**
  * Which process row in Support Management a report is about. externalTaskId is optional, it dedups replayed activities.

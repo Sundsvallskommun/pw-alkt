@@ -8,6 +8,8 @@ import generated.se.sundsvall.operaton.DeploymentWithDefinitionsDto;
 import generated.se.sundsvall.operaton.EventSubscriptionDto;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
+import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
+import generated.se.sundsvall.operaton.IncidentDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
@@ -70,11 +72,27 @@ public interface OperatonClient {
 	void deleteProcessInstance(@PathVariable String id, @RequestParam("failIfNotExists") boolean failIfNotExists);
 
 	@GetMapping(path = "history/process-instance/{id}", produces = APPLICATION_JSON_VALUE)
-	HistoricProcessInstanceDto getHistoricProcessInstance(@PathVariable String id);
+	Optional<HistoricProcessInstanceDto> getHistoricProcessInstance(@PathVariable String id);
 
 	@GetMapping(path = "history/activity-instance", produces = APPLICATION_JSON_VALUE)
 	List<HistoricActivityInstanceDto> getHistoricActivities(@RequestParam("processInstanceId") String processInstanceId);
 
 	@GetMapping(path = "event-subscription", produces = APPLICATION_JSON_VALUE)
 	List<EventSubscriptionDto> getEventSubscriptions(@RequestParam("processInstanceId") String processInstanceId, @RequestParam("eventType") String eventType);
+
+	/** processDefinitionKeyIn is comma separated, see OperatonMapper.toProcessDefinitionKeyIn. */
+	@GetMapping(path = "incident", produces = APPLICATION_JSON_VALUE)
+	List<IncidentDto> findIncidents(@RequestParam("tenantIdIn") String tenantIdIn, @RequestParam("processDefinitionKeyIn") String processDefinitionKeyIn);
+
+	/** finishedAfter in Operaton's timestamp format, see OperatonMapper.toOperatonTimestamp. */
+	@GetMapping(path = "history/process-instance", produces = APPLICATION_JSON_VALUE)
+	List<HistoricProcessInstanceDto> findHistoricProcessInstances(
+		@RequestParam("tenantIdIn") String tenantIdIn,
+		@RequestParam("processDefinitionKeyIn") String processDefinitionKeyIn,
+		@RequestParam("finished") boolean finished,
+		@RequestParam("finishedAfter") String finishedAfter);
+
+	/** Works for running and finished instances alike, unlike the runtime variables of an instance. */
+	@GetMapping(path = "history/variable-instance", produces = APPLICATION_JSON_VALUE)
+	List<HistoricVariableInstanceDto> getHistoricVariableInstances(@RequestParam("processInstanceId") String processInstanceId);
 }

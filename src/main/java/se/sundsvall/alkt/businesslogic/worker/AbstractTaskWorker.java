@@ -5,9 +5,9 @@ import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
@@ -33,6 +33,11 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	/** The state the process is in once the step is done. Returning it is how a step reports, so it cannot be skipped. */
 	protected abstract ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
 
+	/**
+	 * RUNNING goes out before the step, what the step returned after it. A report Support Management refuses does not
+	 * fail the step, except a 412 (see reportProcessState); a final report that never arrived is what the reconciliation
+	 * settles later.
+	 */
 	@Override
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init(externalTask.getVariable(PROCESS_VARIABLE_REQUEST_ID));
@@ -58,7 +63,7 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	// survives in the message text.
 	private void reportProcessState(final ExternalTask externalTask, final ProcessStateReport report) {
 		try {
-			processReportService.reportProcessState(externalTask, report);
+			processReportService.report(externalTask, report);
 		} catch (final ClientProblem e) {
 			if (isPreconditionFailed(e)) {
 				throw e;

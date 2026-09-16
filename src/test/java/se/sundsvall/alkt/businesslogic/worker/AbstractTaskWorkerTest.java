@@ -15,9 +15,9 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.Constants;
-import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
@@ -26,10 +26,12 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -145,6 +147,19 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
+	void executeReportsRunningThenWhatTheStepReturnedAndThenCompletesTheTask() {
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(UUID.randomUUID().toString());
+
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		final var inOrder = inOrder(processReportServiceMock, externalTaskServiceMock);
+		inOrder.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
+		inOrder.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
+		inOrder.verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+		verifyNoInteractions(failureHandlerMock);
+	}
+
+	@Test
 	void executeWritesTheStepsResultVariablesWhenCompleting() {
 		final var variables = Map.<String, Object>of("decision", "APPROVED");
 		final var variableWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
@@ -160,13 +175,6 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
-	void executeCompletesWithAnEmptyMapWhenTheStepReturnsNoVariables() {
-		worker.execute(externalTaskMock, externalTaskServiceMock);
-
-		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
-	}
-
-	@Test
 	void reportsTheVersionTheStepReadWhenTheStepOnlyReads() {
 		final var readOnlyWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
@@ -178,7 +186,7 @@ class AbstractTaskWorkerTest {
 		readOnlyWorker.execute(externalTaskMock, externalTaskServiceMock);
 
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
-		verify(processReportServiceMock, times(2)).reportProcessState(any(), reportCaptor.capture());
+		verify(processReportServiceMock, times(2)).report(any(ExternalTask.class), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().errandVersion()).isEqualTo(7L);
 	}
 
@@ -199,8 +207,8 @@ class AbstractTaskWorkerTest {
 		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
 		// Assert - RUNNING went out before the throw, and it's the only report from execute() itself
-		verify(processReportServiceMock, times(1)).reportProcessState(any(), any());
-		verify(processReportServiceMock).reportProcessState(externalTaskMock, ProcessStateReport.running(null, null));
+		verify(processReportServiceMock, times(1)).report(any(ExternalTask.class), any());
+		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Boom");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
@@ -230,7 +238,7 @@ class AbstractTaskWorkerTest {
 	@Test
 	void executeStillRunsTheStepWhenTheRunningReportFails() {
 		// Arrange - Support Management being unreachable for the RUNNING report must not fail the business task
-		doThrow(new IllegalStateException("Support Management down")).when(processReportServiceMock).reportProcessState(any(), any());
+		doThrow(new IllegalStateException("Support Management down")).when(processReportServiceMock).report(any(ExternalTask.class), any());
 
 		// Act
 		worker.execute(externalTaskMock, externalTaskServiceMock);
@@ -245,7 +253,7 @@ class AbstractTaskWorkerTest {
 		// Arrange - the RUNNING report succeeds, the COMPLETED report fails; the failure must not undo the completion
 		doNothing()
 			.doThrow(new IllegalStateException("Support Management down"))
-			.when(processReportServiceMock).reportProcessState(any(), any());
+			.when(processReportServiceMock).report(any(ExternalTask.class), any());
 
 		// Act
 		worker.execute(externalTaskMock, externalTaskServiceMock);
@@ -262,7 +270,7 @@ class AbstractTaskWorkerTest {
 		// is the shape a real 412 from Support Management actually takes by the time it reaches this class.
 		doNothing()
 			.doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
-			.when(processReportServiceMock).reportProcessState(any(), any());
+			.when(processReportServiceMock).report(any(ExternalTask.class), any());
 
 		// Act
 		worker.execute(externalTaskMock, externalTaskServiceMock);

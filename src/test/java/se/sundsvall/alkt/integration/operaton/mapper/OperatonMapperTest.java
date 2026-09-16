@@ -1,6 +1,9 @@
 package se.sundsvall.alkt.integration.operaton.mapper;
 
 import generated.se.sundsvall.operaton.VariableValueDto;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import org.camunda.bpm.engine.variable.type.ValueType;
 import org.junit.jupiter.api.Test;
@@ -69,4 +72,17 @@ class OperatonMapperTest {
 		assertThat(result.getValue()).isEqualTo(true);
 	}
 
+	@Test
+	void toOperatonTimestamp() {
+		final var timestamp = OffsetDateTime.of(2026, 9, 14, 8, 5, 3, 21_000_000, ZoneOffset.ofHours(2));
+
+		// Operaton takes a zone offset without a colon, which is not what OffsetDateTime.toString() gives
+		assertThat(OperatonMapper.toOperatonTimestamp(timestamp)).isEqualTo("2026-09-14T08:05:03.021+0200");
+	}
+
+	@Test
+	void toProcessDefinitionKeyIn() {
+		assertThat(OperatonMapper.toProcessDefinitionKeyIn(List.of("supervision", "alcohol-serving"))).isEqualTo("alcohol-serving,supervision");
+		assertThat(OperatonMapper.toProcessDefinitionKeyIn(List.of())).isEmpty();
+	}
 }

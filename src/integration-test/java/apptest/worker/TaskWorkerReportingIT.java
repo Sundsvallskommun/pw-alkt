@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.TestPropertySource;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.alkt.Constants;
-import se.sundsvall.alkt.api.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.businesslogic.worker.AbstractTaskWorker;
 import se.sundsvall.alkt.businesslogic.worker.CompleteProcessWorker;

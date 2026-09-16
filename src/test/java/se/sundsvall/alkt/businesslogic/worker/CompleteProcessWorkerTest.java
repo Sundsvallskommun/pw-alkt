@@ -8,9 +8,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import se.sundsvall.alkt.api.model.ProcessStateReport;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
@@ -45,8 +45,8 @@ class CompleteProcessWorkerTest {
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
 		final var order = inOrder(processReportServiceMock, externalTaskServiceMock);
-		order.verify(processReportServiceMock).reportProcessState(externalTaskMock, ProcessStateReport.running(null, null));
-		order.verify(processReportServiceMock).reportProcessState(externalTaskMock, ProcessStateReport.completed());
+		order.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
+		order.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
 		order.verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
 		verifyNoInteractions(failureHandlerMock);
 	}

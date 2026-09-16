@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_process_reconciliation" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <bpmn:process id="process-reconciliation" name="Process reconciliation" isExecutable="true" camunda:historyTimeToLive="P1D">
+    <bpmn:documentation>The scheduler of pw-alkt. The engine fires the timer once per cycle no matter how many pods poll it, and hands the task to one of them. Not tied to an errand and not startable from an errand event. See README, "Process reconciliation".</bpmn:documentation>
+    <bpmn:startEvent id="start_reconciliation" name="Every 5 minutes">
+      <bpmn:outgoing>flow_start_to_reconcile</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="timer_reconciliation">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">0 0/5 * * * ?</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="flow_start_to_reconcile" sourceRef="start_reconciliation" targetRef="external_task_reconcile_processes" />
+    <bpmn:serviceTask id="external_task_reconcile_processes" name="Reconcile processes" camunda:type="external" camunda:topic="ReconcileProcessesTask">
+      <bpmn:documentation>Reports incidents to Support Management as FAILED, and settles instances that left the engine without a final report.</bpmn:documentation>
+      <bpmn:incoming>flow_start_to_reconcile</bpmn:incoming>
+      <bpmn:outgoing>flow_reconcile_to_end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="flow_reconcile_to_end" sourceRef="external_task_reconcile_processes" targetRef="end_reconciliation" />
+    <bpmn:endEvent id="end_reconciliation" name="Done">
+      <bpmn:incoming>flow_reconcile_to_end</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_process_reconciliation">
+    <bpmndi:BPMNPlane id="BPMNPlane_process_reconciliation" bpmnElement="process-reconciliation">
+      <bpmndi:BPMNShape id="Shape_start_reconciliation" bpmnElement="start_reconciliation">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="131" y="145" width="79" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_external_task_reconcile_processes" bpmnElement="external_task_reconcile_processes">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_end_reconciliation" bpmnElement="end_reconciliation">
+        <dc:Bounds x="392" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="397" y="145" width="27" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_flow_start_to_reconcile" bpmnElement="flow_start_to_reconcile">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_flow_reconcile_to_end" bpmnElement="flow_reconcile_to_end">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="392" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

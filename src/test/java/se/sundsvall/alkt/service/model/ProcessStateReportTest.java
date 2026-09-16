@@ -1,23 +1,22 @@
-package se.sundsvall.alkt.api.model;
+package se.sundsvall.alkt.service.model;
 
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
-import generated.se.sundsvall.supportmanagement.ProcessError;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.RETRYING;
-import static se.sundsvall.alkt.api.model.ProcessStatus.RUNNING;
-import static se.sundsvall.alkt.api.model.ProcessStatus.WAITING;
+import static se.sundsvall.alkt.service.model.ProcessStatus.COMPLETED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RETRYING;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RUNNING;
+import static se.sundsvall.alkt.service.model.ProcessStatus.WAITING;
 
 class ProcessStateReportTest {
 
 	@Test
-	void runningCarriesTheActivityAndNoVersionOrError() {
+	void running() {
 		final var report = ProcessStateReport.running("activityId", "activityName");
 
 		assertThat(report.status()).isEqualTo(RUNNING);
@@ -30,7 +29,7 @@ class ProcessStateReportTest {
 	}
 
 	@Test
-	void waitingCarriesTheActivityAndNoVersionOrError() {
+	void waiting() {
 		final var report = ProcessStateReport.waiting("activityId", "activityName");
 
 		assertThat(report.status()).isEqualTo(WAITING);
@@ -40,7 +39,7 @@ class ProcessStateReportTest {
 	}
 
 	@Test
-	void completedCarriesNoActivityVersionOrError() {
+	void completed() {
 		final var report = ProcessStateReport.completed();
 
 		assertThat(report.status()).isEqualTo(COMPLETED);
@@ -48,22 +47,28 @@ class ProcessStateReportTest {
 		assertThat(report.currentActivityName()).isNull();
 		assertThat(report.errandVersion()).isNull();
 		assertThat(report.error()).isNull();
+		assertThat(report.activities()).isEmpty();
+		assertThat(report.variables()).isEmpty();
 	}
 
 	@Test
-	void failedCarriesTheErrorCodeAndMessage() {
-		final var report = ProcessStateReport.failed("CODE", "message");
+	void failed() {
+		final var report = ProcessStateReport.failed("INCIDENT", "Timeout");
 
 		assertThat(report.status()).isEqualTo(FAILED);
-		assertThat(report.error()).isEqualTo(new ProcessError().code("CODE").message("message"));
+		assertThat(report.error()).isNotNull();
+		assertThat(report.error().getCode()).isEqualTo("INCIDENT");
+		assertThat(report.error().getMessage()).isEqualTo("Timeout");
+		assertThat(report.activities()).isEmpty();
 	}
 
 	@Test
-	void retryingCarriesTheErrorCodeAndMessage() {
-		final var report = ProcessStateReport.retrying("CODE", "message");
+	void retrying() {
+		final var report = ProcessStateReport.retrying("RETRY", "Timeout");
 
 		assertThat(report.status()).isEqualTo(RETRYING);
-		assertThat(report.error()).isEqualTo(new ProcessError().code("CODE").message("message"));
+		assertThat(report.error()).isNotNull();
+		assertThat(report.error().getCode()).isEqualTo("RETRY");
 	}
 
 	/** Support Management answers 400 on a longer value, and the failure handler would swallow that answer. */
@@ -94,13 +99,14 @@ class ProcessStateReportTest {
 	}
 
 	@Test
-	void atActivityReplacesOnlyTheActivityId() {
-		final var report = ProcessStateReport.failed("CODE", "message").withErrandVersion(7L).atActivity("activityId");
+	void atActivityKeepsEverythingElse() {
+		final var report = ProcessStateReport.failed("INCIDENT", "Timeout").withErrandVersion(7L).atActivity("investigation_phase");
 
-		assertThat(report.currentActivityId()).isEqualTo("activityId");
 		assertThat(report.status()).isEqualTo(FAILED);
+		assertThat(report.currentActivityId()).isEqualTo("investigation_phase");
 		assertThat(report.errandVersion()).isEqualTo(7L);
-		assertThat(report.error().getCode()).isEqualTo("CODE");
+		assertThat(report.error().getCode()).isEqualTo("INCIDENT");
+		assertThat(report.activities()).isEmpty();
 	}
 
 	@Test
@@ -118,5 +124,4 @@ class ProcessStateReportTest {
 		assertThat(report.variables()).isEqualTo(Map.of("decision", "APPROVED"));
 		assertThat(report.status()).isEqualTo(COMPLETED);
 	}
-
 }

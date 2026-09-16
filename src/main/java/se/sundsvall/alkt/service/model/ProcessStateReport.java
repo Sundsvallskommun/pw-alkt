@@ -1,4 +1,4 @@
-package se.sundsvall.alkt.api.model;
+package se.sundsvall.alkt.service.model;
 
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import generated.se.sundsvall.supportmanagement.ProcessError;
@@ -7,13 +7,17 @@ import java.util.Map;
 
 import static java.util.Objects.requireNonNullElse;
 import static org.apache.commons.lang3.StringUtils.abbreviate;
-import static se.sundsvall.alkt.api.model.ProcessStatus.COMPLETED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.FAILED;
-import static se.sundsvall.alkt.api.model.ProcessStatus.RETRYING;
-import static se.sundsvall.alkt.api.model.ProcessStatus.RUNNING;
-import static se.sundsvall.alkt.api.model.ProcessStatus.WAITING;
+import static se.sundsvall.alkt.service.model.ProcessStatus.COMPLETED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RETRYING;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RUNNING;
+import static se.sundsvall.alkt.service.model.ProcessStatus.WAITING;
 
-/** What a step reports back; returning it is what makes reporting unskippable. */
+/**
+ * What a work step tells Support Management; returning it is what makes reporting unskippable. Use the factories, they
+ * know which statuses are terminal. errandVersion is the version a read-only step saw, variables is what the step hands
+ * back to the engine when the task completes.
+ */
 public record ProcessStateReport(
 	ProcessStatus status,
 	String currentActivityId,

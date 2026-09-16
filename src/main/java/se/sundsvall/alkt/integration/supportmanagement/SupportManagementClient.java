@@ -2,6 +2,7 @@ package se.sundsvall.alkt.integration.supportmanagement;
 
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
+import generated.se.sundsvall.supportmanagement.ErrandProcesses;
 import generated.se.sundsvall.supportmanagement.Labels;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -28,46 +29,52 @@ public interface SupportManagementClient {
 
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createErrand(
-		@PathVariable final String municipalityId,
-		@PathVariable final String namespace,
-		@RequestHeader(value = "X-Trigger-Process", required = false) final Boolean triggerProcess,
-		@RequestBody final Errand errand);
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestBody Errand errand);
 
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createAttachment(
-		@PathVariable final String municipalityId,
-		@PathVariable final String namespace,
-		@PathVariable final String errandId,
-		@RequestPart(name = "errandAttachment") final MultipartFile file);
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@RequestPart(name = "errandAttachment") MultipartFile file);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/metadata/labels", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<Labels> getLabels(
-		@PathVariable final String municipalityId,
-		@PathVariable final String namespace);
+		@PathVariable String municipalityId,
+		@PathVariable String namespace);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<Errand> getErrand(
-		@PathVariable final String municipalityId,
-		@PathVariable final String namespace,
-		@PathVariable final String errandId);
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
 
 	@PatchMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<Errand> patchErrand(
-		@PathVariable final String municipalityId,
-		@PathVariable final String namespace,
-		@PathVariable final String errandId,
-		@RequestHeader("If-Match") final String ifMatch,
-		@RequestHeader(value = "X-Trigger-Process", required = false) final Boolean triggerProcess,
-		@RequestBody final Errand errand);
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@RequestHeader("If-Match") String ifMatch,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestBody Errand errand);
 
 	/** 201 the first time, 200 after that. No X-Trigger-Process, a report is not an errand write. */
 	@PutMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/processes/{processInstanceId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<ErrandProcess> reportProcess(
-		@PathVariable final String municipalityId,
-		@PathVariable final String namespace,
-		@PathVariable final String errandId,
-		@PathVariable final String processInstanceId,
-		@RequestBody final ErrandProcess report);
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String processInstanceId,
+		@RequestBody ErrandProcess report);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/processes", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<ErrandProcesses> getErrandProcesses(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
 
 	// TODO: add putDecision for PUT /{municipalityId}/{namespace}/errands/{errandId}/decision once Support Management
 	// exposes it (DRAKEN-4744). Needed for a process to write an AUTOMATIC decision back to the errand.

@@ -3,6 +3,7 @@ package apptest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
+import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,7 +79,7 @@ public abstract class AbstractEngineAppTest extends AbstractAppTest {
 			.ignoreExceptions()
 			.atMost(timeoutInSeconds, SECONDS)
 			.failFast("Wiremock has mismatch!", () -> !wiremock.findNearMissesForUnmatchedRequests().getNearMisses().isEmpty())
-			.until(() -> operatonClient.getHistoricProcessInstance(processId).getState(), equalTo(COMPLETED));
+			.until(() -> operatonClient.getHistoricProcessInstance(processId).map(HistoricProcessInstanceDto::getState).orElse(null), equalTo(COMPLETED));
 	}
 
 	protected void awaitProcessState(String processInstanceId, String state, long timeoutInSeconds) {
