@@ -12,12 +12,14 @@ import tools.jackson.core.JacksonException;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
 import static apptest.mock.api.ApiGateway.mockApiGatewayToken;
 import static apptest.mock.api.SupportManagement.mockReportProcess;
+import static apptest.mock.api.SupportManagement.reportPath;
 import static apptest.verification.ProcessPathway.closurePathway;
 import static apptest.verification.ProcessPathway.decisionPassThroughPathway;
 import static apptest.verification.ProcessPathway.decisionPathway;
@@ -29,6 +31,7 @@ import static apptest.verification.ProcessPathway.registrationPathway;
 import static apptest.verification.ProcessPathway.reviewPassThroughPathway;
 import static apptest.verification.ProcessPathway.reviewPathway;
 import static com.github.tomakehurst.wiremock.client.WireMock.absent;
+import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
@@ -63,6 +66,14 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 	private static final String ERRAND_EVENTS_PATH = "/%s/%s/process/errand-events".formatted(MUNICIPALITY_ID, NAMESPACE);
 	// The models holding no wait state before the follow up phase, so nobody signals their first four phases
 	private static final Set<String> PASS_THROUGH_KEYS = Set.of(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING);
+	// The name attribute every model gives its phase, and the stem of the name its catch event carries
+	private static final Map<String, String> PHASE_DISPLAY_NAMES = Map.of(
+		"registration", "Registration",
+		"review", "Review",
+		"investigation", "Investigation",
+		"decision", "Decision",
+		"follow_up", "Follow up",
+		"closure", "Closure");
 
 	/** Sorted, so a failing run names the same process in the same place every time. */
 	static Stream<String> processKeys() {
@@ -112,6 +123,32 @@ class ProcessWithoutDeviationIT extends AbstractOperatonAppTest {
 			.withRequestBody(matchingJsonPath("$.processInstanceId", absent())));
 
 		assertProcessPathway(processInstanceId, false, expectedPathway(processKey));
+
+		assertWaitStatesReported(errandId, processInstanceId, processKey);
+	}
+
+	/**
+	 * One WAITING report per phase that waits: the first from the start, the rest from each signal but the last, which
+	 * runs the process to its end. The activity is the phase and the signal carries the name of its catch event.
+	 */
+	private void assertWaitStatesReported(final String errandId, final String processInstanceId, final String processKey) {
+		final var reportPath = reportPath(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId);
+		final var waitingPhases = waitingPhasesOf(processKey);
+
+		verify(exactly(waitingPhases.size()), putRequestedFor(urlPathEqualTo(reportPath))
+			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("WAITING"))));
+
+		waitingPhases.forEach(phase -> verify(putRequestedFor(urlPathEqualTo(reportPath))
+			.withRequestBody(matchingJsonPath("$.processStatus", WireMock.equalTo("WAITING")))
+			.withRequestBody(matchingJsonPath("$.currentActivityId", WireMock.equalTo("%s_phase".formatted(phase))))
+			.withRequestBody(matchingJsonPath("$.currentActivityName", WireMock.equalTo(displayNameOf(phase))))
+			.withRequestBody(matchingJsonPath("$.awaitingSignals[0].name", WireMock.equalTo("%s_completed".formatted(phase))))
+			.withRequestBody(matchingJsonPath("$.awaitingSignals[0].label", WireMock.equalTo("%s completed".formatted(displayNameOf(phase)))))));
+	}
+
+	/** Spelled out rather than derived from the phase id, so a model renaming a phase fails here instead of passing. */
+	private static String displayNameOf(final String phase) {
+		return PHASE_DISPLAY_NAMES.get(phase);
 	}
 
 	private static List<String> waitingPhasesOf(final String processKey) {
