@@ -1,7 +1,10 @@
 package se.sundsvall.alkt.integration.supportmanagement.mapper;
 
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
+import generated.se.sundsvall.supportmanagement.ProcessSignal;
+import java.util.List;
 import org.camunda.bpm.client.task.ExternalTask;
+import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
@@ -38,6 +41,15 @@ public final class SupportManagementMapper {
 			.externalTaskId(target.externalTaskId())
 			.errandVersion(report.errandVersion())
 			.error(report.error())
-			.activities(report.activities());
+			.activities(report.activities())
+			.awaitingSignals(toProcessSignals(report.awaitingSignals()));
+	}
+
+	private static List<ProcessSignal> toProcessSignals(final List<AwaitingSignal> awaitingSignals) {
+		return awaitingSignals.stream()
+			.map(signal -> new ProcessSignal()
+				.name(signal.name())
+				.label(signal.label()))
+			.toList();
 	}
 }
