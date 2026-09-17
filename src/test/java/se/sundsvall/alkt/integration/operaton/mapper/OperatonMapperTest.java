@@ -82,7 +82,7 @@ class OperatonMapperTest {
 
 	@Test
 	void toProcessDefinitionKeyIn() {
-		assertThat(OperatonMapper.toProcessDefinitionKeyIn(List.of("supervision", "alcohol-serving"))).isEqualTo("alcohol-serving,supervision");
+		assertThat(OperatonMapper.toProcessDefinitionKeyIn(List.of("internal-inspection", "alcohol-serving"))).isEqualTo("alcohol-serving,internal-inspection");
 		assertThat(OperatonMapper.toProcessDefinitionKeyIn(List.of())).isEmpty();
 	}
 }

@@ -1,19 +1,98 @@
 # PwAlkt
 
-<p>Alkt is a service which integrates with the Operaton process engine for starting and updating processes. It hosts the
-process definitions of the alkohol- och tobaksverksamheten - the permit processes and the supervision process - together
-with the business logic and integrations they need.</p>
+<p>Alkt hosts the process models of the alkohol- och tobaksverksamheten and drives them in the Operaton process engine.
+Support Management owns the errand, this service owns the process behind it.</p>
 
-<p>The service is a skeleton: the API, the engine integration, the reporting to Support Management and the integration
-test harness are in place, while the process models are empty phase structures. The only work steps so far are the one
-that reports a process as completed and the reconciliation described below.</p>
+<p>The service is a skeleton. The API, the engine integration, the reporting and the test harness are in place, but the
+process models are phase structures with almost nothing inside them. The only work step so far is the one that reports a
+process as completed, plus the reconciliation described at the end.</p>
+
+<h3>The dialogue with Support Management</h3>
+
+<p>Two conversations in opposite directions. Support Management tells this service that something happened to an errand.
+This service tells Support Management where the process now stands. Neither is the answer to the other: the errand event
+is answered with <span class="code">202</span> and an empty body.</p>
+
+<pre>
+Support Management                    pw-alkt                       Operaton
+        |                                |                              |
+        |  1. POST .../process/errand-events                            |
+        |------------------------------->|                              |
+        |                                |  2. start or correlate       |
+        |                                |----------------------------->|
+        |                                |  3. subscriptions + model    |
+        |                                |&lt;-----------------------------|
+        |  4. PUT .../processes/{processInstanceId}                     |
+        |&lt;-------------------------------|                              |
+        |  202 Accepted                  |                              |
+        |&lt;-------------------------------|                              |
+        |                                |                              |
+        |                                |  5. external task polling    |
+        |                                |&lt;---------------------------->|
+        |  6. PUT .../processes/{processInstanceId}                     |
+        |&lt;-------------------------------|                              |
+</pre>
+
+<p><strong>Inbound</strong> there is one endpoint,
+<span class="code">POST /{municipalityId}/{namespace}/process/errand-events</span>. What it does is decided by the body,
+not by the path. <span class="code">DELETE</span> removes every instance of the errand. Anything else starts a process
+when none is running, and otherwise correlates a message: the <span class="code">signalName</span> when
+<span class="code">eventSubType</span> is <span class="code">SIGNAL</span>, and
+<span class="code">errandUpdated</span> in every other case. Only <span class="code">eventId</span> and
+<span class="code">eventType</span> are required, so the rest is checked at runtime and a nothing-to-do event is
+accepted as well. A key this service does not deploy is answered with <span class="code">422</span>.</p>
+
+<p><strong>Outbound</strong> the state goes to
+<span class="code">PUT /{municipalityId}/{namespace}/errands/{errandId}/processes/{processInstanceId}</span>, which
+creates the row on the first report and updates it after that. The body carries
+<span class="code">processStatus</span> (<span class="code">RUNNING</span>, <span class="code">WAITING</span>,
+<span class="code">RETRYING</span>, <span class="code">COMPLETED</span> or <span class="code">FAILED</span>), the
+current activity, the signals the process waits for, and any error. Reports come from four places:</p>
+
+<table class="settings">
+	<thead>
+		<tr>
+			<th>Trigger</th>
+			<th>Reports</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>A process is started</td>
+			<td><span class="code">WAITING</span>, if the instance parked on a gate rather than on a work step</td>
+		</tr>
+		<tr>
+			<td>A correlation moved a process on</td>
+			<td><span class="code">WAITING</span>, on the instance the message actually reached</td>
+		</tr>
+		<tr>
+			<td>A work step runs</td>
+			<td><span class="code">RUNNING</span> before it, whatever the step returned after it, then
+			<span class="code">WAITING</span> unless the process ended. A step that throws reports
+			<span class="code">RETRYING</span>, or <span class="code">FAILED</span> once the retries are spent</td>
+		</tr>
+		<tr>
+			<td>The reconciliation</td>
+			<td>Only what the work steps could not, see below</td>
+		</tr>
+	</tbody>
+</table>
+
+<p>Nothing compares against the row before writing it, except the reconciliation. A retried step reports
+<span class="code">RUNNING</span> again, and idempotence at the receiver is cheaper than a read before every write.
+Today a full six-gate process is eight reports over its whole life, since the models hold almost no work steps yet.</p>
+
+<p>Reports carry no sequence number, and a wait state is read after the task that led to it was completed. Two reports
+about one instance can therefore land out of order. The window is short and the next report corrects the row, because
+every report reads the engine anew instead of replaying something remembered. Worth knowing before trusting a row that
+disagrees with Cockpit.</p>
 
 <h3>Process definitions</h3>
 
-<p>Every process model in <span class="code">src/main/resources/processmodels</span> is deployed to the tenant
-<span class="code">ALKT</span> at startup, so a new schema is picked up by adding the file. The key of a process (the
-<span class="code">id</span> attribute of its <span class="code">bpmn:process</span> element) has a matching constant in
-<span class="code">se.sundsvall.alkt.Constants</span>.</p>
+<p>Every model in <span class="code">src/main/resources/processmodels</span> is deployed to the tenant
+<span class="code">ALKT</span> at startup, so a new schema is picked up by adding the file. The
+<span class="code">id</span> of the <span class="code">bpmn:process</span> element is the process key, and it has a
+matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 
 <table class="settings">
 	<thead>
@@ -70,9 +149,14 @@ that reports a process as completed and the reconciliation described below.</p>
 			<td>Försäljning av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
 		</tr>
 		<tr>
-			<td class="code">supervision.bpmn</td>
-			<td class="code">supervision</td>
-			<td>Tillsyn</td>
+			<td class="code">external-inspection.bpmn</td>
+			<td class="code">external-inspection</td>
+			<td>Yttre tillsyn, dvs. tillsyn på serveringsstället</td>
+		</tr>
+		<tr>
+			<td class="code">internal-inspection.bpmn</td>
+			<td class="code">internal-inspection</td>
+			<td>Inre tillsyn, dvs. prövning av tillståndshavarens lämplighet</td>
 		</tr>
 		<tr>
 			<td class="code">reconciliation/process-reconciliation.bpmn</td>
@@ -83,10 +167,67 @@ that reports a process as completed and the reconciliation described below.</p>
 	</tbody>
 </table>
 
-<p>A phase waits for a case worker by default. Each one holds a message catch event that the user interface opens.
-The two folköl models are the exception. A notification of low-alcohol beer sale or serving needs no case worker before the
-follow up, so Registration through Decision hold no wait state and the process passes straight through them. Only Follow
-up and Closure keep their catch events, so that is where Support Management sees the errand stop.</p>
+<p>All eleven errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
+Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The two folköl
+models are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
+first four phases pass straight through and Support Management first hears from them at Follow up.</p>
+
+<p>Which process an errand gets, and whether it starts by itself, is metadata on the label in Support Management
+(<span class="code">processKey</span> and <span class="code">processStartMode</span>), set per environment through its
+<span class="code">metadata/labels</span> API and not in this repository. The key has to be the exact string in the
+table above. Tillsyn is two keys, <span class="code">external-inspection</span> and
+<span class="code">internal-inspection</span>, and neither is <span class="code">alkt-tillsyn</span> as the solution
+document exemplifies with.</p>
+
+<p>The two inspections are the ones a case worker starts by hand. Starta handläggning arrives as an event with the sub
+type <span class="code">PROCESS</span>, which this service never reads, so a manual start and an automatic one follow
+the same path.</p>
+
+<h3>Manual gates and awaiting signals</h3>
+
+<p>A phase ends when a case worker says so. Support Management publishes that as a
+<span class="code">SIGNAL</span> event, and this service correlates a message of that name against the instance. A
+correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
+between two gates when the change arrived and redelivering would not help.</p>
+
+<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All eleven models
+declare the same message names, and every correlation is made on the errand id, so two live processes on one errand
+make every signal match two executions at once. Operaton answers that with <span class="code">400</span> and the
+signal is lost. Starting a second process on an errand that already has one is therefore a mistake, and the place it
+can happen is the label metadata in Support Management.</p>
+
+<p>The gates an instance stands at are reported as <span class="code">awaitingSignals</span>. The list is read from the
+message subscriptions in the engine, so adding a gate is a change to the BPMN file and nothing else. The signal name is
+the message name and the label is the <span class="code">name</span> attribute of the catch event.
+<span class="code">errandUpdated</span> is left out, because it is no button anyone should see. The activity reported
+alongside is the phase, read from the model as the subprocess enclosing the gate.</p>
+
+<p>The model of a definition is read once through <span class="code">GET /process-definition/{id}/xml</span> and kept
+in memory per pod, keyed by definition id. A deployed definition never changes, so entries never go stale and nothing
+is evicted. If the model cannot be read the report still goes out with the message name as the label, because a button
+with a technical name beats no button.</p>
+
+<p><strong>Support Management does not store the list yet.</strong> The field is hand-added to our copy of its
+specification ahead of SM-A10, so today the list is sent and expected to be dropped. That round trip has not been made
+against a running Support Management, so whether it accepts the unknown property or answers
+<span class="code">400</span> is unverified, and a <span class="code">400</span> here is swallowed by
+<span class="code">ProcessReportService.reportWaitState</span>. Check it first in test. See the comment on
+<span class="code">ErrandProcess.awaitingSignals</span> in
+<span class="code">src/main/resources/integrations/support-management.yaml</span>.</p>
+
+<p>What this needs from a model:</p>
+
+<ul>
+	<li>A gate is a named message catch event. No user tasks, since the case worker never logs into the engine.</li>
+	<li>Several ways forward are an event-based gateway with one catch event per alternative. A time limit belongs in
+	the same gateway as a timer catch event.</li>
+	<li>No <span class="code">asyncBefore</span> or <span class="code">asyncAfter</span> between a wakeup and the next
+	wait state. The report is built from what the engine answers once the REST call returns, so a process still on its
+	way looks like one waiting for nothing and no report goes out at all.</li>
+	<li>The <span class="code">name</span> of a catch event is the button text, and the outermost subprocess around it
+	is the phase. A phase without a name is reported by its id, and a boundary event hangs on a phase rather than inside
+	it, so it is reported under its own id.</li>
+</ul>
 
 <h3>Automatic deployment</h3>
 
@@ -206,26 +347,24 @@ up and Closure keep their catch events, so that is where Support Management sees
 
 <h3>Process reconciliation</h3>
 
-<p>Support Management only learns the state of a process through reports, and reports come from work steps. Two things
-leave the row wrong for good: an incident (the engine gave up on a step, no worker runs any more) and an instance that
-ended without a final report. The reconciliation is the net under both. Every run reports each incident in the tenant
-as <span class="code">FAILED</span> with code <span class="code">INCIDENT</span>, unless the row already says so, and
-settles each instance that ended within <span class="code">reconciliation.lookback</span> and whose row is still live:
+<p>Two things leave a process row wrong for good: an incident, where the engine gave up on a step and no worker runs any
+more, and an instance that ended without a final report. The reconciliation is the net under both. Each run reports
+every incident in the tenant as <span class="code">FAILED</span> with code <span class="code">INCIDENT</span>, and
+settles each instance that ended within <span class="code">reconciliation.lookback</span> whose row is still live:
 <span class="code">COMPLETED</span> for an end the model chose, <span class="code">FAILED</span> with code
-<span class="code">TERMINATED</span> for one cancelled from outside. An errand that is gone (404) is left alone.</p>
+<span class="code">TERMINATED</span> for one cancelled from outside. Rows that already say so are skipped, and an errand
+that is gone (404) is left alone.</p>
 
-<p>It runs as a process of its own, <span class="code">process-reconciliation.bpmn</span>: a timer start event
-(<span class="code">0 0/5 * * * ?</span>, every five minutes) followed by the external task
-<span class="code">ReconcileProcessesTask</span>. That is what makes a run happen once even though the service runs in
-two pods: the engine fires the timer once per cycle and locks the task for one worker. No database and no shedlock.
-Each run leaves an instance in the history of the engine, kept for one day through
-<span class="code">historyTimeToLive</span>, so history cleanup has to be on in Operaton. History level
-<span class="code">audit</span> or above is needed, since the errand identity of an instance is read from its historic
-variables.</p>
+<p>It runs as a process of its own, <span class="code">process-reconciliation.bpmn</span>: a timer start event every
+five minutes followed by the external task <span class="code">ReconcileProcessesTask</span>. That is what makes a run
+happen once even though the service runs in two pods, since the engine fires the timer once per cycle and locks the task
+for one worker. No database and no shedlock. Each run leaves an instance in the engine history, kept for one day, so
+history cleanup has to be on in Operaton. The history level has to be <span class="code">audit</span> or above, since
+the errand identity of an instance is read from its historic variables.</p>
 
-<p>Runs show up in Cockpit as instances of <span class="code">process-reconciliation</span>. A run that fails is
-logged as an error and completed anyway: the next cycle is the retry, and an incident would only leave an instance
-standing in the engine. The failure of a single errand never stops the rest of a run.</p>
+<p>Runs show up in Cockpit as instances of <span class="code">process-reconciliation</span>. A run that fails is logged
+and completed anyway, because the next cycle is the retry and an incident would only leave an instance standing. One
+failing errand never stops the rest of a run.</p>
 
 <table class="settings">
 	<thead>
