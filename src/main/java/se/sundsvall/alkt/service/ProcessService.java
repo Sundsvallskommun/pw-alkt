@@ -98,12 +98,18 @@ public class ProcessService {
 		}
 
 		// Looked up rather than taken from the event: the correlation picks on the subscription, so the instance it reached
-		// is not always one the process key of the event names.
-		reached.flatMap(operatonIntegration::findProcessInstance)
-			.ifPresentOrElse(
-				instance -> processReportService.reportWaitState(
-					new ReportTarget(municipalityId, namespace, errandEvent.getErrandId(), instance.getId(), instance.getDefinitionKey(), null), instance.getDefinitionId()),
-				() -> LOG.info("Message '{}' ran the process of errand {} to its end, so there is no wait state left to report",
-					sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId())));
+		// is not always one the process key of the event names. The lookup is guarded because the message is already
+		// correlated, so a failure here must cost the report rather than the event.
+		try {
+			reached.flatMap(operatonIntegration::findProcessInstance)
+				.ifPresentOrElse(
+					instance -> processReportService.reportWaitState(
+						new ReportTarget(municipalityId, namespace, errandEvent.getErrandId(), instance.getId(), instance.getDefinitionKey(), null), instance.getDefinitionId()),
+					() -> LOG.info("Message '{}' ran the process of errand {} to its end, so there is no wait state left to report",
+						sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId())));
+		} catch (final Exception e) {
+			LOG.error("Could not report the wait state that message '{}' of errand {} left the process in", sanitizeForLogging(messageName),
+				sanitizeForLogging(errandEvent.getErrandId()), e);
+		}
 	}
 }

@@ -296,6 +296,34 @@ class OperatonIntegrationTest {
 		verify(operatonClientMock).deleteProcessInstance(processInstanceId, false);
 	}
 
+	/**
+	 * The engine may answer with a subscription without an activity id, and that must cost that one, not the wait state.
+	 */
+	@Test
+	void findWaitStateLeavesOutASubscriptionWithoutAnActivityId() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription(null, "nameless"), subscription("await_review_completed", "review_completed")));
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(new ProcessModel(
+			Map.of("await_review_completed", "Review completed", "review_phase", "Review"),
+			Map.of("await_review_completed", "review_phase")));
+
+		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).hasValueSatisfying(state -> {
+			assertThat(state.activityId()).isEqualTo("review_phase");
+			assertThat(state.activityName()).isEqualTo("Review");
+			assertThat(state.awaitingSignals()).extracting(AwaitingSignal::name).containsExactly("review_completed");
+		});
+	}
+
+	/** A wait state made up only of such subscriptions reports nothing rather than failing. */
+	@Test
+	void findWaitStateIsEmptyWhenNoSubscriptionNamesAnActivity() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message")).thenReturn(List.of(subscription(null, "nameless")));
+
+		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).isEmpty();
+	}
+
 	private static EventSubscriptionDto subscription(final String activityId, final String eventName) {
 		return new EventSubscriptionDto().activityId(activityId).eventName(eventName).eventType("message");
 	}

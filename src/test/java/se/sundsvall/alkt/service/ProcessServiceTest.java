@@ -399,4 +399,20 @@ class ProcessServiceTest {
 		verify(operatonIntegrationMock).findProcessInstances(errandId, null, TENANT_ID);
 		verifyNoMoreInteractions(operatonIntegrationMock);
 	}
+
+	/** The message is correlated already, so a failing instance lookup costs the report, not the event. */
+	@Test
+	void acceptsTheEventWhenTheLookupOfTheReachedInstanceFails() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var reachedInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.of(reachedInstanceId));
+		when(operatonIntegrationMock.findProcessInstance(reachedInstanceId)).thenThrow(new ClientProblem(BAD_GATEWAY, "Operaton is down"));
+
+		// Act & Assert
+		assertThatNoException().isThrownBy(() -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
+		verifyNoInteractions(processReportServiceMock);
+	}
 }

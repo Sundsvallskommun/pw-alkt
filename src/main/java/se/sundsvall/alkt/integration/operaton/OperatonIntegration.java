@@ -66,6 +66,8 @@ public class OperatonIntegration {
 	public Optional<WaitState> findWaitState(final String processInstanceId, final String processDefinitionId) {
 		// Sorted because the engine answers in no defined order, and an unchanged wait state must report the same way twice.
 		final var subscriptions = operatonClient.getEventSubscriptions(processInstanceId, EVENT_TYPE_MESSAGE).stream()
+			// A subscription without an activity id names neither a phase nor a button, and it costs the whole report if kept.
+			.filter(subscription -> subscription.getActivityId() != null)
 			.sorted(comparing(EventSubscriptionDto::getActivityId))
 			.toList();
 		if (subscriptions.isEmpty()) {
