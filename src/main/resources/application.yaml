@@ -7,6 +7,8 @@ spring:
         provider:
           operaton:
             token-uri: ${config.operaton.token-uri}
+          party:
+            token-uri: ${config.party.token-uri}
           support-management:
             token-uri: ${config.support-management.token-uri}
         registration:
@@ -15,6 +17,11 @@ spring:
             provider: operaton
             client-id: ${config.operaton.client-id}
             client-secret: ${config.operaton.client-secret}
+          party:
+            authorization-grant-type: client_credentials
+            provider: party
+            client-id: ${config.party.client-id}
+            client-secret: ${config.party.client-secret}
           support-management:
             authorization-grant-type: client_credentials
             provider: support-management
@@ -90,6 +97,10 @@ integration:
     url: ${config.operaton.base-url}
     connectTimeout: 5
     readTimeout: 20
+  party:
+    url: ${config.party.base-url}
+    connectTimeout: 5
+    readTimeout: 20
   support-management:
     url: ${config.support-management.base-url}
     connectTimeout: 5
@@ -101,6 +112,8 @@ integration:
 resilience4j.circuitbreaker:
   instances:
     operaton:
+      ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
+    party:
       ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
     support-management:
       ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem

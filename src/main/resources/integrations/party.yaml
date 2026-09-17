@@ -1,0 +1,527 @@
+openapi: 3.1.0
+info:
+  title: Party
+  contact: { }
+  license:
+    name: MIT License
+    url: 'https://opensource.org/licenses/MIT'
+  version: '2.2'
+servers:
+  - url: 'https://party-af-party.apps.ocp201.sundsvall.se'
+    description: Generated server url
+tags:
+  - name: Party
+    description: Party operations
+paths:
+  '/{municipalityId}/legalIds':
+    post:
+      tags:
+        - Party
+      summary: >-
+        Get legal IDs by party identifiers in batch, resolving both private and
+        enterprise parties
+      operationId: getLegalIdsByPartyIdsWithoutType
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality id
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+              uniqueItems: true
+        required: true
+      responses:
+        '200':
+          description: Successful Operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartyLegalIdResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - $ref: '#/components/schemas/ConstraintViolationProblem'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - default: [ ]
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - oauth2
+        optional: false
+  '/{municipalityId}/PRIVATE/partyIds':
+    post:
+      tags:
+        - Party
+      summary: Get party identifiers by personal identity numbers in batch
+      operationId: getPartyIdsByPersonNumbers
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality id
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+        required: true
+      responses:
+        '200':
+          description: Successful Operation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - $ref: '#/components/schemas/ConstraintViolationProblem'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - default: [ ]
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - oauth2
+        optional: false
+  '/{municipalityId}/PRIVATE/legalIds':
+    post:
+      tags:
+        - Party
+      summary: Get personal identity numbers by party identifiers in batch
+      operationId: getLegalIdsByPartyIds
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality id
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+              uniqueItems: true
+        required: true
+      responses:
+        '200':
+          description: Successful Operation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - $ref: '#/components/schemas/ConstraintViolationProblem'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - default: [ ]
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - oauth2
+        optional: false
+  '/{municipalityId}/{type}/{partyId}/legalId':
+    get:
+      tags:
+        - Party
+      summary: Get partys legal-ID by unique identifier
+      operationId: getLegalIdByPartyId
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality id
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 2281
+        - name: type
+          in: path
+          description: Party type
+          required: true
+          style: simple
+          explode: false
+          schema:
+            $ref: '#/components/schemas/PartyType'
+        - name: partyId
+          in: path
+          description: Universally unique identifier for the party
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 81471222-5798-11e9-ae24-57fa13b361e1
+      responses:
+        '200':
+          description: Successful Operation
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - $ref: '#/components/schemas/ConstraintViolationProblem'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - default: [ ]
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - oauth2
+        optional: false
+  '/{municipalityId}/{type}/{legalId}/partyId':
+    get:
+      tags:
+        - Party
+      summary: Get partys unique identifier by legal-ID
+      operationId: getPartyIdByLegalId
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality id
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 2281
+        - name: type
+          in: path
+          description: Party type
+          required: true
+          style: simple
+          explode: false
+          schema:
+            $ref: '#/components/schemas/PartyType'
+        - name: legalId
+          in: path
+          description: Legal-ID
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 5565125584
+      responses:
+        '200':
+          description: Successful Operation
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - $ref: '#/components/schemas/ConstraintViolationProblem'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - default: [ ]
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - oauth2
+        optional: false
+  '/{municipalityId}/partyId/{partyId}/legalId':
+    get:
+      tags:
+        - Party
+      summary: Get partys legal-ID by unique identifier without specifying party type
+      operationId: getLegalIdByPartyIdWithoutType
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality id
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 2281
+        - name: partyId
+          in: path
+          description: Universally unique identifier for the party
+          required: true
+          style: simple
+          explode: false
+          schema:
+            type: string
+          example: 81471222-5798-11e9-ae24-57fa13b361e1
+      responses:
+        '200':
+          description: Successful Operation
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Problem'
+                  - $ref: '#/components/schemas/ConstraintViolationProblem'
+        '404':
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      security:
+        - default: [ ]
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - oauth2
+        optional: false
+  /api-docs:
+    get:
+      tags:
+        - API
+      summary: OpenAPI
+      operationId: getApiDocs
+      responses:
+        '200':
+          description: OK
+          content:
+            application/yaml:
+              schema:
+                type: string
+      security:
+        - default: [ ]
+      x-auth-type: None
+      x-throttling-tier: Unlimited
+      x-wso2-mutual-ssl: Optional
+      x-wso2-application-security:
+        security-types:
+          - oauth2
+        optional: false
+components:
+  schemas:
+    Problem:
+      type: object
+      properties:
+        instance:
+          type: string
+          format: uri
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
+          format: int32
+    ConstraintViolationProblem:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        status:
+          type: integer
+          format: int32
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+        title:
+          type: string
+        instance:
+          type: string
+          format: uri
+        detail:
+          type: string
+        causeAsProblem:
+          $ref: '#/components/schemas/ThrowableProblem'
+    ThrowableProblem:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        causeAsProblem: { }
+    Violation:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    PartyLegalIdResponse:
+      type: object
+      properties:
+        personalNumbers:
+          type: object
+          additionalProperties:
+            type: string
+        organizationNumbers:
+          type: object
+          additionalProperties:
+            type: string
+        notFound:
+          type: array
+          items:
+            type: string
+    PartyType:
+      type: string
+      description: Party type model
+      enum:
+        - ENTERPRISE
+        - PRIVATE
+  securitySchemes:
+    default:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://test.com'
+          scopes: { }
+x-wso2-auth-header: Authorization
+x-wso2-cors:
+  corsConfigurationEnabled: false
+  accessControlAllowOrigins:
+    - '*'
+  accessControlAllowCredentials: false
+  accessControlAllowHeaders:
+    - authorization
+    - Access-Control-Allow-Origin
+    - Content-Type
+    - SOAPAction
+    - apikey
+    - testKey
+  accessControlAllowMethods:
+    - GET
+    - PUT
+    - POST
+    - DELETE
+    - PATCH
+    - OPTIONS
+  empty: false
+x-wso2-production-endpoints:
+  urls:
+    - 'https://party-af-party.apps.ocp201.sundsvall.se/'
+  type: http
+x-wso2-basePath: /party/2.2
+x-wso2-transports:
+  - https
+x-wso2-application-security:
+  security-types:
+    - oauth2
+  optional: false
+x-wso2-response-cache:
+  enabled: false
+  cacheTimeoutInSeconds: 300
