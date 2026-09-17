@@ -4,11 +4,7 @@ import java.util.Set;
 
 public final class Constants {
 
-	/*
-	 * One key per process definition in processmodels/ - each must match the ID of the process defined in its bpmn schema.
-	 * They are all deployed to the same tenant by the resource pattern in application.yaml, so introducing a process is a
-	 * schema next to the others plus a key here; no deployment configuration changes with it.
-	 */
+	// Each key must match the id of the process in its bpmn schema.
 	public static final String PROCESS_KEY_ALCOHOL_SERVING = "alcohol-serving";
 	public static final String PROCESS_KEY_ALCOHOL_SERVING_CHANGE = "alcohol-serving-change";
 	public static final String PROCESS_KEY_ALCOHOL_SERVING_ADDITION = "alcohol-serving-addition";
@@ -18,12 +14,10 @@ public final class Constants {
 	public static final String PROCESS_KEY_E_CIGARETTE_SALES = "e-cigarette-sales";
 	public static final String PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING = "low-alcohol-beer-serving";
 	public static final String PROCESS_KEY_LOW_ALCOHOL_BEER_SALES = "low-alcohol-beer-sales";
-	public static final String PROCESS_KEY_SUPERVISION = "supervision";
+	public static final String PROCESS_KEY_EXTERNAL_INSPECTION = "external-inspection";
+	public static final String PROCESS_KEY_INTERNAL_INSPECTION = "internal-inspection";
 
-	/**
-	 * The keys above, as the set of process definitions this service has deployed. An errand event naming a key outside
-	 * it is answered with 422, since no number of retries will make that process appear.
-	 */
+	// An errand event naming a key outside this set is answered with 422.
 	public static final Set<String> PROCESS_KEYS = Set.of(
 		PROCESS_KEY_ALCOHOL_SERVING,
 		PROCESS_KEY_ALCOHOL_SERVING_CHANGE,
@@ -34,27 +28,26 @@ public final class Constants {
 		PROCESS_KEY_E_CIGARETTE_SALES,
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING,
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES,
-		PROCESS_KEY_SUPERVISION);
+		PROCESS_KEY_EXTERNAL_INSPECTION,
+		PROCESS_KEY_INTERNAL_INSPECTION);
 
-	// The scheduler of this service, see README "Process reconciliation". Lives in processmodels/reconciliation/ with a
-	// deployment of its own, and is not in PROCESS_KEYS: it belongs to no errand and must not be startable from an
-	// errand event.
+	// Outside PROCESS_KEYS on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
 
-	// How this service names itself in a process report. Support Management checks it against the process consumer
-	// configured for the namespace and rejects a report from anyone else.
+	// Checked against the process consumer configured for the namespace; a report from anyone else is rejected.
 	public static final String PROCESS_SERVICE = "pw-alkt";
 
-	// Error codes carried in a process report. Support Management stores them without interpreting them.
+	// Ours to choose, Support Management stores them without interpreting them.
 	public static final String ERROR_CODE_RETRY = "RETRY";
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
 	public static final String ERROR_CODE_TERMINATED = "TERMINATED";
 
-	// Namespace where the processes are deployed, a.k.a tenant. Must match process-engine.deployment.processes[].tenant
-	// in application.yaml - the integration test covers the pairing.
+	// Must match process-engine.deployment.processes[].tenant in application.yaml.
 	public static final String TENANT_ID_ALKT = "ALKT";
 
-	// The errand this process instance drives, identified the way Support Management identifies it: a UUID string.
+	// Correlated when an errand event carries no named signal, and left out of the signals a wait state reports.
+	public static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
+
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";

@@ -6,5 +6,10 @@ public enum ProcessStatus {
 	WAITING,
 	RETRYING,
 	COMPLETED,
-	FAILED
+	FAILED;
+
+	/** A state the instance does not leave, so there is no wait state after it to report. */
+	public boolean isTerminal() {
+		return (this == COMPLETED) || (this == FAILED);
+	}
 }
