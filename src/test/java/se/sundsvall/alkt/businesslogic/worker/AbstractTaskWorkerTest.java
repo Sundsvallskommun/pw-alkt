@@ -18,6 +18,7 @@ import se.sundsvall.alkt.Constants;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
@@ -36,6 +37,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AbstractTaskWorkerTest {
+
+	private static final String DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
 
 	private static class Worker extends AbstractTaskWorker { // Test class extending the abstract class under test
 
@@ -105,12 +108,10 @@ class AbstractTaskWorkerTest {
 
 		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(requestId);
 
-		// Mock static RequestId to verify that static method is being called
 		try (MockedStatic<RequestId> requestIdMock = mockStatic(RequestId.class)) {
 			// Act
 			worker.execute(externalTaskMock, externalTaskServiceMock);
 
-			// Verify static method
 			requestIdMock.verify(() -> RequestId.init(requestId));
 			requestIdMock.verify(RequestId::reset);
 		}
@@ -172,6 +173,46 @@ class AbstractTaskWorkerTest {
 		variableWorker.execute(externalTaskMock, externalTaskServiceMock);
 
 		verify(externalTaskServiceMock).complete(externalTaskMock, variables);
+	}
+
+	@Test
+	void reportsTheWaitStateTheProcessRanIntoAfterTheStep() {
+		final var processInstanceId = UUID.randomUUID().toString();
+		final var errandId = UUID.randomUUID().toString();
+		when(externalTaskMock.getProcessInstanceId()).thenReturn(processInstanceId);
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving");
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn("2281");
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_NAMESPACE)).thenReturn("ALKT");
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_ERRAND_ID)).thenReturn(errandId);
+		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(UUID.randomUUID().toString());
+
+		runningWorker().execute(externalTaskMock, externalTaskServiceMock);
+
+		final var inOrder = inOrder(externalTaskServiceMock, processReportServiceMock);
+		inOrder.verify(externalTaskServiceMock).complete(any(), any());
+		inOrder.verify(processReportServiceMock).reportWaitState(new ReportTarget("2281", "ALKT", errandId, processInstanceId, "alcohol-serving", null), DEFINITION_ID);
+	}
+
+	/** A process that ended has nothing left to wait for, so asking the engine would be a call for nothing. */
+	@Test
+	void asksForNoWaitStateAfterATerminalStep() {
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(processReportServiceMock, never()).reportWaitState(any(), any());
+	}
+
+	/**
+	 * The task is completed by then, so a failing wait state report must reach neither the failure handler nor the client.
+	 */
+	@Test
+	void leavesTheCompletedTaskAloneWhenTheWaitStateReportFails() {
+		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Support Management is down")).when(processReportServiceMock).reportWaitState(any(), any());
+
+		assertThatNoException().isThrownBy(() -> runningWorker().execute(externalTaskMock, externalTaskServiceMock));
+
+		verify(externalTaskServiceMock).complete(any(), any());
+		verifyNoInteractions(failureHandlerMock);
 	}
 
 	@Test
@@ -265,9 +306,7 @@ class AbstractTaskWorkerTest {
 
 	@Test
 	void executeDoesNotCompleteWhenTheFinalReportGetsAPreconditionFailed() {
-		// Arrange - a 412 means the errand moved under us; the step must retry rather than complete on stale data.
-		// dept44's Feign error decoder collapses every upstream error into ClientProblem(BAD_GATEWAY, ...), so this
-		// is the shape a real 412 from Support Management actually takes by the time it reaches this class.
+		// Arrange - dept44's Feign decoder collapses a 412 from Support Management into this ClientProblem(BAD_GATEWAY, ...)
 		doNothing()
 			.doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
 			.when(processReportServiceMock).report(any(ExternalTask.class), any());
@@ -279,5 +318,14 @@ class AbstractTaskWorkerTest {
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock,
 			"Bad Gateway: support-management error: {status=412 Precondition Failed, title=Precondition Failed}");
+	}
+
+	private AbstractTaskWorker runningWorker() {
+		return new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				return ProcessStateReport.running("external_task_check_phase", null);
+			}
+		};
 	}
 }

@@ -50,7 +50,7 @@ import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
 class ProcessReconciliationServiceTest {
 
 	private static final String TENANT = "ALKT";
-	private static final String ALL_PROCESS_KEYS = "alcohol-serving,alcohol-serving-addition,alcohol-serving-change,e-cigarette-sales,low-alcohol-beer-sales,low-alcohol-beer-serving,supervision,tobacco-sales,tobacco-sales-change,tobacco-sales-closure";
+	private static final String ALL_PROCESS_KEYS = "alcohol-serving,alcohol-serving-addition,alcohol-serving-change,e-cigarette-sales,external-inspection,internal-inspection,low-alcohol-beer-sales,low-alcohol-beer-serving,tobacco-sales,tobacco-sales-change,tobacco-sales-closure";
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = UUID.randomUUID().toString();

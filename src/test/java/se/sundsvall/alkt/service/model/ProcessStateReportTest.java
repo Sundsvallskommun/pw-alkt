@@ -36,6 +36,7 @@ class ProcessStateReportTest {
 		assertThat(report.currentActivityId()).isEqualTo("activityId");
 		assertThat(report.currentActivityName()).isEqualTo("activityName");
 		assertThat(report.error()).isNull();
+		assertThat(report.awaitingSignals()).isEmpty();
 	}
 
 	@Test
@@ -81,10 +82,11 @@ class ProcessStateReportTest {
 	}
 
 	@Test
-	void nullActivitiesAndVariablesBecomeEmpty() {
-		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null);
+	void nullCollectionsBecomeEmpty() {
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null, null);
 
 		assertThat(report.activities()).isEmpty();
+		assertThat(report.awaitingSignals()).isEmpty();
 		assertThat(report.variables()).isEmpty();
 	}
 
@@ -92,7 +94,7 @@ class ProcessStateReportTest {
 	void activitiesAreCopied() {
 		final var activities = new ArrayList<>(List.of(new ProcessActivity().activityType("PHASE")));
 
-		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, activities, null);
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, activities, null, null);
 		activities.clear();
 
 		assertThat(report.activities()).hasSize(1);
@@ -115,6 +117,40 @@ class ProcessStateReportTest {
 
 		assertThat(report.errandVersion()).isEqualTo(7L);
 		assertThat(report.status()).isEqualTo(COMPLETED);
+	}
+
+	@Test
+	void awaitingSignalsAreCopied() {
+		final var signals = new ArrayList<>(List.of(new AwaitingSignal("review_completed", null)));
+
+		final var report = ProcessStateReport.waiting("review_phase", "Review").withAwaitingSignals(signals);
+		signals.clear();
+
+		assertThat(report.awaitingSignals()).hasSize(1);
+	}
+
+	@Test
+	void withActivitiesReplacesOnlyTheActivities() {
+		final var activity = new ProcessActivity().activityType("RECONCILIATION");
+
+		final var report = ProcessStateReport.failed("INCIDENT", "Timeout").atActivity("review_phase").withActivities(List.of(activity));
+
+		assertThat(report.activities()).containsExactly(activity);
+		assertThat(report.status()).isEqualTo(FAILED);
+		assertThat(report.currentActivityId()).isEqualTo("review_phase");
+		assertThat(report.error().getCode()).isEqualTo("INCIDENT");
+	}
+
+	@Test
+	void withAwaitingSignalsReplacesOnlyTheSignals() {
+		final var signal = new AwaitingSignal("review_completed", "Review completed");
+
+		final var report = ProcessStateReport.waiting("review_phase", "Review").withAwaitingSignals(List.of(signal));
+
+		assertThat(report.awaitingSignals()).containsExactly(signal);
+		assertThat(report.status()).isEqualTo(WAITING);
+		assertThat(report.currentActivityId()).isEqualTo("review_phase");
+		assertThat(report.activities()).isEmpty();
 	}
 
 	@Test

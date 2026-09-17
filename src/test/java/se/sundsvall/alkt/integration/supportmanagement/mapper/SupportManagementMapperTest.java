@@ -2,16 +2,19 @@ package se.sundsvall.alkt.integration.supportmanagement.mapper;
 
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import generated.se.sundsvall.supportmanagement.ProcessError;
+import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
+import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
@@ -45,7 +48,7 @@ class SupportManagementMapperTest {
 		final var occurredAt = OffsetDateTime.now();
 		final var activity = new ProcessActivity().activityType("INCIDENT").activityId("investigation_phase").severity("ERROR").occurredAt(occurredAt);
 		final var error = new ProcessError().code("INCIDENT").message("Timeout");
-		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), Map.of());
+		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), List.of(), Map.of());
 
 		final var result = SupportManagementMapper.toErrandProcess(target, report);
 
@@ -59,11 +62,27 @@ class SupportManagementMapperTest {
 		assertThat(result.getErrandVersion()).isEqualTo(7L);
 		assertThat(result.getError()).isSameAs(error);
 		assertThat(result.getActivities()).containsExactly(activity);
+		assertThat(result.getAwaitingSignals()).isEmpty();
+	}
+
+	@Test
+	void toErrandProcessFromAWaitStateReport() {
+		final var target = new ReportTarget("2281", "ALKT", UUID.randomUUID().toString(), UUID.randomUUID().toString(), "alcohol-serving", null);
+		final var signal = new AwaitingSignal("review_completed", "Review completed");
+
+		final var result = SupportManagementMapper.toErrandProcess(target, ProcessStateReport.waiting("review_phase", "Review").withAwaitingSignals(List.of(signal)));
+
+		assertThat(result.getProcessStatus()).isEqualTo("WAITING");
+		assertThat(result.getCurrentActivityId()).isEqualTo("review_phase");
+		assertThat(result.getCurrentActivityName()).isEqualTo("Review");
+		assertThat(result.getAwaitingSignals())
+			.extracting(ProcessSignal::getName, ProcessSignal::getLabel)
+			.containsExactly(tuple("review_completed", "Review completed"));
 	}
 
 	@Test
 	void toErrandProcessFromACompletedReport() {
-		final var target = new ReportTarget("2281", "ALKT", UUID.randomUUID().toString(), UUID.randomUUID().toString(), "supervision", null);
+		final var target = new ReportTarget("2281", "ALKT", UUID.randomUUID().toString(), UUID.randomUUID().toString(), "external-inspection", null);
 
 		final var result = SupportManagementMapper.toErrandProcess(target, ProcessStateReport.completed());
 
@@ -73,5 +92,6 @@ class SupportManagementMapperTest {
 		assertThat(result.getErrandVersion()).isNull();
 		assertThat(result.getError()).isNull();
 		assertThat(result.getActivities()).isEmpty();
+		assertThat(result.getAwaitingSignals()).isEmpty();
 	}
 }
