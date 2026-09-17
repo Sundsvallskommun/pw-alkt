@@ -5,11 +5,18 @@ spring:
     oauth2:
       client:
         provider:
+          licensed-business:
+            token-uri: ${config.licensed-business.token-uri}
           operaton:
             token-uri: ${config.operaton.token-uri}
           support-management:
             token-uri: ${config.support-management.token-uri}
         registration:
+          licensed-business:
+            authorization-grant-type: client_credentials
+            provider: licensed-business
+            client-id: ${config.licensed-business.client-id}
+            client-secret: ${config.licensed-business.client-secret}
           operaton:
             authorization-grant-type: client_credentials
             provider: operaton
@@ -86,6 +93,10 @@ reconciliation:
 #----------------------------------------
 # Rest client
 integration:
+  licensed-business:
+    url: ${config.licensed-business.base-url}
+    connectTimeout: 5
+    readTimeout: 20
   operaton:
     url: ${config.operaton.base-url}
     connectTimeout: 5
@@ -100,6 +111,8 @@ integration:
 #----------------------------------------
 resilience4j.circuitbreaker:
   instances:
+    licensed-business:
+      ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
     operaton:
       ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
     support-management:
