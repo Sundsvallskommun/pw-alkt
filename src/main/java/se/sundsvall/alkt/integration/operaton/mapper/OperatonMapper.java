@@ -32,12 +32,14 @@ public final class OperatonMapper {
 				PROCESS_VARIABLE_REQUEST_ID, toVariableValueDto(ValueType.STRING, RequestId.get())));
 	}
 
+	/** resultEnabled, so the answer names the instance the message reached - the errand alone may not. */
 	public static CorrelationMessageDto toCorrelationMessageDto(final String messageName, final String errandId, final String tenantId) {
 		return new CorrelationMessageDto()
 			.messageName(messageName)
 			.businessKey(errandId)
 			.tenantId(tenantId)
-			.all(false);
+			.all(false)
+			.resultEnabled(true);
 	}
 
 	public static VariableValueDto toVariableValueDto(final ValueType valueType, final Object value) {

@@ -10,6 +10,8 @@ import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
+import generated.se.sundsvall.operaton.MessageCorrelationResultWithVariableDto;
+import generated.se.sundsvall.operaton.ProcessDefinitionDiagramDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
@@ -40,8 +42,9 @@ public interface OperatonClient {
 	@PostMapping(path = "process-definition/key/{key}/tenant-id/{tenantId}/start", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
 	ProcessInstanceWithVariablesDto startProcessWithTenant(@PathVariable String key, @PathVariable String tenantId, StartProcessInstanceDto startProcessInstanceDto);
 
-	@PostMapping(path = "message", consumes = APPLICATION_JSON_VALUE)
-	void correlateMessage(CorrelationMessageDto correlationMessageDto);
+	/** One result, since the correlation is not sent with all=true. */
+	@PostMapping(path = "message", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
+	List<MessageCorrelationResultWithVariableDto> correlateMessage(CorrelationMessageDto correlationMessageDto);
 
 	@PostMapping(path = "deployment/create", produces = APPLICATION_JSON_VALUE, consumes = MULTIPART_FORM_DATA_VALUE)
 	DeploymentWithDefinitionsDto deploy(
@@ -79,6 +82,9 @@ public interface OperatonClient {
 
 	@GetMapping(path = "event-subscription", produces = APPLICATION_JSON_VALUE)
 	List<EventSubscriptionDto> getEventSubscriptions(@RequestParam("processInstanceId") String processInstanceId, @RequestParam("eventType") String eventType);
+
+	@GetMapping(path = "process-definition/{id}/xml", produces = APPLICATION_JSON_VALUE)
+	ProcessDefinitionDiagramDto getProcessDefinitionXml(@PathVariable String id);
 
 	/** processDefinitionKeyIn is comma separated, see OperatonMapper.toProcessDefinitionKeyIn. */
 	@GetMapping(path = "incident", produces = APPLICATION_JSON_VALUE)

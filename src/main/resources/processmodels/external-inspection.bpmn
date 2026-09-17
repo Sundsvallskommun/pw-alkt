@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_supervision" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_external_inspection" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
   <!-- One message per phase exit. The user interface correlates these on the business key of the instance, i.e. the errand id. -->
   <bpmn:message id="message_registration_completed" name="registration_completed" />
   <bpmn:message id="message_review_completed" name="review_completed" />
@@ -7,7 +7,7 @@
   <bpmn:message id="message_decision_completed" name="decision_completed" />
   <bpmn:message id="message_follow_up_completed" name="follow_up_completed" />
   <bpmn:message id="message_closure_completed" name="closure_completed" />
-  <bpmn:process id="supervision" name="PROCESS Supervision" isExecutable="true" camunda:historyTimeToLive="P30D">
+  <bpmn:process id="external-inspection" name="PROCESS External inspection" isExecutable="true" camunda:historyTimeToLive="P30D">
     <bpmn:documentation>Skeleton of the process. The phases run in sequence and each one waits for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
@@ -145,8 +145,8 @@
       <bpmn:incoming>flow_complete_process_to_end_process</bpmn:incoming>
     </bpmn:endEvent>
   </bpmn:process>
-  <bpmndi:BPMNDiagram id="BPMNDiagram_supervision">
-    <bpmndi:BPMNPlane id="BPMNPlane_supervision" bpmnElement="supervision">
+  <bpmndi:BPMNDiagram id="BPMNDiagram_external_inspection">
+    <bpmndi:BPMNPlane id="BPMNPlane_external_inspection" bpmnElement="external-inspection">
       <bpmndi:BPMNShape id="BPMNShape_start_process" bpmnElement="start_process">
         <dc:Bounds x="152" y="99" width="36" height="36" />
         <bpmndi:BPMNLabel>

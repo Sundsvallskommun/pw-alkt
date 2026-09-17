@@ -12278,6 +12278,18 @@ components:
           maxItems: 100
           minItems: 0
           writeOnly: true
+        # Hand-added ahead of SM-A10, which had not started on alkt-sprint as of 2026-09-16. Shaped after section 5.3
+        # of the solution document. Replace this and the ProcessSignal schema when the spec is regenerated.
+        # No report carrying this field has been sent to a running Support Management yet, so whether it accepts and
+        # drops the unknown property is unverified. Check that first in test.
+        awaitingSignals:
+          type: array
+          description: "What the process waits for from a case worker. Replaced in\
+            \ full by every report, and empty when the process waits for no one."
+          items:
+            $ref: "#/components/schemas/ProcessSignal"
+          maxItems: 100
+          minItems: 0
         created:
           type: string
           format: date-time
@@ -12395,6 +12407,30 @@ components:
           - Timeout against Employee after 30 s
           maxLength: 2048
           minLength: 0
+    # Hand-added ahead of SM-A10, see the comment on awaitingSignals above
+    ProcessSignal:
+      type: object
+      description: A gate the process waits at, as a button the user interface can
+        show
+      properties:
+        name:
+          type: string
+          description: Name of the message the process waits for, as the process model
+            names it
+          examples:
+          - review_completed
+          maxLength: 255
+          minLength: 1
+        label:
+          type: string
+          description: Text for the button, taken from the name of the catch event
+            in the process model
+          examples:
+          - Review completed
+          maxLength: 255
+          minLength: 0
+      required:
+      - name
     JsonNode:
       type: object
       properties:
