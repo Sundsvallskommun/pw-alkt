@@ -1,0 +1,1100 @@
+openapi: 3.1.0
+info:
+  title: api-licensed-business
+  contact: { }
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+  version: "1.0"
+servers:
+  - url: http://localhost:49869
+    description: Generated server url
+paths:
+  /{municipalityId}/restaurant-numbers:
+    post:
+      tags:
+        - Restaurant Number Resources
+      summary: "Create a restaurant number for an address, allocating the lowest free\
+        \ number in the municipality"
+      description: The restaurant number belongs to the premises and stays on the
+        address when one business is replaced by the next.
+      operationId: createRestaurantNumber
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: addressId
+          in: query
+          description: Address ID
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          example: 9ce333ec-a473-438b-8406-a71e957dc107
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              style: simple
+              schema:
+                type: string
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/import/restaurant-numbers:
+    post:
+      tags:
+        - import-resource
+      operationId: importRestaurantNumbers
+      parameters:
+        - name: municipalityId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ImportResult"
+  /{municipalityId}/assignments:
+    post:
+      tags:
+        - Assignment Resources
+      summary: "Create an assignment, ending any active assignment on the same restaurant\
+        \ number"
+      operationId: createAssignment
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignmentCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              style: simple
+              schema:
+                type: string
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/addresses:
+    get:
+      tags:
+        - Address Resources
+      summary: Get a paged list of addresses
+      operationId: getAddresses
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              description: The properties to sort on
+              examples:
+                - propertyName
+        - name: sortDirection
+          in: query
+          description: The sort order direction
+          required: false
+          schema:
+            $ref: "#/components/schemas/Direction"
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+            description: Page number
+            examples:
+              - 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Result size per page. Maximum allowed value is dynamically configured
+          required: false
+          schema:
+            type: integer
+            format: int32
+            description: Result size per page. Maximum allowed value is dynamically
+              configured
+            examples:
+              - 15
+            minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Addresses"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+        - Address Resources
+      summary: Create an address
+      operationId: createAddress
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Address"
+        required: true
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              style: simple
+              schema:
+                type: string
+        "409":
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/assignments/{assignmentId}:
+    get:
+      tags:
+        - Assignment Resources
+      summary: Get an assignment by ID
+      operationId: getAssignment
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: assignmentId
+          in: path
+          description: Assignment ID
+          required: true
+          schema:
+            type: string
+          example: 9ce333ec-a473-438b-8406-a71e957dc107
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+        - Assignment Resources
+      summary: Update an assignment
+      operationId: updateAssignment
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: assignmentId
+          in: path
+          description: Assignment ID
+          required: true
+          schema:
+            type: string
+          example: 9ce333ec-a473-438b-8406-a71e957dc107
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignmentUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/restaurant-numbers/{restaurantNumber}:
+    get:
+      tags:
+        - Restaurant Number Resources
+      summary: Get a restaurant number
+      operationId: getRestaurantNumber
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: restaurantNumber
+          in: path
+          description: Restaurant number
+          required: true
+          schema:
+            type: string
+          example: 22813670
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RestaurantNumber"
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/restaurant-numbers/{restaurantNumber}/assignment:
+    get:
+      tags:
+        - Restaurant Number Resources
+      summary: "Get the most recent assignment for a restaurant number, including\
+        \ its address and license holder"
+      operationId: getLatestAssignment
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: restaurantNumber
+          in: path
+          description: Restaurant number
+          required: true
+          schema:
+            type: string
+          example: 22813670
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/restaurant-numbers/available:
+    get:
+      tags:
+        - Restaurant Number Resources
+      summary: Get available restaurant numbers for an address
+      operationId: getAvailableRestaurantNumbers
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: addressId
+          in: query
+          description: Address ID
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          example: 9ce333ec-a473-438b-8406-a71e957dc107
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RestaurantNumber"
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/addresses/{addressId}:
+    get:
+      tags:
+        - Address Resources
+      summary: Get an address by ID
+      operationId: getAddress
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: addressId
+          in: path
+          description: Address ID
+          required: true
+          schema:
+            type: string
+          example: 9ce333ec-a473-438b-8406-a71e957dc107
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Address"
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/addresses/search:
+    get:
+      tags:
+        - Address Resources
+      summary: Search addresses
+      operationId: searchAddresses
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: query
+          in: query
+          description: Search query
+          required: true
+          schema:
+            type: string
+            description: Search query
+            examples:
+              - Storgatan 1
+            minLength: 1
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              description: The properties to sort on
+              examples:
+                - propertyName
+        - name: sortDirection
+          in: query
+          description: The sort order direction
+          required: false
+          schema:
+            $ref: "#/components/schemas/Direction"
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+            description: Page number
+            examples:
+              - 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Result size per page. Maximum allowed value is dynamically configured
+          required: false
+          schema:
+            type: integer
+            format: int32
+            description: Result size per page. Maximum allowed value is dynamically
+              configured
+            examples:
+              - 15
+            minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Addresses"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/addresses/lookup:
+    get:
+      tags:
+        - Address Resources
+      summary: Look up a single address by street address and postal code
+      description: "Street address and postal code are matched on their normalized\
+        \ form, so case, extra whitespace, a space in the postal code and a house\
+        \ number letter written as \"1 A\" or \"1A\" all resolve to the same address.\
+        \ This is the same key the duplicate check on create uses."
+      operationId: lookupAddress
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: streetAddress
+          in: query
+          description: "Street address, written as in the address register"
+          required: true
+          schema:
+            type: string
+            description: "Street address, written as in the address register"
+            examples:
+              - Storgatan 1
+            minLength: 1
+        - name: postalCode
+          in: query
+          description: "Postal code, with or without space"
+          required: true
+          schema:
+            type: string
+            description: "Postal code, with or without space"
+            examples:
+              - 852 30
+            minLength: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Address"
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "502":
+          description: Bad Gateway
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api-docs:
+    get:
+      tags:
+        - API
+      summary: OpenAPI
+      operationId: getApiDocs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/yaml:
+              schema:
+                type: string
+      x-auth-type: None
+      x-throttling-tier: Unlimited
+      x-wso2-mutual-ssl: Optional
+components:
+  schemas:
+    Problem:
+      type: object
+      properties:
+        instance:
+          type: string
+          format: uri
+        type:
+          type: string
+          format: uri
+        detail:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+    ImportResult:
+      type: object
+      properties:
+        rowsProcessed:
+          type: integer
+          format: int32
+        addressesCreated:
+          type: integer
+          format: int32
+        licenseHoldersCreated:
+          type: integer
+          format: int32
+        restaurantNumbersCreated:
+          type: integer
+          format: int32
+        assignmentsCreated:
+          type: integer
+          format: int32
+        errors:
+          type: array
+          items:
+            type: string
+        conflictingAddresses:
+          type: array
+          items:
+            type: string
+    AssignmentCreateRequest:
+      type: object
+      description: Request model for assigning a restaurant number to a license holder
+        at an address
+      properties:
+        restaurantNumberId:
+          type: string
+          description: ID of the restaurant number to assign
+          examples:
+            - 9ce333ec-a473-438b-8406-a71e957dc107
+          minLength: 1
+        addressId:
+          type: string
+          description: ID of the address the restaurant number is assigned to
+          examples:
+            - 8be2e4a1-3d4f-4b2e-9c18-2f6d5a7b1c33
+          minLength: 1
+        orgNumber:
+          type: string
+          description: Organization number of the license holder
+          examples:
+            - 556612-4144
+          minLength: 1
+        holderName:
+          type: string
+          description: Name of the license holder as registered for this assignment
+          examples:
+            - Restaurang i Sundsvall AB
+          minLength: 1
+        premisesName:
+          type: string
+          description: Name of the premises
+          examples:
+            - Harrys Pub
+        validFrom:
+          type: string
+          format: date
+          description: First day the assignment is valid
+          examples:
+            - 2026-01-01
+        validTo:
+          type: string
+          format: date
+          description: "Last day the assignment is valid, omit for an open ended assignment"
+          examples:
+            - 2026-12-31
+      required:
+        - addressId
+        - holderName
+        - orgNumber
+        - restaurantNumberId
+        - validFrom
+    Address:
+      type: object
+      description: Address model
+      properties:
+        id:
+          type: string
+          description: Address ID
+          examples:
+            - 9ce333ec-a473-438b-8406-a71e957dc107
+          readOnly: true
+        streetAddress:
+          type: string
+          description: Street address
+          examples:
+            - Storgatan 1
+          minLength: 1
+        postalCode:
+          type: string
+          description: Postal code
+          examples:
+            - 852 30
+          minLength: 1
+        postalArea:
+          type: string
+          description: Postal area
+          examples:
+            - Sundsvall
+        municipalityId:
+          type: string
+          description: Municipality ID
+          examples:
+            - "2281"
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the address was created
+          readOnly: true
+      required:
+        - postalCode
+        - streetAddress
+    AssignmentUpdateRequest:
+      type: object
+      description: "Request model for updating an assignment. Omitted fields are left\
+        \ unchanged, which also means an existing validTo cannot be cleared here.\
+        \ Status is recalculated from validTo. To change restaurant number, address\
+        \ or license holder, create a new assignment instead."
+      properties:
+        validTo:
+          type: string
+          format: date
+          description: Last day the assignment is valid
+          examples:
+            - 2026-12-31
+        premisesName:
+          type: string
+          description: Name of the premises
+          examples:
+            - Harrys Pub
+        holderName:
+          type: string
+          description: "Name of the license holder as registered for this assignment,\
+            \ omit to leave it unchanged"
+          examples:
+            - Restaurang i Sundsvall AB
+          pattern: .*\S.*
+    Assignment:
+      type: object
+      description: "Assignment model, describing a restaurant number assigned to a\
+        \ license holder at an address"
+      properties:
+        id:
+          type: string
+          description: Assignment ID
+          examples:
+            - 9ce333ec-a473-438b-8406-a71e957dc107
+        restaurantNumber:
+          $ref: "#/components/schemas/RestaurantNumber"
+          description: The assigned restaurant number
+        address:
+          $ref: "#/components/schemas/Address"
+          description: The address the restaurant number is assigned to
+        licenseHolder:
+          $ref: "#/components/schemas/LicenseHolder"
+          description: The license holder the restaurant number is assigned to
+        holderName:
+          type: string
+          description: Name of the license holder as registered for this assignment
+          examples:
+            - S.M.Å. Restaurang i Sundsvall AB
+        premisesName:
+          type: string
+          description: Name of the premises
+          examples:
+            - Harrys Pub & Restaurang
+        validFrom:
+          type: string
+          format: date
+          description: First day the assignment is valid
+          examples:
+            - 2024-01-01
+        validTo:
+          type: string
+          format: date
+          description: "Last day the assignment is valid, null if open ended"
+          examples:
+            - 2024-12-31
+        status:
+          type: string
+          description: Assignment status
+          examples:
+            - ACTIVE
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the assignment was created
+    LicenseHolder:
+      type: object
+      description: License holder model
+      properties:
+        id:
+          type: string
+          description: License holder ID
+          examples:
+            - 9ce333ec-a473-438b-8406-a71e957dc107
+        orgNumber:
+          type: string
+          description: Organization number
+          examples:
+            - 556612-4144
+        name:
+          type: string
+          description: Name of the license holder
+          examples:
+            - S.M.Å. Restaurang i Sundsvall AB
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the license holder was created
+    RestaurantNumber:
+      type: object
+      description: Restaurant number model
+      properties:
+        id:
+          type: string
+          description: Restaurant number ID
+          examples:
+            - 9ce333ec-a473-438b-8406-a71e957dc107
+        number:
+          type: string
+          description: Restaurant number
+          examples:
+            - "1001"
+        municipalityId:
+          type: string
+          description: Municipality ID
+          examples:
+            - "2281"
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the restaurant number was created
+    Direction:
+      type: string
+      description: The sort order direction
+      enum:
+        - ASC
+        - DESC
+      examples:
+        - ASC
+    Addresses:
+      type: object
+      description: Addresses model
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/Address"
+            readOnly: true
+        _meta:
+          $ref: "#/components/schemas/PagingMetaData"
+          readOnly: true
+    PagingMetaData:
+      type: object
+      description: PagingMetaData model
+      properties:
+        page:
+          type: integer
+          format: int32
+          description: Current page
+          examples:
+            - 5
+          readOnly: true
+        limit:
+          type: integer
+          format: int32
+          description: Displayed objects per page
+          examples:
+            - 20
+          readOnly: true
+        count:
+          type: integer
+          format: int32
+          description: Displayed objects on current page
+          examples:
+            - 13
+          readOnly: true
+        totalRecords:
+          type: integer
+          format: int64
+          description: Total amount of hits based on provided search parameters
+          examples:
+            - 98
+          readOnly: true
+        totalPages:
+          type: integer
+          format: int32
+          description: Total amount of pages based on provided search parameters
+          examples:
+            - 23
+          readOnly: true
+  securitySchemes: { }
