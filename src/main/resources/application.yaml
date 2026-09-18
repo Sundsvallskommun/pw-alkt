@@ -5,18 +5,32 @@ spring:
     oauth2:
       client:
         provider:
+          licensed-business:
+            token-uri: ${config.licensed-business.token-uri}
           operaton:
             token-uri: ${config.operaton.token-uri}
+          party:
+            token-uri: ${config.party.token-uri}
           party-assets:
             token-uri: ${config.party-assets.token-uri}
           support-management:
             token-uri: ${config.support-management.token-uri}
         registration:
+          licensed-business:
+            authorization-grant-type: client_credentials
+            provider: licensed-business
+            client-id: ${config.licensed-business.client-id}
+            client-secret: ${config.licensed-business.client-secret}
           operaton:
             authorization-grant-type: client_credentials
             provider: operaton
             client-id: ${config.operaton.client-id}
             client-secret: ${config.operaton.client-secret}
+          party:
+            authorization-grant-type: client_credentials
+            provider: party
+            client-id: ${config.party.client-id}
+            client-secret: ${config.party.client-secret}
           party-assets:
             authorization-grant-type: client_credentials
             provider: party-assets
@@ -93,8 +107,16 @@ reconciliation:
 #----------------------------------------
 # Rest client
 integration:
+  licensed-business:
+    url: ${config.licensed-business.base-url}
+    connectTimeout: 5
+    readTimeout: 20
   operaton:
     url: ${config.operaton.base-url}
+    connectTimeout: 5
+    readTimeout: 20
+  party:
+    url: ${config.party.base-url}
     connectTimeout: 5
     readTimeout: 20
   party-assets:
@@ -111,7 +133,11 @@ integration:
 #----------------------------------------
 resilience4j.circuitbreaker:
   instances:
+    licensed-business:
+      ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
     operaton:
+      ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
+    party:
       ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
     party-assets:
       ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
