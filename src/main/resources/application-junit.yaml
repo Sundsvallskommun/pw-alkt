@@ -47,6 +47,11 @@ config:
     token-uri: ${config.common.token-uri}
     client-id: ${config.common.client-id}
     client-secret: ${config.common.client-secret}
+  party:
+    base-url: party.base.url
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
   support-management:
     base-url: support-management.base.url
     token-uri: ${config.common.token-uri}

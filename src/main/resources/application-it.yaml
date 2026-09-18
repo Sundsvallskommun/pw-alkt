@@ -35,6 +35,11 @@ config:
     token-uri: ${config.common.token-uri}
     client-id: ${config.common.client-id}
     client-secret: ${config.common.client-secret}
+  party:
+    base-url: http://localhost:${wiremock.server.port}/api-party
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
   support-management:
     base-url: http://localhost:${wiremock.server.port}/api-support-management
     token-uri: ${config.common.token-uri}
