@@ -6,7 +6,7 @@ import static org.apache.commons.lang3.StringUtils.abbreviate;
 public record AwaitingSignal(String name, String label) {
 
 	// The lengths Support Management accepts, cut here for the same reason ProcessStateReport cuts the error fields.
-	private static final int MAX_NAME_LENGTH = 255;
+	private static final int MAX_NAME_LENGTH = 128;
 	private static final int MAX_LABEL_LENGTH = 255;
 
 	public AwaitingSignal {

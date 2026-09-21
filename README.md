@@ -207,13 +207,17 @@ in memory per pod, keyed by definition id. A deployed definition never changes, 
 is evicted. If the model cannot be read the report still goes out with the message name as the label, because a button
 with a technical name beats no button.</p>
 
-<p><strong>Support Management does not store the list yet.</strong> The field is hand-added to our copy of its
-specification ahead of SM-A10, so today the list is sent and expected to be dropped. That round trip has not been made
-against a running Support Management, so whether it accepts the unknown property or answers
-<span class="code">400</span> is unverified, and a <span class="code">400</span> here is swallowed by
-<span class="code">ProcessReportService.reportWaitState</span>. Check it first in test. See the comment on
-<span class="code">ErrandProcess.awaitingSignals</span> in
-<span class="code">src/main/resources/integrations/support-management.yaml</span>.</p>
+<p><strong>Support Management stores the list.</strong> Every report replaces it whole, so a report that leaves the
+field out says the process waits for no one. Support Management reads no meaning into the names: it hands them back to
+the user interface as buttons, and compares them exactly, case included. A process that has ended shows none, whichever
+way it ended. A name longer than 128 characters is refused, so
+<span class="code">AwaitingSignal</span> cuts it there.</p>
+
+<p>Pressing a button posts to
+<span class="code">POST /errands/{errandId}/processes/{processInstanceId}/signals</span>, which reaches this service as
+a <span class="code">SIGNAL</span> event carrying the message name. Support Management does not consume the signal, so
+the same name is accepted again until the next report closes the gate. A second press correlates against nothing and is
+answered with <span class="code">202</span>.</p>
 
 <p>What this needs from a model:</p>
 

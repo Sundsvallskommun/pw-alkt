@@ -70,10 +70,7 @@ public interface SupportManagementClient {
 		@PathVariable String errandId,
 		@PathVariable String attachmentId);
 
-	/**
-	 * The decision a process makes itself, written with method AUTOMATIC. The endpoint is hand-added to our copy of the
-	 * specification ahead of DRAKEN-4744 and has not been called against a running Support Management.
-	 */
+	/** The decision a process makes itself, written with method AUTOMATIC, which only the process consumer may write. */
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createDecision(
 		@PathVariable String municipalityId,
