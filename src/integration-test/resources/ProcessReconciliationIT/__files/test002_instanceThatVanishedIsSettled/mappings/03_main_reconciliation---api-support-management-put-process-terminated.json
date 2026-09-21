@@ -1,0 +1,41 @@
+{
+	"name": "03_main_reconciliation---api-support-management-put-process-terminated",
+	"priority": 1,
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/b7e4c210-58f3-4d96-a1c7-0e9d5f28a3b6/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "FAILED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.error.code",
+					"equalTo": "TERMINATED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].activityType",
+					"equalTo": "RECONCILIATION"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

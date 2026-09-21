@@ -1,0 +1,55 @@
+{
+	"name": "04_main_complete-process-worker---api-support-management-put-process-completed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processService",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "low-alcohol-beer-sales"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "COMPLETED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_complete_process"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.externalTaskId",
+					"matches": "[0-9a-f-]{36}"
+				}
+			}
+		]
+	},
+	"newScenarioState": "main_complete-process-worker---api-support-management-put-process-completed",
+	"requiredScenarioState": "main_complete-process-worker---api-support-management-put-process-running",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "low-alcohol-beer-sales-happy-case"
+}

@@ -35,7 +35,34 @@ class ErrandEventTest {
 
 	@Test
 	void testNoDirtOnCreatedBean() {
-		assertThat(new ErrandEvent()).hasAllNullFieldsOrPropertiesExcept("startAllowed");
+		assertThat(ErrandEvent.create()).hasAllNullFieldsOrPropertiesExcept("startAllowed");
+	}
+
+	@Test
+	void testBuilderMethods() {
+		final var eventId = randomUUID().toString();
+		final var errandId = randomUUID().toString();
+		final var occurredAt = OffsetDateTime.now();
+
+		final var bean = ErrandEvent.create()
+			.withEventId(eventId)
+			.withEventType(UPDATE)
+			.withEventSubType("SIGNAL")
+			.withErrandId(errandId)
+			.withProcessKey("alcohol-serving")
+			.withStartAllowed(true)
+			.withSignalName("review_completed")
+			.withOccurredAt(occurredAt);
+
+		assertThat(bean).isNotNull().hasNoNullFieldsOrProperties();
+		assertThat(bean.getEventId()).isEqualTo(eventId);
+		assertThat(bean.getEventType()).isEqualTo(UPDATE);
+		assertThat(bean.getEventSubType()).isEqualTo("SIGNAL");
+		assertThat(bean.getErrandId()).isEqualTo(errandId);
+		assertThat(bean.getProcessKey()).isEqualTo("alcohol-serving");
+		assertThat(bean.isStartAllowed()).isTrue();
+		assertThat(bean.getSignalName()).isEqualTo("review_completed");
+		assertThat(bean.getOccurredAt()).isEqualTo(occurredAt);
 	}
 
 	@Test

@@ -55,12 +55,21 @@ public class ErrandEvent {
 	@Schema(description = "When the event occurred", example = "2026-08-19T09:12:03.221+02:00")
 	private OffsetDateTime occurredAt;
 
+	public static ErrandEvent create() {
+		return new ErrandEvent();
+	}
+
 	public String getEventId() {
 		return eventId;
 	}
 
 	public void setEventId(final String eventId) {
 		this.eventId = eventId;
+	}
+
+	public ErrandEvent withEventId(final String eventId) {
+		this.eventId = eventId;
+		return this;
 	}
 
 	public EventType getEventType() {
@@ -71,12 +80,22 @@ public class ErrandEvent {
 		this.eventType = eventType;
 	}
 
+	public ErrandEvent withEventType(final EventType eventType) {
+		this.eventType = eventType;
+		return this;
+	}
+
 	public String getEventSubType() {
 		return eventSubType;
 	}
 
 	public void setEventSubType(final String eventSubType) {
 		this.eventSubType = eventSubType;
+	}
+
+	public ErrandEvent withEventSubType(final String eventSubType) {
+		this.eventSubType = eventSubType;
+		return this;
 	}
 
 	public String getErrandId() {
@@ -87,12 +106,22 @@ public class ErrandEvent {
 		this.errandId = errandId;
 	}
 
+	public ErrandEvent withErrandId(final String errandId) {
+		this.errandId = errandId;
+		return this;
+	}
+
 	public String getProcessKey() {
 		return processKey;
 	}
 
 	public void setProcessKey(final String processKey) {
 		this.processKey = processKey;
+	}
+
+	public ErrandEvent withProcessKey(final String processKey) {
+		this.processKey = processKey;
+		return this;
 	}
 
 	public boolean isStartAllowed() {
@@ -103,6 +132,11 @@ public class ErrandEvent {
 		this.startAllowed = startAllowed;
 	}
 
+	public ErrandEvent withStartAllowed(final boolean startAllowed) {
+		this.startAllowed = startAllowed;
+		return this;
+	}
+
 	public String getSignalName() {
 		return signalName;
 	}
@@ -111,12 +145,22 @@ public class ErrandEvent {
 		this.signalName = signalName;
 	}
 
+	public ErrandEvent withSignalName(final String signalName) {
+		this.signalName = signalName;
+		return this;
+	}
+
 	public OffsetDateTime getOccurredAt() {
 		return occurredAt;
 	}
 
 	public void setOccurredAt(final OffsetDateTime occurredAt) {
 		this.occurredAt = occurredAt;
+	}
+
+	public ErrandEvent withOccurredAt(final OffsetDateTime occurredAt) {
+		this.occurredAt = occurredAt;
+		return this;
 	}
 
 	@Override
