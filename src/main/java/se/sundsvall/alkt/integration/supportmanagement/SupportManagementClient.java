@@ -1,10 +1,12 @@
 package se.sundsvall.alkt.integration.supportmanagement;
 
+import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcesses;
-import generated.se.sundsvall.supportmanagement.Labels;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,37 +16,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration;
 
 import static org.springframework.http.MediaType.ALL_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 import static se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration.CLIENT_ID;
 
 @FeignClient(name = CLIENT_ID, url = "${integration.support-management.url}", configuration = SupportManagementConfiguration.class)
 @CircuitBreaker(name = CLIENT_ID)
 public interface SupportManagementClient {
-
-	@PostMapping(path = "/{municipalityId}/{namespace}/errands", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
-	ResponseEntity<Void> createErrand(
-		@PathVariable String municipalityId,
-		@PathVariable String namespace,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
-		@RequestBody Errand errand);
-
-	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
-	ResponseEntity<Void> createAttachment(
-		@PathVariable String municipalityId,
-		@PathVariable String namespace,
-		@PathVariable String errandId,
-		@RequestPart(name = "errandAttachment") MultipartFile file);
-
-	@GetMapping(path = "/{municipalityId}/{namespace}/metadata/labels", produces = APPLICATION_JSON_VALUE)
-	ResponseEntity<Labels> getLabels(
-		@PathVariable String municipalityId,
-		@PathVariable String namespace);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<Errand> getErrand(
@@ -76,7 +56,29 @@ public interface SupportManagementClient {
 		@PathVariable String namespace,
 		@PathVariable String errandId);
 
-	// TODO: add putDecision for PUT /{municipalityId}/{namespace}/errands/{errandId}/decision once Support Management
-	// exposes it (DRAKEN-4744). Needed for a process to write an AUTOMATIC decision back to the errand.
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<ErrandAttachment>> getAttachments(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
 
+	/** The file itself, as bytes. The listing above carries everything about it except its content. */
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments/{attachmentId}", produces = ALL_VALUE)
+	ResponseEntity<byte[]> getAttachment(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String attachmentId);
+
+	/**
+	 * The decision a process makes itself, written with method AUTOMATIC. The endpoint is hand-added to our copy of the
+	 * specification ahead of DRAKEN-4744 and has not been called against a running Support Management.
+	 */
+	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> createDecision(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestBody Decision decision);
 }

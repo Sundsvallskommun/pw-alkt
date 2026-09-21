@@ -3,21 +3,19 @@ package se.sundsvall.alkt.integration.licensedbusiness;
 import generated.se.sundsvall.licensedbusiness.Address;
 import generated.se.sundsvall.licensedbusiness.AssignmentCreateRequest;
 import generated.se.sundsvall.licensedbusiness.RestaurantNumber;
-import java.net.URI;
 import java.util.Optional;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
-import static org.apache.commons.lang3.StringUtils.substringAfterLast;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.CONFLICT;
+import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
 @Component
 public class LicensedBusinessIntegration {
+
+	private static final String SERVICE = "Licensed business";
 
 	private final LicensedBusinessClient licensedBusinessClient;
 
@@ -26,7 +24,7 @@ public class LicensedBusinessIntegration {
 	}
 
 	/**
-	 * The restaurant number the licence holder now has at this address. A free number on the address is reused, and a
+	 * The restaurant number the license holder now has at this address. A free number on the address is reused, and a
 	 * new one is allocated when there is none. The assignment is sent as given, except addressId and restaurantNumberId,
 	 * which are set from the address and the number this call resolved.
 	 */
@@ -49,7 +47,7 @@ public class LicensedBusinessIntegration {
 	// A 409 means someone created the same address between the lookup and the create, so its id is there to be read now.
 	private String createAddress(final String municipalityId, final Address address) {
 		try {
-			return locationSegmentOf(licensedBusinessClient.createAddress(municipalityId, address));
+			return getIdOfCreatedResource(licensedBusinessClient.createAddress(municipalityId, address), SERVICE);
 		} catch (final ClientProblem e) {
 			if (!CONFLICT.equals(e.getStatus())) {
 				throw e;
@@ -71,20 +69,9 @@ public class LicensedBusinessIntegration {
 	}
 
 	private RestaurantNumber createRestaurantNumber(final String municipalityId, final String addressId) {
-		final var number = locationSegmentOf(licensedBusinessClient.createRestaurantNumber(municipalityId, addressId));
+		final var number = getIdOfCreatedResource(licensedBusinessClient.createRestaurantNumber(municipalityId, addressId), SERVICE);
 
 		return licensedBusinessClient.getRestaurantNumber(municipalityId, number)
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Restaurant number '%s' was created but cannot be read back".formatted(number)));
-	}
-
-	// Location points at the path the created resource is read from, so its last segment identifies it.
-	private static String locationSegmentOf(final ResponseEntity<Void> response) {
-		return Optional.ofNullable(response)
-			.map(ResponseEntity::getHeaders)
-			.map(HttpHeaders::getLocation)
-			.map(URI::getPath)
-			.map(path -> substringAfterLast(path, "/"))
-			.filter(StringUtils::isNotBlank)
-			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Licensed business created a resource without saying which"));
 	}
 }

@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
-import se.sundsvall.alkt.integration.supportmanagement.SupportManagementClient;
+import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
@@ -18,11 +18,11 @@ public class ProcessReportService {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProcessReportService.class);
 
-	private final SupportManagementClient supportManagementClient;
+	private final SupportManagementIntegration supportManagementIntegration;
 	private final OperatonIntegration operatonIntegration;
 
-	ProcessReportService(final SupportManagementClient supportManagementClient, final OperatonIntegration operatonIntegration) {
-		this.supportManagementClient = supportManagementClient;
+	ProcessReportService(final SupportManagementIntegration supportManagementIntegration, final OperatonIntegration operatonIntegration) {
+		this.supportManagementIntegration = supportManagementIntegration;
 		this.operatonIntegration = operatonIntegration;
 	}
 
@@ -60,7 +60,7 @@ public class ProcessReportService {
 			sanitizeForLogging(target.processInstanceId()), sanitizeForLogging(target.errandId()), report.status(),
 			sanitizeForLogging(report.currentActivityId()), error);
 
-		supportManagementClient.reportProcess(target.municipalityId(), target.namespace(), target.errandId(), target.processInstanceId(),
+		supportManagementIntegration.reportProcess(target.municipalityId(), target.namespace(), target.errandId(), target.processInstanceId(),
 			toErrandProcess(target, report));
 	}
 }

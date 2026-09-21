@@ -5,7 +5,6 @@ import generated.se.sundsvall.operaton.HistoricProcessInstanceDto.StateEnum;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
-import generated.se.sundsvall.supportmanagement.ErrandProcesses;
 import generated.se.sundsvall.supportmanagement.ProcessError;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -21,10 +20,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
-import se.sundsvall.alkt.integration.supportmanagement.SupportManagementClient;
+import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -64,7 +62,7 @@ class ProcessReconciliationServiceTest {
 	private OperatonClient operatonClientMock;
 
 	@Mock
-	private SupportManagementClient supportManagementClientMock;
+	private SupportManagementIntegration supportManagementIntegrationMock;
 
 	@Mock
 	private ProcessReportService processReportServiceMock;
@@ -73,7 +71,7 @@ class ProcessReconciliationServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new ProcessReconciliationService(operatonClientMock, supportManagementClientMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2)));
+		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2)));
 	}
 
 	// Incidents
@@ -100,7 +98,7 @@ class ProcessReconciliationServiceTest {
 			assertThat(activity.getMessage()).isEqualTo("Timeout against Support Management");
 			assertThat(activity.getOccurredAt()).isEqualTo(INCIDENT_TIMESTAMP);
 		});
-		verifyNoMoreInteractions(processReportServiceMock, supportManagementClientMock);
+		verifyNoMoreInteractions(processReportServiceMock, supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -147,9 +145,9 @@ class ProcessReconciliationServiceTest {
 	}
 
 	@Test
-	void reportsWhenSupportManagementAnswersWithoutABody() {
+	void reportsWhenTheErrandHasNoRows() {
 		mockIncident(incident());
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 
 		service.reconcile();
 
@@ -169,7 +167,7 @@ class ProcessReconciliationServiceTest {
 	@Test
 	void skipsAnIncidentWhoseErrandIsGone() {
 		mockIncident(incident());
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
 
 		service.reconcile();
 
@@ -198,7 +196,7 @@ class ProcessReconciliationServiceTest {
 
 		service.reconcile();
 
-		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
+		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
 	}
 
 	@Test
@@ -208,7 +206,7 @@ class ProcessReconciliationServiceTest {
 
 		service.reconcile();
 
-		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
+		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
 	}
 
 	/** A fault on one incident must not stop the next one. */
@@ -218,7 +216,7 @@ class ProcessReconciliationServiceTest {
 		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident(), incident().processInstanceId(secondInstanceId)));
 		when(operatonClientMock.getHistoricProcessInstance(any())).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)));
 		when(operatonClientMock.getHistoricVariableInstances(any())).thenReturn(identity());
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcesses()));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Support Management is down")).when(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), any());
 
 		service.reconcile();
@@ -234,7 +232,7 @@ class ProcessReconciliationServiceTest {
 		verify(operatonClientMock).findIncidents(TENANT, ALL_PROCESS_KEYS);
 		verify(operatonClientMock).findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any());
 		verifyNoMoreInteractions(operatonClientMock);
-		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
+		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
 	}
 
 	/** Support Management requires occurredAt, but the engine leaves the incident timestamp nullable. */
@@ -283,7 +281,7 @@ class ProcessReconciliationServiceTest {
 			assertThat(activity.getMessage()).contains("COMPLETED");
 			assertThat(activity.getOccurredAt()).isEqualTo(END_TIME);
 		});
-		verifyNoMoreInteractions(processReportServiceMock, supportManagementClientMock);
+		verifyNoMoreInteractions(processReportServiceMock, supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -339,7 +337,7 @@ class ProcessReconciliationServiceTest {
 	@Test
 	void leavesAnEndedInstanceWhoseErrandIsGone() {
 		mockEndedInstance(StateEnum.EXTERNALLY_TERMINATED);
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
 
 		service.reconcile();
 
@@ -356,7 +354,7 @@ class ProcessReconciliationServiceTest {
 		service.reconcile();
 
 		verify(operatonClientMock, never()).getHistoricVariableInstances(any());
-		verifyNoInteractions(supportManagementClientMock, processReportServiceMock);
+		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
 	}
 
 	/** A fault on one instance must not stop the next one. */
@@ -366,7 +364,7 @@ class ProcessReconciliationServiceTest {
 		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any()))
 			.thenReturn(List.of(endedInstance(PROCESS_INSTANCE_ID, StateEnum.COMPLETED), endedInstance(secondInstanceId, StateEnum.COMPLETED)));
 		when(operatonClientMock.getHistoricVariableInstances(any())).thenReturn(identity());
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcesses()));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Support Management is down")).when(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
 
 		service.reconcile();
@@ -405,7 +403,7 @@ class ProcessReconciliationServiceTest {
 	}
 
 	private void mockErrandProcesses(final ErrandProcess... rows) {
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcesses().processes(List.of(rows))));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(rows));
 	}
 
 	private static HistoricProcessInstanceDto endedInstance(final String processInstanceId, final StateEnum state) {
