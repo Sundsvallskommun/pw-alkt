@@ -35,7 +35,10 @@ public class SupportManagementIntegration {
 			.orElseGet(List::of);
 	}
 
-	/** An empty file decodes to an empty array, so this only fires when the answer carries no body at all. */
+	/**
+	 * Feign answers with a null body both when the file is zero bytes and when the answer carries no content at all. The
+	 * two cannot be told apart here, so both are treated as a fault.
+	 */
 	public byte[] getAttachment(final String municipalityId, final String namespace, final String errandId, final String attachmentId) {
 		return Optional.ofNullable(supportManagementClient.getAttachment(municipalityId, namespace, errandId, attachmentId).getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Attachment '%s' of errand '%s' came back without content".formatted(attachmentId, errandId)));

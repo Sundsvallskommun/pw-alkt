@@ -81,11 +81,23 @@ class PartyAssetsIntegrationTest {
 		verify(partyAssetsClientMock, never()).createAttachment(any(), any(), any(), any(), any());
 	}
 
-	/**
-	 * A failing attachment leaves the asset behind, so its id is carried by the fault and the next one is not attempted.
-	 */
 	@Test
-	void createAssetPassesOnAFailingAttachment() {
+	void createAssetWithNullAttachmentsOnlyCreatesTheAsset() {
+		final var assetId = randomUUID().toString();
+		final var asset = new AssetCreateRequest();
+
+		when(partyAssetsClientMock.createAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/assets/" + assetId));
+
+		final var result = partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, null);
+
+		assertThat(result).isEqualTo(assetId);
+		verify(partyAssetsClientMock).createAsset(MUNICIPALITY_ID, asset);
+		verifyNoMoreInteractions(partyAssetsClientMock);
+	}
+
+	/** A failing attachment takes the asset with it, and the attachments after it are not attempted. */
+	@Test
+	void createAssetRemovesTheAssetWhenAnAttachmentFails() {
 		final var assetId = randomUUID().toString();
 		final var asset = new AssetCreateRequest();
 		final var firstAttachment = mock(MultipartFile.class);
@@ -97,10 +109,30 @@ class PartyAssetsIntegrationTest {
 
 		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, List.of(firstAttachment, secondAttachment)))
 			.isInstanceOf(Problem.class)
-			.hasMessageContaining(assetId)
+			.hasMessageContaining("removed again")
 			.hasMessageContaining("Party assets is down");
 
 		verify(partyAssetsClientMock, never()).createAttachment(MUNICIPALITY_ID, assetId, secondAttachment, null, null);
+		verify(partyAssetsClientMock).deleteAsset(MUNICIPALITY_ID, assetId);
+	}
+
+	@Test
+	void createAssetCarriesTheAssetIdWhenTheAssetCannotBeRemoved() {
+		final var assetId = randomUUID().toString();
+		final var asset = new AssetCreateRequest();
+		final var attachment = mock(MultipartFile.class);
+
+		when(partyAssetsClientMock.createAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/assets/" + assetId));
+		when(partyAssetsClientMock.createAttachment(MUNICIPALITY_ID, assetId, attachment, null, null))
+			.thenThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down"));
+		when(partyAssetsClientMock.deleteAsset(MUNICIPALITY_ID, assetId))
+			.thenThrow(new ClientProblem(BAD_GATEWAY, "Party assets is still down"));
+
+		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, List.of(attachment)))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining(assetId)
+			.hasMessageContaining("Party assets is down")
+			.hasMessageContaining("Party assets is still down");
 	}
 
 	private static ResponseEntity<Void> created(final String location) {
