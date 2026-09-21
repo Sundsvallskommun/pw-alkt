@@ -4,7 +4,6 @@ import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
-import generated.se.sundsvall.supportmanagement.ErrandProcesses;
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -16,13 +15,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
-import se.sundsvall.alkt.integration.supportmanagement.SupportManagementClient;
+import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 
 import static java.time.ZoneOffset.UTC;
-import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
 import static org.springframework.http.HttpStatus.CONFLICT;
@@ -54,14 +52,14 @@ public class ProcessReconciliationService {
 	private static final String MESSAGE_ENDED_WITHOUT_REPORT = "The process instance ended in the engine as %s without reporting it, settled by the reconciliation";
 
 	private final OperatonClient operatonClient;
-	private final SupportManagementClient supportManagementClient;
+	private final SupportManagementIntegration supportManagementIntegration;
 	private final ProcessReportService processReportService;
 	private final ReconciliationProperties properties;
 
-	ProcessReconciliationService(final OperatonClient operatonClient, final SupportManagementClient supportManagementClient, final ProcessReportService processReportService,
+	ProcessReconciliationService(final OperatonClient operatonClient, final SupportManagementIntegration supportManagementIntegration, final ProcessReportService processReportService,
 		final ReconciliationProperties properties) {
 		this.operatonClient = operatonClient;
-		this.supportManagementClient = supportManagementClient;
+		this.supportManagementIntegration = supportManagementIntegration;
 		this.processReportService = processReportService;
 		this.properties = properties;
 	}
@@ -172,10 +170,7 @@ public class ProcessReconciliationService {
 	}
 
 	private Stream<ErrandProcess> rowsOf(final ReportTarget target) {
-		return ofNullable(supportManagementClient.getErrandProcesses(target.municipalityId(), target.namespace(), target.errandId()).getBody())
-			.map(ErrandProcesses::getProcesses)
-			.orElse(List.of())
-			.stream();
+		return supportManagementIntegration.getErrandProcesses(target.municipalityId(), target.namespace(), target.errandId()).stream();
 	}
 
 	/** A row touched after the incident arose means the step was retried and moved on; the incident is history. */

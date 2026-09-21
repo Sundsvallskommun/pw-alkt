@@ -4,6 +4,7 @@ import generated.se.sundsvall.partyassets.AssetCreateRequest;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,4 +33,9 @@ public interface PartyAssetsClient {
 		@RequestPart("attachment") MultipartFile attachment,
 		@RequestPart(name = "category", required = false) String category,
 		@RequestPart(name = "description", required = false) String description);
+
+	@DeleteMapping(path = "/{municipalityId}/assets/{id}", produces = ALL_VALUE)
+	ResponseEntity<Void> deleteAsset(
+		@PathVariable String municipalityId,
+		@PathVariable String id);
 }

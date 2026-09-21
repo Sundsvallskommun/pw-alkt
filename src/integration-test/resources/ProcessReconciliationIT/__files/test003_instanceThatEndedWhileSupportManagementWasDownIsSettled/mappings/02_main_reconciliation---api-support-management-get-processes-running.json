@@ -1,0 +1,29 @@
+{
+	"name": "02_main_reconciliation---api-support-management-get-processes-running",
+	"metadata": {
+		"comment": "Reading the row is the only call a sweep makes that the process itself never does, so it marks the point where Support Management is back and the reports below start being accepted."
+	},
+	"priority": 1,
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/e1c47b93-6a25-4f80-b3d6-9c052f7ae184/processes"
+	},
+	"scenarioName": "support-management-comes-back",
+	"requiredScenarioState": "Started",
+	"newScenarioState": "reconciliation-is-sweeping",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"jsonBody": {
+			"processes": [
+				{
+					"processKey": "alcohol-serving",
+					"processStatus": "RUNNING"
+				}
+			]
+		},
+		"status": 200
+	}
+}

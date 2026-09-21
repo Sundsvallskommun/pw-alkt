@@ -1,0 +1,23 @@
+{
+	"name": "01_main_any-worker---api-support-management-put-process-while-down",
+	"metadata": {
+		"comment": "Support Management answers 500 to every report the process sends on its way through. A work step swallows that, so the process runs to its end and the errand is left saying RUNNING."
+	},
+	"priority": 1,
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/e1c47b93-6a25-4f80-b3d6-9c052f7ae184/processes/[^/]+"
+	},
+	"scenarioName": "support-management-comes-back",
+	"requiredScenarioState": "Started",
+	"response": {
+		"headers": {
+			"Content-Type": "application/problem+json"
+		},
+		"jsonBody": {
+			"title": "Internal Server Error",
+			"status": 500
+		},
+		"status": 500
+	}
+}

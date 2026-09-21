@@ -1,0 +1,23 @@
+{
+	"name": "01_main_any-worker---api-support-management-put-process-refused",
+	"metadata": {
+		"comment": "Every report the process sends is refused with 412: the errand moved under it. A wait state report swallows that, but the last work step does not, and with no retries the engine raises an incident."
+	},
+	"priority": 1,
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/a3690d5e-8f14-42b7-95ca-6d81e0b4f273/processes/[^/]+"
+	},
+	"scenarioName": "incident-is-reported-once",
+	"requiredScenarioState": "Started",
+	"response": {
+		"headers": {
+			"Content-Type": "application/problem+json"
+		},
+		"jsonBody": {
+			"title": "Precondition Failed",
+			"status": 412
+		},
+		"status": 412
+	}
+}

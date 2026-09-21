@@ -1,18 +1,19 @@
 package se.sundsvall.alkt.integration.partyassets;
 
-import java.net.URI;
+import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import java.util.List;
 import java.util.Optional;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.dept44.problem.Problem;
 
-import static org.apache.commons.lang3.StringUtils.substringAfterLast;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
 @Component
 public class PartyAssetsIntegration {
+
+	private static final String SERVICE = "Party assets";
 
 	private final PartyAssetsClient partyAssetsClient;
 
@@ -20,20 +21,29 @@ public class PartyAssetsIntegration {
 		this.partyAssetsClient = partyAssetsClient;
 	}
 
-	// TODO: create the asset from the request the mapper builds, read its id out of the Location header with assetIdOf,
-	// then post each attachment to /assets/{assetId}/attachments and answer with the id. An attachment that fails leaves
-	// the asset created, party-assets has no way to take it back. Arguments follow once the worker knows what it reads
-	// out of the errand.
-	public void createAsset() {}
+	public String createAsset(final String municipalityId, final AssetCreateRequest asset, final List<MultipartFile> attachments) {
+		final var files = Optional.ofNullable(attachments).orElseGet(List::of);
+		final var assetId = getIdOfCreatedResource(partyAssetsClient.createAsset(municipalityId, asset), SERVICE);
 
-	// Location points at GET /assets/{id}, so its last segment is the id. No body comes back to read it from.
-	static String assetIdOf(final ResponseEntity<Void> response) {
-		return Optional.ofNullable(response)
-			.map(ResponseEntity::getHeaders)
-			.map(HttpHeaders::getLocation)
-			.map(URI::getPath)
-			.map(path -> substringAfterLast(path, "/"))
-			.filter(StringUtils::isNotBlank)
-			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Party assets created an asset without saying which"));
+		// Category and description are null until the worker knows what the attachments of an errand are called.
+		try {
+			files.forEach(attachment -> partyAssetsClient.createAttachment(municipalityId, assetId, attachment, null, null));
+		} catch (final RuntimeException e) {
+			// Everything is caught, not just Problem: an open circuit breaker and a read timeout are the likeliest ways an
+			// attachment fails. The asset goes with it, so an engine retry of the step does not leave a duplicate behind.
+			throw Problem.valueOf(BAD_GATEWAY, removeAsset(municipalityId, assetId, e));
+		}
+
+		return assetId;
+	}
+
+	private String removeAsset(final String municipalityId, final String assetId, final RuntimeException cause) {
+		try {
+			partyAssetsClient.deleteAsset(municipalityId, assetId);
+			return "An attachment could not be added to the created asset, which was removed again: %s".formatted(cause.getMessage());
+		} catch (final RuntimeException e) {
+			// The id is the only way to find the asset that is left behind, so it travels with both failures.
+			return "An attachment could not be added to asset '%s' (%s) and the asset could not be removed again: %s".formatted(assetId, cause.getMessage(), e.getMessage());
+		}
 	}
 }

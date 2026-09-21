@@ -1,0 +1,8 @@
+{
+	"eventId": "7b21ed40-3c95-4f62-8a17-5d0b9e4c6f28",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "a3690d5e-8f14-42b7-95ca-6d81e0b4f273",
+	"processKey": "alcohol-serving",
+	"startAllowed": true
+}

@@ -1,0 +1,21 @@
+{
+	"name": "other-errands-are-gone",
+	"metadata": {
+		"comment": "A sweep walks every instance the engine remembers, and the engine is shared with the other test classes. Their errands were never stubbed here, so answering 404 for anything but this test case's errand keeps a sweep from tripping over an unmatched request. Lower priority, so a stub of the test case itself always wins."
+	},
+	"priority": 10,
+	"request": {
+		"method": "GET",
+		"urlPathPattern": "/api-support-management/[^/]+/[^/]+/errands/[^/]+/processes"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/problem+json"
+		},
+		"jsonBody": {
+			"title": "Not Found",
+			"status": 404
+		},
+		"status": 404
+	}
+}

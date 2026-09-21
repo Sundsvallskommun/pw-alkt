@@ -5366,6 +5366,78 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  # Hand-added ahead of DRAKEN-4744. Shaped after section 7.5 of the solution document, which describes the decision
+  # resource of the shared handling model. Only the create is written here, since that is the only call this service
+  # makes. Nothing has been sent to a running Support Management, so the shape is unverified. Replace this and the
+  # Decision schema when the spec is regenerated.
+  /{municipalityId}/{namespace}/errands/{errandId}/decisions:
+    post:
+      tags:
+      - Decisions
+      summary: Create decision
+      description: Creates the decision of an errand
+      operationId: createDecision
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality id
+        required: true
+        schema:
+          type: string
+        example: 2281
+      - name: namespace
+        in: path
+        description: Namespace
+        required: true
+        schema:
+          type: string
+          pattern: "[\\w|\\-]+"
+        example: MY_NAMESPACE
+      - name: errandId
+        in: path
+        description: Errand id
+        required: true
+        schema:
+          type: string
+        example: b82bd8ac-1507-4d9a-958d-369261eecc15
+      - name: X-Trigger-Process
+        in: header
+        description: "Set to 'false' by a process engine writing to an errand it is\
+          \ itself running, to keep the write from waking that process again. An omitted\
+          \ header, and any other value, wakes it. Disregarded for ad account identities,\
+          \ whose writes always wake the process."
+        required: false
+        schema:
+          type: string
+        example: "false"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Decision"
+        required: true
+      responses:
+        "201":
+          description: Created
+        "403":
+          description: "Forbidden, the method does not match the identity of the caller"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "409":
+          description: "Conflict, the errand already has a decision or its process
+            is completed"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /{municipalityId}/{namespace}/errands/{errandId}/attachments:
     get:
       tags:
@@ -12431,6 +12503,70 @@ components:
           minLength: 0
       required:
       - name
+    # Hand-added ahead of DRAKEN-4744, see the comment on the decisions path above. The fields are the ones section 7.5
+    # writes out; the read-only ones the resource answers with are left out, since this service only creates. Kept as
+    # strings rather than enums so a value the real spec spells differently does not fail to parse.
+    Decision:
+      type: object
+      description: The decision of an errand
+      properties:
+        type:
+          type: string
+          description: Type of decision
+          examples:
+          - PERMIT
+        status:
+          type: string
+          description: "Where the decision stands: DRAFT, ACTIVE, COMPLETED or CANCELLED.\
+            \ A process waiting for the decision waits for COMPLETED"
+          examples:
+          - COMPLETED
+        outcome:
+          type: string
+          description: Outcome of the decision, one of those the namespace has registered
+            on /metadata/decisionoutcomes
+          examples:
+          - APPROVAL
+        method:
+          type: string
+          description: "How the decision was made: MANUAL by a case worker, AUTOMATIC\
+            \ by the process. AUTOMATIC is only accepted from the process consumer\
+            \ of the namespace"
+          examples:
+          - AUTOMATIC
+        decidedBy:
+          type: string
+          description: Who made the decision
+          examples:
+          - anna.andersson
+        decidedAt:
+          type: string
+          format: date-time
+          description: When the decision was made
+          examples:
+          - 2026-09-14T10:12:00+02:00
+        legalBasis:
+          type: string
+          description: The provision the decision rests on
+          examples:
+          - 8 kap. 12 § alkohollagen
+        delegationReference:
+          type: string
+          description: The point in the delegation order the decision was made under
+          examples:
+          - 3.2.1
+        justification:
+          type: string
+          description: Why the decision was made
+        appealable:
+          type: boolean
+          description: Whether the decision can be appealed
+      required:
+      - decidedAt
+      - method
+      - outcome
+      - status
+      - type
     JsonNode:
       type: object
       properties:

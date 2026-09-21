@@ -15,7 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
 import se.sundsvall.alkt.integration.operaton.WaitState;
-import se.sundsvall.alkt.integration.supportmanagement.SupportManagementClient;
+import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -48,7 +49,7 @@ class ProcessReportServiceTest {
 	private static final String DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
 
 	@Mock
-	private SupportManagementClient supportManagementClientMock;
+	private SupportManagementIntegration supportManagementIntegrationMock;
 
 	@Mock
 	private OperatonIntegration operatonIntegrationMock;
@@ -66,8 +67,8 @@ class ProcessReportServiceTest {
 
 		service.report(target, ProcessStateReport.failed("INCIDENT", "Timeout"));
 
-		verify(supportManagementClientMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
-		verifyNoMoreInteractions(supportManagementClientMock);
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 		assertThat(captor.getValue().getProcessStatus()).isEqualTo("FAILED");
 		assertThat(captor.getValue().getProcessKey()).isEqualTo(PROCESS_KEY);
 		assertThat(captor.getValue().getExternalTaskId()).isEqualTo(EXTERNAL_TASK_ID);
@@ -88,8 +89,8 @@ class ProcessReportServiceTest {
 
 		service.report(externalTaskMock, ProcessStateReport.completed().withErrandVersion(7L));
 
-		verify(supportManagementClientMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
-		verifyNoMoreInteractions(supportManagementClientMock);
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 		assertThat(captor.getValue().getProcessStatus()).isEqualTo("COMPLETED");
 		assertThat(captor.getValue().getErrandVersion()).isEqualTo(7L);
 		assertThat(captor.getValue().getProcessKey()).isEqualTo(PROCESS_KEY);
@@ -110,7 +111,7 @@ class ProcessReportServiceTest {
 
 		service.report(externalTaskMock, ProcessStateReport.completed().atActivity("closure_phase"));
 
-		verify(supportManagementClientMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
 		assertThat(captor.getValue().getCurrentActivityId()).isEqualTo("closure_phase");
 		verify(externalTaskMock, never()).getActivityId();
 	}
@@ -124,7 +125,7 @@ class ProcessReportServiceTest {
 
 		service.reportWaitState(target, DEFINITION_ID);
 
-		verify(supportManagementClientMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
 		assertThat(captor.getValue().getProcessStatus()).isEqualTo("WAITING");
 		assertThat(captor.getValue().getCurrentActivityId()).isEqualTo("review_phase");
 		assertThat(captor.getValue().getCurrentActivityName()).isEqualTo("Review");
@@ -141,7 +142,7 @@ class ProcessReportServiceTest {
 
 		service.reportWaitState(target, DEFINITION_ID);
 
-		verifyNoInteractions(supportManagementClientMock);
+		verifyNoInteractions(supportManagementIntegrationMock);
 	}
 
 	/** Whatever brought the process here has already happened, so a failed wait state report must not undo it. */
@@ -157,7 +158,7 @@ class ProcessReportServiceTest {
 	@Test
 	void letsARefusedReportThrough() {
 		final var target = new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, PROCESS_KEY, EXTERNAL_TASK_ID);
-		when(supportManagementClientMock.reportProcess(any(), any(), any(), any(), any())).thenThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Precondition Failed"));
+		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Precondition Failed")).when(supportManagementIntegrationMock).reportProcess(any(), any(), any(), any(), any());
 
 		assertThatThrownBy(() -> service.report(target, ProcessStateReport.completed()))
 			.isInstanceOf(ClientProblem.class)
