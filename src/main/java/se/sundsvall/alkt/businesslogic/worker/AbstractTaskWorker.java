@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
+import java.util.Map;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
@@ -40,11 +41,14 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		try {
 			final ProcessStateReport report;
 			try {
-				reportProcessState(externalTask, ProcessStateReport.running(externalTask.getActivityId(), null));
+				final var running = ProcessStateReport.running(externalTask.getActivityId(), null);
+				reportProcessState(externalTask, running);
 
 				report = executeBusinessLogic(externalTask, externalTaskService);
 
-				reportProcessState(externalTask, report);
+				if (!running.equals(report.withVariables(Map.of()))) {
+					reportProcessState(externalTask, report);
+				}
 				externalTaskService.complete(externalTask, report.variables());
 			} catch (final Exception e) {
 				logException(externalTask, e);
