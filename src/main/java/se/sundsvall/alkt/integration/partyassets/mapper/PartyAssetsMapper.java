@@ -16,6 +16,7 @@ import java.util.Optional;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.integration.partyassets.model.ByteArrayMultipartFile;
 
+import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class PartyAssetsMapper {
@@ -31,6 +32,7 @@ public final class PartyAssetsMapper {
 	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
+			.status(DRAFT)
 			.origin(ORIGIN)
 			.partyId(partyId)
 			.type(decision.getType())

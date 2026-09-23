@@ -12,6 +12,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
+import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -51,7 +52,7 @@ class PartyAssetsMapperTest {
 		assertThat(result.getIssued()).isEqualTo(LocalDate.of(2026, 10, 1));
 		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
 		assertThat(result.getDescription()).isEqualTo("Beslut om serveringstillstånd");
-		assertThat(result.getStatus()).isNull();
+		assertThat(result.getStatus()).isEqualTo(DRAFT);
 		assertThat(result.getAdditionalParameters()).containsExactly(
 			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
 			entry(PARAMETER_LEGAL_BASIS, "8 kap. 12 § alkohollagen"),

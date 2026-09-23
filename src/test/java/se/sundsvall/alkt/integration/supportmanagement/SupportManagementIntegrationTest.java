@@ -5,7 +5,6 @@ import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcesses;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -121,28 +120,25 @@ class SupportManagementIntegrationTest {
 	}
 
 	@Test
-	void getLatestCompletedDecisionPicksTheMostRecentlyDecidedCompletedOne() {
-		final var older = new Decision().status("COMPLETED").decidedAt(OffsetDateTime.parse("2026-09-01T10:00:00+02:00"));
-		final var newer = new Decision().status("COMPLETED").decidedAt(OffsetDateTime.parse("2026-09-20T10:00:00+02:00"));
-		final var undated = new Decision().status("COMPLETED");
-		final var ongoing = new Decision().status("ONGOING").decidedAt(OffsetDateTime.parse("2026-09-22T10:00:00+02:00"));
-		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(older, ongoing, undated, newer)));
+	void getCompletedDecisionAnswersWithTheCompletedDecision() {
+		final var completed = new Decision().status("COMPLETED");
+		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(completed)));
 
-		assertThat(supportManagementIntegration.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsSame(newer);
+		assertThat(supportManagementIntegration.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsSame(completed);
 	}
 
 	@Test
-	void getLatestCompletedDecisionAnswersWithNothingWithoutACompletedDecision() {
+	void getCompletedDecisionAnswersWithNothingWithoutACompletedDecision() {
 		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(new Decision().status("ONGOING"))));
 
-		assertThat(supportManagementIntegration.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+		assertThat(supportManagementIntegration.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
 	}
 
 	@Test
-	void getLatestCompletedDecisionAnswersWithNothingWithoutABody() {
+	void getCompletedDecisionAnswersWithNothingWithoutABody() {
 		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
 
-		assertThat(supportManagementIntegration.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+		assertThat(supportManagementIntegration.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
 	}
 
 }

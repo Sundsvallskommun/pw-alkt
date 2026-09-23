@@ -60,7 +60,7 @@ class AssetServiceTest {
 
 	@Test
 	void getDecisionOutcomeAnswersWithTheOutcomeOfTheCompletedDecision() {
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(new Decision().outcome("APPROVAL")));
 
 		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("APPROVAL");
@@ -68,7 +68,7 @@ class AssetServiceTest {
 
 	@Test
 	void getDecisionOutcomeAnswersWithRejection() {
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(new Decision().outcome("REJECTION")));
 
 		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("REJECTION");
@@ -80,7 +80,7 @@ class AssetServiceTest {
 		"PARTIAL_APPROVAL", "approval"
 	})
 	void getDecisionOutcomeFailsOnAnOutcomeItDoesNotKnow(final String outcome) {
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(new Decision().outcome(outcome)));
 
 		assertThatThrownBy(() -> assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
@@ -90,7 +90,7 @@ class AssetServiceTest {
 
 	@Test
 	void getDecisionOutcomeAnswersWithNoneWithoutACompletedDecision() {
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
 
 		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(DECISION_OUTCOME_NONE);
 	}
@@ -98,12 +98,12 @@ class AssetServiceTest {
 	@Test
 	void createAssetBuildsTheAssetFromTheDecisionWithItsAttachments() {
 		final var attachment = new ErrandAttachment().id("attachment-id").fileName("beslut.pdf").mimeType("application/pdf");
-		final var decision = new Decision().id(DECISION_ID).type("PERMIT").attachments(List.of(attachment));
+		final var decision = approval().type("PERMIT").attachments(List.of(attachment));
 		final var content = "file".getBytes();
 
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(decision));
-		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(decision));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "attachment-id")).thenReturn(content);
 		when(partyAssetsIntegrationMock.createAsset(any(), any(), any())).thenReturn("asset-id");
 
@@ -120,22 +120,21 @@ class AssetServiceTest {
 
 	@Test
 	void createAssetAnswersWithTheExistingAssetOfTheDecision() {
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(new Decision().id(DECISION_ID)));
-		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, DECISION_ID)).thenReturn(Optional.of("existing-asset-id"));
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of("existing-asset-id"));
 
 		assertThat(assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("existing-asset-id");
 
 		verify(partyAssetsIntegrationMock, never()).createAsset(any(), any(), any());
-		verify(supportManagementIntegrationMock).getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verifyNoMoreInteractions(supportManagementIntegrationMock);
+		verify(supportManagementIntegrationMock, never()).getAttachment(any(), any(), any(), any());
 	}
 
 	@Test
 	void createAssetWithoutAttachmentsOnTheDecision() {
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(Optional.of(new Decision().id(DECISION_ID).attachments(null)));
-		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().attachments(null)));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
 		when(partyAssetsIntegrationMock.createAsset(any(), any(), any())).thenReturn("asset-id");
 
 		assertThat(assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("asset-id");
@@ -146,7 +145,7 @@ class AssetServiceTest {
 
 	@Test
 	void createAssetFailsWithoutACompletedDecision() {
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(Problem.class)
@@ -156,16 +155,43 @@ class AssetServiceTest {
 	}
 
 	@Test
+	void createAssetFailsOnARejection() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(Optional.of(new Decision().id(DECISION_ID).outcome("REJECTION")));
+
+		assertThatThrownBy(() -> assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("only created from APPROVAL");
+
+		verifyNoInteractions(partyAssetsIntegrationMock);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
+	}
+
+	@Test
+	void createAssetFailsOnADecisionWithoutId() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().id(null)));
+
+		assertThatThrownBy(() -> assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("no id");
+
+		verifyNoInteractions(partyAssetsIntegrationMock);
+	}
+
+	@Test
 	void createAssetFailsWithoutAPermitHolder() {
-		when(supportManagementIntegrationMock.getLatestCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(new Decision().id(DECISION_ID)));
-		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 
 		assertThatThrownBy(() -> assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining(STAKEHOLDER_ROLE_PERMIT_HOLDER);
 
-		verify(partyAssetsIntegrationMock, never()).createAsset(any(), any(), any());
+		verifyNoInteractions(partyAssetsIntegrationMock);
+	}
+
+	private static Decision approval() {
+		return new Decision().id(DECISION_ID).outcome("APPROVAL");
 	}
 
 	private static Errand errandWithPermitHolder() {

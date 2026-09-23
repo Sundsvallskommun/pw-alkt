@@ -10,9 +10,6 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.problem.Problem;
 
-import static java.util.Comparator.comparing;
-import static java.util.Comparator.naturalOrder;
-import static java.util.Comparator.nullsFirst;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 
 @Component
@@ -55,11 +52,11 @@ public class SupportManagementIntegration {
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Attachment '%s' of errand '%s' came back without content".formatted(attachmentId, errandId)));
 	}
 
-	public Optional<Decision> getLatestCompletedDecision(final String municipalityId, final String namespace, final String errandId) {
+	public Optional<Decision> getCompletedDecision(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getDecisions(municipalityId, namespace, errandId).getBody())
 			.orElseGet(List::of)
 			.stream()
 			.filter(decision -> DECISION_STATUS_COMPLETED.equals(decision.getStatus()))
-			.max(comparing(Decision::getDecidedAt, nullsFirst(naturalOrder())));
+			.findFirst();
 	}
 }

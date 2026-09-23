@@ -30,6 +30,13 @@ public interface PartyAssetsClient {
 	@GetMapping(path = "/{municipalityId}/assets", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<List<Asset>> getAssets(
 		@PathVariable String municipalityId,
+		@RequestParam String partyId,
+		@RequestParam String assetId);
+
+	@GetMapping(path = "/{municipalityId}/asset-drafts", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<Asset>> getDraftAssets(
+		@PathVariable String municipalityId,
+		@RequestParam String partyId,
 		@RequestParam String assetId);
 
 	@PostMapping(path = "/{municipalityId}/asset-drafts", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)

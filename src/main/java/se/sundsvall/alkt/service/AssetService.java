@@ -8,6 +8,7 @@ import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.dept44.problem.Problem;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
@@ -32,7 +33,7 @@ public class AssetService {
 	}
 
 	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId) {
-		return supportManagementIntegration.getLatestCompletedDecision(municipalityId, namespace, errandId)
+		return supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
 			.map(decision -> toKnownOutcome(decision, errandId))
 			.orElse(DECISION_OUTCOME_NONE);
 	}
@@ -45,17 +46,24 @@ public class AssetService {
 	}
 
 	public String createAsset(final String municipalityId, final String namespace, final String errandId) {
-		final var decision = supportManagementIntegration.getLatestCompletedDecision(municipalityId, namespace, errandId)
+		final var decision = supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no completed decision to create an asset from".formatted(errandId)));
+		if (!DECISION_OUTCOME_APPROVAL.equals(decision.getOutcome())) {
+			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has outcome '%s', an asset is only created from %s"
+				.formatted(errandId, decision.getOutcome(), DECISION_OUTCOME_APPROVAL));
+		}
+		if (isBlank(decision.getId())) {
+			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
+		}
 
-		return partyAssetsIntegration.findAssetId(municipalityId, decision.getId())
-			.orElseGet(() -> createAsset(municipalityId, namespace, errandId, decision));
-	}
-
-	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision) {
 		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER)));
 
+		return partyAssetsIntegration.findAssetId(municipalityId, partyId, decision.getId())
+			.orElseGet(() -> createAsset(municipalityId, namespace, errandId, decision, partyId));
+	}
+
+	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final String partyId) {
 		final var attachments = Optional.ofNullable(decision.getAttachments())
 			.orElseGet(List::of)
 			.stream()

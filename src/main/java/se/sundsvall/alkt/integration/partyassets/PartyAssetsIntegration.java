@@ -5,12 +5,12 @@ import generated.se.sundsvall.partyassets.AssetCreateRequest;
 import generated.se.sundsvall.partyassets.DraftAssetUpdateRequest;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.dept44.problem.Problem;
 
 import static generated.se.sundsvall.partyassets.Status.ACTIVE;
-import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
@@ -25,17 +25,18 @@ public class PartyAssetsIntegration {
 		this.partyAssetsClient = partyAssetsClient;
 	}
 
-	public Optional<String> findAssetId(final String municipalityId, final String assetId) {
-		return Optional.ofNullable(partyAssetsClient.getAssets(municipalityId, assetId).getBody())
-			.orElseGet(List::of)
-			.stream()
-			.map(Asset::getId)
-			.findFirst();
+	public Optional<String> findAssetId(final String municipalityId, final String partyId, final String assetId) {
+		return idsOf(partyAssetsClient.getAssets(municipalityId, partyId, assetId).getBody()).findFirst();
 	}
 
+	// party-assets refuses a second assetId, drafts included, so a draft left by an earlier attempt would block every
+	// retry.
 	public String createAsset(final String municipalityId, final AssetCreateRequest asset, final List<AssetFile> attachments) {
+		idsOf(partyAssetsClient.getDraftAssets(municipalityId, asset.getPartyId(), asset.getAssetId()).getBody())
+			.forEach(draftId -> partyAssetsClient.deleteAsset(municipalityId, draftId));
+
 		final var files = Optional.ofNullable(attachments).orElseGet(List::of);
-		final var assetId = getIdOfCreatedResource(partyAssetsClient.createDraftAsset(municipalityId, asset.status(DRAFT)), SERVICE);
+		final var assetId = getIdOfCreatedResource(partyAssetsClient.createDraftAsset(municipalityId, asset), SERVICE);
 
 		try {
 			files.forEach(attachment -> partyAssetsClient.createAttachment(municipalityId, assetId, attachment.file(), attachment.category(), null));
@@ -45,6 +46,10 @@ public class PartyAssetsIntegration {
 		}
 
 		return assetId;
+	}
+
+	private static Stream<String> idsOf(final List<Asset> assets) {
+		return Optional.ofNullable(assets).orElseGet(List::of).stream().map(Asset::getId);
 	}
 
 	private String removeAsset(final String municipalityId, final String assetId, final RuntimeException cause) {
