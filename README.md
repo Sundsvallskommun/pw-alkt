@@ -4,8 +4,9 @@
 Support Management owns the errand, this service owns the process behind it.</p>
 
 <p>The service is a skeleton. The API, the engine integration, the reporting and the test harness are in place, but the
-process models are phase structures with almost nothing inside them. The only work step so far is the one that reports a
-process as completed, plus the reconciliation described at the end.</p>
+process models are phase structures with almost nothing inside them. Every model has the work step that reports a process
+as completed. The decision phase of <span class="code">alcohol-serving</span> also checks the decision and creates the
+permit it grants. The reconciliation is described at the end.</p>
 
 <h3>The dialogue with Support Management</h3>
 
@@ -37,8 +38,8 @@ Support Management                    pw-alkt                       Operaton
 <span class="code">POST /{municipalityId}/{namespace}/process/errand-events</span>. What it does is decided by the body,
 not by the path. <span class="code">DELETE</span> removes every instance of the errand. Anything else starts a process
 when none is running, and otherwise correlates a message: the <span class="code">signalName</span> when
-<span class="code">eventSubType</span> is <span class="code">SIGNAL</span>, and
-<span class="code">errandUpdated</span> in every other case. Only <span class="code">eventId</span> and
+<span class="code">eventSubType</span> is <span class="code">SIGNAL</span>, <span class="code">decision_updated</span>
+when it is <span class="code">DECISION</span>, and <span class="code">errandUpdated</span> in every other case. Only <span class="code">eventId</span> and
 <span class="code">eventType</span> are required, so the rest is checked at runtime and a nothing-to-do event is
 accepted as well. A key this service does not deploy is answered with <span class="code">422</span>.</p>
 
@@ -67,8 +68,8 @@ current activity, the signals the process waits for, and any error. Reports come
 		</tr>
 		<tr>
 			<td>A work step runs</td>
-			<td><span class="code">RUNNING</span> before it, whatever the step returned after it, then
-			<span class="code">WAITING</span> unless the process ended. A step that throws reports
+			<td><span class="code">RUNNING</span> before it, whatever the step returned after it unless that is the same
+			<span class="code">RUNNING</span> again, then <span class="code">WAITING</span> unless the process ended. A step that throws reports
 			<span class="code">RETRYING</span>, or <span class="code">FAILED</span> once the retries are spent</td>
 		</tr>
 		<tr>
@@ -80,7 +81,7 @@ current activity, the signals the process waits for, and any error. Reports come
 
 <p>Nothing compares against the row before writing it, except the reconciliation. A retried step reports
 <span class="code">RUNNING</span> again, and idempotence at the receiver is cheaper than a read before every write.
-Today a full six-gate process is eight reports over its whole life, since the models hold almost no work steps yet.</p>
+Today a six-gate process without work steps of its own is eight reports over its whole life.</p>
 
 <p>Reports carry no sequence number, and a wait state is read after the task that led to it was completed. Two reports
 about one instance can therefore land out of order. The window is short and the next report corrects the row, because
@@ -185,13 +186,14 @@ the same path.</p>
 
 <h3>Manual gates and awaiting signals</h3>
 
-<p>A phase ends when a case worker says so. Support Management publishes that as a
+<p>A phase ends when a case worker says so, except the decision phase of <span class="code">alcohol-serving</span>,
+which is described in the next section. Support Management publishes that as a
 <span class="code">SIGNAL</span> event, and this service correlates a message of that name against the instance. A
 correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
 between two gates when the change arrived and redelivering would not help.</p>
 
 <p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All eleven models
-declare the same message names, and every correlation is made on the errand id, so two live processes on one errand
+share their message names, and every correlation is made on the errand id, so two live processes on one errand
 make every signal match two executions at once. Operaton answers that with <span class="code">400</span> and the
 signal is lost. Starting a second process on an errand that already has one is therefore a mistake, and the place it
 can happen is the label metadata in Support Management.</p>
@@ -199,7 +201,8 @@ can happen is the label metadata in Support Management.</p>
 <p>The gates an instance stands at are reported as <span class="code">awaitingSignals</span>. The list is read from the
 message subscriptions in the engine, so adding a gate is a change to the BPMN file and nothing else. The signal name is
 the message name and the label is the <span class="code">name</span> attribute of the catch event.
-<span class="code">errandUpdated</span> is left out, because it is no button anyone should see. The activity reported
+<span class="code">errandUpdated</span> and <span class="code">decision_updated</span> are left out, because neither
+is a button anyone should see. The activity reported
 alongside is the phase, read from the model as the subprocess enclosing the gate.</p>
 
 <p>The model of a definition is read once through <span class="code">GET /process-definition/{id}/xml</span> and kept
@@ -232,6 +235,59 @@ answered with <span class="code">202</span>.</p>
 	is the phase. A phase without a name is reported by its id, and a boundary event hangs on a phase rather than inside
 	it, so it is reported under its own id.</li>
 </ul>
+
+<h3>The decision phase and the permit</h3>
+
+<p>In <span class="code">alcohol-serving</span> the decision phase waits for the decision itself, not for a button. Eight
+of the other models still wait for <span class="code">decision_completed</span> and move over once this one has proved
+itself. The two folköl models pass straight through their decision phase.</p>
+
+<p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
+an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
+The event only says that something changed, so the work step <span class="code">CheckDecisionTask</span> reads the
+decision back and sets <span class="code">decisionOutcome</span>. The phase reads the decision when it starts, after
+every decision event, and once an hour while it waits. The hourly timer catches an event that arrived while the process
+was not waiting for it, since such an event correlates against nothing and is gone.</p>
+
+<table class="settings">
+	<thead>
+		<tr>
+			<th>Decision</th>
+			<th>What the phase does</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>None that is <span class="code">COMPLETED</span></td>
+			<td>Goes back to waiting (<span class="code">NONE</span>)</td>
+		</tr>
+		<tr>
+			<td><span class="code">APPROVAL</span></td>
+			<td>Creates the permit, then ends</td>
+		</tr>
+		<tr>
+			<td><span class="code">REJECTION</span></td>
+			<td>Ends without a permit</td>
+		</tr>
+		<tr>
+			<td>Any other outcome</td>
+			<td>The step fails and ends in an incident. A completed decision is locked in Support Management, so waiting
+			would never help. The outcomes registered for the namespace should be exactly these two</td>
+		</tr>
+	</tbody>
+</table>
+
+<p><span class="code">CreateAssetTask</span> builds the permit in party-assets from the approved decision. The id of
+the decision is the <span class="code">assetId</span> of the permit, and the party is the stakeholder with the role
+<span class="code">APPLICANT</span>. The step first looks for a permit with that id and is done if it finds one, so a
+retry after a lost answer creates nothing twice. Otherwise it removes any draft an earlier attempt left behind, creates
+a new draft, adds the attachments of the decision with the name of their purpose as category, and activates the draft.
+If any of that fails the draft is removed again. A permit assembled as a draft goes live at revision 0, and every call
+carries <span class="code">X-Sent-By: pw-alkt; type=processEngine</span>, so the history of the permit shows that the
+process created it.</p>
+
+<p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
+A case worker cannot move the phase on by any other means.</p>
 
 <h3>Automatic deployment</h3>
 

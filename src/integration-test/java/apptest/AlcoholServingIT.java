@@ -35,7 +35,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
 
-		// Wait for the process to park in each phase, then signal that phase completed
+		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
@@ -76,9 +76,11 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				// Decision
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
+				tuple("Check decision", "external_task_check_decision"), // No decision yet
+				tuple("Decision outcome", "gateway_decision_outcome"),
 				tuple("Await decision", "gateway_await_decision"),
 				tuple("Decision updated", "await_decision_updated"),
-				tuple("Check decision", "external_task_check_decision"),
+				tuple("Check decision", "external_task_check_decision"), // Approved
 				tuple("Decision outcome", "gateway_decision_outcome"),
 				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
@@ -126,7 +128,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 	}
 
 	@Test
-	void test003_rejectedDecisionCreatesNoAsset() throws JacksonException {
+	void test003_decisionRejectedBeforeThePhaseCreatesNoAssetAndDoesNotWait() throws JacksonException {
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
 			.withHttpMethod(POST)
@@ -140,7 +142,6 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING);
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -150,6 +151,6 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
-			.doesNotContain("external_task_create_asset");
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
 	}
 }

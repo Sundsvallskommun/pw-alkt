@@ -1,5 +1,7 @@
 {
 	"name": "decision_api-support-management-get-decisions",
+	"scenarioName": "decision",
+	"requiredScenarioState": "decided",
 	"request": {
 		"method": "GET",
 		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/decisions",

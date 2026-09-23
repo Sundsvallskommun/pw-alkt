@@ -47,7 +47,8 @@ public final class Constants {
 	// Must match process-engine.deployment.processes[].tenant in application.yaml.
 	public static final String TENANT_ID_ALKT = "ALKT";
 
-	// Correlated when an errand event carries no named signal, and left out of the signals a wait state reports.
+	// Correlated for an event without a named signal: decision_updated for a decision, errandUpdated for anything else.
+	// Neither is reported as a signal.
 	public static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
 	public static final String MESSAGE_DECISION_UPDATED = "decision_updated";
 
