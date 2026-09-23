@@ -7,12 +7,14 @@ import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.integration.operaton.ProcessModelCache.ProcessModel;
 import se.sundsvall.alkt.integration.operaton.mapper.OperatonMapper;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 
 import static java.util.Comparator.comparing;
+import static se.sundsvall.alkt.Constants.MESSAGE_DECISION_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_ERRAND_UPDATED;
 
 @Component
@@ -20,6 +22,8 @@ public class OperatonIntegration {
 
 	// The subscriptions a manual gate produces. A timer or a signal subscription is not something a case worker answers.
 	private static final String EVENT_TYPE_MESSAGE = "message";
+
+	private static final Set<String> INTERNAL_MESSAGES = Set.of(MESSAGE_ERRAND_UPDATED, MESSAGE_DECISION_UPDATED);
 
 	private final OperatonClient operatonClient;
 	private final ProcessModelCache processModelCache;
@@ -92,7 +96,7 @@ public class OperatonIntegration {
 		return subscriptions.stream()
 			// A nameless signal is answered with 400, and that answer costs the whole wait state rather than one button.
 			.filter(subscription -> subscription.getEventName() != null)
-			.filter(subscription -> !MESSAGE_ERRAND_UPDATED.equals(subscription.getEventName()))
+			.filter(subscription -> !INTERNAL_MESSAGES.contains(subscription.getEventName()))
 			.toList();
 	}
 

@@ -8,6 +8,8 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
@@ -37,7 +39,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "decision");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING);
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "closure");
 
@@ -74,7 +76,11 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				// Decision
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Decision completed", "await_decision_completed"),
+				tuple("Await decision", "gateway_await_decision"),
+				tuple("Decision updated", "await_decision_updated"),
+				tuple("Check decision", "external_task_check_decision"),
+				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -117,5 +123,33 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 				tuple("Start registration phase", "start_registration_phase"));
+	}
+
+	@Test
+	void test003_rejectedDecisionCreatesNoAsset() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING);
+
+		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+
+		assertThat(getProcessInstanceRoute(processInstanceId))
+			.extracting(HistoricActivityInstanceDto::getActivityId)
+			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
+			.doesNotContain("external_task_create_asset");
 	}
 }

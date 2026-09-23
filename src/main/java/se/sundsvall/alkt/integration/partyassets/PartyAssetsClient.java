@@ -1,13 +1,19 @@
 package se.sundsvall.alkt.integration.partyassets;
 
+import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import generated.se.sundsvall.partyassets.DraftAssetUpdateRequest;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.integration.partyassets.configuration.PartyAssetsConfiguration;
@@ -21,10 +27,21 @@ import static se.sundsvall.alkt.integration.partyassets.configuration.PartyAsset
 @CircuitBreaker(name = CLIENT_ID)
 public interface PartyAssetsClient {
 
-	@PostMapping(path = "/{municipalityId}/assets", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
-	ResponseEntity<Void> createAsset(
+	@GetMapping(path = "/{municipalityId}/assets", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<Asset>> getAssets(
+		@PathVariable String municipalityId,
+		@RequestParam String assetId);
+
+	@PostMapping(path = "/{municipalityId}/asset-drafts", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> createDraftAsset(
 		@PathVariable String municipalityId,
 		@RequestBody AssetCreateRequest asset);
+
+	@PatchMapping(path = "/{municipalityId}/asset-drafts/{id}", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> updateDraftAsset(
+		@PathVariable String municipalityId,
+		@PathVariable String id,
+		@RequestBody DraftAssetUpdateRequest asset);
 
 	@PostMapping(path = "/{municipalityId}/assets/{assetId}/attachments", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createAttachment(

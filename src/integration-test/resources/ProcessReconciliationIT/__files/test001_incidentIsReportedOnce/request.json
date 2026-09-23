@@ -3,6 +3,6 @@
 	"eventType": "CREATE",
 	"eventSubType": "ERRAND",
 	"errandId": "a3690d5e-8f14-42b7-95ca-6d81e0b4f273",
-	"processKey": "alcohol-serving",
+	"processKey": "tobacco-sales",
 	"startAllowed": true
 }

@@ -158,6 +158,28 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 			.sendRequest();
 	}
 
+	protected void completeDecision(String errandId, String processInstanceId, String processKey) {
+		awaitProcessState(processInstanceId, "await_decision_updated", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(JSON_MAPPER.writeValueAsString(decisionEvent(errandId, processKey)))
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+	}
+
+	private static ErrandEvent decisionEvent(String errandId, String processKey) {
+		return ErrandEvent.create()
+			.withEventId(UUID.randomUUID().toString())
+			.withEventType(UPDATE)
+			.withEventSubType("DECISION")
+			.withErrandId(errandId)
+			.withProcessKey(processKey)
+			.withStartAllowed(false);
+	}
+
 	private static ErrandEvent signalEvent(String errandId, String processKey, String phase) {
 		return ErrandEvent.create()
 			.withEventId(UUID.randomUUID().toString())

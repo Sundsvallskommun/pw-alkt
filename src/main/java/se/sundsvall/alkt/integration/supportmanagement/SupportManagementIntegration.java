@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.supportmanagement;
 
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcesses;
@@ -9,15 +10,25 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.problem.Problem;
 
+import static java.util.Comparator.comparing;
+import static java.util.Comparator.naturalOrder;
+import static java.util.Comparator.nullsFirst;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 
 @Component
 public class SupportManagementIntegration {
 
+	private static final String DECISION_STATUS_COMPLETED = "COMPLETED";
+
 	private final SupportManagementClient supportManagementClient;
 
 	SupportManagementIntegration(final SupportManagementClient supportManagementClient) {
 		this.supportManagementClient = supportManagementClient;
+	}
+
+	public Errand getErrand(final String municipalityId, final String namespace, final String errandId) {
+		return Optional.ofNullable(supportManagementClient.getErrand(municipalityId, namespace, errandId).getBody())
+			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Errand '%s' came back without content".formatted(errandId)));
 	}
 
 	public void reportProcess(final String municipalityId, final String namespace, final String errandId, final String processInstanceId, final ErrandProcess report) {
@@ -44,10 +55,11 @@ public class SupportManagementIntegration {
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Attachment '%s' of errand '%s' came back without content".formatted(attachmentId, errandId)));
 	}
 
-	// X-Trigger-Process is false because a write from the process that owns the errand must not wake that same process.
-	// A 409 is passed on as it comes: Support Management uses it both for an errand that already has a decision and for
-	// one whose process is over, and the two are not distinguishable, so neither can be treated as already done here.
-	public void createDecision(final String municipalityId, final String namespace, final String errandId, final Decision decision) {
-		supportManagementClient.createDecision(municipalityId, namespace, errandId, false, decision);
+	public Optional<Decision> getLatestCompletedDecision(final String municipalityId, final String namespace, final String errandId) {
+		return Optional.ofNullable(supportManagementClient.getDecisions(municipalityId, namespace, errandId).getBody())
+			.orElseGet(List::of)
+			.stream()
+			.filter(decision -> DECISION_STATUS_COMPLETED.equals(decision.getStatus()))
+			.max(comparing(Decision::getDecidedAt, nullsFirst(naturalOrder())));
 	}
 }

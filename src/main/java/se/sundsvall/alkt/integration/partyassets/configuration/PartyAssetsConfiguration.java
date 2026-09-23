@@ -9,8 +9,10 @@ import se.sundsvall.dept44.configuration.feign.FeignConfiguration;
 import se.sundsvall.dept44.configuration.feign.FeignMultiCustomizer;
 import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
 import se.sundsvall.dept44.requestid.RequestId;
+import se.sundsvall.dept44.support.Identifier;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static se.sundsvall.alkt.Constants.SENT_BY;
 
 @Import(FeignConfiguration.class)
 public class PartyAssetsConfiguration {
@@ -25,6 +27,7 @@ public class PartyAssetsConfiguration {
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))
 			.withRequestInterceptor(template -> template.header("X-Request-Group-Id", RequestId.get()))
+			.withRequestInterceptor(template -> template.header(Identifier.HEADER_NAME, SENT_BY))
 			.composeCustomizersToOne();
 	}
 }

@@ -1,0 +1,24 @@
+{
+	"name": "decision_api-party-assets-get-assets",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-party-assets/2281/assets",
+		"queryParameters": {
+			"assetId": {
+				"equalTo": "7b2e1c90-4d3a-4f6e-9a21-5c8d0e7f1a42"
+			}
+		},
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [],
+		"status": 200
+	}
+}

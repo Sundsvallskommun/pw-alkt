@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -70,12 +69,9 @@ public interface SupportManagementClient {
 		@PathVariable String errandId,
 		@PathVariable String attachmentId);
 
-	/** The decision a process makes itself, written with method AUTOMATIC, which only the process consumer may write. */
-	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
-	ResponseEntity<Void> createDecision(
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<Decision>> getDecisions(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
-		@PathVariable String errandId,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
-		@RequestBody Decision decision);
+		@PathVariable String errandId);
 }

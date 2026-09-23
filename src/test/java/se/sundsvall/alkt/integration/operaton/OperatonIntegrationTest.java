@@ -215,6 +215,21 @@ class OperatonIntegrationTest {
 		});
 	}
 
+	@Test
+	void findWaitStateLeavesDecisionUpdatedOutOfTheSignals() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("await_decision_updated", "decision_updated")));
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(new ProcessModel(
+			Map.of("decision_phase", "Decision"),
+			Map.of("await_decision_updated", "decision_phase")));
+
+		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).hasValueSatisfying(state -> {
+			assertThat(state.activityId()).isEqualTo("decision_phase");
+			assertThat(state.awaitingSignals()).isEmpty();
+		});
+	}
+
 	/** A model that says nothing about the activity still gives a report, with the message name as the button text. */
 	@Test
 	void findWaitStateFallsBackToTheMessageName() {

@@ -37,6 +37,8 @@ public final class Constants {
 	// Checked against the process consumer configured for the namespace; a report from anyone else is rejected.
 	public static final String PROCESS_SERVICE = "pw-alkt";
 
+	public static final String SENT_BY = PROCESS_SERVICE + "; type=processEngine";
+
 	// Ours to choose, Support Management stores them without interpreting them.
 	public static final String ERROR_CODE_RETRY = "RETRY";
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
@@ -47,7 +49,14 @@ public final class Constants {
 
 	// Correlated when an errand event carries no named signal, and left out of the signals a wait state reports.
 	public static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
+	public static final String MESSAGE_DECISION_UPDATED = "decision_updated";
 
+	public static final String DECISION_OUTCOME_NONE = "NONE";
+	public static final String DECISION_OUTCOME_APPROVAL = "APPROVAL";
+	public static final String DECISION_OUTCOME_REJECTION = "REJECTION";
+	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "APPLICANT";
+
+	public static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
