@@ -70,6 +70,22 @@ class PartyAssetsMapperTest {
 	}
 
 	@Test
+	void toAssetCreateRequestIssuesOnTheSwedishDayOfADecisionMadeJustAfterMidnight() {
+		final var decision = new Decision().decidedAt(OffsetDateTime.of(2026, 9, 19, 22, 30, 0, 0, ZoneOffset.UTC));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getIssued()).isEqualTo(LocalDate.of(2026, 9, 20));
+	}
+
+	@Test
+	void toAssetCreateRequestIssuesOnTheSwedishDayInWinterTime() {
+		final var justBeforeMidnight = new Decision().decidedAt(OffsetDateTime.of(2026, 1, 14, 22, 30, 0, 0, ZoneOffset.UTC));
+		final var justAfterMidnight = new Decision().decidedAt(OffsetDateTime.of(2026, 1, 14, 23, 30, 0, 0, ZoneOffset.UTC));
+
+		assertThat(toAssetCreateRequest(justBeforeMidnight, ERRAND_ID, PARTY_ID).getIssued()).isEqualTo(LocalDate.of(2026, 1, 14));
+		assertThat(toAssetCreateRequest(justAfterMidnight, ERRAND_ID, PARTY_ID).getIssued()).isEqualTo(LocalDate.of(2026, 1, 15));
+	}
+
+	@Test
 	void toAssetCreateRequestLeavesIssuedOutWithoutAnyDate() {
 		assertThat(toAssetCreateRequest(new Decision(), ERRAND_ID, PARTY_ID).getIssued()).isNull();
 	}

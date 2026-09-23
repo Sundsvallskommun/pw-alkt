@@ -7,7 +7,7 @@ import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +22,7 @@ import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 public final class PartyAssetsMapper {
 
 	static final String ATTACHMENT_PART_NAME = "attachment";
+	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 	static final String PARAMETER_ERRAND_ID = "errandId";
 	static final String PARAMETER_LEGAL_BASIS = "legalBasis";
@@ -62,7 +63,7 @@ public final class PartyAssetsMapper {
 
 	private static LocalDate toIssued(final Decision decision) {
 		return Optional.ofNullable(decision.getValidFrom())
-			.or(() -> Optional.ofNullable(decision.getDecidedAt()).map(OffsetDateTime::toLocalDate))
+			.or(() -> Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate()))
 			.orElse(null);
 	}
 
