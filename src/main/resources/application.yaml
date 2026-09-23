@@ -7,6 +7,8 @@ spring:
         provider:
           licensed-business:
             token-uri: ${config.licensed-business.token-uri}
+          messaging:
+            token-uri: ${config.messaging.token-uri}
           operaton:
             token-uri: ${config.operaton.token-uri}
           party:
@@ -21,6 +23,11 @@ spring:
             provider: licensed-business
             client-id: ${config.licensed-business.client-id}
             client-secret: ${config.licensed-business.client-secret}
+          messaging:
+            authorization-grant-type: client_credentials
+            provider: messaging
+            client-id: ${config.messaging.client-id}
+            client-secret: ${config.messaging.client-secret}
           operaton:
             authorization-grant-type: client_credentials
             provider: operaton
@@ -111,6 +118,13 @@ integration:
     url: ${config.licensed-business.base-url}
     connectTimeout: 5
     readTimeout: 20
+  messaging:
+    url: ${config.messaging.base-url}
+    connectTimeout: 5
+    readTimeout: 20
+    slack:
+      token: ${config.messaging.slack.token}
+      channel: ${config.messaging.slack.channel}
   operaton:
     url: ${config.operaton.base-url}
     connectTimeout: 5
@@ -134,6 +148,8 @@ integration:
 resilience4j.circuitbreaker:
   instances:
     licensed-business:
+      ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
+    messaging:
       ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
     operaton:
       ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem

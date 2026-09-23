@@ -57,6 +57,14 @@ config:
     token-uri: ${config.common.token-uri}
     client-id: ${config.common.client-id}
     client-secret: ${config.common.client-secret}
+  messaging:
+    base-url: messaging.base.url
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
+    slack:
+      token: slack.token
+      channel: slack.channel
   support-management:
     base-url: support-management.base.url
     token-uri: ${config.common.token-uri}

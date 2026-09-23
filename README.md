@@ -451,6 +451,37 @@ failing errand never stops the rest of a run.</p>
 	</tbody>
 </table>
 
+<h3>Incident alerts</h3>
+
+<p>An incident needs someone to act in Operaton, so the step that raises it also posts to Slack through
+api-service-messaging. The message names the municipality, namespace, process key, activity, errand, process instance
+and the <span class="code">x-request-id</span> of the event that started the process, which is the id to search the logs
+for. A failed alert is logged and does not stop the engine from being told about the failure. Only a work step that runs out
+of retries sends an alert. An incident the engine raises on its own, such as a failing timer job, shows up only through
+the reconciliation.</p>
+
+<table class="settings">
+	<thead>
+		<tr>
+			<th>Setting</th>
+			<th>Description</th>
+			<th>Default&nbsp;value</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td class="code">integration.messaging.slack.token</td>
+			<td>Token of the Slack app that posts the alert</td>
+			<td><strong>null</strong></td>
+		</tr>
+		<tr>
+			<td class="code">integration.messaging.slack.channel</td>
+			<td>Channel name or id the alert is posted to</td>
+			<td><strong>null</strong></td>
+		</tr>
+	</tbody>
+</table>
+
 ## Status
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Sundsvallskommun_pw-alkt&metric=alert_status)](https://sonarcloud.io/summary/overall?id=Sundsvallskommun_pw-alkt)

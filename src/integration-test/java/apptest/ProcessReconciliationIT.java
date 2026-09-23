@@ -8,6 +8,7 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
@@ -65,6 +66,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 		verify(exactly(2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT)));
 		verifyAllStubs();
+		verify(exactly(1), postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack")));
 	}
 
 	@Test

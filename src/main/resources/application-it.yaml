@@ -45,6 +45,14 @@ config:
     token-uri: ${config.common.token-uri}
     client-id: ${config.common.client-id}
     client-secret: ${config.common.client-secret}
+  messaging:
+    base-url: http://localhost:${wiremock.server.port}/api-messaging
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
+    slack:
+      token: slack-token
+      channel: slack-channel
   support-management:
     base-url: http://localhost:${wiremock.server.port}/api-support-management
     token-uri: ${config.common.token-uri}
