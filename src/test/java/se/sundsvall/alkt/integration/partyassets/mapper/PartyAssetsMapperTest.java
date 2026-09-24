@@ -37,6 +37,7 @@ class PartyAssetsMapperTest {
 			.id(randomUUID().toString())
 			.type("PERMIT")
 			.title("Beslut om serveringstillstånd")
+			.description("Tillstånd för servering till allmänheten")
 			.validFrom(LocalDate.of(2026, 10, 1))
 			.validTo(LocalDate.of(2027, 9, 30))
 			.decidedAt(OffsetDateTime.of(2026, 9, 20, 10, 0, 0, 0, ZoneOffset.UTC))
@@ -51,7 +52,8 @@ class PartyAssetsMapperTest {
 		assertThat(result.getType()).isEqualTo("PERMIT");
 		assertThat(result.getIssued()).isEqualTo(LocalDate.of(2026, 10, 1));
 		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
-		assertThat(result.getDescription()).isEqualTo("Beslut om serveringstillstånd");
+		assertThat(result.getTitle()).isEqualTo("Beslut om serveringstillstånd");
+		assertThat(result.getDescription()).isEqualTo("Tillstånd för servering till allmänheten");
 		assertThat(result.getStatus()).isEqualTo(DRAFT);
 		assertThat(result.getAdditionalParameters()).containsExactly(
 			entry(PARAMETER_ERRAND_ID, ERRAND_ID),

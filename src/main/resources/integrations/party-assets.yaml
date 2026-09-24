@@ -1376,6 +1376,13 @@ components:
           description: Asset description
           examples:
             - Asset description
+        title:
+          type: string
+          description: "Asset title, shown to the party"
+          examples:
+            - Stadigvarande tillstånd för servering av alkohol
+          maxLength: 255
+          minLength: 0
         additionalParameters:
           type: object
           additionalProperties:
@@ -1601,6 +1608,13 @@ components:
           description: Status reason
           examples:
             - Status reason
+        title:
+          type: string
+          description: "Asset title, shown to the party"
+          examples:
+            - Stadigvarande tillstånd för servering av alkohol
+          maxLength: 255
+          minLength: 0
         additionalParameters:
           type: object
           additionalProperties:
@@ -1669,6 +1683,11 @@ components:
           description: Asset description
           examples:
             - Asset description
+        title:
+          type: string
+          description: "Asset title, shown to the party"
+          examples:
+            - Stadigvarande tillstånd för servering av alkohol
         additionalParameters:
           type: object
           additionalProperties:
@@ -1777,6 +1796,12 @@ components:
           description: Asset description
           examples:
             - Asset description
+          readOnly: true
+        title:
+          type: string
+          description: "Asset title, shown to the party"
+          examples:
+            - Stadigvarande tillstånd för servering av alkohol
           readOnly: true
         additionalParameters:
           type: object

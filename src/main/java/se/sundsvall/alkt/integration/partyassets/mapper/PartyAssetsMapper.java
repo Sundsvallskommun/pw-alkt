@@ -39,7 +39,8 @@ public final class PartyAssetsMapper {
 			.type(decision.getType())
 			.issued(toIssued(decision))
 			.validTo(decision.getValidTo())
-			.description(decision.getTitle())
+			.title(decision.getTitle())
+			.description(decision.getDescription())
 			.additionalParameters(toAdditionalParameters(decision, errandId));
 	}
 

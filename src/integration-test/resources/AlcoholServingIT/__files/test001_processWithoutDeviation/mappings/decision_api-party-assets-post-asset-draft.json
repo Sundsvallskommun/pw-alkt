@@ -38,6 +38,12 @@
 					"expression": "$.issued",
 					"equalTo": "2026-10-01"
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"equalTo": "Beslut om serveringstillstånd"
+				}
 			}
 		]
 	},
