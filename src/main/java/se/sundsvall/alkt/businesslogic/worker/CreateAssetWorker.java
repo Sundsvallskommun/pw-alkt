@@ -12,8 +12,11 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
-@ExternalTaskSubscription("CreateAssetTask")
+@ExternalTaskSubscription(topicName = "CreateAssetTask", lockDuration = CreateAssetWorker.LOCK_DURATION_IN_MILLISECONDS)
 public class CreateAssetWorker extends AbstractTaskWorker {
+
+	// Covers every call of a run timing out. A lock that expires mid-run lets another pod delete this run's draft.
+	static final long LOCK_DURATION_IN_MILLISECONDS = 15 * 60 * 1000L;
 
 	private final AssetService assetService;
 
