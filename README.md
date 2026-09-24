@@ -457,8 +457,10 @@ failing errand never stops the rest of a run.</p>
 api-service-messaging. The message names the municipality, namespace, process key, activity, errand, process instance
 and the <span class="code">x-request-id</span> of the event that started the process, which is the id to search the logs
 for. A failed alert is logged and does not stop the engine from being told about the failure. Only a work step that runs out
-of retries sends an alert. An incident the engine raises on its own, such as a failing timer job, shows up only through
-the reconciliation.</p>
+of retries sends an alert. A step that throws <span class="code">NonRetryableException</span>, for a fault no retry can
+fix such as a process key without a decision title, skips the retries and raises the incident and the alert on the first
+attempt. An incident the engine raises on its own, such as a failing timer job, shows up only through the
+reconciliation.</p>
 
 <table class="settings">
 	<thead>

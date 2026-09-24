@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.Constants;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
@@ -266,6 +267,23 @@ class AbstractTaskWorkerTest {
 		verify(processReportServiceMock, times(1)).report(any(ExternalTask.class), any());
 		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Boom");
+		verify(externalTaskServiceMock, never()).complete(any(), any());
+		assertThat(RequestId.get()).isNull();
+	}
+
+	@Test
+	void executeRaisesAnIncidentAtOnceForAFailureNoRetryCanFix() {
+		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				throw new NonRetryableException("Not configured");
+			}
+		};
+
+		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(failureHandlerMock).handleIncident(externalTaskServiceMock, externalTaskMock, "Not configured");
+		verify(failureHandlerMock, never()).handleException(any(), any(), any());
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
 	}
