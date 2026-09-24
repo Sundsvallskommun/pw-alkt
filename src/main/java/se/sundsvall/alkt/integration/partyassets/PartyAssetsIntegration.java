@@ -7,11 +7,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
+import se.sundsvall.alkt.integration.partyassets.configuration.PartyAssetsProperties;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.dept44.problem.Problem;
 
 import static generated.se.sundsvall.partyassets.Status.ACTIVE;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
 @Component
@@ -20,9 +22,11 @@ public class PartyAssetsIntegration {
 	private static final String SERVICE = "Party assets";
 
 	private final PartyAssetsClient partyAssetsClient;
+	private final PartyAssetsProperties properties;
 
-	PartyAssetsIntegration(final PartyAssetsClient partyAssetsClient) {
+	PartyAssetsIntegration(final PartyAssetsClient partyAssetsClient, final PartyAssetsProperties properties) {
 		this.partyAssetsClient = partyAssetsClient;
+		this.properties = properties;
 	}
 
 	public Optional<String> findAssetId(final String municipalityId, final String partyId, final String assetId) {
@@ -31,12 +35,13 @@ public class PartyAssetsIntegration {
 
 	// party-assets refuses a second assetId, drafts included, so a draft left by an earlier attempt would block every
 	// retry.
-	public String createAsset(final String municipalityId, final AssetCreateRequest asset, final List<AssetFile> attachments) {
+	public String createAsset(final String municipalityId, final String namespace, final String errandId, final AssetCreateRequest asset, final List<AssetFile> attachments) {
+		final var sourceReference = toSourceReference(properties.relationType(), errandId, namespace);
 		idsOf(partyAssetsClient.getDraftAssets(municipalityId, asset.getPartyId(), asset.getAssetId()).getBody())
 			.forEach(draftId -> partyAssetsClient.deleteAsset(municipalityId, draftId));
 
 		final var files = Optional.ofNullable(attachments).orElseGet(List::of);
-		final var assetId = getIdOfCreatedResource(partyAssetsClient.createDraftAsset(municipalityId, asset), SERVICE);
+		final var assetId = getIdOfCreatedResource(partyAssetsClient.createDraftAsset(municipalityId, sourceReference, asset), SERVICE);
 
 		try {
 			files.forEach(attachment -> partyAssetsClient.createAttachment(municipalityId, assetId, attachment.file(), attachment.category(), null));

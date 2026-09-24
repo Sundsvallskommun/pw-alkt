@@ -15,6 +15,8 @@ import java.util.Objects;
 import java.util.Optional;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.integration.partyassets.model.ByteArrayMultipartFile;
+import se.sundsvall.dept44.support.Relation;
+import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
@@ -27,8 +29,15 @@ public final class PartyAssetsMapper {
 	static final String PARAMETER_ERRAND_ID = "errandId";
 	static final String PARAMETER_LEGAL_BASIS = "legalBasis";
 	static final String PARAMETER_DELEGATION_REFERENCE = "delegationReference";
+	static final String ERRAND_RESOURCE_TYPE = "case";
+	static final String ERRAND_SERVICE = "supportmanagement";
 
 	private PartyAssetsMapper() {}
+
+	public static String toSourceReference(final String relationType, final String errandId, final String namespace) {
+		return Relation.create(relationType, ResourceIdentifier.create(errandId, ERRAND_RESOURCE_TYPE, ERRAND_SERVICE, namespace), null)
+			.toRelationString();
+	}
 
 	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId) {
 		return new AssetCreateRequest()

@@ -8,12 +8,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import se.sundsvall.alkt.integration.partyassets.configuration.PartyAssetsProperties;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
@@ -39,16 +39,19 @@ class PartyAssetsIntegrationTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String PARTY_ID = "party-id";
 	private static final String DECISION_ID = "decision-id";
+	private static final String NAMESPACE = "ALKT";
+	private static final String ERRAND_ID = "errand-id";
+	private static final String SOURCE_REFERENCE = "LINK|errand-id;case;supportmanagement;ALKT|";
 	private static final DraftAssetUpdateRequest ACTIVATION = new DraftAssetUpdateRequest().status(ACTIVE);
 
 	@Mock
 	private PartyAssetsClient partyAssetsClientMock;
 
-	@InjectMocks
 	private PartyAssetsIntegration partyAssetsIntegration;
 
 	@BeforeEach
-	void noDraftsLeftBehind() {
+	void setUp() {
+		partyAssetsIntegration = new PartyAssetsIntegration(partyAssetsClientMock, new PartyAssetsProperties(5, 20, "LINK"));
 		lenient().when(partyAssetsClientMock.getDraftAssets(any(), any(), any())).thenReturn(ResponseEntity.ok(List.of()));
 	}
 
@@ -58,13 +61,13 @@ class PartyAssetsIntegrationTest {
 		final var asset = asset();
 
 		when(partyAssetsClientMock.getDraftAssets(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(ResponseEntity.ok(List.of(new Asset().id("left-behind"))));
-		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
 
-		assertThat(partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, List.of())).isEqualTo(assetId);
+		assertThat(partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset, List.of())).isEqualTo(assetId);
 
 		final InOrder inOrder = inOrder(partyAssetsClientMock);
 		inOrder.verify(partyAssetsClientMock).deleteAsset(MUNICIPALITY_ID, "left-behind");
-		inOrder.verify(partyAssetsClientMock).createDraftAsset(MUNICIPALITY_ID, asset);
+		inOrder.verify(partyAssetsClientMock).createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset);
 		inOrder.verify(partyAssetsClientMock).updateDraftAsset(MUNICIPALITY_ID, assetId, ACTIVATION);
 		verify(partyAssetsClientMock).getDraftAssets(MUNICIPALITY_ID, PARTY_ID, DECISION_ID);
 		verifyNoMoreInteractions(partyAssetsClientMock);
@@ -75,10 +78,10 @@ class PartyAssetsIntegrationTest {
 		when(partyAssetsClientMock.getDraftAssets(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(ResponseEntity.ok(List.of(new Asset().id("left-behind"))));
 		when(partyAssetsClientMock.deleteAsset(MUNICIPALITY_ID, "left-behind")).thenThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down"));
 
-		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset(), List.of()))
+		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset(), List.of()))
 			.isInstanceOf(ClientProblem.class);
 
-		verify(partyAssetsClientMock, never()).createDraftAsset(any(), any());
+		verify(partyAssetsClientMock, never()).createDraftAsset(any(), any(), any());
 	}
 
 	@Test
@@ -89,13 +92,13 @@ class PartyAssetsIntegrationTest {
 		final var secondFile = mock(MultipartFile.class);
 		final var attachments = List.of(new AssetFile(firstFile, "LOKALRITNING"), new AssetFile(secondFile, null));
 
-		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
 
-		final var result = partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, attachments);
+		final var result = partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset, attachments);
 
 		assertThat(result).isEqualTo(assetId);
 		final InOrder inOrder = inOrder(partyAssetsClientMock);
-		inOrder.verify(partyAssetsClientMock).createDraftAsset(MUNICIPALITY_ID, asset);
+		inOrder.verify(partyAssetsClientMock).createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset);
 		inOrder.verify(partyAssetsClientMock).createAttachment(MUNICIPALITY_ID, assetId, firstFile, "LOKALRITNING", null);
 		inOrder.verify(partyAssetsClientMock).createAttachment(MUNICIPALITY_ID, assetId, secondFile, null, null);
 		inOrder.verify(partyAssetsClientMock).updateDraftAsset(MUNICIPALITY_ID, assetId, ACTIVATION);
@@ -122,12 +125,12 @@ class PartyAssetsIntegrationTest {
 		final var assetId = randomUUID().toString();
 		final var asset = asset();
 
-		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
 
-		final var result = partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, List.of());
+		final var result = partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset, List.of());
 
 		assertThat(result).isEqualTo(assetId);
-		verify(partyAssetsClientMock).createDraftAsset(MUNICIPALITY_ID, asset);
+		verify(partyAssetsClientMock).createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset);
 		verify(partyAssetsClientMock).updateDraftAsset(MUNICIPALITY_ID, assetId, ACTIVATION);
 		verify(partyAssetsClientMock).getDraftAssets(MUNICIPALITY_ID, PARTY_ID, DECISION_ID);
 		verifyNoMoreInteractions(partyAssetsClientMock);
@@ -138,12 +141,12 @@ class PartyAssetsIntegrationTest {
 		final var assetId = randomUUID().toString();
 		final var asset = asset();
 
-		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
 
-		final var result = partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, null);
+		final var result = partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset, null);
 
 		assertThat(result).isEqualTo(assetId);
-		verify(partyAssetsClientMock).createDraftAsset(MUNICIPALITY_ID, asset);
+		verify(partyAssetsClientMock).createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset);
 		verify(partyAssetsClientMock).updateDraftAsset(MUNICIPALITY_ID, assetId, ACTIVATION);
 		verify(partyAssetsClientMock).getDraftAssets(MUNICIPALITY_ID, PARTY_ID, DECISION_ID);
 		verifyNoMoreInteractions(partyAssetsClientMock);
@@ -153,9 +156,9 @@ class PartyAssetsIntegrationTest {
 	void createAssetFailsWhenTheAnswerCarriesNoLocation() {
 		final var asset = asset();
 
-		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, asset)).thenReturn(ResponseEntity.status(CREATED).build());
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenReturn(ResponseEntity.status(CREATED).build());
 
-		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, List.of(new AssetFile(mock(MultipartFile.class), null))))
+		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset, List.of(new AssetFile(mock(MultipartFile.class), null))))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("without saying which");
 
@@ -170,11 +173,11 @@ class PartyAssetsIntegrationTest {
 		final var firstFile = mock(MultipartFile.class);
 		final var secondFile = mock(MultipartFile.class);
 
-		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
 		when(partyAssetsClientMock.createAttachment(MUNICIPALITY_ID, assetId, firstFile, null, null))
 			.thenThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down"));
 
-		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, List.of(new AssetFile(firstFile, null), new AssetFile(secondFile, null))))
+		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset, List.of(new AssetFile(firstFile, null), new AssetFile(secondFile, null))))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
 			.hasMessageContaining("Party assets is down");
@@ -189,11 +192,11 @@ class PartyAssetsIntegrationTest {
 		final var assetId = randomUUID().toString();
 		final var asset = asset();
 
-		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
 		when(partyAssetsClientMock.updateDraftAsset(MUNICIPALITY_ID, assetId, ACTIVATION))
 			.thenThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down"));
 
-		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, List.of()))
+		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset, List.of()))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
 			.hasMessageContaining("Party assets is down");
@@ -207,13 +210,13 @@ class PartyAssetsIntegrationTest {
 		final var asset = asset();
 		final var file = mock(MultipartFile.class);
 
-		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenReturn(created("https://party-assets.example.com/2281/asset-drafts/" + assetId));
 		when(partyAssetsClientMock.createAttachment(MUNICIPALITY_ID, assetId, file, null, null))
 			.thenThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down"));
 		when(partyAssetsClientMock.deleteAsset(MUNICIPALITY_ID, assetId))
 			.thenThrow(new ClientProblem(BAD_GATEWAY, "Party assets is still down"));
 
-		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, asset, List.of(new AssetFile(file, null))))
+		assertThatThrownBy(() -> partyAssetsIntegration.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset, List.of(new AssetFile(file, null))))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining(assetId)
 			.hasMessageContaining("Party assets is down")

@@ -137,6 +137,7 @@ integration:
     url: ${config.party-assets.base-url}
     connectTimeout: 5
     readTimeout: 20
+    relationType: ${config.party-assets.relation-type:LINK}
   support-management:
     url: ${config.support-management.base-url}
     connectTimeout: 5

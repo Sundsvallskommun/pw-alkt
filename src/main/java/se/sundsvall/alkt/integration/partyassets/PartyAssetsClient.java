@@ -42,6 +42,7 @@ public interface PartyAssetsClient {
 	@PostMapping(path = "/{municipalityId}/asset-drafts", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createDraftAsset(
 		@PathVariable String municipalityId,
+		@RequestParam(required = false) String sourceReference,
 		@RequestBody AssetCreateRequest asset);
 
 	@PatchMapping(path = "/{municipalityId}/asset-drafts/{id}", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)

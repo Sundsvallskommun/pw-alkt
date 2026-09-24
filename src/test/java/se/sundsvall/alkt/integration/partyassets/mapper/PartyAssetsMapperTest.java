@@ -25,6 +25,7 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPartyId;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
 
 class PartyAssetsMapperTest {
 
@@ -127,5 +128,10 @@ class PartyAssetsMapperTest {
 	@Test
 	void toPartyIdIsEmptyWithoutStakeholders() {
 		assertThat(toPartyId(new Errand().stakeholders(null))).isEmpty();
+	}
+
+	@Test
+	void toSourceReferencePointsAtTheErrandAndLeavesTheTargetToPartyAssets() {
+		assertThat(toSourceReference("LINK", "errand-id", "ALKT")).isEqualTo("LINK|errand-id;case;supportmanagement;ALKT|");
 	}
 }

@@ -105,11 +105,11 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
 		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "attachment-id")).thenReturn(content);
-		when(partyAssetsIntegrationMock.createAsset(any(), any(), any())).thenReturn("asset-id");
+		when(partyAssetsIntegrationMock.createAsset(any(), any(), any(), any(), any())).thenReturn("asset-id");
 
 		assertThat(assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("asset-id");
 
-		verify(partyAssetsIntegrationMock).createAsset(eq(MUNICIPALITY_ID), assetCaptor.capture(), attachmentsCaptor.capture());
+		verify(partyAssetsIntegrationMock).createAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture(), attachmentsCaptor.capture());
 		assertThat(assetCaptor.getValue().getAssetId()).isEqualTo(DECISION_ID);
 		assertThat(assetCaptor.getValue().getPartyId()).isEqualTo(PARTY_ID);
 		assertThat(attachmentsCaptor.getValue()).singleElement().satisfies(file -> {
@@ -126,7 +126,7 @@ class AssetServiceTest {
 
 		assertThat(assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("existing-asset-id");
 
-		verify(partyAssetsIntegrationMock, never()).createAsset(any(), any(), any());
+		verify(partyAssetsIntegrationMock, never()).createAsset(any(), any(), any(), any(), any());
 		verify(supportManagementIntegrationMock, never()).getAttachment(any(), any(), any(), any());
 	}
 
@@ -135,11 +135,11 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().attachments(null)));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
 		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
-		when(partyAssetsIntegrationMock.createAsset(any(), any(), any())).thenReturn("asset-id");
+		when(partyAssetsIntegrationMock.createAsset(any(), any(), any(), any(), any())).thenReturn("asset-id");
 
 		assertThat(assetService.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("asset-id");
 
-		verify(partyAssetsIntegrationMock).createAsset(eq(MUNICIPALITY_ID), any(), attachmentsCaptor.capture());
+		verify(partyAssetsIntegrationMock).createAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any(), attachmentsCaptor.capture());
 		assertThat(attachmentsCaptor.getValue()).isEmpty();
 	}
 

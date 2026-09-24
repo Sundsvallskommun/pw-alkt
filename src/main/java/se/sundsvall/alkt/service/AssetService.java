@@ -70,6 +70,6 @@ public class AssetService {
 			.map(attachment -> toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId())))
 			.toList();
 
-		return partyAssetsIntegration.createAsset(municipalityId, toAssetCreateRequest(decision, errandId, partyId), attachments);
+		return partyAssetsIntegration.createAsset(municipalityId, namespace, errandId, toAssetCreateRequest(decision, errandId, partyId), attachments);
 	}
 }

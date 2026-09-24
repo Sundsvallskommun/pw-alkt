@@ -20,5 +20,6 @@ class PartyAssetsPropertiesTest {
 	void testProperties() {
 		assertThat(properties.connectTimeout()).isEqualTo(5);
 		assertThat(properties.readTimeout()).isEqualTo(20);
+		assertThat(properties.relationType()).isEqualTo("LINK");
 	}
 }
