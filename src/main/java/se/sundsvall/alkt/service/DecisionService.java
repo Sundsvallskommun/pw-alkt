@@ -38,7 +38,7 @@ public class DecisionService {
 			return completed.get().getId();
 		}
 
-		final var decidedAt = OffsetDateTime.now();
+		final var decidedAt = OffsetDateTime.now(SWEDISH_TIME);
 		final var draft = decisions.stream().findFirst();
 		final var decisionId = draft.map(Decision::getId)
 			.orElseGet(() -> supportManagementIntegration.createDecision(municipalityId, namespace, errandId,
