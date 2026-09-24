@@ -54,11 +54,23 @@
       <bpmn:incoming>flow_investigation_to_decision</bpmn:incoming>
       <bpmn:outgoing>flow_decision_to_follow_up</bpmn:outgoing>
       <bpmn:startEvent id="start_decision_phase" name="Start decision phase">
-        <bpmn:outgoing>flow_decision_start_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_decision_start_to_create_decision</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_decision_start_to_end" sourceRef="start_decision_phase" targetRef="end_decision_phase" />
+      <bpmn:sequenceFlow id="flow_decision_start_to_create_decision" sourceRef="start_decision_phase" targetRef="external_task_create_decision" />
+      <bpmn:serviceTask id="external_task_create_decision" name="Create decision" camunda:type="external" camunda:topic="CreateDecisionTask">
+        <bpmn:documentation>Approves the notification with a completed decision that carries every attachment of the errand.</bpmn:documentation>
+        <bpmn:incoming>flow_decision_start_to_create_decision</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_create_decision_to_create_asset</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_decision_create_decision_to_create_asset" sourceRef="external_task_create_decision" targetRef="external_task_create_asset" />
+      <bpmn:serviceTask id="external_task_create_asset" name="Create asset" camunda:type="external" camunda:topic="CreateAssetTask">
+        <bpmn:documentation>Creates the permit in party-assets from the decision.</bpmn:documentation>
+        <bpmn:incoming>flow_decision_create_decision_to_create_asset</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_create_asset_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_decision_create_asset_to_end" sourceRef="external_task_create_asset" targetRef="end_decision_phase" />
       <bpmn:endEvent id="end_decision_phase" name="End decision phase">
-        <bpmn:incoming>flow_decision_start_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_decision_create_asset_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_decision_to_follow_up" sourceRef="decision_phase" targetRef="follow_up_phase" />
@@ -179,6 +191,40 @@
       <bpmndi:BPMNEdge id="BPMNEdge_flow_complete_process_to_end_process" bpmnElement="flow_complete_process_to_end_process">
         <di:waypoint x="1240" y="117" />
         <di:waypoint x="1292" y="117" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_decision_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_decision_phase" bpmnElement="decision_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_decision_phase" bpmnElement="start_decision_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="160" y="225" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_create_decision" bpmnElement="external_task_create_decision">
+        <dc:Bounds x="270" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_create_asset" bpmnElement="external_task_create_asset">
+        <dc:Bounds x="420" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_decision_phase" bpmnElement="end_decision_phase">
+        <dc:Bounds x="572" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="554" y="225" width="72" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_start_to_create_decision" bpmnElement="flow_decision_start_to_create_decision">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="270" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_create_decision_to_create_asset" bpmnElement="flow_decision_create_decision_to_create_asset">
+        <di:waypoint x="370" y="200" />
+        <di:waypoint x="420" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_create_asset_to_end" bpmnElement="flow_decision_create_asset_to_end">
+        <di:waypoint x="520" y="200" />
+        <di:waypoint x="572" y="200" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

@@ -171,7 +171,8 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 <p>All eleven errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
 Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The two folköl
 models are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
-first four phases pass straight through and Support Management first hears from them at Follow up.</p>
+first three phases pass straight through and Support Management first hears from them in the decision phase, which
+makes the decision and creates the permit on its own, see the next section. Follow up is the first phase that waits.</p>
 
 <p>Which process an errand gets, and whether it starts by itself, is metadata on the label in Support Management
 (<span class="code">processKey</span> and <span class="code">processStartMode</span>), set per environment through its
@@ -240,7 +241,7 @@ answered with <span class="code">202</span>.</p>
 
 <p>In <span class="code">alcohol-serving</span> the decision phase waits for the decision itself, not for a button. Eight
 of the other models still wait for <span class="code">decision_completed</span> and move over once this one has proved
-itself. The two folköl models pass straight through their decision phase.</p>
+itself. The two folköl models make the decision themselves and wait for no one.</p>
 
 <p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
 an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
@@ -288,6 +289,16 @@ process created it.</p>
 
 <p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
 A case worker cannot move the phase on by any other means.</p>
+
+<p>In the two folköl models <span class="code">CreateDecisionTask</span> approves the notification, and
+<span class="code">CreateAssetTask</span> then creates the permit from that decision as above. The decision has the
+type <span class="code">PERMIT</span>, the outcome <span class="code">APPROVAL</span>, the method
+<span class="code">AUTOMATIC</span>, a title per process and the title of the errand as description. It is valid from
+the Swedish date it is made and has no last day. Every attachment of the errand is linked to it, while a manual decision
+carries only the attachments the case worker linked. Support Management locks a completed decision, attachments
+included, so the step writes a draft, links the attachments and completes it last. A retry picks up the draft an earlier
+attempt left behind and links only what is missing, and a completed decision is left as it is. Every write carries
+<span class="code">X-Trigger-Process: false</span>, so it does not wake the process that made it.</p>
 
 <h3>Automatic deployment</h3>
 

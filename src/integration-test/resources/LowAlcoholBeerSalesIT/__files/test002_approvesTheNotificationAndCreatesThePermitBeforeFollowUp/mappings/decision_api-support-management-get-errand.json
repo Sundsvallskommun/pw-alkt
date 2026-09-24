@@ -1,0 +1,29 @@
+{
+	"name": "decision_api-support-management-get-errand",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56",
+			"title": "Anmälan om försäljning av folköl",
+			"stakeholders": [
+				{
+					"role": "APPLICANT",
+					"externalIdType": "ENTERPRISE",
+					"externalId": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
+				}
+			]
+		},
+		"status": 200
+	}
+}

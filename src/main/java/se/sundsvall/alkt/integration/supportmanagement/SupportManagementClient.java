@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -74,4 +75,31 @@ public interface SupportManagementClient {
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@PathVariable String errandId);
+
+	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> createDecision(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestBody Decision decision);
+
+	@PatchMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions/{decisionId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<Decision> updateDecision(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String decisionId,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestBody Decision decision);
+
+	/** Links an attachment already on the errand, nothing is uploaded. */
+	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions/{decisionId}/attachments/{attachmentId}", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<ErrandAttachment> linkDecisionAttachment(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String decisionId,
+		@PathVariable String attachmentId,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess);
 }

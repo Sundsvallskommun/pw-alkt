@@ -64,9 +64,11 @@ class LowAlcoholBeerServingIT extends AbstractOperatonAppTest {
 				tuple("Start investigation phase", "start_investigation_phase"),
 				tuple("End investigation phase", "end_investigation_phase"),
 
-				// Decision - no catch event
+				// Decision - no catch event: the decision is made and the permit created without a case worker
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
+				tuple("Create decision", "external_task_create_decision"),
+				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up - the first phase this model parks in
@@ -87,7 +89,7 @@ class LowAlcoholBeerServingIT extends AbstractOperatonAppTest {
 	}
 
 	@Test
-	void test002_runsToFollowUp() throws JacksonException {
+	void test002_approvesTheNotificationAndCreatesThePermitBeforeFollowUp() throws JacksonException {
 		// === Start process ===
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
@@ -101,7 +103,8 @@ class LowAlcoholBeerServingIT extends AbstractOperatonAppTest {
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
-		// The WAITING report is asserted by its mapping: the phase, its name and the signal the button carries
+		// The mappings assert every call: the decision written as a draft, linked to the attachment and completed, the permit
+		// created from it and activated, and the WAITING report of follow up with the signal its button carries
 		verifyAllStubs();
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
@@ -109,7 +112,7 @@ class LowAlcoholBeerServingIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// The four phases before follow up ended without a case worker
+				// No case worker before follow up: three phases pass straight through, the decision phase runs its two steps
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("End registration phase", "end_registration_phase"),
@@ -121,6 +124,8 @@ class LowAlcoholBeerServingIT extends AbstractOperatonAppTest {
 				tuple("End investigation phase", "end_investigation_phase"),
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
+				tuple("Create decision", "external_task_create_decision"),
+				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Parked here: the follow up phase has not ended, so neither it nor its catch event is in the route yet

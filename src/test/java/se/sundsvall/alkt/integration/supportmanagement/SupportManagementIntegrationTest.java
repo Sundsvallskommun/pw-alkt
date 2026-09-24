@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import se.sundsvall.dept44.problem.Problem;
 
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.CREATED;
 
 @ExtendWith(MockitoExtension.class)
 class SupportManagementIntegrationTest {
@@ -141,4 +143,39 @@ class SupportManagementIntegrationTest {
 		assertThat(supportManagementIntegration.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
 	}
 
+	@Test
+	void getDecisionsAnswersWithEveryDecision() {
+		final var draft = new Decision().status("DRAFT");
+		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(draft)));
+
+		assertThat(supportManagementIntegration.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsExactly(draft);
+	}
+
+	@Test
+	void createDecisionAnswersWithTheIdWithoutWakingTheProcess() {
+		final var decision = new Decision();
+		final var headers = new HttpHeaders();
+		headers.add(HttpHeaders.LOCATION, "https://support-management.example.com/2281/ALKT/errands/" + ERRAND_ID + "/decisions/decision-id");
+		when(supportManagementClientMock.createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, false, decision)).thenReturn(ResponseEntity.status(CREATED).headers(headers).build());
+
+		assertThat(supportManagementIntegration.createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, decision)).isEqualTo("decision-id");
+	}
+
+	@Test
+	void updateDecisionSendsTheChangeWithoutWakingTheProcess() {
+		final var decision = new Decision();
+
+		supportManagementIntegration.updateDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", decision);
+
+		verify(supportManagementClientMock).updateDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", false, decision);
+		verifyNoMoreInteractions(supportManagementClientMock);
+	}
+
+	@Test
+	void linkDecisionAttachmentLinksWithoutWakingTheProcess() {
+		supportManagementIntegration.linkDecisionAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "attachment-id");
+
+		verify(supportManagementClientMock).linkDecisionAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "attachment-id", false);
+		verifyNoMoreInteractions(supportManagementClientMock);
+	}
 }

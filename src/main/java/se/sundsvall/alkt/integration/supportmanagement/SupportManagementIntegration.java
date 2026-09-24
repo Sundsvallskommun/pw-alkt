@@ -11,11 +11,13 @@ import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.problem.Problem;
 
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
+import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
 @Component
 public class SupportManagementIntegration {
 
-	private static final String DECISION_STATUS_COMPLETED = "COMPLETED";
+	private static final String SERVICE = "Support management";
 
 	private final SupportManagementClient supportManagementClient;
 
@@ -53,10 +55,26 @@ public class SupportManagementIntegration {
 	}
 
 	public Optional<Decision> getCompletedDecision(final String municipalityId, final String namespace, final String errandId) {
-		return Optional.ofNullable(supportManagementClient.getDecisions(municipalityId, namespace, errandId).getBody())
-			.orElseGet(List::of)
-			.stream()
+		return getDecisions(municipalityId, namespace, errandId).stream()
 			.filter(decision -> DECISION_STATUS_COMPLETED.equals(decision.getStatus()))
 			.findFirst();
+	}
+
+	public List<Decision> getDecisions(final String municipalityId, final String namespace, final String errandId) {
+		return Optional.ofNullable(supportManagementClient.getDecisions(municipalityId, namespace, errandId).getBody())
+			.orElseGet(List::of);
+	}
+
+	// Why: the decision is written by the process of the errand, and must not wake that process again.
+	public String createDecision(final String municipalityId, final String namespace, final String errandId, final Decision decision) {
+		return getIdOfCreatedResource(supportManagementClient.createDecision(municipalityId, namespace, errandId, false, decision), SERVICE);
+	}
+
+	public void updateDecision(final String municipalityId, final String namespace, final String errandId, final String decisionId, final Decision decision) {
+		supportManagementClient.updateDecision(municipalityId, namespace, errandId, decisionId, false, decision);
+	}
+
+	public void linkDecisionAttachment(final String municipalityId, final String namespace, final String errandId, final String decisionId, final String attachmentId) {
+		supportManagementClient.linkDecisionAttachment(municipalityId, namespace, errandId, decisionId, attachmentId, false);
 	}
 }
