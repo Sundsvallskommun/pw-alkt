@@ -209,6 +209,23 @@ class ProcessServiceTest {
 		verify(operatonIntegrationMock).correlateMessage("review_completed", errandId, TENANT_ID);
 	}
 
+	@Test
+	void correlatesDecisionUpdatedForADecisionEvent() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType("decision");
+
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		verify(operatonIntegrationMock).correlateMessage("decision_updated", errandId, TENANT_ID);
+	}
+
 	/** Support Management's casing of eventSubType is not guaranteed, so the SIGNAL check must not be case-sensitive. */
 	@Test
 	void correlatesTheNamedGateForASignalRegardlessOfCase() {

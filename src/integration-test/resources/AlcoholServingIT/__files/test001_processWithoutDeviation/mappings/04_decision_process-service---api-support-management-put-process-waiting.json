@@ -35,14 +35,8 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.awaitingSignals[0].name",
-					"equalTo": "decision_completed"
-				}
-			},
-			{
-				"matchesJsonPath": {
-					"expression": "$.awaitingSignals[0].label",
-					"equalTo": "Decision completed"
+					"expression": "$.awaitingSignals[0]",
+					"absent": true
 				}
 			}
 		]

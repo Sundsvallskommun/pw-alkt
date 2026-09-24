@@ -1,0 +1,56 @@
+{
+	"name": "decision_api-party-assets-post-asset-draft",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-party-assets/2281/asset-drafts",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "DRAFT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.assetId",
+					"equalTo": "7b2e1c90-4d3a-4f6e-9a21-5c8d0e7f1a42"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.partyId",
+					"equalTo": "d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.type",
+					"equalTo": "PERMIT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.issued",
+					"equalTo": "2026-10-01"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"equalTo": "Beslut om serveringstillstånd"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/asset-drafts/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d"
+		},
+		"status": 201
+	}
+}

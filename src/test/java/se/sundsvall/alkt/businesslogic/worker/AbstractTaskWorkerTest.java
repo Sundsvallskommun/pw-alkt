@@ -216,11 +216,26 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
+	void reportsAnUnchangedRunningOnlyOnce() {
+		final var workerWithVariables = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				return ProcessStateReport.running(externalTask.getActivityId(), null).withVariables(Map.of("key", "value"));
+			}
+		};
+
+		workerWithVariables.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(processReportServiceMock, times(1)).report(any(ExternalTask.class), any());
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of("key", "value"));
+	}
+
+	@Test
 	void reportsTheVersionTheStepReadWhenTheStepOnlyReads() {
 		final var readOnlyWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
 			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-				return ProcessStateReport.completed().withErrandVersion(7L);
+				return ProcessStateReport.running(externalTask.getActivityId(), null).withErrandVersion(7L);
 			}
 		};
 

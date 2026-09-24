@@ -12,6 +12,7 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
+import static se.sundsvall.alkt.Constants.MESSAGE_DECISION_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_ERRAND_UPDATED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
@@ -23,6 +24,7 @@ public class ProcessService {
 	private static final Logger LOG = LoggerFactory.getLogger(ProcessService.class);
 
 	private static final String SUB_TYPE_SIGNAL = "SIGNAL";
+	private static final String SUB_TYPE_DECISION = "DECISION";
 
 	private final OperatonIntegration operatonIntegration;
 	private final ProcessReportService processReportService;
@@ -77,8 +79,18 @@ public class ProcessService {
 			new ReportTarget(municipalityId, namespace, errandEvent.getErrandId(), instance.getId(), errandEvent.getProcessKey(), null), instance.getDefinitionId());
 	}
 
+	private static String toMessageName(final ErrandEvent errandEvent) {
+		if (SUB_TYPE_SIGNAL.equalsIgnoreCase(errandEvent.getEventSubType())) {
+			return errandEvent.getSignalName();
+		}
+		if (SUB_TYPE_DECISION.equalsIgnoreCase(errandEvent.getEventSubType())) {
+			return MESSAGE_DECISION_UPDATED;
+		}
+		return MESSAGE_ERRAND_UPDATED;
+	}
+
 	private void correlateMessage(final String municipalityId, final String namespace, final ErrandEvent errandEvent) {
-		final var messageName = SUB_TYPE_SIGNAL.equalsIgnoreCase(errandEvent.getEventSubType()) ? errandEvent.getSignalName() : MESSAGE_ERRAND_UPDATED;
+		final var messageName = toMessageName(errandEvent);
 
 		if (isBlank(messageName)) {
 			LOG.error("Event {} on errand {} is a signal without a name, so there is no gate to open", sanitizeForLogging(errandEvent.getEventId()),

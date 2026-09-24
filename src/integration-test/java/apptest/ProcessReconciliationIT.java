@@ -8,6 +8,7 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
@@ -20,7 +21,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 
 /**
@@ -52,7 +53,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 		await()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, PROCESS_KEY_ALCOHOL_SERVING).stream()
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, PROCESS_KEY_TOBACCO_SALES).stream()
 				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
 
 		stubRowsOfTheErrand(processInstanceId);
@@ -65,6 +66,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 		verify(exactly(2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT)));
 		verifyAllStubs();
+		verify(exactly(1), postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack")));
 	}
 
 	@Test
@@ -108,14 +110,14 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 			.whenScenarioStateIs(STARTED)
 			.willSetStateTo("first-sweep-is-running")
 			.willReturn(okJson("""
-				{"processes":[{"processInstanceId":"%s","processKey":"alcohol-serving","processStatus":"RUNNING"}]}""".formatted(processInstanceId))
+				{"processes":[{"processInstanceId":"%s","processKey":"tobacco-sales","processStatus":"RUNNING"}]}""".formatted(processInstanceId))
 				.withHeader("Content-Encoding", "identity")));
 
 		stubFor(get(urlPathEqualTo(PROCESSES_PATH_INCIDENT))
 			.inScenario(SCENARIO_INCIDENT)
 			.whenScenarioStateIs("incident-has-been-reported")
 			.willReturn(okJson("""
-				{"processes":[{"processInstanceId":"%s","processKey":"alcohol-serving","processStatus":"FAILED","error":{"code":"INCIDENT"}}]}"""
+				{"processes":[{"processInstanceId":"%s","processKey":"tobacco-sales","processStatus":"FAILED","error":{"code":"INCIDENT"}}]}"""
 				.formatted(processInstanceId))
 				.withHeader("Content-Encoding", "identity")));
 	}
@@ -129,16 +131,16 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		return awaitProcessInstance(errandId, PROCESS_KEY_ALCOHOL_SERVING);
+		return awaitProcessInstance(errandId, PROCESS_KEY_TOBACCO_SALES);
 	}
 
 	private void completeEveryPhase(final String errandId, final String processInstanceId) {
-		completePhase(errandId, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "decision");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "follow_up");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "closure");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "registration");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "review");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "investigation");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "decision");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "follow_up");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "closure");
 	}
 
 	/** A sweep runs as its own process instance, so the test waits it out before looking at what it sent. */

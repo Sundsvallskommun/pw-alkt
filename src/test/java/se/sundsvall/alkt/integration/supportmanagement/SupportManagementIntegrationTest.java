@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.supportmanagement;
 
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcesses;
@@ -101,15 +102,43 @@ class SupportManagementIntegrationTest {
 			.hasMessageContaining("came back without content");
 	}
 
-	/** The decision of a process must not wake that same process, so the trigger is turned off. */
 	@Test
-	void createDecisionDoesNotTriggerTheProcess() {
-		final var decision = new Decision().method("AUTOMATIC");
+	void getErrandAnswersWithTheErrand() {
+		final var errand = new Errand().id(ERRAND_ID);
+		when(supportManagementClientMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(errand));
 
-		supportManagementIntegration.createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, decision);
+		assertThat(supportManagementIntegration.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(errand);
+	}
 
-		verify(supportManagementClientMock).createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, false, decision);
-		verifyNoMoreInteractions(supportManagementClientMock);
+	@Test
+	void getErrandFailsWithoutABody() {
+		when(supportManagementClientMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
+
+		assertThatThrownBy(() -> supportManagementIntegration.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("came back without content");
+	}
+
+	@Test
+	void getCompletedDecisionAnswersWithTheCompletedDecision() {
+		final var completed = new Decision().status("COMPLETED");
+		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(completed)));
+
+		assertThat(supportManagementIntegration.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsSame(completed);
+	}
+
+	@Test
+	void getCompletedDecisionAnswersWithNothingWithoutACompletedDecision() {
+		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(new Decision().status("ONGOING"))));
+
+		assertThat(supportManagementIntegration.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+	}
+
+	@Test
+	void getCompletedDecisionAnswersWithNothingWithoutABody() {
+		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
+
+		assertThat(supportManagementIntegration.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
 	}
 
 }

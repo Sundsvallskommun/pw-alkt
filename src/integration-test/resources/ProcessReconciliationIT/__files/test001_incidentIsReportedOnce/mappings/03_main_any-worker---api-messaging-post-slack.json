@@ -1,0 +1,35 @@
+{
+	"name": "03_main_any-worker---api-messaging-post-slack",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/slack",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.token",
+					"equalTo": "slack-token"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.channel",
+					"equalTo": "slack-channel"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.message",
+					"contains": "[2281][ALKT][tobacco-sales] Incident in external_task_complete_process for errand a3690d5e-8f14-42b7-95ca-6d81e0b4f273"
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 201
+	}
+}

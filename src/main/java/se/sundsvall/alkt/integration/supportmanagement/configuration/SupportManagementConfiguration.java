@@ -13,14 +13,12 @@ import se.sundsvall.dept44.support.Identifier;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
+import static se.sundsvall.alkt.Constants.SENT_BY;
 
 @Import(FeignConfiguration.class)
 public class SupportManagementConfiguration {
 
 	public static final String CLIENT_ID = "support-management";
-
-	private static final String SENT_BY = PROCESS_SERVICE + "; type=processEngine";
 
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, SupportManagementProperties properties) {
