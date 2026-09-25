@@ -15,8 +15,10 @@ import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
+import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
+import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
@@ -27,8 +29,6 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 public final class SupportManagementMapper {
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
-	static final String DECISION_STATUS_DRAFT = "DRAFT";
-	static final String DECISION_METHOD_AUTOMATIC = "AUTOMATIC";
 
 	private static final Map<String, String> DECISION_TITLES = Map.of(
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Tillstånd för försäljning av folköl",

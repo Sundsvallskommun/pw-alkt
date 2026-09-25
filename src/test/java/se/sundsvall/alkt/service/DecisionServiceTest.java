@@ -79,7 +79,7 @@ class DecisionServiceTest {
 
 	@Test
 	void createDecisionCompletesTheDraftAnEarlierAttemptLeftAndLinksOnlyWhatIsMissing() {
-		final var draft = new Decision().id(DECISION_ID).status("DRAFT").attachments(List.of(new ErrandAttachment().id("first")));
+		final var draft = new Decision().id(DECISION_ID).status("DRAFT").method("AUTOMATIC").decidedBy("pw-alkt").attachments(List.of(new ErrandAttachment().id("first")));
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(draft));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new ErrandAttachment().id("first"), new ErrandAttachment().id("second")));
@@ -101,6 +101,32 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Decision().id(DECISION_ID).status("COMPLETED")));
 
 		assertThat(decisionService.createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo(DECISION_ID);
+
+		verify(supportManagementIntegrationMock).getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
+	}
+
+	@Test
+	void createDecisionLeavesADraftOfACaseWorkerAlone() {
+		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
+			new Decision().id("manual").status("DRAFT").method("MANUAL").decidedBy("case-worker").outcome("REJECTION"),
+			new Decision().id("automatic").status("DRAFT").method("AUTOMATIC").decidedBy("another-service")));
+
+		assertThatThrownBy(() -> decisionService.createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining(ERRAND_ID);
+
+		verify(supportManagementIntegrationMock).getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
+	}
+
+	@Test
+	void createDecisionLeavesACancelledDecisionAlone() {
+		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Decision().id(DECISION_ID).status("CANCELLED")));
+
+		assertThatThrownBy(() -> decisionService.createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining(ERRAND_ID);
 
 		verify(supportManagementIntegrationMock).getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
