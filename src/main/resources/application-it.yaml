@@ -45,6 +45,7 @@ config:
     token-uri: ${config.common.token-uri}
     client-id: ${config.common.client-id}
     client-secret: ${config.common.client-secret}
+    relation-type: LINK
   messaging:
     base-url: http://localhost:${wiremock.server.port}/api-messaging
     token-uri: ${config.common.token-uri}

@@ -8,7 +8,9 @@ import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.dept44.problem.Problem;
 
+import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
@@ -45,7 +47,7 @@ public class AssetService {
 				.formatted(errandId, decision.getOutcome(), KNOWN_OUTCOMES)));
 	}
 
-	public String createAsset(final String municipalityId, final String namespace, final String errandId) {
+	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId) {
 		final var decision = supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no completed decision to create an asset from".formatted(errandId)));
 		if (!DECISION_OUTCOME_APPROVAL.equals(decision.getOutcome())) {
@@ -63,13 +65,29 @@ public class AssetService {
 			.orElseGet(() -> createAsset(municipalityId, namespace, errandId, decision, partyId));
 	}
 
+	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
 	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final String partyId) {
-		final var attachments = Optional.ofNullable(decision.getAttachments())
-			.orElseGet(List::of)
-			.stream()
-			.map(attachment -> toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId())))
-			.toList();
+		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, toAssetCreateRequest(decision, errandId, partyId));
 
-		return partyAssetsIntegration.createAsset(municipalityId, toAssetCreateRequest(decision, errandId, partyId), attachments);
+		try {
+			Optional.ofNullable(decision.getAttachments()).orElse(emptyList())
+				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
+					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
+			partyAssetsIntegration.activateAsset(municipalityId, assetId);
+		} catch (final RuntimeException e) {
+			throw Problem.valueOf(BAD_GATEWAY, removeDraftAsset(municipalityId, assetId, e));
+		}
+
+		return assetId;
+	}
+
+	private String removeDraftAsset(final String municipalityId, final String assetId, final RuntimeException cause) {
+		try {
+			partyAssetsIntegration.removeDraftAsset(municipalityId, assetId);
+			return "The draft asset could not be completed and was removed again: %s".formatted(cause.getMessage());
+		} catch (final RuntimeException e) {
+			// The id is the only way to find the asset that is left behind, so it travels with both failures.
+			return "Draft asset '%s' could not be completed (%s) and could not be removed again: %s".formatted(assetId, cause.getMessage(), e.getMessage());
+		}
 	}
 }

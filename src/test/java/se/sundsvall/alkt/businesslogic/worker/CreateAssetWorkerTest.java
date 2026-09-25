@@ -51,12 +51,12 @@ class CreateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_asset");
-		when(assetServiceMock.createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("asset-id");
+		when(assetServiceMock.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("asset-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_asset", null));
-		verify(assetServiceMock).createAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

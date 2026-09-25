@@ -7,6 +7,7 @@ import org.camunda.bpm.client.task.ExternalTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
@@ -50,6 +51,10 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 					reportProcessState(externalTask, report);
 				}
 				externalTaskService.complete(externalTask, report.variables());
+			} catch (final NonRetryableException e) {
+				logException(externalTask, e);
+				failureHandler.handleIncident(externalTaskService, externalTask, e.getMessage());
+				return;
 			} catch (final Exception e) {
 				logException(externalTask, e);
 				failureHandler.handleException(externalTaskService, externalTask, e.getMessage());

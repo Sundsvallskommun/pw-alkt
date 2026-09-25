@@ -26,7 +26,7 @@
 				},
 				"bodyPatterns": [
 					{
-						"equalTo": "BESLUT"
+						"equalTo": "Beslut om tillstånd"
 					}
 				]
 			}

@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.partyassets.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
@@ -25,6 +26,7 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPartyId;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
 
 class PartyAssetsMapperTest {
 
@@ -42,7 +44,10 @@ class PartyAssetsMapperTest {
 			.validTo(LocalDate.of(2027, 9, 30))
 			.decidedAt(OffsetDateTime.of(2026, 9, 20, 10, 0, 0, 0, ZoneOffset.UTC))
 			.legalBasis("8 kap. 12 § alkohollagen")
-			.delegationReference("3.2.1");
+			.delegationReference("3.2.1")
+			.terms(List.of(
+				new DecisionTerm().category("serveringstid").text("Servering får ske mellan 11.00 och 01.00."),
+				new DecisionTerm().category("serveringsyta").text("Servering får ske i matsalen.")));
 
 		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID);
 
@@ -58,7 +63,36 @@ class PartyAssetsMapperTest {
 		assertThat(result.getAdditionalParameters()).containsExactly(
 			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
 			entry(PARAMETER_LEGAL_BASIS, "8 kap. 12 § alkohollagen"),
-			entry(PARAMETER_DELEGATION_REFERENCE, "3.2.1"));
+			entry(PARAMETER_DELEGATION_REFERENCE, "3.2.1"),
+			entry("serveringstid", "Servering får ske mellan 11.00 och 01.00."),
+			entry("serveringsyta", "Servering får ske i matsalen."));
+	}
+
+	@Test
+	void toAssetCreateRequestLeavesOutATermWithoutCategory() {
+		final var decision = new Decision().terms(List.of(new DecisionTerm().text("Villkor utan kategori.")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+	}
+
+	@Test
+	void toAssetCreateRequestLetsATermWinOverAKeyOfOurOwn() {
+		final var decision = new Decision()
+			.legalBasis("8 kap. 12 § alkohollagen")
+			.terms(List.of(new DecisionTerm().category(PARAMETER_LEGAL_BASIS).text("Angiven av handläggaren.")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
+			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PARAMETER_LEGAL_BASIS, "Angiven av handläggaren."));
+	}
+
+	@Test
+	void toAssetCreateRequestKeepsTheLastTermOfACategory() {
+		final var decision = new Decision().terms(List.of(
+			new DecisionTerm().category("serveringstid").text("Första."),
+			new DecisionTerm().category("serveringstid").text("Sista.")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsEntry("serveringstid", "Sista.");
 	}
 
 	@Test
@@ -106,7 +140,7 @@ class PartyAssetsMapperTest {
 		assertThat(result.file().getOriginalFilename()).isEqualTo("lokalritning.pdf");
 		assertThat(result.file().getContentType()).isEqualTo("application/pdf");
 		assertThat(result.file().getBytes()).isEqualTo(content);
-		assertThat(result.category()).isEqualTo("LOKALRITNING");
+		assertThat(result.category()).isEqualTo("Lokalritning");
 	}
 
 	@Test
@@ -127,5 +161,10 @@ class PartyAssetsMapperTest {
 	@Test
 	void toPartyIdIsEmptyWithoutStakeholders() {
 		assertThat(toPartyId(new Errand().stakeholders(null))).isEmpty();
+	}
+
+	@Test
+	void toSourceReferencePointsAtTheErrandAndLeavesTheTargetToPartyAssets() {
+		assertThat(toSourceReference("LINK", "errand-id", "ALKT")).isEqualTo("LINK|errand-id;case;supportmanagement;ALKT|");
 	}
 }

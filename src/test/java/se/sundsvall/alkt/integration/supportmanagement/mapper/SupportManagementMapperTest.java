@@ -1,22 +1,30 @@
 package se.sundsvall.alkt.integration.supportmanagement.mapper;
 
+import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import generated.se.sundsvall.supportmanagement.ProcessError;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -93,5 +101,51 @@ class SupportManagementMapperTest {
 		assertThat(result.getError()).isNull();
 		assertThat(result.getActivities()).isEmpty();
 		assertThat(result.getAwaitingSignals()).isEmpty();
+	}
+
+	@Test
+	void toDecisionTitleNamesThePermitOfEachLowAlcoholBeerProcess() {
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo("Tillstånd för försäljning av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo("Tillstånd för servering av folköl");
+	}
+
+	@Test
+	void toDecisionTitleRefusesAProcessWithoutAnAutomaticDecision() {
+		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(PROCESS_KEY_ALCOHOL_SERVING))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING)
+			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)
+			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING);
+		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(null))
+			.isInstanceOf(NonRetryableException.class);
+	}
+
+	@Test
+	void toAutomaticDecisionApprovesUntilFurtherNotice() {
+		final var validFrom = LocalDate.of(2026, 9, 24);
+		final var decidedAt = OffsetDateTime.now();
+
+		final var result = SupportManagementMapper.toAutomaticDecision("Tillstånd för servering av folköl", new Errand().title("Anmälan om servering av folköl"), validFrom, decidedAt);
+
+		assertThat(result.getType()).isEqualTo("PERMIT");
+		assertThat(result.getStatus()).isEqualTo("DRAFT");
+		assertThat(result.getMethod()).isEqualTo("AUTOMATIC");
+		assertThat(result.getDecidedBy()).isEqualTo("pw-alkt");
+		assertThat(result.getOutcome()).isEqualTo("APPROVAL");
+		assertThat(result.getTitle()).isEqualTo("Tillstånd för servering av folköl");
+		assertThat(result.getDescription()).isEqualTo("Anmälan om servering av folköl");
+		assertThat(result.getValidFrom()).isEqualTo(validFrom);
+		assertThat(result.getValidTo()).isNull();
+		assertThat(result.getDecidedAt()).isEqualTo(decidedAt);
+		assertThat(result.getCompletedAt()).isNull();
+	}
+
+	@Test
+	void toDecisionCompletionCarriesOnlyWhatCompletesTheDecision() {
+		final var decidedAt = OffsetDateTime.now();
+
+		final var result = SupportManagementMapper.toDecisionCompletion(decidedAt);
+
+		assertThat(result).isEqualTo(new Decision().status("COMPLETED").decidedAt(decidedAt).completedAt(decidedAt));
 	}
 }

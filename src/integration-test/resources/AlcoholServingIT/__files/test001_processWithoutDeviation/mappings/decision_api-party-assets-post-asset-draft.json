@@ -3,6 +3,11 @@
 	"request": {
 		"method": "POST",
 		"urlPath": "/api-party-assets/2281/asset-drafts",
+		"queryParameters": {
+			"sourceReference": {
+				"equalTo": "LINK|3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31;case;supportmanagement;ALKT|"
+			}
+		},
 		"headers": {
 			"X-Sent-By": {
 				"equalTo": "pw-alkt; type=processEngine"
@@ -43,6 +48,12 @@
 				"matchesJsonPath": {
 					"expression": "$.title",
 					"equalTo": "Beslut om serveringstillstånd"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.serveringstid",
+					"equalTo": "Servering får ske mellan 11.00 och 01.00."
 				}
 			}
 		]

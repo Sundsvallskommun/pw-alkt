@@ -1,0 +1,33 @@
+{
+	"name": "decision_create-asset-worker---api-support-management-put-process-running",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/c30a6f18-9d54-4b72-8e05-2f1a7c4b6d98/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "RUNNING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_create_asset"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

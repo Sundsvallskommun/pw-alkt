@@ -20,6 +20,7 @@ import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -74,6 +75,21 @@ class FailureHandlerTest {
 
 		verify(messagingIntegrationMock).sendSlack("2281",
 			"[2281][ALKT][alcohol-serving] Incident in external_task_create_asset for errand errand-id (process instance instance-id, x-request-id request-id): Party assets is down");
+	}
+
+	@Test
+	void handleIncidentRaisesTheIncidentAndAlertsOnTheFirstAttempt() {
+		final var id = UUID.randomUUID().toString();
+		final var message = "Process 'alcohol-serving' has no title for a decision made automatically";
+		when(externalTaskMock.getId()).thenReturn(id);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn("2281");
+
+		failureHandler.handleIncident(externalTaskServiceMock, externalTaskMock, message);
+
+		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.failed(ERROR_CODE_INCIDENT, message));
+		verify(externalTaskServiceMock).handleFailure(id, message, null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
+		verify(messagingIntegrationMock).sendSlack(eq("2281"), contains(message));
+		verify(externalTaskMock, never()).getRetries();
 	}
 
 	@Test

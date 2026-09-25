@@ -53,7 +53,15 @@ public class FailureHandler {
 	}
 
 	public void handleException(ExternalTaskService externalTaskService, ExternalTask externalTask, String message) {
-		final var retries = calculateRetries(externalTask);
+		handleFailure(externalTaskService, externalTask, message, calculateRetries(externalTask));
+	}
+
+	/** For a failure no retry can fix: the incident is raised and alerted on the first attempt. */
+	public void handleIncident(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message) {
+		handleFailure(externalTaskService, externalTask, message, 0);
+	}
+
+	private void handleFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final int retries) {
 		reportFailure(externalTask, message, retries);
 
 		externalTaskService.handleFailure(externalTask.getId(),
