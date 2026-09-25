@@ -17,7 +17,6 @@ import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ATTACHMENT_PART_NAME;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ORIGIN;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_DELEGATION_REFERENCE;
@@ -151,9 +150,9 @@ class PartyAssetsMapperTest {
 	@Test
 	void toPartyIdTakesTheExternalIdOfThePermitHolder() {
 		final var errand = new Errand().stakeholders(List.of(
-			new Stakeholder().role("CONTACT").externalId("contact-id"),
-			new Stakeholder().role(STAKEHOLDER_ROLE_PERMIT_HOLDER),
-			new Stakeholder().role(STAKEHOLDER_ROLE_PERMIT_HOLDER).externalId("holder-id")));
+			new Stakeholder().role("APPLICANT").externalId("applicant-id"),
+			new Stakeholder().role("PRIMARY"),
+			new Stakeholder().role("PRIMARY").externalId("holder-id")));
 
 		assertThat(toPartyId(errand)).contains("holder-id");
 	}

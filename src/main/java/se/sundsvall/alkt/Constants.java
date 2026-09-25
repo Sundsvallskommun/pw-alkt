@@ -58,7 +58,7 @@ public final class Constants {
 	public static final String DECISION_STATUS_COMPLETED = "COMPLETED";
 	public static final String DECISION_STATUS_DRAFT = "DRAFT";
 	public static final String DECISION_METHOD_AUTOMATIC = "AUTOMATIC";
-	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "APPLICANT";
+	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
 
 	public static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";

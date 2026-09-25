@@ -280,7 +280,7 @@ was not waiting for it, since such an event correlates against nothing and is go
 
 <p><span class="code">CreateAssetTask</span> builds the permit in party-assets from the approved decision. The id of
 the decision is the <span class="code">assetId</span> of the permit, and the party is the stakeholder with the role
-<span class="code">APPLICANT</span>. The step first looks for a permit with that id and is done if it finds one, so a
+<span class="code">PRIMARY</span>. The step first looks for a permit with that id and is done if it finds one, so a
 retry after a lost answer creates nothing twice. Otherwise it removes any draft an earlier attempt left behind, creates
 a new draft, adds the attachments of the decision with the name of their purpose as category, and activates the draft.
 If any of that fails the draft is removed again. A permit assembled as a draft goes live at revision 0, and every call
