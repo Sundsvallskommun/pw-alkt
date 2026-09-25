@@ -27,7 +27,7 @@ public class CreateAssetWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var assetId = assetService.createAsset(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
+		final var assetId = assetService.findOrCreateAsset(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
 
 		logInfo("Errand {} has asset {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 

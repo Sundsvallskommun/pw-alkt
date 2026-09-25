@@ -49,6 +49,12 @@
 					"expression": "$.title",
 					"equalTo": "Beslut om serveringstillstånd"
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.serveringstid",
+					"equalTo": "Servering får ske mellan 11.00 och 01.00."
+				}
 			}
 		]
 	},

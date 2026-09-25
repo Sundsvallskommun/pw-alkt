@@ -26,13 +26,22 @@
 				"decidedAt": "2026-09-20T10:00:00+02:00",
 				"legalBasis": "8 kap. 12 § alkohollagen",
 				"validFrom": "2026-10-01",
+				"terms": [
+					{
+						"id": "4e6a8c20-1b3d-4f5a-9c7e-2d4f6a8b0c13",
+						"sortOrder": 1,
+						"category": "serveringstid",
+						"text": "Servering får ske mellan 11.00 och 01.00."
+					}
+				],
 				"attachments": [
 					{
 						"id": "1a9f3e22-6b7c-4d8e-a0f1-2c3d4e5f6a70",
 						"fileName": "beslut.pdf",
 						"mimeType": "application/pdf",
 						"purpose": {
-							"name": "BESLUT"
+							"name": "BESLUT",
+							"displayName": "Beslut om tillstånd"
 						}
 					}
 				]

@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.problem.Problem;
 
+import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
@@ -37,12 +38,12 @@ public class SupportManagementIntegration {
 	public List<ErrandProcess> getErrandProcesses(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getErrandProcesses(municipalityId, namespace, errandId).getBody())
 			.map(ErrandProcesses::getProcesses)
-			.orElseGet(List::of);
+			.orElse(emptyList());
 	}
 
 	public List<ErrandAttachment> getAttachments(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getAttachments(municipalityId, namespace, errandId).getBody())
-			.orElseGet(List::of);
+			.orElse(emptyList());
 	}
 
 	/**
@@ -62,7 +63,7 @@ public class SupportManagementIntegration {
 
 	public List<Decision> getDecisions(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getDecisions(municipalityId, namespace, errandId).getBody())
-			.orElseGet(List::of);
+			.orElse(emptyList());
 	}
 
 	// Why: the decision is written by the process of the errand, and must not wake that process again.

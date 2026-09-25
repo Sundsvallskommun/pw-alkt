@@ -5,10 +5,10 @@ import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.List;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 
+import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toAutomaticDecision;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionCompletion;
@@ -44,7 +44,7 @@ public class DecisionService {
 			.orElseGet(() -> supportManagementIntegration.createDecision(municipalityId, namespace, errandId,
 				toAutomaticDecision(title, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), LocalDate.now(SWEDISH_TIME), decidedAt)));
 
-		final var linked = draft.map(Decision::getAttachments).orElseGet(List::of).stream().map(ErrandAttachment::getId).toList();
+		final var linked = draft.map(Decision::getAttachments).orElse(emptyList()).stream().map(ErrandAttachment::getId).toList();
 		supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
 			.map(ErrandAttachment::getId)
 			.filter(attachmentId -> !linked.contains(attachmentId))

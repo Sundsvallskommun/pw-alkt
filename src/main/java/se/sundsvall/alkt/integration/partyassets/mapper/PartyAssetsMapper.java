@@ -9,7 +9,6 @@ import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,6 +18,7 @@ import se.sundsvall.dept44.support.Relation;
 import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
+import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class PartyAssetsMapper {
@@ -57,13 +57,13 @@ public final class PartyAssetsMapper {
 		return new AssetFile(
 			new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, attachment.getFileName(), attachment.getMimeType(), content),
 			Optional.ofNullable(attachment.getPurpose())
-				.map(ErrandAttachmentPurpose::getName)
+				.map(ErrandAttachmentPurpose::getDisplayName)
 				.orElse(null));
 	}
 
 	public static Optional<String> toPartyId(final Errand errand) {
 		return Optional.ofNullable(errand.getStakeholders())
-			.orElseGet(List::of)
+			.orElse(emptyList())
 			.stream()
 			.filter(stakeholder -> STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole()))
 			.map(Stakeholder::getExternalId)
@@ -82,6 +82,10 @@ public final class PartyAssetsMapper {
 		parameters.put(PARAMETER_ERRAND_ID, errandId);
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PARAMETER_LEGAL_BASIS, value));
 		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PARAMETER_DELEGATION_REFERENCE, value));
+		// Why: the terms go in last, so a term entered on the decision wins over a key of our own with the same name.
+		Optional.ofNullable(decision.getTerms()).orElse(emptyList()).stream()
+			.filter(term -> term.getCategory() != null)
+			.forEach(term -> parameters.put(term.getCategory(), term.getText()));
 		return parameters;
 	}
 }
