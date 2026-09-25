@@ -1,0 +1,61 @@
+{
+	"name": "05_main_cancel-process-worker---api-support-management-put-process-completed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processService",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "alcohol-serving"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "COMPLETED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_cancel_process"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.externalTaskId",
+					"matches": "[0-9a-f-]{36}"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0]",
+					"absent": true
+				}
+			}
+		]
+	},
+	"newScenarioState": "main_cancel-process-worker---api-support-management-put-process-completed",
+	"requiredScenarioState": "main_cancel-process-worker---api-support-management-put-process-running",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "alcohol-serving-test005_cancelledInInvestigation"
+}

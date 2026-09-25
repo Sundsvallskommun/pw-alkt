@@ -44,6 +44,9 @@
 					"expression": "$.awaitingSignals[0].label",
 					"equalTo": "Follow up completed"
 				}
+			},
+			{
+				"matchesJsonPath": "$.awaitingSignals[?(@.name == 'process_cancelled')]"
 			}
 		]
 	},

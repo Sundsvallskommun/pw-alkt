@@ -1,0 +1,61 @@
+{
+	"name": "03_main_cancel-process-worker---api-support-management-put-process-completed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processService",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "tobacco-sales-change"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "COMPLETED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_cancel_process"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.externalTaskId",
+					"matches": "[0-9a-f-]{36}"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0]",
+					"absent": true
+				}
+			}
+		]
+	},
+	"newScenarioState": "main_cancel-process-worker---api-support-management-put-process-completed",
+	"requiredScenarioState": "main_cancel-process-worker---api-support-management-put-process-running",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "tobacco-sales-change-test003_cancelledInRegistration"
+}

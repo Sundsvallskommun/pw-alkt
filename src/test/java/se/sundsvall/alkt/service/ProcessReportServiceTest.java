@@ -5,9 +5,12 @@ import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -28,6 +31,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -114,6 +118,83 @@ class ProcessReportServiceTest {
 		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
 		assertThat(captor.getValue().getCurrentActivityId()).isEqualTo("closure_phase");
 		verify(externalTaskMock, never()).getActivityId();
+	}
+
+	/**
+	 * Support Management replaces the buttons on every report, so a live report from a work step carries the cancellation.
+	 */
+	@ParameterizedTest
+	@MethodSource("liveReports")
+	void offersTheProcessWideSignalsOnALiveReportFromAWorkStep(final ProcessStateReport report) {
+		mockExternalTask();
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
+		when(operatonIntegrationMock.findProcessWideSignals(PROCESS_INSTANCE_ID, DEFINITION_ID)).thenReturn(List.of(new AwaitingSignal("process_cancelled", "Process cancelled")));
+		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+
+		service.report(externalTaskMock, report);
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getAwaitingSignals())
+			.extracting(ProcessSignal::getName, ProcessSignal::getLabel)
+			.containsExactly(tuple("process_cancelled", "Process cancelled"));
+	}
+
+	private static Stream<ProcessStateReport> liveReports() {
+		return Stream.of(ProcessStateReport.running("external_task_create_asset", null), ProcessStateReport.retrying("RETRY", "Timeout"));
+	}
+
+	@ParameterizedTest
+	@MethodSource("terminalReports")
+	void leavesTheSignalsOutOfATerminalReport(final ProcessStateReport report) {
+		mockExternalTask();
+		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+
+		service.report(externalTaskMock, report);
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getAwaitingSignals()).isNullOrEmpty();
+		verifyNoInteractions(operatonIntegrationMock);
+	}
+
+	private static Stream<ProcessStateReport> terminalReports() {
+		return Stream.of(ProcessStateReport.completed(), ProcessStateReport.failed("INCIDENT", "Timeout"));
+	}
+
+	@Test
+	void keepsTheSignalsAReportAlreadyCarries() {
+		mockExternalTask();
+		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+
+		service.report(externalTaskMock, ProcessStateReport.waiting("review_phase", "Review").withAwaitingSignals(List.of(new AwaitingSignal("review_completed", "Review completed"))));
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getAwaitingSignals()).extracting(ProcessSignal::getName).containsExactly("review_completed");
+		verifyNoInteractions(operatonIntegrationMock);
+	}
+
+	/** A report without its buttons beats no report at all. */
+	@Test
+	void reportsWithoutTheSignalsWhenTheyCannotBeRead() {
+		mockExternalTask();
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
+		when(operatonIntegrationMock.findProcessWideSignals(PROCESS_INSTANCE_ID, DEFINITION_ID)).thenThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Operaton is down"));
+		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+
+		service.report(externalTaskMock, ProcessStateReport.running("external_task_create_asset", null));
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getProcessStatus()).isEqualTo("RUNNING");
+		assertThat(captor.getValue().getAwaitingSignals()).isNullOrEmpty();
+	}
+
+	private void mockExternalTask() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
+		when(externalTaskMock.getProcessInstanceId()).thenReturn(PROCESS_INSTANCE_ID);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY);
+		when(externalTaskMock.getId()).thenReturn(EXTERNAL_TASK_ID);
+		lenient().when(externalTaskMock.getActivityId()).thenReturn("external_task_create_asset");
 	}
 
 	@Test

@@ -11,6 +11,7 @@ import org.camunda.bpm.engine.variable.type.ValueType;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static java.util.stream.Collectors.joining;
+import static se.sundsvall.alkt.Constants.MESSAGE_PROCESS_CANCELLED;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -32,13 +33,16 @@ public final class OperatonMapper {
 				PROCESS_VARIABLE_REQUEST_ID, toVariableValueDto(ValueType.STRING, RequestId.get())));
 	}
 
-	/** resultEnabled, so the answer names the instance the message reached - the errand alone may not. */
+	/**
+	 * resultEnabled, so the answer names the instance the message reached - the errand alone may not. The cancellation
+	 * reaches every process of the errand, and one already on its way out is no mismatch.
+	 */
 	public static CorrelationMessageDto toCorrelationMessageDto(final String messageName, final String errandId, final String tenantId) {
 		return new CorrelationMessageDto()
 			.messageName(messageName)
 			.businessKey(errandId)
 			.tenantId(tenantId)
-			.all(false)
+			.all(MESSAGE_PROCESS_CANCELLED.equals(messageName))
 			.resultEnabled(true);
 	}
 

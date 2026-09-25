@@ -1,0 +1,61 @@
+{
+	"name": "decision_api-party-assets-post-asset-draft",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-party-assets/2281/asset-drafts",
+		"queryParameters": {
+			"sourceReference": {
+				"equalTo": "LINK|1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56;case;supportmanagement;ALKT|"
+			}
+		},
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "DRAFT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.assetId",
+					"equalTo": "4a6c8e02-1b3d-4f57-9a8c-0d2e4f6a8b1c"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.partyId",
+					"equalTo": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.type",
+					"equalTo": "PERMIT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.issued",
+					"equalTo": "2026-09-24"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"equalTo": "Tillstånd för försäljning av folköl"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/asset-drafts/2c4e6a80-9b1d-4e35-a7c9-e1f3a5b7c9d2"
+		},
+		"status": 201
+	}
+}

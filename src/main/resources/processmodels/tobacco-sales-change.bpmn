@@ -7,6 +7,7 @@
   <bpmn:message id="message_decision_completed" name="decision_completed" />
   <bpmn:message id="message_follow_up_completed" name="follow_up_completed" />
   <bpmn:message id="message_closure_completed" name="closure_completed" />
+  <bpmn:message id="message_process_cancelled" name="process_cancelled" />
   <bpmn:process id="tobacco-sales-change" name="PROCESS Change of permit-regulated sale of tobacco products" isExecutable="true" camunda:historyTimeToLive="P30D">
     <bpmn:documentation>Skeleton of the process. The phases run in sequence and each one waits for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
@@ -144,6 +145,23 @@
       <bpmn:documentation>The end of the process execution</bpmn:documentation>
       <bpmn:incoming>flow_complete_process_to_end_process</bpmn:incoming>
     </bpmn:endEvent>
+    <bpmn:subProcess id="cancel_process_subprocess" name="Cancellation" triggeredByEvent="true">
+      <bpmn:documentation>Cancels the process in whatever phase it stands, e.g. when the applicant withdraws the errand. The phase or work step that runs is interrupted.</bpmn:documentation>
+      <bpmn:startEvent id="cancel_process" name="Process cancelled">
+        <bpmn:outgoing>flow_cancel_process_to_cancel_task</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_cancel_process" messageRef="message_process_cancelled" />
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_cancel_process_to_cancel_task" sourceRef="cancel_process" targetRef="external_task_cancel_process" />
+      <bpmn:serviceTask id="external_task_cancel_process" name="Cancel process" camunda:type="external" camunda:topic="CancelProcessTask">
+        <bpmn:documentation>Reports the process as completed to Support Management, which closes the process life of the errand: no new process is started for it.</bpmn:documentation>
+        <bpmn:incoming>flow_cancel_process_to_cancel_task</bpmn:incoming>
+        <bpmn:outgoing>flow_cancel_task_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_cancel_task_to_end" sourceRef="external_task_cancel_process" targetRef="end_process_cancelled" />
+      <bpmn:endEvent id="end_process_cancelled" name="End cancelled process">
+        <bpmn:incoming>flow_cancel_task_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_tobacco_sales_change">
     <bpmndi:BPMNPlane id="BPMNPlane_tobacco_sales_change" bpmnElement="tobacco-sales-change">
@@ -211,6 +229,216 @@
       <bpmndi:BPMNEdge id="BPMNEdge_flow_complete_process_to_end_process" bpmnElement="flow_complete_process_to_end_process">
         <di:waypoint x="1240" y="117" />
         <di:waypoint x="1292" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_cancel_process_subprocess" bpmnElement="cancel_process_subprocess" isExpanded="false">
+        <dc:Bounds x="690" y="220" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_registration_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_registration_phase" bpmnElement="registration_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_registration_phase" bpmnElement="start_registration_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_registration_completed" bpmnElement="await_registration_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_registration_phase" bpmnElement="end_registration_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_start_to_await" bpmnElement="flow_registration_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_await_to_end" bpmnElement="flow_registration_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_review_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_review_phase" bpmnElement="review_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_review_phase" bpmnElement="start_review_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_review_completed" bpmnElement="await_review_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_await" bpmnElement="flow_review_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_await_to_end" bpmnElement="flow_review_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_investigation_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_investigation_phase" bpmnElement="investigation_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_investigation_phase" bpmnElement="start_investigation_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_investigation_completed" bpmnElement="await_investigation_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_investigation_phase" bpmnElement="end_investigation_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_start_to_await" bpmnElement="flow_investigation_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_await_to_end" bpmnElement="flow_investigation_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_decision_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_decision_phase" bpmnElement="decision_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_decision_phase" bpmnElement="start_decision_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_decision_completed" bpmnElement="await_decision_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_decision_phase" bpmnElement="end_decision_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_start_to_await" bpmnElement="flow_decision_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_await_to_end" bpmnElement="flow_decision_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_follow_up_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_follow_up_phase" bpmnElement="follow_up_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_follow_up_phase" bpmnElement="start_follow_up_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_follow_up_completed" bpmnElement="await_follow_up_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_follow_up_phase" bpmnElement="end_follow_up_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_follow_up_start_to_await" bpmnElement="flow_follow_up_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_follow_up_await_to_end" bpmnElement="flow_follow_up_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_closure_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_closure_phase" bpmnElement="closure_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_closure_phase" bpmnElement="start_closure_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_closure_completed" bpmnElement="await_closure_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_closure_phase" bpmnElement="end_closure_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_closure_start_to_await" bpmnElement="flow_closure_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_closure_await_to_end" bpmnElement="flow_closure_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_cancel_process_subprocess">
+    <bpmndi:BPMNPlane id="BPMNPlane_cancel_process_subprocess" bpmnElement="cancel_process_subprocess">
+      <bpmndi:BPMNShape id="BPMNShape_cancel_process" bpmnElement="cancel_process">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_cancel_process" bpmnElement="external_task_cancel_process">
+        <dc:Bounds x="270" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_process_cancelled" bpmnElement="end_process_cancelled">
+        <dc:Bounds x="422" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="397" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_cancel_process_to_cancel_task" bpmnElement="flow_cancel_process_to_cancel_task">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="270" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_cancel_task_to_end" bpmnElement="flow_cancel_task_to_end">
+        <di:waypoint x="370" y="200" />
+        <di:waypoint x="422" y="200" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

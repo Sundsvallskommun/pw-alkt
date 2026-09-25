@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,7 @@ import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static se.sundsvall.alkt.Constants.ACTIVITY_CANCEL_PROCESS;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_TERMINATED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
@@ -94,7 +96,7 @@ public class ProcessReconciliationService {
 		}
 
 		resolveTarget(processInstanceId, instance.get().getProcessDefinitionKey(), externalTaskIdOf(incident))
-			.ifPresent(target -> reportUnless(target, row -> isReportedSince(row, incident), toIncidentReport(incident)));
+			.ifPresent(target -> reportUnless(target, row -> isReportedSince(row, incident), () -> toIncidentReport(incident)));
 	}
 
 	/** An instance that ended without a final report leaves the errand on RUNNING for good. */
@@ -115,13 +117,20 @@ public class ProcessReconciliationService {
 	}
 
 	private void settleEndedInstance(final HistoricProcessInstanceDto instance) {
-		final var report = toEndedReport(instance);
-		if (report == null) {
+		final var ended = toEndedReport(instance);
+		if (ended == null) {
 			return;
 		}
 
 		resolveTarget(instance.getId(), instance.getProcessDefinitionKey(), null)
-			.ifPresent(target -> reportUnless(target, ProcessReconciliationService::isTerminal, report));
+			.ifPresent(target -> reportUnless(target, ProcessReconciliationService::isTerminal,
+				() -> wasCancelled(instance) ? ended.atActivity(ACTIVITY_CANCEL_PROCESS) : ended));
+	}
+
+	/** The row tells a cancelled process from one that ran to its end by this activity, so the settled report keeps it. */
+	private boolean wasCancelled(final HistoricProcessInstanceDto instance) {
+		return instance.getState() == HistoricProcessInstanceDto.StateEnum.COMPLETED && operatonClient.getHistoricActivities(instance.getId()).stream()
+			.anyMatch(activity -> ACTIVITY_CANCEL_PROCESS.equals(activity.getActivityId()));
 	}
 
 	/** The identity of an instance lives in its variables. Without it there is no row to report to. */
@@ -144,7 +153,7 @@ public class ProcessReconciliationService {
 	/**
 	 * Support Management decides what is already reported. 404 (errand gone) and 409 (refused for good) are not retried.
 	 */
-	private void reportUnless(final ReportTarget target, final Predicate<ErrandProcess> alreadyThere, final ProcessStateReport report) {
+	private void reportUnless(final ReportTarget target, final Predicate<ErrandProcess> alreadyThere, final Supplier<ProcessStateReport> toReport) {
 		try {
 			final var done = rowsOf(target)
 				.filter(row -> target.processInstanceId().equals(row.getProcessInstanceId()))
@@ -153,6 +162,7 @@ public class ProcessReconciliationService {
 				return;
 			}
 
+			final var report = toReport.get();
 			LOG.warn("Process instance {} of errand {} is reported {} by the reconciliation", sanitizeForLogging(target.processInstanceId()), sanitizeForLogging(target.errandId()), report.status());
 			processReportService.report(target, report);
 		} catch (final ClientProblem e) {

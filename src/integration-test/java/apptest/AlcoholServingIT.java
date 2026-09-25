@@ -153,4 +153,111 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
 			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
 	}
+
+	@Test
+	void test004_cancelledInRegistration() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
+
+		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		// The WAITING report is asserted by its mapping to offer the cancellation alongside the phase gate
+		verifyAllStubs();
+
+		assertCancelledRoute(processInstanceId,
+				tuple("Start process", "start_process"),
+				tuple("Registration", "registration_phase"),
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Registration completed", "await_registration_completed"));
+	}
+
+	@Test
+	void test005_cancelledInInvestigation() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
+		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+
+		assertCancelledRoute(processInstanceId,
+				tuple("Start process", "start_process"),
+				tuple("Registration", "registration_phase"),
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Registration completed", "await_registration_completed"),
+				tuple("End registration phase", "end_registration_phase"),
+				tuple("Review", "review_phase"),
+				tuple("Start review phase", "start_review_phase"),
+				tuple("Review completed", "await_review_completed"),
+				tuple("End review phase", "end_review_phase"),
+				tuple("Investigation", "investigation_phase"),
+				tuple("Start investigation phase", "start_investigation_phase"),
+				tuple("Investigation completed", "await_investigation_completed"));
+	}
+
+	@Test
+	void test006_cancelledWhileAwaitingTheDecision() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
+
+		// No decision yet, so the phase waits for one, and the cancellation is the only button it offers
+		awaitProcessState(processInstanceId, "await_decision_updated", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitReportAt("decision_phase");
+		sendSignal(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING, "process_cancelled");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+
+		assertCancelledRoute(processInstanceId,
+				tuple("Start process", "start_process"),
+				tuple("Registration", "registration_phase"),
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Registration completed", "await_registration_completed"),
+				tuple("End registration phase", "end_registration_phase"),
+				tuple("Review", "review_phase"),
+				tuple("Start review phase", "start_review_phase"),
+				tuple("Review completed", "await_review_completed"),
+				tuple("End review phase", "end_review_phase"),
+				tuple("Investigation", "investigation_phase"),
+				tuple("Start investigation phase", "start_investigation_phase"),
+				tuple("Investigation completed", "await_investigation_completed"),
+				tuple("End investigation phase", "end_investigation_phase"),
+				tuple("Decision", "decision_phase"),
+				tuple("Start decision phase", "start_decision_phase"),
+				tuple("Check decision", "external_task_check_decision"),
+				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Await decision", "gateway_await_decision"));
+	}
 }

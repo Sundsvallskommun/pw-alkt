@@ -70,7 +70,8 @@ current activity, the signals the process waits for, and any error. Reports come
 			<td>A work step runs</td>
 			<td><span class="code">RUNNING</span> before it, whatever the step returned after it unless that is the same
 			<span class="code">RUNNING</span> again, then <span class="code">WAITING</span> unless the process ended. A step that throws reports
-			<span class="code">RETRYING</span>, or <span class="code">FAILED</span> once the retries are spent</td>
+			<span class="code">RETRYING</span>, or <span class="code">FAILED</span> once the retries are spent. A live report carries
+			the cancellation button, see Cancelling a process</td>
 		</tr>
 		<tr>
 			<td>The reconciliation</td>
@@ -196,7 +197,8 @@ between two gates when the change arrived and redelivering would not help.</p>
 <p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All eleven models
 share their message names, and every correlation is made on the errand id, so two live processes on one errand
 make every signal match two executions at once. Operaton answers that with <span class="code">400</span> and the
-signal is lost. Starting a second process on an errand that already has one is therefore a mistake, and the place it
+signal is lost. The cancellation is the exception: it is correlated to every process of the errand, so it ends them
+all. Starting a second process on an errand that already has one is therefore a mistake, and the place it
 can happen is the label metadata in Support Management.</p>
 
 <p>The gates an instance stands at are reported as <span class="code">awaitingSignals</span>. The list is read from the
@@ -235,7 +237,49 @@ answered with <span class="code">202</span>.</p>
 	<li>The <span class="code">name</span> of a catch event is the button text, and the outermost subprocess around it
 	is the phase. A phase without a name is reported by its id, and a boundary event hangs on a phase rather than inside
 	it, so it is reported under its own id.</li>
+	<li>Every phase has a diagram of its own, so Modeler can open it.</li>
 </ul>
+
+<h3>Cancelling a process</h3>
+
+<p>A process can be cancelled in any phase, typically because the applicant got the application wrong and withdraws
+it. Every errand model has an event subprocess, <span class="code">cancel_process_subprocess</span>, whose interrupting
+message start event listens for <span class="code">process_cancelled</span> for as long as the instance lives. When the
+case worker presses "Process cancelled", whatever runs is interrupted and the subprocess runs
+<span class="code">CancelProcessTask</span>, which reports <span class="code">COMPLETED</span>. The instance then ends
+at <span class="code">end_process_cancelled</span> and cannot be resumed. No decision is made or stored for a
+cancellation.</p>
+
+<p>Support Management has no status of its own for a cancellation, and needs none. <span class="code">COMPLETED</span>
+closes the process life of the errand: no new process is started for it, and a later report does not overwrite the row.
+A new attempt is a new errand. The row tells a cancelled process from one that ran to its end by its activity,
+<span class="code">external_task_cancel_process</span>, and the activity log of the errand holds the
+<span class="code">process_cancelled</span> signal with who pressed it and when. If the report of the cancellation is lost,
+the reconciliation settles the row on the same activity.</p>
+
+<p>The cancellation is always subscribed, so it must never decide where the process stands. Its subscription is offered
+as the last button after the gates of the phase, but the phase is taken from the other subscriptions only. An instance
+where the cancellation is the only thing listening stands on a work step and waits for no one, so no wait state is
+reported. The cancellation is told apart by its message name, <span class="code">process_cancelled</span>.</p>
+
+<p>Support Management replaces the buttons on every report, so the cancellation rides on every live report, not only on
+<span class="code">WAITING</span>. A <span class="code">RUNNING</span> or <span class="code">RETRYING</span> report
+from a work step carries the subscriptions that listen in every phase, read from the engine at the time of the report.
+A terminal report carries none, and neither does the <span class="code">RUNNING</span> of
+<span class="code">CancelProcessTask</span> itself, since the cancellation no longer listens by then. If the
+subscriptions cannot be read, the report goes out without them.</p>
+
+<p>A work step that a worker has already fetched is not stopped by the cancellation. <span class="code">CreateDecisionTask</span>
+may complete and lock a decision, and <span class="code">CreateAssetTask</span> may create the permit, before the
+cancellation lands, and what it did stays. The step then finds its task gone, whether it completes the task or hands a
+failure back. That is logged and nothing more happens: nothing is retried and no incident is raised. What the step
+reported before that may reach Support Management before or after the <span class="code">COMPLETED</span> of the
+cancellation. Either way the row ends up <span class="code">COMPLETED</span>, since Support Management keeps a completed
+row as it is.</p>
+
+<p>A process that stands on an incident is reported <span class="code">FAILED</span>, and Support Management takes no
+signal for a process it holds as ended. Such a process cannot be cancelled from the user interface until the incident is
+resolved and the step reports again.</p>
 
 <h3>The decision phase and the permit</h3>
 

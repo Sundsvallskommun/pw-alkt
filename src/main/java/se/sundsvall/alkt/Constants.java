@@ -52,6 +52,12 @@ public final class Constants {
 	public static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
 	public static final String MESSAGE_DECISION_UPDATED = "decision_updated";
 
+	// Listens in every phase of every errand process, so it never settles the phase.
+	public static final String MESSAGE_PROCESS_CANCELLED = "process_cancelled";
+
+	// Must match the id of the cancellation step in every bpmn schema; the row of a cancelled process is left on it.
+	public static final String ACTIVITY_CANCEL_PROCESS = "external_task_cancel_process";
+
 	public static final String DECISION_OUTCOME_NONE = "NONE";
 	public static final String DECISION_OUTCOME_APPROVAL = "APPROVAL";
 	public static final String DECISION_OUTCOME_REJECTION = "REJECTION";

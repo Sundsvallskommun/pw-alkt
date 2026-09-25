@@ -131,4 +131,45 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 				// Parked here: the follow up phase has not ended, so neither it nor its catch event is in the route yet
 				tuple("Start follow up phase", "start_follow_up_phase"));
 	}
+
+	@Test
+	void test003_cancelledInFollowUp() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES);
+
+		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "follow_up");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		// The mappings assert the cancellation offered on the RUNNING report of the decision and next to the gate of follow up,
+		// and the process reported COMPLETED once it is used. The decision and the permit made before it stay as they are.
+		verifyAllStubs();
+
+		assertCancelledRoute(processInstanceId,
+				tuple("Start process", "start_process"),
+				tuple("Registration", "registration_phase"),
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("End registration phase", "end_registration_phase"),
+				tuple("Review", "review_phase"),
+				tuple("Start review phase", "start_review_phase"),
+				tuple("End review phase", "end_review_phase"),
+				tuple("Investigation", "investigation_phase"),
+				tuple("Start investigation phase", "start_investigation_phase"),
+				tuple("End investigation phase", "end_investigation_phase"),
+				tuple("Decision", "decision_phase"),
+				tuple("Start decision phase", "start_decision_phase"),
+				tuple("Create decision", "external_task_create_decision"),
+				tuple("Create asset", "external_task_create_asset"),
+				tuple("End decision phase", "end_decision_phase"),
+				tuple("Follow up", "follow_up_phase"),
+				tuple("Start follow up phase", "start_follow_up_phase"),
+				tuple("Follow up completed", "await_follow_up_completed"));
+	}
 }

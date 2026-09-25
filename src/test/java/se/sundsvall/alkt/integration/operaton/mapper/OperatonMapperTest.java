@@ -63,6 +63,13 @@ class OperatonMapperTest {
 	}
 
 	@Test
+	void toCorrelationMessageDtoCancelsEveryProcessOfTheErrand() {
+		final var result = OperatonMapper.toCorrelationMessageDto("process_cancelled", UUID.randomUUID().toString(), "ALKT");
+
+		assertThat(result.getAll()).isTrue();
+	}
+
+	@Test
 	void toVariableValueDto() {
 		// Act
 		final var result = OperatonMapper.toVariableValueDto(ValueType.BOOLEAN, true);

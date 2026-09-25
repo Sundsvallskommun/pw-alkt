@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto.StateEnum;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
@@ -273,6 +274,7 @@ class ProcessReconciliationServiceTest {
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
 		final var report = reportCaptor.getValue();
 		assertThat(report.status()).isEqualTo(COMPLETED);
+		assertThat(report.currentActivityId()).isNull();
 		assertThat(report.error()).isNull();
 		assertThat(report.activities()).singleElement().satisfies(activity -> {
 			assertThat(activity.getActivityType()).isEqualTo("RECONCILIATION");
@@ -312,8 +314,27 @@ class ProcessReconciliationServiceTest {
 			assertThat(activity.getSeverity()).isEqualTo("ERROR");
 			assertThat(activity.getErrorCode()).isEqualTo("TERMINATED");
 		});
+		verify(operatonClientMock, never()).getHistoricActivities(any());
 	}
 
+	/** The row of a cancelled process is left on the cancellation step, so the settled report keeps that activity. */
+	@Test
+	void settlesACancelledInstanceAtTheCancellationStep() {
+		mockEndedInstance(StateEnum.COMPLETED);
+		when(operatonClientMock.getHistoricActivities(PROCESS_INSTANCE_ID)).thenReturn(List.of(
+			new HistoricActivityInstanceDto().activityId("cancel_process"),
+			new HistoricActivityInstanceDto().activityId("external_task_cancel_process")));
+		mockErrandProcesses(row("RUNNING", null));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().status()).isEqualTo(COMPLETED);
+		assertThat(reportCaptor.getValue().currentActivityId()).isEqualTo("external_task_cancel_process");
+	}
+
+	/** The history is read only for a row that is still to be settled, not on every cycle for every ended instance. */
 	@Test
 	void leavesAnEndedInstanceWhoseRowIsAlreadyCompleted() {
 		mockEndedInstance(StateEnum.COMPLETED);
@@ -322,6 +343,7 @@ class ProcessReconciliationServiceTest {
 		service.reconcile();
 
 		verifyNoInteractions(processReportServiceMock);
+		verify(operatonClientMock, never()).getHistoricActivities(any());
 	}
 
 	@Test
