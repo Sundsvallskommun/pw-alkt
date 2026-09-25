@@ -68,7 +68,7 @@ current activity, the signals the process waits for, and any error. Reports come
 		</tr>
 		<tr>
 			<td>A work step runs</td>
-			<td><span class="code">RUNNING</span> before it, whatever the step returned after it unless that is the same
+			<td><span class="code">RUNNING</span> before it, whatever the step returned after it, even the same
 			<span class="code">RUNNING</span> again, then <span class="code">WAITING</span> unless the process ended. A step that throws reports
 			<span class="code">RETRYING</span>, or <span class="code">FAILED</span> once the retries are spent. A live report carries
 			the cancellation button, see Cancelling a process</td>

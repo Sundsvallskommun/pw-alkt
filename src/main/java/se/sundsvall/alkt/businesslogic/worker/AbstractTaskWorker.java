@@ -1,6 +1,5 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
-import java.util.Map;
 import org.camunda.bpm.client.exception.NotFoundException;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskHandler;
@@ -43,14 +42,13 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		try {
 			final ProcessStateReport report;
 			try {
-				final var running = ProcessStateReport.running(externalTask.getActivityId(), null);
-				reportProcessState(externalTask, running);
+				reportProcessState(externalTask, ProcessStateReport.running(externalTask.getActivityId(), null));
 
 				report = executeBusinessLogic(externalTask, externalTaskService);
 
-				if (!running.equals(report.withVariables(Map.of()))) {
-					reportProcessState(externalTask, report);
-				}
+				// Reported even when it is the same RUNNING again: Support Management holds the step as working until the task
+				// reports a second time, and warns of concurrent tasks otherwise.
+				reportProcessState(externalTask, report);
 				externalTaskService.complete(externalTask, report.variables());
 			} catch (final NotFoundException e) {
 				// The task is gone: the process was cancelled or deleted while the step ran, or another worker completed it after

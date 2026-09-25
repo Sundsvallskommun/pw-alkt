@@ -36,6 +36,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RUNNING;
 
 @ExtendWith(MockitoExtension.class)
 class AbstractTaskWorkerTest {
@@ -228,8 +229,11 @@ class AbstractTaskWorkerTest {
 		verifyNoInteractions(failureHandlerMock);
 	}
 
+	/**
+	 * Support Management holds a step as working until its task reports a second time, and warns of concurrency otherwise.
+	 */
 	@Test
-	void reportsAnUnchangedRunningOnlyOnce() {
+	void reportsAnUnchangedRunningAgainAfterTheStep() {
 		final var workerWithVariables = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
 			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
@@ -239,7 +243,9 @@ class AbstractTaskWorkerTest {
 
 		workerWithVariables.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(processReportServiceMock, times(1)).report(any(ExternalTask.class), any());
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+		verify(processReportServiceMock, times(2)).report(any(ExternalTask.class), reportCaptor.capture());
+		assertThat(reportCaptor.getAllValues()).extracting(ProcessStateReport::status).containsExactly(RUNNING, RUNNING);
 		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of("key", "value"));
 	}
 
