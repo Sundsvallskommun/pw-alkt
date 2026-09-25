@@ -2,6 +2,7 @@ package se.sundsvall.alkt.businesslogic.handler;
 
 import java.util.Map;
 import java.util.Optional;
+import org.camunda.bpm.client.exception.NotFoundException;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.slf4j.Logger;
@@ -62,31 +63,43 @@ public class FailureHandler {
 	}
 
 	private void handleFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final int retries) {
-		reportFailure(externalTask, message, retries);
-
-		externalTaskService.handleFailure(externalTask.getId(),
+		if (tellEngine(externalTask, () -> externalTaskService.handleFailure(externalTask.getId(),
 			message, // errorMessage - surfaces as the incident message
 			null, // errorDetails
 			retries,
-			retryTimeoutInMilliseconds);
-		alertIncident(externalTask, message, retries);
+			retryTimeoutInMilliseconds))) {
+			reportFailure(externalTask, message, retries);
+			alertIncident(externalTask, message, retries);
+		}
 	}
 
 	public void handleException(ExternalTaskService externalTaskService, ExternalTask externalTask, String message, Map<String, Object> variables) {
 		final var retries = calculateRetries(externalTask);
-		reportFailure(externalTask, message, retries);
-
-		externalTaskService.handleFailure(externalTask.getId(),
+		if (tellEngine(externalTask, () -> externalTaskService.handleFailure(externalTask.getId(),
 			message, // errorMessage - surfaces as the incident message
 			null, // errorDetails
 			retries,
 			retryTimeoutInMilliseconds,
 			variables,
-			emptyMap());
-		alertIncident(externalTask, message, retries);
+			emptyMap()))) {
+			reportFailure(externalTask, message, retries);
+			alertIncident(externalTask, message, retries);
+		}
 	}
 
-	/** Best effort. A failed report is only logged, handleFailure must run regardless or the task keeps its lock. */
+	/** A task that is gone was taken away by a cancellation or deletion; there is no failure to report or alert on. */
+	private static boolean tellEngine(final ExternalTask externalTask, final Runnable handleFailure) {
+		try {
+			handleFailure.run();
+			return true;
+		} catch (final NotFoundException e) {
+			LOG.info("Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)", sanitizeForLogging(externalTask.getId()),
+				sanitizeForLogging(externalTask.getProcessInstanceId()));
+			return false;
+		}
+	}
+
+	/** Best effort. A failed report is only logged, the alert must go out regardless. */
 	private void reportFailure(final ExternalTask externalTask, final String message, final int retries) {
 		var report = ProcessStateReport.failed(ERROR_CODE_INCIDENT, message);
 		if (retries > 0) {

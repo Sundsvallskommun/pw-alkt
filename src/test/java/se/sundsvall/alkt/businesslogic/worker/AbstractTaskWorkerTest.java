@@ -3,6 +3,7 @@ package se.sundsvall.alkt.businesslogic.worker;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
+import org.camunda.bpm.client.exception.NotFoundException;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,6 +117,17 @@ class AbstractTaskWorkerTest {
 			requestIdMock.verify(() -> RequestId.init(requestId));
 			requestIdMock.verify(RequestId::reset);
 		}
+	}
+
+	/** A task that is gone was taken away by a cancellation; that is no failure and nothing to retry. */
+	@Test
+	void leavesATaskThatIsGoneWithoutAFailure() {
+		doThrow(new NotFoundException("gone", null)).when(externalTaskServiceMock).complete(any(), any());
+
+		assertThatNoException().isThrownBy(() -> runningWorker().execute(externalTaskMock, externalTaskServiceMock));
+
+		verifyNoInteractions(failureHandlerMock);
+		verify(processReportServiceMock, never()).reportWaitState(any(), any());
 	}
 
 	/**

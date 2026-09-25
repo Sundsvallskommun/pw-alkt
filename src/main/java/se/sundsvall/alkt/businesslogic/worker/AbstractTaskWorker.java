@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
 import java.util.Map;
+import org.camunda.bpm.client.exception.NotFoundException;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskHandler;
 import org.camunda.bpm.client.task.ExternalTaskService;
@@ -51,6 +52,12 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 					reportProcessState(externalTask, report);
 				}
 				externalTaskService.complete(externalTask, report.variables());
+			} catch (final NotFoundException e) {
+				// The task is gone: the process was cancelled or deleted while the step ran, or another worker completed it after
+				// the lock ran out. There is nothing to retry, and a result already reported stands.
+				logInfo("Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)", sanitizeForLogging(externalTask.getId()),
+					sanitizeForLogging(externalTask.getProcessInstanceId()));
+				return;
 			} catch (final NonRetryableException e) {
 				logException(externalTask, e);
 				failureHandler.handleIncident(externalTaskService, externalTask, e.getMessage());
