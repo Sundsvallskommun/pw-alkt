@@ -11,6 +11,7 @@ import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
 import static se.sundsvall.alkt.Constants.MESSAGE_DECISION_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_ERRAND_UPDATED;
@@ -103,6 +104,10 @@ public class ProcessService {
 			reached = operatonIntegration.correlateMessage(messageName, errandEvent.getErrandId(), TENANT_ID_ALKT);
 			LOG.info("Correlated '{}' for errand {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()));
 		} catch (final ClientProblem e) {
+			// Only a 400 means the message matched no wait state; anything else is a fault the signal must not be lost to.
+			if (!BAD_REQUEST.equals(e.getStatus())) {
+				throw e;
+			}
 			// The process stands where it stood, so its wait state is the one Support Management already knows about.
 			LOG.info("Message '{}' correlated to no running wait state of errand {}: {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()),
 				sanitizeForLogging(e.getMessage()));

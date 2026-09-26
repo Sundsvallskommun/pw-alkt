@@ -27,6 +27,7 @@ import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static se.sundsvall.alkt.integration.operaton.configuration.OperatonConfiguration.CLIENT_ID;
 
 @ExtendWith(MockitoExtension.class)
@@ -99,6 +100,7 @@ class OperatonConfigurationTest {
 
 		assertThat(exception)
 			.isInstanceOf(ClientProblem.class)
+			.hasFieldOrPropertyWithValue("status", BAD_REQUEST)
 			.hasMessageContaining("title=MismatchingMessageCorrelationException")
 			.hasMessageContaining("detail=Cannot correlate message 'errandUpdated': No process definition or execution matches the parameters");
 	}
