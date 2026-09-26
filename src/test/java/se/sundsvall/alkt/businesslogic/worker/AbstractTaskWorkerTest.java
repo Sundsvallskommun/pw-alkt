@@ -357,9 +357,9 @@ class AbstractTaskWorkerTest {
 
 	@Test
 	void executeDoesNotCompleteWhenTheFinalReportGetsAPreconditionFailed() {
-		// Arrange - dept44's Feign decoder collapses a 412 from Support Management into this ClientProblem(BAD_GATEWAY, ...)
+		// Arrange - the decoder keeps the status of a 412 from Support Management
 		doNothing()
-			.doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
+			.doThrow(new ClientProblem(HttpStatus.PRECONDITION_FAILED, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
 			.when(processReportServiceMock).report(any(ExternalTask.class), any());
 
 		// Act
@@ -368,7 +368,20 @@ class AbstractTaskWorkerTest {
 		// Assert
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock,
-			"Bad Gateway: support-management error: {status=412 Precondition Failed, title=Precondition Failed}");
+			"Precondition Failed: support-management error: {status=412 Precondition Failed, title=Precondition Failed}");
+	}
+
+	/** Only the status says 412; an errand id with 412 in it is no reason to retry a step that did its work. */
+	@Test
+	void executeCompletesWhenAFailedReportOnlyMentions412() {
+		doNothing()
+			.doThrow(new ClientProblem(HttpStatus.NOT_FOUND, "support-management error: {status=404 Not Found, detail=Errand 9a412b00 not found}"))
+			.when(processReportServiceMock).report(any(ExternalTask.class), any());
+
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+		verifyNoInteractions(failureHandlerMock);
 	}
 
 	private AbstractTaskWorker runningWorker() {

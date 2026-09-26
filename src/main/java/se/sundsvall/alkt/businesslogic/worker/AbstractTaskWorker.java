@@ -14,6 +14,7 @@ import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
+import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -77,13 +78,12 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	}
 
 	// A failed report must not fail the business task. The one exception is a 412, which means the errand moved under us:
-	// it propagates so the step reruns and rereads the errand. dept44's Feign decoder collapses every upstream error into
-	// ClientProblem(BAD_GATEWAY), so the status survives in the message text alone and has to be matched there.
+	// it propagates so the step reruns and rereads the errand.
 	private void reportProcessState(final ExternalTask externalTask, final ProcessStateReport report) {
 		try {
 			processReportService.report(externalTask, report);
 		} catch (final ClientProblem e) {
-			if (isPreconditionFailed(e)) {
+			if (PRECONDITION_FAILED.equals(e.getStatus())) {
 				throw e;
 			}
 			logger.error("Could not report {} for task {}", report.status(), sanitizeForLogging(externalTask.getId()), e);
@@ -102,10 +102,6 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		} catch (final Exception e) {
 			logger.error("Could not report the wait state after task {}", sanitizeForLogging(externalTask.getId()), e);
 		}
-	}
-
-	private static boolean isPreconditionFailed(final ClientProblem e) {
-		return (e.getMessage() != null) && e.getMessage().contains("412");
 	}
 
 	protected void logInfo(final String msg, final Object... arguments) {

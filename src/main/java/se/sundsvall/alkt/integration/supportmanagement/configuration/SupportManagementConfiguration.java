@@ -13,6 +13,7 @@ import se.sundsvall.dept44.support.Identifier;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
 import static se.sundsvall.alkt.Constants.SENT_BY;
 
 @Import(FeignConfiguration.class)
@@ -23,8 +24,9 @@ public class SupportManagementConfiguration {
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, SupportManagementProperties properties) {
 		return FeignMultiCustomizer.create()
-			// 404 and 409 keep their status: an errand that is gone or a report refused for good are answers, not gateway faults
-			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID, List.of(NOT_FOUND.value(), CONFLICT.value())))
+			// 404, 409 and 412 keep their status: an errand that is gone, a report refused for good or an errand that moved under
+			// the report are answers, not gateway faults
+			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID, List.of(NOT_FOUND.value(), CONFLICT.value(), PRECONDITION_FAILED.value())))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))
 			.withRequestInterceptor(template -> template.header("X-Request-Group-Id", RequestId.get()))
