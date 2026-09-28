@@ -352,20 +352,21 @@ customer a notice by SMS or e-mail. The step does not call Messaging itself. The
 model with a manual gate, and tells the customer that the processing has started. The two folköl models are
 notifications that are approved automatically, so they have no such step.</p>
 
-<p>The text is a template in Templating, so the business can change it without a release. The step names the template
-in its input parameter <span class="code">messageTemplate</span>, for example
-<span class="code">alkt.processing-started</span>. A step without the parameter is a modelling fault and goes straight
-to an incident. The step uses the first conversation of type <span class="code">EXTERNAL</span>, which may be one the
+<p>The text lives in configuration under <span class="code">customer-message.texts</span>, so it can be changed
+without a release; the service picks up a new text when it restarts. The step names the text in its input parameter
+<span class="code">message</span>, for example <span class="code">processing-started</span>. A step without the
+parameter, or one naming a text that is not configured, is a modelling fault and goes straight to an incident. The
+service does not start without at least one text. The step uses the first conversation of type <span class="code">EXTERNAL</span>, which may be one the
 customer started in Mina sidor. If there is none it creates one with the topic Mina Sidor and the stakeholder with the
 role <span class="code">PRIMARY</span> as participant.</p>
 
 <p>A retry must not send the message twice, and a process variable cannot remember that it was sent. The step reads
 the messages of the conversation first, and sends nothing if pw-alkt has already written the same text there. If the
-template changes between two attempts, the customer gets both texts. Message Exchange stores pw-alkt as the sender with
+text changes between two attempts, the customer gets both texts. Message Exchange stores pw-alkt as the sender with
 the type <span class="code">processEngine</span>, which the spec of Support Management does not list, so the models
 generated from it accept unknown enum values. The text of a message is never logged.</p>
 
-<p>Outside pw-alkt the message needs the template in Templating and a <span class="code">CONVERSATION</span> entry with
+<p>Outside pw-alkt the message needs a <span class="code">CONVERSATION</span> entry with
 a <span class="code">supportText</span> for the namespace in messaging-settings, or the notice is empty. Mina sidor
 also has to list the ALKT namespace, and until it knows the type <span class="code">processEngine</span> it shows the
 sender as unknown.</p>

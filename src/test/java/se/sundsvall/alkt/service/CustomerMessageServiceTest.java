@@ -9,13 +9,15 @@ import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageMessage;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import se.sundsvall.alkt.configuration.CustomerMessageProperties;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
-import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.dept44.problem.Problem;
 
 import static generated.se.sundsvall.supportmanagement.ConversationType.EXTERNAL;
@@ -29,7 +31,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.Constants.CONVERSATION_TOPIC_CUSTOMER;
@@ -42,29 +43,29 @@ class CustomerMessageServiceTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
-	private static final String TEMPLATE_ID = "alkt.processing-started";
+	private static final String MESSAGE = "processing-started";
 	private static final String CONVERSATION_ID = "conversation-id";
 	private static final String CONTENT = "Handläggningen av ditt ärende har påbörjats";
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
 
-	@Mock
-	private TemplatingIntegration templatingIntegrationMock;
-
-	@InjectMocks
 	private CustomerMessageService service;
+
+	@BeforeEach
+	void setUp() {
+		service = new CustomerMessageService(supportManagementIntegrationMock, new CustomerMessageProperties(Map.of(MESSAGE, CONTENT)));
+	}
 
 	@Test
 	void sendsTheMessageInTheExternalConversationOfTheErrand() {
-		when(templatingIntegrationMock.renderText(MUNICIPALITY_ID, TEMPLATE_ID)).thenReturn(CONTENT);
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
 			new Conversation().id("internal-id").type(INTERNAL),
 			new Conversation().id(CONVERSATION_ID).type(EXTERNAL)));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().content(List.of(customerMessage())).last(true));
 
-		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE_ID)).isTrue();
+		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
 		verify(supportManagementIntegrationMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, new MessageRequest().content(CONTENT));
 		verify(supportManagementIntegrationMock, never()).getErrand(anyString(), anyString(), anyString());
@@ -73,7 +74,6 @@ class CustomerMessageServiceTest {
 
 	@Test
 	void createsTheExternalConversationWithTheCustomerWhenTheErrandHasNone() {
-		when(templatingIntegrationMock.renderText(MUNICIPALITY_ID, TEMPLATE_ID)).thenReturn(CONTENT);
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Conversation().id("internal-id").type(INTERNAL)));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().stakeholders(List.of(
 			new Stakeholder().role(STAKEHOLDER_ROLE_PERMIT_HOLDER).externalId("party-id"))));
@@ -84,33 +84,31 @@ class CustomerMessageServiceTest {
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().last(true));
 
-		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE_ID)).isTrue();
+		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
 		verify(supportManagementIntegrationMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, new MessageRequest().content(CONTENT));
 	}
 
 	@Test
 	void sendsNothingWhenTheProcessHasAlreadySentTheMessage() {
-		when(templatingIntegrationMock.renderText(MUNICIPALITY_ID, TEMPLATE_ID)).thenReturn(CONTENT);
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Conversation().id(CONVERSATION_ID).type(EXTERNAL)));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().content(List.of(customerMessage(), processMessage("Another message"))).last(false));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 1, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().content(List.of(processMessage(CONTENT))).last(true));
 
-		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE_ID)).isFalse();
+		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isFalse();
 
 		verify(supportManagementIntegrationMock, never()).createConversationMessage(anyString(), anyString(), anyString(), anyString(), any());
 	}
 
 	@Test
 	void sendsTheMessageWhenTheSameTextCameFromSomeoneElse() {
-		when(templatingIntegrationMock.renderText(MUNICIPALITY_ID, TEMPLATE_ID)).thenReturn(CONTENT);
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Conversation().id(CONVERSATION_ID).type(EXTERNAL)));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().content(List.of(new Message().content(CONTENT), new Message().createdBy(new Identifier().type(PARTY_ID).value("party-id")).content(CONTENT))));
 
-		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE_ID)).isTrue();
+		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
 		verify(supportManagementIntegrationMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, new MessageRequest().content(CONTENT));
 	}
@@ -130,11 +128,10 @@ class CustomerMessageServiceTest {
 
 	@Test
 	void failsWhenTheErrandHasNoCustomerToCreateTheConversationWith() {
-		when(templatingIntegrationMock.renderText(MUNICIPALITY_ID, TEMPLATE_ID)).thenReturn(CONTENT);
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 
-		assertThatThrownBy(() -> service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE_ID))
+		assertThatThrownBy(() -> service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE))
 			.isInstanceOf(Problem.class)
 			.hasFieldOrPropertyWithValue("status", NOT_FOUND)
 			.hasMessageContaining("Errand 'errand-id' has no stakeholder with role 'PRIMARY'");
@@ -144,14 +141,12 @@ class CustomerMessageServiceTest {
 	}
 
 	@Test
-	void touchesNoConversationWhenTheTextCannotBeRendered() {
-		when(templatingIntegrationMock.renderText(MUNICIPALITY_ID, TEMPLATE_ID)).thenThrow(Problem.valueOf(NOT_FOUND, "No template"));
-
-		assertThatThrownBy(() -> service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE_ID))
-			.isInstanceOf(Problem.class);
+	void failsWithoutRetryAndTouchesNoConversationWhenNoTextIsConfigured() {
+		assertThatThrownBy(() -> service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "unknown-message"))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("No text is configured for message 'unknown-message'");
 
 		verifyNoInteractions(supportManagementIntegrationMock);
-		verifyNoMoreInteractions(templatingIntegrationMock);
 	}
 
 	private static Message customerMessage() {

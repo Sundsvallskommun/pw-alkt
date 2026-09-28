@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MESSAGE_TEMPLATE;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MESSAGE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 
@@ -31,7 +31,7 @@ class NotifyCustomerWorkerTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
-	private static final String TEMPLATE_ID = "alkt.processing-started";
+	private static final String MESSAGE = "processing-started";
 	private static final String ACTIVITY_ID = "external_task_notify_processing_started";
 
 	@Mock
@@ -57,30 +57,30 @@ class NotifyCustomerWorkerTest {
 		true, false
 	})
 	void sendsTheMessageNamedByTheStep(final boolean sent) {
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MESSAGE_TEMPLATE)).thenReturn(TEMPLATE_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MESSAGE)).thenReturn(MESSAGE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
-		when(customerMessageServiceMock.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE_ID)).thenReturn(sent);
+		when(customerMessageServiceMock.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).thenReturn(sent);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running(ACTIVITY_ID, null));
-		verify(customerMessageServiceMock).sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE_ID);
+		verify(customerMessageServiceMock).sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 
 	@ParameterizedTest
 	@NullAndEmptySource
 	@ValueSource(strings = " ")
-	void failsWithoutRetryWhenTheStepNamesNoMessage(final String templateId) {
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MESSAGE_TEMPLATE)).thenReturn(templateId);
+	void failsWithoutRetryWhenTheStepNamesNoMessage(final String message) {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MESSAGE)).thenReturn(message);
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 
 		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Step 'external_task_notify_processing_started' has no input parameter 'messageTemplate' naming the message to send");
+			.hasMessage("Step 'external_task_notify_processing_started' has no input parameter 'message' naming the message to send");
 
 		verifyNoInteractions(customerMessageServiceMock, failureHandlerMock, processReportServiceMock);
 	}

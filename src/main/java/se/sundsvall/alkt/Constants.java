@@ -73,7 +73,7 @@ public final class Constants {
 	public static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	// An input parameter of the step in the bpmn schema, not a process variable.
-	public static final String PROCESS_VARIABLE_MESSAGE_TEMPLATE = "messageTemplate";
+	public static final String PROCESS_VARIABLE_MESSAGE = "message";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";

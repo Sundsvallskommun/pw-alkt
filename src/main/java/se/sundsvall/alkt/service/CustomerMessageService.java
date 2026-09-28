@@ -8,8 +8,9 @@ import generated.se.sundsvall.supportmanagement.MessageRequest;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import se.sundsvall.alkt.configuration.CustomerMessageProperties;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
-import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.dept44.problem.Problem;
 
 import static generated.se.sundsvall.supportmanagement.ConversationType.EXTERNAL;
@@ -28,18 +29,19 @@ public class CustomerMessageService {
 	static final int MESSAGE_PAGE_SIZE = 100;
 
 	private final SupportManagementIntegration supportManagementIntegration;
-	private final TemplatingIntegration templatingIntegration;
+	private final CustomerMessageProperties properties;
 
-	CustomerMessageService(final SupportManagementIntegration supportManagementIntegration, final TemplatingIntegration templatingIntegration) {
+	CustomerMessageService(final SupportManagementIntegration supportManagementIntegration, final CustomerMessageProperties properties) {
 		this.supportManagementIntegration = supportManagementIntegration;
-		this.templatingIntegration = templatingIntegration;
+		this.properties = properties;
 	}
 
 	/**
 	 * Returns false when the same message is already in the conversation: a step that is run again must not send it twice.
 	 */
-	public boolean sendMessage(final String municipalityId, final String namespace, final String errandId, final String templateId) {
-		final var content = templatingIntegration.renderText(municipalityId, templateId);
+	public boolean sendMessage(final String municipalityId, final String namespace, final String errandId, final String message) {
+		final var content = Optional.ofNullable(properties.texts().get(message))
+			.orElseThrow(() -> new NonRetryableException("No text is configured for message '%s'".formatted(message)));
 		final var conversationId = findOrCreateConversation(municipalityId, namespace, errandId);
 
 		if (isAlreadySent(municipalityId, namespace, errandId, conversationId, content)) {

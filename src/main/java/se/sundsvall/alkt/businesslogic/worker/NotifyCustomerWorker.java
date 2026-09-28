@@ -12,7 +12,7 @@ import se.sundsvall.alkt.service.CustomerMessageService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MESSAGE_TEMPLATE;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MESSAGE;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -32,15 +32,15 @@ public class NotifyCustomerWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final String templateId = Optional.ofNullable(externalTask.<String>getVariable(PROCESS_VARIABLE_MESSAGE_TEMPLATE))
+		final String message = Optional.ofNullable(externalTask.<String>getVariable(PROCESS_VARIABLE_MESSAGE))
 			.filter(StringUtils::isNotBlank)
 			.orElseThrow(() -> new NonRetryableException("Step '%s' has no input parameter '%s' naming the message to send"
-				.formatted(externalTask.getActivityId(), PROCESS_VARIABLE_MESSAGE_TEMPLATE)));
+				.formatted(externalTask.getActivityId(), PROCESS_VARIABLE_MESSAGE)));
 
-		if (customerMessageService.sendMessage(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), templateId)) {
-			logInfo("Message {} was sent to the customer of errand {}", sanitizeForLogging(templateId), sanitizeForLogging(getErrandId(externalTask)));
+		if (customerMessageService.sendMessage(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), message)) {
+			logInfo("Message {} was sent to the customer of errand {}", sanitizeForLogging(message), sanitizeForLogging(getErrandId(externalTask)));
 		} else {
-			logInfo("Message {} had already been sent to the customer of errand {}", sanitizeForLogging(templateId), sanitizeForLogging(getErrandId(externalTask)));
+			logInfo("Message {} had already been sent to the customer of errand {}", sanitizeForLogging(message), sanitizeForLogging(getErrandId(externalTask)));
 		}
 
 		return ProcessStateReport.running(externalTask.getActivityId(), null);

@@ -44,10 +44,10 @@
       </bpmn:startEvent>
       <bpmn:sequenceFlow id="flow_review_start_to_notify" sourceRef="start_review_phase" targetRef="external_task_notify_processing_started" />
       <bpmn:serviceTask id="external_task_notify_processing_started" name="Notify customer processing started" camunda:type="external" camunda:topic="NotifyCustomerTask">
-        <bpmn:documentation>Tells the customer, in the external conversation of the errand, that the processing has started. The text is the template named by the input parameter. Kept out of any loop so the message is sent once.</bpmn:documentation>
+        <bpmn:documentation>Tells the customer, in the external conversation of the errand, that the processing has started. The text is the one configured under customer-message.texts with the name in the input parameter. Kept out of any loop so the message is sent once.</bpmn:documentation>
         <bpmn:extensionElements>
           <camunda:inputOutput>
-            <camunda:inputParameter name="messageTemplate">alkt.processing-started</camunda:inputParameter>
+            <camunda:inputParameter name="message">processing-started</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>flow_review_start_to_notify</bpmn:incoming>
