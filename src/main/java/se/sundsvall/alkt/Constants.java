@@ -66,8 +66,14 @@ public final class Constants {
 	public static final String DECISION_METHOD_AUTOMATIC = "AUTOMATIC";
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
 
+	// The topic Mina sidor gives the external conversation it creates, so the conversation looks the same whoever starts
+	// it.
+	public static final String CONVERSATION_TOPIC_CUSTOMER = "Mina Sidor";
+
 	public static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
+	// An input parameter of the step in the bpmn schema, not a process variable.
+	public static final String PROCESS_VARIABLE_MESSAGE_TEMPLATE = "messageTemplate";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";

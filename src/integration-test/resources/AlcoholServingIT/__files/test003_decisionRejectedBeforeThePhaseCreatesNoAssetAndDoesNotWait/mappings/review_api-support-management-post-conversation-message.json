@@ -1,0 +1,36 @@
+{
+	"name": "review_api-support-management-post-conversation-message",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/communication/conversations/5b1e9c7a-2d4f-4a86-9e3b-7c0d1f2a3b4c/messages",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ALL",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "name=\"message\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalToJson": {
+							"content": "Handläggningen av ditt ärende har påbörjats."
+						},
+						"ignoreExtraElements": true
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"status": 204
+	}
+}

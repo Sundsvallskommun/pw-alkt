@@ -1,0 +1,29 @@
+{
+	"name": "review_api-templating-post-render",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-templating/2281/render",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.identifier",
+					"equalTo": "alkt.processing-started"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"output": "SGFuZGzDpGdnbmluZ2VuIGF2IGRpdHQgw6RyZW5kZSBoYXIgcMOlYsO2cmphdHMu"
+		},
+		"status": 200
+	}
+}

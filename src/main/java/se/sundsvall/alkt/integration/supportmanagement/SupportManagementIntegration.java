@@ -1,14 +1,19 @@
 package se.sundsvall.alkt.integration.supportmanagement;
 
+import generated.se.sundsvall.supportmanagement.Conversation;
+import generated.se.sundsvall.supportmanagement.ConversationRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcesses;
+import generated.se.sundsvall.supportmanagement.MessageRequest;
+import generated.se.sundsvall.supportmanagement.PageMessage;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.problem.Problem;
+import tools.jackson.databind.json.JsonMapper;
 
 import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
@@ -77,5 +82,23 @@ public class SupportManagementIntegration {
 
 	public void linkDecisionAttachment(final String municipalityId, final String namespace, final String errandId, final String decisionId, final String attachmentId) {
 		supportManagementClient.linkDecisionAttachment(municipalityId, namespace, errandId, decisionId, attachmentId, false);
+	}
+
+	public List<Conversation> getConversations(final String municipalityId, final String namespace, final String errandId) {
+		return Optional.ofNullable(supportManagementClient.getConversations(municipalityId, namespace, errandId).getBody())
+			.orElse(emptyList());
+	}
+
+	public String createConversation(final String municipalityId, final String namespace, final String errandId, final ConversationRequest conversation) {
+		return getIdOfCreatedResource(supportManagementClient.createConversation(municipalityId, namespace, errandId, false, conversation), SERVICE);
+	}
+
+	public PageMessage getConversationMessages(final String municipalityId, final String namespace, final String errandId, final String conversationId, final int page, final int size) {
+		return Optional.ofNullable(supportManagementClient.getConversationMessages(municipalityId, namespace, errandId, conversationId, page, size).getBody())
+			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Messages of conversation '%s' of errand '%s' came back without content".formatted(conversationId, errandId)));
+	}
+
+	public void createConversationMessage(final String municipalityId, final String namespace, final String errandId, final String conversationId, final MessageRequest message) {
+		supportManagementClient.createConversationMessage(municipalityId, namespace, errandId, conversationId, false, JsonMapper.shared().writeValueAsString(message));
 	}
 }

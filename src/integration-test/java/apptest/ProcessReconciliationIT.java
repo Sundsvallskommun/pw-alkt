@@ -46,10 +46,10 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test001_incidentIsReportedOnce() throws JacksonException {
-		// === Start process === every report it sends is refused, so the last work step leaves an incident behind
+		// === Start process === every report it sends is refused, so the first work step leaves an incident behind
 		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT);
 
-		completeEveryPhase(ERRAND_ID_INCIDENT, processInstanceId);
+		completePhase(ERRAND_ID_INCIDENT, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "registration");
 
 		await()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)

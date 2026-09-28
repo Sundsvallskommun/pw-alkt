@@ -1,10 +1,13 @@
 package se.sundsvall.alkt.integration.supportmanagement;
 
+import generated.se.sundsvall.supportmanagement.Conversation;
+import generated.se.sundsvall.supportmanagement.ConversationRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcesses;
+import generated.se.sundsvall.supportmanagement.PageMessage;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -16,10 +19,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration;
 
 import static org.springframework.http.MediaType.ALL_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 import static se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration.CLIENT_ID;
 
 @FeignClient(name = CLIENT_ID, url = "${integration.support-management.url}", configuration = SupportManagementConfiguration.class)
@@ -102,4 +108,37 @@ public interface SupportManagementClient {
 		@PathVariable String decisionId,
 		@PathVariable String attachmentId,
 		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<Conversation>> getConversations(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
+
+	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> createConversation(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestBody ConversationRequest conversation);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations/{conversationId}/messages", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<PageMessage> getConversationMessages(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String conversationId,
+		@RequestParam("page") int page,
+		@RequestParam("size") int size);
+
+	/** The message part is the MessageRequest as a JSON string, Support Management parses it itself. */
+	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations/{conversationId}/messages", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> createConversationMessage(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String conversationId,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestPart("message") String message);
 }
