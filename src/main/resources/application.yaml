@@ -56,25 +56,15 @@ spring:
             client-id: ${config.templating.client-id}
             client-secret: ${config.templating.client-secret}
 
-#----------------------------------------
-# Open API
-#----------------------------------------
 openapi:
   name: ${spring.application.name}
   title: ${spring.application.name}
   version: '@project.version@'
 
-#-------------------------------------------
-# Log config
-#-------------------------------------------
 logging:
   level:
     root: INFO
 
-#----------------------------------------
-# External task client
-# Only base-url belongs to the client library. backoff.* is bound by BackoffProperties, worker.* by FailureHandler.
-#----------------------------------------
 camunda:
   bpm:
     client:
@@ -87,12 +77,8 @@ camunda:
     max:
       retries: 3
     retry:
-      timeout: 10000 # milliseconds
+      timeout: 10000
 
-#----------------------------------------
-# Process deployment
-# One entry per directory. The reconciliation is deployed on its own, see README.
-#----------------------------------------
 process-engine:
   deployment:
     processes:
@@ -107,19 +93,11 @@ process-engine:
         dmnResourcePattern: classpath*:processmodels/reconciliation/*.dmn
         formResourcePattern: classpath*:processmodels/reconciliation/*.form
 
-#----------------------------------------
-# Process reconciliation
-# lookback: how far back in the engine history each run looks for instances that ended without a final report
-#----------------------------------------
 reconciliation:
   lookback: PT2H
   worker:
     enabled: true
 
-#----------------------------------------
-# Integration settings
-#----------------------------------------
-# Rest client
 integration:
   licensed-business:
     url: ${config.licensed-business.base-url}
@@ -154,9 +132,6 @@ integration:
     connectTimeout: 5
     readTimeout: 20
 
-#----------------------------------------
-# Circuit breakers
-#----------------------------------------
 resilience4j.circuitbreaker:
   instances:
     licensed-business:

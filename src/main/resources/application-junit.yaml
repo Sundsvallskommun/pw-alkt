@@ -1,16 +1,7 @@
-#========================================
-# Unit test specific settings
-#========================================
-#----------------------------------------
-# Spring settings
-#----------------------------------------
 spring:
   main:
     banner-mode: "off"
 
-#----------------------------------------
-# External task client settings
-#----------------------------------------
 camunda:
   bpm:
     client:
@@ -29,9 +20,6 @@ process-engine:
         bpmnResourcePattern: bpmnResourcePattern_2
         dmnResourcePattern: dmnResourcePattern_2
         formResourcePattern: formResourcePattern_2
-#----------------------------------------
-# Integration settings
-#----------------------------------------
 config:
   common:
     token-uri: token.url
