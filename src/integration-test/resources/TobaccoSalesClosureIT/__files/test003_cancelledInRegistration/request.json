@@ -1,0 +1,8 @@
+{
+	"eventId": "cfe3b51f-b7d0-4ccb-9be7-6c7291ec547d",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "2c84f70a-6e95-4b31-8d6f-1a7b3c9e50d4",
+	"processKey": "tobacco-sales-closure",
+	"startAllowed": true
+}

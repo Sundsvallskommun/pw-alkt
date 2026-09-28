@@ -1,0 +1,74 @@
+{
+	"name": "decision_api-support-management-post-decision",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/c30a6f18-9d54-4b72-8e05-2f1a7c4b6d98/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "DRAFT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.type",
+					"equalTo": "PERMIT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.method",
+					"equalTo": "AUTOMATIC"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.outcome",
+					"equalTo": "APPROVAL"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"equalTo": "Tillstånd för servering av folköl"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.description",
+					"equalTo": "Anmälan om servering av folköl"
+				}
+			},
+			{
+				"matchesJsonPath": "$.validFrom"
+			},
+			{
+				"matchesJsonPath": "$.decidedAt"
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.decidedBy",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": "$[?(!@.validTo)]"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/c30a6f18-9d54-4b72-8e05-2f1a7c4b6d98/decisions/5b7d9f13-2c4e-4a68-8b9d-1e3f5a7b9c2d"
+		},
+		"status": 201
+	}
+}

@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto.StateEnum;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
@@ -23,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -54,6 +56,7 @@ class ProcessReconciliationServiceTest {
 	private static final String ERRAND_ID = UUID.randomUUID().toString();
 	private static final String PROCESS_INSTANCE_ID = UUID.randomUUID().toString();
 	private static final String PROCESS_KEY = "alcohol-serving";
+	private static final String PROCESS_DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
 	private static final String EXTERNAL_TASK_ID = UUID.randomUUID().toString();
 	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now().minusMinutes(10);
 	private static final OffsetDateTime END_TIME = OffsetDateTime.now().minusMinutes(3);
@@ -80,13 +83,18 @@ class ProcessReconciliationServiceTest {
 	void reportsAnIncidentAsFailedOnTheErrand() {
 		mockIncident(incident());
 		mockErrandProcesses(row("RUNNING", null));
+		final var cancellation = new AwaitingSignal("process_cancelled", "Process cancelled");
+		when(processReportServiceMock.processWideSignalsOf(PROCESS_INSTANCE_ID, PROCESS_DEFINITION_ID)).thenReturn(List.of(cancellation));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
 		service.reconcile();
 
+		verify(processReportServiceMock).processWideSignalsOf(PROCESS_INSTANCE_ID, PROCESS_DEFINITION_ID);
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), reportCaptor.capture());
 		final var report = reportCaptor.getValue();
 		assertThat(report.status()).isEqualTo(FAILED);
+		// An incident leaves the instance alive, so the cancellation stays on offer
+		assertThat(report.awaitingSignals()).containsExactly(cancellation);
 		assertThat(report.currentActivityId()).isEqualTo("external_task_complete_process");
 		assertThat(report.error().getCode()).isEqualTo("INCIDENT");
 		assertThat(report.error().getMessage()).isEqualTo("Timeout against Support Management");
@@ -273,6 +281,7 @@ class ProcessReconciliationServiceTest {
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
 		final var report = reportCaptor.getValue();
 		assertThat(report.status()).isEqualTo(COMPLETED);
+		assertThat(report.currentActivityId()).isNull();
 		assertThat(report.error()).isNull();
 		assertThat(report.activities()).singleElement().satisfies(activity -> {
 			assertThat(activity.getActivityType()).isEqualTo("RECONCILIATION");
@@ -312,8 +321,27 @@ class ProcessReconciliationServiceTest {
 			assertThat(activity.getSeverity()).isEqualTo("ERROR");
 			assertThat(activity.getErrorCode()).isEqualTo("TERMINATED");
 		});
+		verify(operatonClientMock, never()).getHistoricActivities(any());
 	}
 
+	/** The row of a cancelled process is left on the cancellation step, so the settled report keeps that activity. */
+	@Test
+	void settlesACancelledInstanceAtTheCancellationStep() {
+		mockEndedInstance(StateEnum.COMPLETED);
+		when(operatonClientMock.getHistoricActivities(PROCESS_INSTANCE_ID)).thenReturn(List.of(
+			new HistoricActivityInstanceDto().activityId("cancel_process"),
+			new HistoricActivityInstanceDto().activityId("external_task_cancel_process")));
+		mockErrandProcesses(row("RUNNING", null));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().status()).isEqualTo(COMPLETED);
+		assertThat(reportCaptor.getValue().currentActivityId()).isEqualTo("external_task_cancel_process");
+	}
+
+	/** The history is read only for a row that is still to be settled, not on every cycle for every ended instance. */
 	@Test
 	void leavesAnEndedInstanceWhoseRowIsAlreadyCompleted() {
 		mockEndedInstance(StateEnum.COMPLETED);
@@ -322,6 +350,7 @@ class ProcessReconciliationServiceTest {
 		service.reconcile();
 
 		verifyNoInteractions(processReportServiceMock);
+		verify(operatonClientMock, never()).getHistoricActivities(any());
 	}
 
 	@Test
@@ -393,7 +422,8 @@ class ProcessReconciliationServiceTest {
 
 	private void mockIncident(final IncidentDto incident) {
 		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident));
-		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)));
+		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)
+			.processDefinitionId(PROCESS_DEFINITION_ID)));
 		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(identity());
 	}
 

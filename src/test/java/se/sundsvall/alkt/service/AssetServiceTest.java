@@ -270,6 +270,6 @@ class AssetServiceTest {
 	}
 
 	private static Errand errandWithPermitHolder() {
-		return new Errand().stakeholders(List.of(new Stakeholder().role(STAKEHOLDER_ROLE_PERMIT_HOLDER).externalId(PARTY_ID)));
+		return new Errand().stakeholders(List.of(new Stakeholder().role("APPLICANT").externalId("applicant-id"), new Stakeholder().role("PRIMARY").externalId(PARTY_ID)));
 	}
 }

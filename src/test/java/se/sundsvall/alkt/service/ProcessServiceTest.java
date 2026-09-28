@@ -28,6 +28,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.CREATE;
 import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.DELETE;
 import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.UPDATE;
@@ -270,10 +271,21 @@ class ProcessServiceTest {
 		// Arrange
 		final var errandId = randomUUID().toString();
 		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
-		doThrow(new ClientProblem(BAD_GATEWAY, "No matching wait state")).when(operatonIntegrationMock).correlateMessage(any(), any(), any());
+		doThrow(new ClientProblem(BAD_REQUEST, "No matching wait state")).when(operatonIntegrationMock).correlateMessage(any(), any(), any());
 
 		// Act and assert
 		assertThatNoException().isThrownBy(() -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
+	}
+
+	/** Anything but a 400 is a fault, such as a refused token, and the signal must not be taken as delivered. */
+	@Test
+	void propagatesACorrelationFailureThatIsNoMismatch() {
+		final var errandId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(new ProcessInstanceDto().id(randomUUID().toString())));
+		doThrow(new ClientProblem(BAD_GATEWAY, "Forbidden")).when(operatonIntegrationMock).correlateMessage(any(), any(), any());
+
+		assertThrows(ClientProblem.class, () -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -360,7 +372,7 @@ class ProcessServiceTest {
 		// Arrange
 		final var errandId = randomUUID().toString();
 		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
-		doThrow(new ClientProblem(BAD_GATEWAY, "No matching wait state")).when(operatonIntegrationMock).correlateMessage(any(), any(), any());
+		doThrow(new ClientProblem(BAD_REQUEST, "No matching wait state")).when(operatonIntegrationMock).correlateMessage(any(), any(), any());
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));

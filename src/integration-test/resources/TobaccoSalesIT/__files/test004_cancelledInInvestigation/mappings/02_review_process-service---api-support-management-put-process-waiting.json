@@ -1,0 +1,73 @@
+{
+	"name": "02_review_process-service---api-support-management-put-process-waiting",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/5a2d7e13-4b98-4c26-8f71-3e0a9b6d5c82/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "WAITING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "tobacco-sales"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "review_phase"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityName",
+					"equalTo": "Review"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].name",
+					"equalTo": "review_completed"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].label",
+					"equalTo": "Review completed"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[1].name",
+					"equalTo": "process_cancelled"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[1].label",
+					"equalTo": "Process cancelled"
+				}
+			}
+		]
+	},
+	"newScenarioState": "review_process-service---api-support-management-put-process-waiting",
+	"requiredScenarioState": "registration_process-service---api-support-management-put-process-waiting",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "tobacco-sales-test004_cancelledInInvestigation"
+}

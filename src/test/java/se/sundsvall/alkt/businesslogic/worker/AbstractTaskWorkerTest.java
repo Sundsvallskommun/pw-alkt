@@ -3,6 +3,7 @@ package se.sundsvall.alkt.businesslogic.worker;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
+import org.camunda.bpm.client.exception.NotFoundException;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RUNNING;
 
 @ExtendWith(MockitoExtension.class)
 class AbstractTaskWorkerTest {
@@ -116,6 +118,17 @@ class AbstractTaskWorkerTest {
 			requestIdMock.verify(() -> RequestId.init(requestId));
 			requestIdMock.verify(RequestId::reset);
 		}
+	}
+
+	/** A task that is gone was taken away by a cancellation; that is no failure and nothing to retry. */
+	@Test
+	void leavesATaskThatIsGoneWithoutAFailure() {
+		doThrow(new NotFoundException("gone", null)).when(externalTaskServiceMock).complete(any(), any());
+
+		assertThatNoException().isThrownBy(() -> runningWorker().execute(externalTaskMock, externalTaskServiceMock));
+
+		verifyNoInteractions(failureHandlerMock);
+		verify(processReportServiceMock, never()).reportWaitState(any(), any());
 	}
 
 	/**
@@ -216,8 +229,11 @@ class AbstractTaskWorkerTest {
 		verifyNoInteractions(failureHandlerMock);
 	}
 
+	/**
+	 * Support Management holds a step as working until its task reports a second time, and warns of concurrency otherwise.
+	 */
 	@Test
-	void reportsAnUnchangedRunningOnlyOnce() {
+	void reportsAnUnchangedRunningAgainAfterTheStep() {
 		final var workerWithVariables = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
 			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
@@ -227,7 +243,9 @@ class AbstractTaskWorkerTest {
 
 		workerWithVariables.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(processReportServiceMock, times(1)).report(any(ExternalTask.class), any());
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+		verify(processReportServiceMock, times(2)).report(any(ExternalTask.class), reportCaptor.capture());
+		assertThat(reportCaptor.getAllValues()).extracting(ProcessStateReport::status).containsExactly(RUNNING, RUNNING);
 		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of("key", "value"));
 	}
 
@@ -339,9 +357,9 @@ class AbstractTaskWorkerTest {
 
 	@Test
 	void executeDoesNotCompleteWhenTheFinalReportGetsAPreconditionFailed() {
-		// Arrange - dept44's Feign decoder collapses a 412 from Support Management into this ClientProblem(BAD_GATEWAY, ...)
+		// Arrange - the decoder keeps the status of a 412 from Support Management
 		doNothing()
-			.doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
+			.doThrow(new ClientProblem(HttpStatus.PRECONDITION_FAILED, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
 			.when(processReportServiceMock).report(any(ExternalTask.class), any());
 
 		// Act
@@ -350,7 +368,20 @@ class AbstractTaskWorkerTest {
 		// Assert
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock,
-			"Bad Gateway: support-management error: {status=412 Precondition Failed, title=Precondition Failed}");
+			"Precondition Failed: support-management error: {status=412 Precondition Failed, title=Precondition Failed}");
+	}
+
+	/** Only the status says 412; an errand id with 412 in it is no reason to retry a step that did its work. */
+	@Test
+	void executeCompletesWhenAFailedReportOnlyMentions412() {
+		doNothing()
+			.doThrow(new ClientProblem(HttpStatus.NOT_FOUND, "support-management error: {status=404 Not Found, detail=Errand 9a412b00 not found}"))
+			.when(processReportServiceMock).report(any(ExternalTask.class), any());
+
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
+		verifyNoInteractions(failureHandlerMock);
 	}
 
 	private AbstractTaskWorker runningWorker() {

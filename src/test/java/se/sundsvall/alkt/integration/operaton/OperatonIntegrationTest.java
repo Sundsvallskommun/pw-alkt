@@ -230,6 +230,121 @@ class OperatonIntegrationTest {
 		});
 	}
 
+	@Test
+	void findWaitStateOffersTheCancellationNextToTheGateOfThePhase() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("cancel_process", "process_cancelled"), subscription("await_review_completed", "review_completed")));
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(new ProcessModel(
+			Map.of("await_review_completed", "Review completed", "review_phase", "Review", "cancel_process", "Process cancelled"),
+			Map.of("await_review_completed", "review_phase")));
+
+		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).hasValueSatisfying(state -> {
+			assertThat(state.activityId()).isEqualTo("review_phase");
+			assertThat(state.activityName()).isEqualTo("Review");
+			assertThat(state.awaitingSignals())
+				.extracting(AwaitingSignal::name, AwaitingSignal::label)
+				.containsExactly(tuple("review_completed", "Review completed"), tuple("process_cancelled", "Process cancelled"));
+		});
+	}
+
+	/** The cancellation is the last button whatever its activity id sorts before or after. */
+	@Test
+	void findWaitStateOffersTheCancellationLast() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("extend_review", "review_extended"), subscription("cancel_process", "process_cancelled")));
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(ProcessModel.EMPTY);
+
+		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).hasValueSatisfying(state -> assertThat(state.awaitingSignals())
+			.extracting(AwaitingSignal::name).containsExactly("review_extended", "process_cancelled"));
+	}
+
+	/** While a work step runs only the cancellation listens, and a process on a work step waits for no one. */
+	@Test
+	void findWaitStateIsEmptyWhenOnlyTheCancellationListens() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("cancel_process", "process_cancelled")));
+
+		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).isEmpty();
+		verifyNoInteractions(processModelCacheMock);
+	}
+
+	@Test
+	void findWaitStateTakesThePhaseFromTheDecisionRatherThanFromTheCancellation() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("await_decision_updated", "decision_updated"), subscription("cancel_process", "process_cancelled")));
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(new ProcessModel(
+			Map.of("decision_phase", "Decision", "cancel_process", "Process cancelled"),
+			Map.of("await_decision_updated", "decision_phase")));
+
+		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).hasValueSatisfying(state -> {
+			assertThat(state.activityId()).isEqualTo("decision_phase");
+			assertThat(state.awaitingSignals()).extracting(AwaitingSignal::name).containsExactly("process_cancelled");
+		});
+	}
+
+	@Test
+	void findWaitStateTakesThePhaseFromTheGateWhenTheModelCannotBeRead() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("cancel_process", "process_cancelled"), subscription("await_review_completed", "review_completed")));
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(ProcessModel.EMPTY);
+
+		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).hasValueSatisfying(state -> {
+			assertThat(state.activityId()).isEqualTo("await_review_completed");
+			assertThat(state.awaitingSignals()).extracting(AwaitingSignal::name).containsExactly("review_completed", "process_cancelled");
+		});
+	}
+
+	@Test
+	void findProcessWideSignalsOffersTheCancellationWhenTheModelCannotBeRead() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("cancel_process", "process_cancelled")));
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(ProcessModel.EMPTY);
+
+		assertThat(operatonIntegration.findProcessWideSignals(processInstanceId, DEFINITION_ID))
+			.extracting(AwaitingSignal::name, AwaitingSignal::label)
+			.containsExactly(tuple("process_cancelled", "process_cancelled"));
+	}
+
+	@Test
+	void findProcessWideSignalsOffersOnlyTheCancellation() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("cancel_process", "process_cancelled"), subscription("await_review_completed", "review_completed")));
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(new ProcessModel(
+			Map.of("await_review_completed", "Review completed", "cancel_process", "Process cancelled"),
+			Map.of("await_review_completed", "review_phase")));
+
+		assertThat(operatonIntegration.findProcessWideSignals(processInstanceId, DEFINITION_ID))
+			.extracting(AwaitingSignal::name, AwaitingSignal::label)
+			.containsExactly(tuple("process_cancelled", "Process cancelled"));
+	}
+
+	@Test
+	void findProcessWideSignalsIsEmptyWhenNothingListensInEveryPhase() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message"))
+			.thenReturn(List.of(subscription("await_review_completed", "review_completed")));
+
+		assertThat(operatonIntegration.findProcessWideSignals(processInstanceId, DEFINITION_ID)).isEmpty();
+		verifyNoInteractions(processModelCacheMock);
+	}
+
+	/** An instance that ended or was cancelled has no subscription, and its model need not be read. */
+	@Test
+	void findProcessWideSignalsIsEmptyForAnInstanceWaitingForNoMessage() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message")).thenReturn(List.of());
+
+		assertThat(operatonIntegration.findProcessWideSignals(processInstanceId, DEFINITION_ID)).isEmpty();
+		verifyNoInteractions(processModelCacheMock);
+	}
+
 	/** A model that says nothing about the activity still gives a report, with the message name as the button text. */
 	@Test
 	void findWaitStateFallsBackToTheMessageName() {

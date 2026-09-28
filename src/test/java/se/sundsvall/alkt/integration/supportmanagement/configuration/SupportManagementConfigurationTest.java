@@ -29,9 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
 import static se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration.CLIENT_ID;
 
 @ExtendWith(MockitoExtension.class)
@@ -106,14 +106,9 @@ class SupportManagementConfigurationTest {
 		}
 	}
 
-	/**
-	 * A 412 means the errand moved under a work step, and AbstractTaskWorker.isPreconditionFailed reads the status out
-	 * of the message text because the decoder collapses it into BAD_GATEWAY. Pinned here so a dept44 upgrade that
-	 * changes the message shows up as a failing test rather than as a step that silently stops rerunning. The body
-	 * deliberately carries no status of its own, since the one in the message has to come from the response.
-	 */
+	/** A 412 means the errand moved under a work step, and AbstractTaskWorker reruns the step on its status. */
 	@Test
-	void decodesAPreconditionFailedSoTheStatusSurvivesInTheMessage() {
+	void decodesAPreconditionFailedWithItsStatus() {
 
 		final var response = errorResponse(412, """
 			{
@@ -124,8 +119,7 @@ class SupportManagementConfigurationTest {
 
 		assertThat(configuredErrorDecoder().decode("test", response))
 			.isInstanceOf(ClientProblem.class)
-			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY)
-			.hasMessageContaining("412");
+			.hasFieldOrPropertyWithValue("status", PRECONDITION_FAILED);
 	}
 
 	/** An errand that is gone and a report refused for good are answers, not gateway faults, so they keep their status. */

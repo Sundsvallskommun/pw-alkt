@@ -1,0 +1,72 @@
+{
+	"name": "01_registration_process-service---api-support-management-put-process-waiting",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "WAITING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "tobacco-sales-change"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "registration_phase"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityName",
+					"equalTo": "Registration"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].name",
+					"equalTo": "registration_completed"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].label",
+					"equalTo": "Registration completed"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[1].name",
+					"equalTo": "process_cancelled"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[1].label",
+					"equalTo": "Process cancelled"
+				}
+			}
+		]
+	},
+	"newScenarioState": "registration_process-service---api-support-management-put-process-waiting",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "tobacco-sales-change-test003_cancelledInRegistration"
+}

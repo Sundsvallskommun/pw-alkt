@@ -3,6 +3,7 @@ package se.sundsvall.alkt.businesslogic.handler;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+import org.camunda.bpm.client.exception.NotFoundException;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.Test;
@@ -18,11 +19,13 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -92,6 +95,33 @@ class FailureHandlerTest {
 		verify(externalTaskMock, never()).getRetries();
 	}
 
+	/** A task that is gone was taken away by a cancellation, so there is no failure to report or alert on. */
+	@Test
+	void leavesATaskThatIsGoneWithoutAReportOrAnAlert() {
+		final var id = UUID.randomUUID().toString();
+		when(externalTaskMock.getId()).thenReturn(id);
+		when(externalTaskMock.getRetries()).thenReturn(1);
+		doThrow(mock(NotFoundException.class)).when(externalTaskServiceMock).handleFailure(id, "message", null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
+
+		assertThatNoException().isThrownBy(() -> failureHandler.handleException(externalTaskServiceMock, externalTaskMock, "message"));
+
+		verifyNoInteractions(processReportServiceMock, messagingIntegrationMock);
+	}
+
+	@Test
+	void leavesATaskThatIsGoneWithoutAReportOrAnAlertWhenHandingBackVariables() {
+		final var id = UUID.randomUUID().toString();
+		final Map<String, Object> variables = Map.of("key", "value");
+		when(externalTaskMock.getId()).thenReturn(id);
+		when(externalTaskMock.getRetries()).thenReturn(1);
+		doThrow(mock(NotFoundException.class)).when(externalTaskServiceMock)
+			.handleFailure(id, "message", null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS, variables, Collections.emptyMap());
+
+		assertThatNoException().isThrownBy(() -> failureHandler.handleException(externalTaskServiceMock, externalTaskMock, "message", variables));
+
+		verifyNoInteractions(processReportServiceMock, messagingIntegrationMock);
+	}
+
 	@Test
 	void doesNotAlertWhenTheEngineWasNotToldAboutTheIncident() {
 		final var id = UUID.randomUUID().toString();
@@ -149,18 +179,19 @@ class FailureHandlerTest {
 		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.failed(ERROR_CODE_INCIDENT, message));
 	}
 
-	/** Support Management being down must not keep the task locked: the engine is told about the failure regardless. */
 	@Test
-	void tellsTheEngineEvenWhenTheReportFails() {
+	void alertsEvenWhenTheReportFails() {
 		final var message = "message";
 		final var id = UUID.randomUUID().toString();
 		when(externalTaskMock.getId()).thenReturn(id);
-		when(externalTaskMock.getRetries()).thenReturn(2);
+		when(externalTaskMock.getRetries()).thenReturn(1);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn("2281");
 		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Bad Gateway")).when(processReportServiceMock).report(eq(externalTaskMock), any());
 
 		failureHandler.handleException(externalTaskServiceMock, externalTaskMock, message);
 
-		verify(externalTaskServiceMock).handleFailure(id, message, null, 1, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
+		verify(externalTaskServiceMock).handleFailure(id, message, null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
+		verify(messagingIntegrationMock).sendSlack(eq("2281"), contains(message));
 	}
 
 	@Test

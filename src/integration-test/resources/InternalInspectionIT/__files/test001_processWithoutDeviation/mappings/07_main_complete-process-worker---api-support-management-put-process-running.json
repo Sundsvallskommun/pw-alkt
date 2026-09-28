@@ -20,6 +20,12 @@
 					"expression": "$.currentActivityId",
 					"equalTo": "external_task_complete_process"
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].name",
+					"equalTo": "process_cancelled"
+				}
 			}
 		]
 	},

@@ -1,0 +1,42 @@
+{
+	"name": "decision_api-support-management-patch-decision",
+	"scenarioName": "decision",
+	"requiredScenarioState": "Started",
+	"newScenarioState": "decided",
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-support-management/2281/ALKT/errands/1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56/decisions/4a6c8e02-1b3d-4f57-9a8c-0d2e4f6a8b1c",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "COMPLETED"
+				}
+			},
+			{
+				"matchesJsonPath": "$.decidedAt"
+			},
+			{
+				"matchesJsonPath": "$.completedAt"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "4a6c8e02-1b3d-4f57-9a8c-0d2e4f6a8b1c",
+			"status": "COMPLETED"
+		},
+		"status": 200
+	}
+}

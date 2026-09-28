@@ -1,0 +1,40 @@
+{
+	"name": "decision_api-support-management-get-decisions",
+	"scenarioName": "decision",
+	"requiredScenarioState": "decided",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/c30a6f18-9d54-4b72-8e05-2f1a7c4b6d98/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "5b7d9f13-2c4e-4a68-8b9d-1e3f5a7b9c2d",
+				"type": "PERMIT",
+				"status": "COMPLETED",
+				"outcome": "APPROVAL",
+				"method": "AUTOMATIC",
+				"title": "Tillstånd för servering av folköl",
+				"description": "Anmälan om servering av folköl",
+				"validFrom": "2026-09-24",
+				"decidedAt": "2026-09-24T08:00:00Z",
+				"attachments": [
+					{
+						"id": "7f9b1d35-4e6a-4c8a-9d1f-3a5b7c9d1e4f",
+						"fileName": "anmalan.pdf",
+						"mimeType": "application/pdf"
+					}
+				]
+			}
+		],
+		"status": 200
+	}
+}

@@ -35,7 +35,13 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.awaitingSignals[0]",
+					"expression": "$.awaitingSignals[0].name",
+					"equalTo": "process_cancelled"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[1]",
 					"absent": true
 				}
 			}

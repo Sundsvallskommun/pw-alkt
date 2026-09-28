@@ -1,0 +1,73 @@
+{
+	"name": "03_investigation_process-service---api-support-management-put-process-waiting",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "WAITING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "alcohol-serving"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "investigation_phase"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityName",
+					"equalTo": "Investigation"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].name",
+					"equalTo": "investigation_completed"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].label",
+					"equalTo": "Investigation completed"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[1].name",
+					"equalTo": "process_cancelled"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[1].label",
+					"equalTo": "Process cancelled"
+				}
+			}
+		]
+	},
+	"newScenarioState": "investigation_process-service---api-support-management-put-process-waiting",
+	"requiredScenarioState": "review_process-service---api-support-management-put-process-waiting",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "alcohol-serving-test006_cancelledWhileAwaitingTheDecision"
+}

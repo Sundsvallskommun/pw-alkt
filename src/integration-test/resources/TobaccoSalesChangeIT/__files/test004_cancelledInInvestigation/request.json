@@ -1,0 +1,8 @@
+{
+	"eventId": "04885666-6997-46cf-b41f-b32307e101a0",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3",
+	"processKey": "tobacco-sales-change",
+	"startAllowed": true
+}

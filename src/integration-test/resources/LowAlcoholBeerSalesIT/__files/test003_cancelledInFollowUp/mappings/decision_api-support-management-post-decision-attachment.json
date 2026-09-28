@@ -1,0 +1,24 @@
+{
+	"name": "decision_api-support-management-post-decision-attachment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56/decisions/4a6c8e02-1b3d-4f57-9a8c-0d2e4f6a8b1c/attachments/6e8a0c24-3d5f-4b79-8c0e-2f4a6b8c0d3e",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "6e8a0c24-3d5f-4b79-8c0e-2f4a6b8c0d3e"
+		},
+		"status": 201
+	}
+}

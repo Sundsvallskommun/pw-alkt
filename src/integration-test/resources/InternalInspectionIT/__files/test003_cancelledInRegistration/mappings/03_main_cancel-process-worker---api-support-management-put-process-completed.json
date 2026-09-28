@@ -1,0 +1,61 @@
+{
+	"name": "03_main_cancel-process-worker---api-support-management-put-process-completed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processService",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "internal-inspection"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "COMPLETED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_cancel_process"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.externalTaskId",
+					"matches": "[0-9a-f-]{36}"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0]",
+					"absent": true
+				}
+			}
+		]
+	},
+	"newScenarioState": "main_cancel-process-worker---api-support-management-put-process-completed",
+	"requiredScenarioState": "main_cancel-process-worker---api-support-management-put-process-running",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "internal-inspection-test003_cancelledInRegistration"
+}

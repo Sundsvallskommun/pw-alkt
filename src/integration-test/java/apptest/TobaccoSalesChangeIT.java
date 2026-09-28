@@ -118,4 +118,65 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 				tuple("Start process", "start_process"),
 				tuple("Start registration phase", "start_registration_phase"));
 	}
+
+	@Test
+	void test003_cancelledInRegistration() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_TOBACCO_SALES_CHANGE);
+
+		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "registration");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		// The WAITING report is asserted by its mapping to offer the cancellation alongside the phase gate
+		verifyAllStubs();
+
+		assertCancelledRoute(processInstanceId,
+				tuple("Start process", "start_process"),
+				tuple("Registration", "registration_phase"),
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Registration completed", "await_registration_completed"));
+	}
+
+	@Test
+	void test004_cancelledInInvestigation() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_TOBACCO_SALES_CHANGE);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "review");
+		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "investigation");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+
+		assertCancelledRoute(processInstanceId,
+				tuple("Start process", "start_process"),
+				tuple("Registration", "registration_phase"),
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Registration completed", "await_registration_completed"),
+				tuple("End registration phase", "end_registration_phase"),
+				tuple("Review", "review_phase"),
+				tuple("Start review phase", "start_review_phase"),
+				tuple("Review completed", "await_review_completed"),
+				tuple("End review phase", "end_review_phase"),
+				tuple("Investigation", "investigation_phase"),
+				tuple("Start investigation phase", "start_investigation_phase"),
+				tuple("Investigation completed", "await_investigation_completed"));
+	}
 }

@@ -20,6 +20,9 @@
 					"expression": "$.currentActivityId",
 					"equalTo": "external_task_create_decision"
 				}
+			},
+			{
+				"matchesJsonPath": "$.awaitingSignals[?(@.name == 'process_cancelled')]"
 			}
 		]
 	},

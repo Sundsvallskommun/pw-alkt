@@ -2,6 +2,7 @@ package apptest;
 
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -25,7 +26,12 @@ import static java.util.Comparator.comparing;
 import static java.util.Objects.isNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static java.util.stream.Stream.concat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.awaitility.Awaitility.setDefaultPollDelay;
 import static org.awaitility.Awaitility.setDefaultPollInterval;
@@ -110,6 +116,17 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 		return getRoute(processInstanceId, new ArrayList<>());
 	}
 
+	/** The route up to where the cancellation landed, followed by the cancellation, which every model ends the same way. */
+	protected void assertCancelledRoute(String processInstanceId, Tuple... routeBeforeCancellation) {
+		assertThat(getProcessInstanceRoute(processInstanceId))
+			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
+			.containsExactlyInAnyOrderElementsOf(concat(Stream.of(routeBeforeCancellation), Stream.of(
+				tuple("Cancellation", "cancel_process_subprocess"),
+				tuple("Process cancelled", "cancel_process"),
+				tuple("Cancel process", "external_task_cancel_process"),
+				tuple("End cancelled process", "end_process_cancelled"))).toList());
+	}
+
 	private List<HistoricActivityInstanceDto> getRoute(String processInstanceId, List<HistoricActivityInstanceDto> route) {
 		if (isNull(processInstanceId)) {
 			return route;
@@ -127,6 +144,14 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 			.atMost(timeoutInSeconds, SECONDS)
 			.failFast("Wiremock has mismatch!", () -> !wiremock.findNearMissesForUnmatchedRequests().getNearMisses().isEmpty())
 			.until(() -> operatonClient.getHistoricProcessInstance(processId).map(HistoricProcessInstanceDto::getState).orElse(null), equalTo(COMPLETED));
+	}
+
+	/** A work step reports the wait state after it completes, so the subscription can be there before the report. */
+	protected void awaitReportAt(String activityId) {
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.until(() -> !wiremock.findAll(putRequestedFor(urlPathMatching(".*/processes/.*"))
+				.withRequestBody(matchingJsonPath("$[?(@.currentActivityId == '%s')]".formatted(activityId)))).isEmpty());
 	}
 
 	protected void awaitProcessState(String processInstanceId, String state, long timeoutInSeconds) {
@@ -149,10 +174,20 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	protected void completePhase(String errandId, String processInstanceId, String processKey, String phase) {
 		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
+		sendSignal(errandId, processKey, "%s_completed".formatted(phase));
+	}
+
+	protected void cancelProcess(String errandId, String processInstanceId, String processKey, String phase) {
+		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		sendSignal(errandId, processKey, "process_cancelled");
+	}
+
+	protected void sendSignal(String errandId, String processKey, String signalName) {
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
 			.withHttpMethod(POST)
-			.withRequest(JSON_MAPPER.writeValueAsString(signalEvent(errandId, processKey, phase)))
+			.withRequest(JSON_MAPPER.writeValueAsString(signalEvent(errandId, processKey, signalName)))
 			.withExpectedResponseStatus(ACCEPTED)
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
@@ -180,7 +215,7 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 			.withStartAllowed(false);
 	}
 
-	private static ErrandEvent signalEvent(String errandId, String processKey, String phase) {
+	private static ErrandEvent signalEvent(String errandId, String processKey, String signalName) {
 		return ErrandEvent.create()
 			.withEventId(UUID.randomUUID().toString())
 			.withEventType(UPDATE)
@@ -188,6 +223,6 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 			.withErrandId(errandId)
 			.withProcessKey(processKey)
 			.withStartAllowed(false)
-			.withSignalName("%s_completed".formatted(phase));
+			.withSignalName(signalName);
 	}
 }
