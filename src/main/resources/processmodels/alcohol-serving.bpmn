@@ -141,7 +141,12 @@
         <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decisionOutcome == 'REJECTION'}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
       <bpmn:serviceTask id="external_task_create_asset" name="Create asset" camunda:type="external" camunda:topic="CreateAssetTask">
-        <bpmn:documentation>Creates the permit in party-assets from the approved decision.</bpmn:documentation>
+        <bpmn:documentation>Creates the permit in party-assets from the approved decision, with its permit certificate.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="certificateTemplate">permit.serving.certificate</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_gateway_to_create_asset</bpmn:incoming>
         <bpmn:outgoing>flow_decision_create_asset_to_end</bpmn:outgoing>
       </bpmn:serviceTask>

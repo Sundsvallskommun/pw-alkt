@@ -17,8 +17,8 @@ import static se.sundsvall.alkt.integration.templating.configuration.TemplatingC
 @CircuitBreaker(name = CLIENT_ID)
 public interface TemplatingClient {
 
-	@PostMapping(path = "/{municipalityId}/render", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-	ResponseEntity<RenderResponse> render(
+	@PostMapping(path = "/{municipalityId}/render/pdf", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<RenderResponse> renderPdf(
 		@PathVariable String municipalityId,
 		@RequestBody RenderRequest request);
 }

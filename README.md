@@ -331,6 +331,15 @@ If any of that fails the draft is removed again. A permit assembled as a draft g
 carries <span class="code">X-Sent-By: pw-alkt; type=processEngine</span>, so the history of the permit shows that the
 process created it.</p>
 
+<p>A step with the input parameter <span class="code">certificateTemplate</span> also adds a permit certificate to the
+draft before it is activated, today only in alcohol-serving. Templating renders the named template as a PDF, and it is
+added as <span class="code">tillstandsbevis.pdf</span> in the category Tillståndsbevis. Every term of the decision is a
+placeholder named by its category as it is, so the term <span class="code">permitHolderName</span> is
+<span class="code">{{ permitHolderName }}</span> in the template. A term without text is left out, as if it were
+missing, so an empty required field is caught like a missing one. pw-alkt does not check that the terms fill the
+template; the template is strict, and Templating answers 400 with the name of a missing placeholder. That is a fault in
+the decision, so the draft is removed and the step raises an incident at once instead of retrying.</p>
+
 <p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
 A case worker cannot move the phase on by any other means.</p>
 

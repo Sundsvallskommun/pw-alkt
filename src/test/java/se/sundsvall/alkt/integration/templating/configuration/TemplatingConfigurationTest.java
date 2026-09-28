@@ -1,7 +1,9 @@
 package se.sundsvall.alkt.integration.templating.configuration;
 
+import feign.Request;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
+import feign.Response;
 import feign.codec.ErrorDecoder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,12 +19,18 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import se.sundsvall.dept44.configuration.feign.FeignMultiCustomizer;
 import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
+import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
+import static feign.Request.HttpMethod.POST;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static se.sundsvall.alkt.integration.templating.configuration.TemplatingConfiguration.CLIENT_ID;
 
 @ExtendWith(MockitoExtension.class)
@@ -90,5 +98,64 @@ class TemplatingConfigurationTest {
 		} finally {
 			RequestId.reset();
 		}
+	}
+
+	/** A strict template missing a parameter answers 400, and TemplatingIntegration fails without retry on that status. */
+	@Test
+	void decodesABadRequestWithItsStatus() {
+
+		final var response = errorResponse(400, """
+			{
+				"title": "Bad Request",
+				"status": 400,
+				"detail": "Missing template parameter 'premisesName'"
+			}
+			""");
+
+		assertThat(configuredErrorDecoder().decode("test", response))
+			.isInstanceOf(ClientProblem.class)
+			.hasFieldOrPropertyWithValue("status", BAD_REQUEST)
+			.hasMessageContaining("premisesName");
+	}
+
+	@Test
+	void decodesAnyOtherFailureAsAGatewayFault() {
+
+		final var response = errorResponse(404, """
+			{
+				"title": "Not Found",
+				"status": 404
+			}
+			""");
+
+		assertThat(configuredErrorDecoder().decode("test", response))
+			.isInstanceOf(ClientProblem.class)
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
+	}
+
+	/** Returns the decoder the configuration actually wires in, so the decoding runs against the real setup. */
+	private ErrorDecoder configuredErrorDecoder() {
+
+		when(propertiesMock.connectTimeout()).thenReturn(1);
+		when(propertiesMock.readTimeout()).thenReturn(1);
+		when(clientRepositoryMock.findByRegistrationId(CLIENT_ID)).thenReturn(clientRegistrationMock);
+
+		try (MockedStatic<FeignMultiCustomizer> feignMultiCustomizerMock = Mockito.mockStatic(FeignMultiCustomizer.class)) {
+			feignMultiCustomizerMock.when(FeignMultiCustomizer::create).thenReturn(feignMultiCustomizerSpy);
+
+			configuration.feignBuilderCustomizer(clientRepositoryMock, propertiesMock);
+		}
+
+		verify(feignMultiCustomizerSpy).withErrorDecoder(errorDecoderCaptor.capture());
+
+		return errorDecoderCaptor.getValue();
+	}
+
+	private static Response errorResponse(final int status, final String body) {
+		return Response.builder()
+			.body(body, UTF_8)
+			.request(Request.create(POST, "/2281/render/pdf", emptyMap(), null, UTF_8, new RequestTemplate()))
+			.status(status)
+			.build();
 	}
 }

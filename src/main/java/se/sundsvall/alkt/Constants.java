@@ -70,6 +70,8 @@ public final class Constants {
 	// it.
 	public static final String CONVERSATION_TOPIC_CUSTOMER = "Mina Sidor";
 
+	// An input parameter of the step in the bpmn schema, not a process variable. A step without it creates no certificate.
+	public static final String PROCESS_VARIABLE_CERTIFICATE_TEMPLATE = "certificateTemplate";
 	public static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	// An input parameter of the step in the bpmn schema, not a process variable.

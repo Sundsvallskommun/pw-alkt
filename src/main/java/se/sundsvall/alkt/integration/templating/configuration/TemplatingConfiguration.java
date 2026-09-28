@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.integration.templating.configuration;
 
+import java.util.List;
 import org.springframework.cloud.openfeign.FeignBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -10,6 +11,7 @@ import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
 import se.sundsvall.dept44.requestid.RequestId;
 import se.sundsvall.dept44.support.Identifier;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static se.sundsvall.alkt.Constants.SENT_BY;
 
 @Import(FeignConfiguration.class)
@@ -20,7 +22,8 @@ public class TemplatingConfiguration {
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, TemplatingProperties properties) {
 		return FeignMultiCustomizer.create()
-			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID))
+			// 400 keeps its status: a strict template missing a parameter is a fault in the decision, not a gateway fault
+			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID, List.of(BAD_REQUEST.value())))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))
 			.withRequestInterceptor(template -> template.header("X-Request-Group-Id", RequestId.get()))
