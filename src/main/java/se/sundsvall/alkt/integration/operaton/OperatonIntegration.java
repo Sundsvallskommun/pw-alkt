@@ -107,7 +107,7 @@ public class OperatonIntegration {
 		// alternative of an event-based gateway sits in the same phase, so the first gate is as good as any.
 		final var ownGates = gatesOf(ownSubscriptions);
 		final var activityId = ownGates.stream().findFirst().orElseGet(ownSubscriptions::getFirst).getActivityId();
-		final var signals = Stream.concat(toSignals(ownGates, model).stream(), toSignals(byCancellation.get(true), model).stream()).toList();
+		final var signals = toSignals(Stream.concat(ownGates.stream(), byCancellation.get(true).stream()).toList(), model);
 
 		// Id and name are taken from the same element or from neither: a phase without a name in the model must not be
 		// reported under the name of the catch event inside it.
