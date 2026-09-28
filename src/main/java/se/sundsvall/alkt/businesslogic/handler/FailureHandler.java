@@ -17,6 +17,7 @@ import se.sundsvall.dept44.requestid.RequestId;
 import static java.util.Collections.emptyMap;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
+import static se.sundsvall.alkt.Constants.LOG_TASK_GONE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -63,38 +64,43 @@ public class FailureHandler {
 	}
 
 	private void handleFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final int retries) {
-		if (tellEngine(externalTask, () -> externalTaskService.handleFailure(externalTask.getId(),
+		fail(externalTask, message, retries, () -> externalTaskService.handleFailure(externalTask.getId(),
 			message, // errorMessage - surfaces as the incident message
 			null, // errorDetails
 			retries,
-			retryTimeoutInMilliseconds))) {
-			reportFailure(externalTask, message, retries);
-			alertIncident(externalTask, message, retries);
-		}
+			retryTimeoutInMilliseconds));
 	}
 
 	public void handleException(ExternalTaskService externalTaskService, ExternalTask externalTask, String message, Map<String, Object> variables) {
 		final var retries = calculateRetries(externalTask);
-		if (tellEngine(externalTask, () -> externalTaskService.handleFailure(externalTask.getId(),
+		fail(externalTask, message, retries, () -> externalTaskService.handleFailure(externalTask.getId(),
 			message, // errorMessage - surfaces as the incident message
 			null, // errorDetails
 			retries,
 			retryTimeoutInMilliseconds,
 			variables,
-			emptyMap()))) {
+			emptyMap()));
+	}
+
+	private void fail(final ExternalTask externalTask, final String message, final int retries, final Runnable handleFailure) {
+		if (tellEngine(externalTask, handleFailure)) {
 			reportFailure(externalTask, message, retries);
 			alertIncident(externalTask, message, retries);
 		}
 	}
 
-	/** A task that is gone was taken away by a cancellation or deletion; there is no failure to report or alert on. */
+	/**
+	 * A task that is gone was taken away by a cancellation or deletion; there is no failure to report or alert on. The
+	 * engine
+	 * is told first on purpose, so a cancelled step is not reported FAILED; any other fault in telling it skips the report
+	 * and the alert.
+	 */
 	private static boolean tellEngine(final ExternalTask externalTask, final Runnable handleFailure) {
 		try {
 			handleFailure.run();
 			return true;
 		} catch (final NotFoundException e) {
-			LOG.info("Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)", sanitizeForLogging(externalTask.getId()),
-				sanitizeForLogging(externalTask.getProcessInstanceId()));
+			LOG.info(LOG_TASK_GONE, sanitizeForLogging(externalTask.getId()), sanitizeForLogging(externalTask.getProcessInstanceId()));
 			return false;
 		}
 	}

@@ -15,6 +15,7 @@ import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
+import static se.sundsvall.alkt.Constants.LOG_TASK_GONE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -54,7 +55,7 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 			} catch (final NotFoundException e) {
 				// The task is gone: the process was cancelled or deleted while the step ran, or another worker completed it after
 				// the lock ran out. There is nothing to retry, and a result already reported stands.
-				logInfo("Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)", sanitizeForLogging(externalTask.getId()),
+				logInfo(LOG_TASK_GONE, sanitizeForLogging(externalTask.getId()),
 					sanitizeForLogging(externalTask.getProcessInstanceId()));
 				return;
 			} catch (final NonRetryableException e) {

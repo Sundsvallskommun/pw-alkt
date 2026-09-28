@@ -42,6 +42,9 @@ public final class Constants {
 	// Ours to choose, Support Management stores them without interpreting them.
 	public static final String ERROR_CODE_RETRY = "RETRY";
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
+
+	// One wording wherever a step finds its task gone, so the log can be searched for it.
+	public static final String LOG_TASK_GONE = "Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)";
 	public static final String ERROR_CODE_TERMINATED = "TERMINATED";
 
 	// Must match process-engine.deployment.processes[].tenant in application.yaml.
