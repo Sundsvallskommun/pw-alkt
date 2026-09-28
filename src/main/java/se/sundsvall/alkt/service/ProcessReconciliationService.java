@@ -96,7 +96,8 @@ public class ProcessReconciliationService {
 		}
 
 		resolveTarget(processInstanceId, instance.get().getProcessDefinitionKey(), externalTaskIdOf(incident))
-			.ifPresent(target -> reportUnless(target, row -> isReportedSince(row, incident), () -> toIncidentReport(incident)));
+			.ifPresent(target -> reportUnless(target, row -> isReportedSince(row, incident), () -> toIncidentReport(incident)
+				.withAwaitingSignals(processReportService.processWideSignalsOf(processInstanceId, instance.get().getProcessDefinitionId()))));
 	}
 
 	/** An instance that ended without a final report leaves the errand on RUNNING for good. */

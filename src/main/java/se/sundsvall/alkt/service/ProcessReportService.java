@@ -13,6 +13,7 @@ import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandProcess;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toReportTarget;
+import static se.sundsvall.alkt.service.model.ProcessStatus.COMPLETED;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Service
@@ -44,26 +45,27 @@ public class ProcessReportService {
 	}
 
 	/**
-	 * A report without an activity gets the task's, or Support Management overwrites the row's activity with null. A live
-	 * report gets the buttons that listen in every phase, since Support Management replaces the list on every report.
+	 * A report without an activity gets the task's, or Support Management overwrites the row's activity with null. Any
+	 * report but COMPLETED gets the buttons that listen in every phase, since Support Management replaces the list on every
+	 * report and an incident leaves the instance alive.
 	 */
 	public void report(final ExternalTask externalTask, final ProcessStateReport report) {
 		var placed = report;
 		if (report.currentActivityId() == null) {
 			placed = placed.atActivity(externalTask.getActivityId());
 		}
-		if (!report.status().isTerminal() && report.awaitingSignals().isEmpty()) {
-			placed = placed.withAwaitingSignals(processWideSignalsOf(externalTask));
+		if (report.status() != COMPLETED && report.awaitingSignals().isEmpty()) {
+			placed = placed.withAwaitingSignals(processWideSignalsOf(externalTask.getProcessInstanceId(), externalTask.getProcessDefinitionId()));
 		}
 		report(toReportTarget(externalTask), placed);
 	}
 
 	// A report without its buttons beats no report at all.
-	private List<AwaitingSignal> processWideSignalsOf(final ExternalTask externalTask) {
+	public List<AwaitingSignal> processWideSignalsOf(final String processInstanceId, final String processDefinitionId) {
 		try {
-			return operatonIntegration.findProcessWideSignals(externalTask.getProcessInstanceId(), externalTask.getProcessDefinitionId());
+			return operatonIntegration.findProcessWideSignals(processInstanceId, processDefinitionId);
 		} catch (final Exception e) {
-			LOG.warn("Could not read the process-wide signals of process instance {}", sanitizeForLogging(externalTask.getProcessInstanceId()), e);
+			LOG.warn("Could not read the process-wide signals of process instance {}", sanitizeForLogging(processInstanceId), e);
 			return List.of();
 		}
 	}

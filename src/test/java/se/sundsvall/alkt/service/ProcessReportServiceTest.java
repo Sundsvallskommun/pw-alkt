@@ -122,6 +122,7 @@ class ProcessReportServiceTest {
 
 	/**
 	 * Support Management replaces the buttons on every report, so a live report from a work step carries the cancellation.
+	 * An incident leaves the instance alive and listening, so it counts as live.
 	 */
 	@ParameterizedTest
 	@MethodSource("liveReports")
@@ -140,24 +141,20 @@ class ProcessReportServiceTest {
 	}
 
 	private static Stream<ProcessStateReport> liveReports() {
-		return Stream.of(ProcessStateReport.running("external_task_create_asset", null), ProcessStateReport.retrying("RETRY", "Timeout"));
+		return Stream.of(ProcessStateReport.running("external_task_create_asset", null), ProcessStateReport.retrying("RETRY", "Timeout"),
+			ProcessStateReport.failed("INCIDENT", "Timeout"));
 	}
 
-	@ParameterizedTest
-	@MethodSource("terminalReports")
-	void leavesTheSignalsOutOfATerminalReport(final ProcessStateReport report) {
+	@Test
+	void leavesTheSignalsOutOfACompletedReport() {
 		mockExternalTask();
 		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
 
-		service.report(externalTaskMock, report);
+		service.report(externalTaskMock, ProcessStateReport.completed());
 
 		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
 		assertThat(captor.getValue().getAwaitingSignals()).isNullOrEmpty();
 		verifyNoInteractions(operatonIntegrationMock);
-	}
-
-	private static Stream<ProcessStateReport> terminalReports() {
-		return Stream.of(ProcessStateReport.completed(), ProcessStateReport.failed("INCIDENT", "Timeout"));
 	}
 
 	@Test

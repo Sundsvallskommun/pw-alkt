@@ -24,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -55,6 +56,7 @@ class ProcessReconciliationServiceTest {
 	private static final String ERRAND_ID = UUID.randomUUID().toString();
 	private static final String PROCESS_INSTANCE_ID = UUID.randomUUID().toString();
 	private static final String PROCESS_KEY = "alcohol-serving";
+	private static final String PROCESS_DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
 	private static final String EXTERNAL_TASK_ID = UUID.randomUUID().toString();
 	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now().minusMinutes(10);
 	private static final OffsetDateTime END_TIME = OffsetDateTime.now().minusMinutes(3);
@@ -81,13 +83,18 @@ class ProcessReconciliationServiceTest {
 	void reportsAnIncidentAsFailedOnTheErrand() {
 		mockIncident(incident());
 		mockErrandProcesses(row("RUNNING", null));
+		final var cancellation = new AwaitingSignal("process_cancelled", "Process cancelled");
+		when(processReportServiceMock.processWideSignalsOf(PROCESS_INSTANCE_ID, PROCESS_DEFINITION_ID)).thenReturn(List.of(cancellation));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
 		service.reconcile();
 
+		verify(processReportServiceMock).processWideSignalsOf(PROCESS_INSTANCE_ID, PROCESS_DEFINITION_ID);
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), reportCaptor.capture());
 		final var report = reportCaptor.getValue();
 		assertThat(report.status()).isEqualTo(FAILED);
+		// An incident leaves the instance alive, so the cancellation stays on offer
+		assertThat(report.awaitingSignals()).containsExactly(cancellation);
 		assertThat(report.currentActivityId()).isEqualTo("external_task_complete_process");
 		assertThat(report.error().getCode()).isEqualTo("INCIDENT");
 		assertThat(report.error().getMessage()).isEqualTo("Timeout against Support Management");
@@ -415,7 +422,8 @@ class ProcessReconciliationServiceTest {
 
 	private void mockIncident(final IncidentDto incident) {
 		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident));
-		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)));
+		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)
+			.processDefinitionId(PROCESS_DEFINITION_ID)));
 		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(identity());
 	}
 
