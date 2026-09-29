@@ -2,7 +2,7 @@ package se.sundsvall.alkt.integration.supportmanagement.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
-import generated.se.sundsvall.supportmanagement.ErrandProcess;
+import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -79,8 +79,8 @@ public final class SupportManagementMapper {
 	 * The instance id is left out of the body: Support Management takes it from the path and rejects a different one.
 	 * errandVersion stands in for an If-Match for a step that only read the errand; null skips the version check.
 	 */
-	public static ErrandProcess toErrandProcess(final ReportTarget target, final ProcessStateReport report) {
-		return new ErrandProcess()
+	public static ErrandProcessReport toErrandProcessReport(final ReportTarget target, final ProcessStateReport report) {
+		return new ErrandProcessReport()
 			.processService(PROCESS_SERVICE)
 			.processKey(target.processKey())
 			.processStatus(report.status().name())

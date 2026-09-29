@@ -6,7 +6,8 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
-import generated.se.sundsvall.supportmanagement.ErrandProcesses;
+import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
+import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageMessage;
 import java.util.List;
@@ -43,7 +44,7 @@ class SupportManagementIntegrationTest {
 
 	@Test
 	void reportProcessSendsTheReport() {
-		final var report = new ErrandProcess();
+		final var report = new ErrandProcessReport();
 
 		supportManagementIntegration.reportProcess(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, report);
 
@@ -55,7 +56,7 @@ class SupportManagementIntegrationTest {
 	void getErrandProcessesAnswersWithTheRows() {
 		final var row = new ErrandProcess().processInstanceId(PROCESS_INSTANCE_ID);
 		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(ResponseEntity.ok(new ErrandProcesses().processes(List.of(row))));
+			.thenReturn(ResponseEntity.ok(new ErrandProcessOverview().processes(List.of(row))));
 
 		assertThat(supportManagementIntegration.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsExactly(row);
 	}
@@ -69,7 +70,7 @@ class SupportManagementIntegrationTest {
 
 	@Test
 	void getErrandProcessesAnswersWithNothingWhenTheBodyCarriesNoRows() {
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcesses()));
+		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcessOverview()));
 
 		assertThat(supportManagementIntegration.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
 	}

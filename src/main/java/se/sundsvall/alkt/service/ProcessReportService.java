@@ -11,7 +11,7 @@ import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandProcess;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandProcessReport;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toReportTarget;
 import static se.sundsvall.alkt.service.model.ProcessStatus.COMPLETED;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
@@ -81,6 +81,6 @@ public class ProcessReportService {
 			sanitizeForLogging(report.currentActivityId()), error);
 
 		supportManagementIntegration.reportProcess(target.municipalityId(), target.namespace(), target.errandId(), target.processInstanceId(),
-			toErrandProcess(target, report));
+			toErrandProcessReport(target, report));
 	}
 }

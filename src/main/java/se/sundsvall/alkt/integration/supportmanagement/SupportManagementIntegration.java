@@ -6,7 +6,8 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
-import generated.se.sundsvall.supportmanagement.ErrandProcesses;
+import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
+import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageMessage;
 import java.util.List;
@@ -36,13 +37,13 @@ public class SupportManagementIntegration {
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Errand '%s' came back without content".formatted(errandId)));
 	}
 
-	public void reportProcess(final String municipalityId, final String namespace, final String errandId, final String processInstanceId, final ErrandProcess report) {
+	public void reportProcess(final String municipalityId, final String namespace, final String errandId, final String processInstanceId, final ErrandProcessReport report) {
 		supportManagementClient.reportProcess(municipalityId, namespace, errandId, processInstanceId, report);
 	}
 
 	public List<ErrandProcess> getErrandProcesses(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getErrandProcesses(municipalityId, namespace, errandId).getBody())
-			.map(ErrandProcesses::getProcesses)
+			.map(ErrandProcessOverview::getProcesses)
 			.orElse(emptyList());
 	}
 

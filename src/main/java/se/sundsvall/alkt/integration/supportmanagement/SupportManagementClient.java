@@ -6,7 +6,8 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
-import generated.se.sundsvall.supportmanagement.ErrandProcesses;
+import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
+import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.PageMessage;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.List;
@@ -54,10 +55,10 @@ public interface SupportManagementClient {
 		@PathVariable String namespace,
 		@PathVariable String errandId,
 		@PathVariable String processInstanceId,
-		@RequestBody ErrandProcess report);
+		@RequestBody ErrandProcessReport report);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/processes", produces = APPLICATION_JSON_VALUE)
-	ResponseEntity<ErrandProcesses> getErrandProcesses(
+	ResponseEntity<ErrandProcessOverview> getErrandProcesses(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@PathVariable String errandId);
