@@ -1,0 +1,40 @@
+{
+	"name": "decision_api-support-management-get-decisions",
+	"scenarioName": "decision",
+	"requiredScenarioState": "decided",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/16fee0b4-7c49-403b-9887-ed1b2f1d1230/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "95636865-d694-4670-b1f3-304b6f633ee4",
+				"type": "PERMIT",
+				"status": "COMPLETED",
+				"outcome": "APPROVAL",
+				"method": "AUTOMATIC",
+				"title": "Anmälan om försäljning och servering av folköl",
+				"description": "Anmälan om försäljning och servering av folköl, Kafé Solsidan",
+				"validFrom": "2026-09-24",
+				"decidedAt": "2026-09-24T08:00:00Z",
+				"attachments": [
+					{
+						"id": "0440142f-8a07-4223-9902-6fbf99d749f3",
+						"fileName": "anmalan.pdf",
+						"mimeType": "application/pdf"
+					}
+				]
+			}
+		],
+		"status": 200
+	}
+}
