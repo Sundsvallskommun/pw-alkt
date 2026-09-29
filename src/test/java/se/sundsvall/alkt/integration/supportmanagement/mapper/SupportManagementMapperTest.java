@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
@@ -105,8 +106,9 @@ class SupportManagementMapperTest {
 
 	@Test
 	void toDecisionTitleNamesThePermitOfEachLowAlcoholBeerProcess() {
-		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo("Tillstånd för försäljning av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo("Tillstånd för servering av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo("Anmälan om försäljning av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo("Anmälan om servering av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo("Anmälan om försäljning och servering av folköl");
 	}
 
 	@Test
@@ -115,7 +117,8 @@ class SupportManagementMapperTest {
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING)
 			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)
-			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING);
+			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)
+			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
 		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(null))
 			.isInstanceOf(NonRetryableException.class);
 	}
@@ -125,15 +128,15 @@ class SupportManagementMapperTest {
 		final var validFrom = LocalDate.of(2026, 9, 24);
 		final var decidedAt = OffsetDateTime.now();
 
-		final var result = SupportManagementMapper.toAutomaticDecision("Tillstånd för servering av folköl", new Errand().title("Anmälan om servering av folköl"), validFrom, decidedAt);
+		final var result = SupportManagementMapper.toAutomaticDecision("Anmälan om servering av folköl", new Errand().title("Anmälan om servering av folköl, Kafé Solsidan"), validFrom, decidedAt);
 
 		assertThat(result.getType()).isEqualTo("PERMIT");
 		assertThat(result.getStatus()).isEqualTo("DRAFT");
 		assertThat(result.getMethod()).isEqualTo("AUTOMATIC");
 		assertThat(result.getDecidedBy()).isEqualTo("pw-alkt");
 		assertThat(result.getOutcome()).isEqualTo("APPROVAL");
-		assertThat(result.getTitle()).isEqualTo("Tillstånd för servering av folköl");
-		assertThat(result.getDescription()).isEqualTo("Anmälan om servering av folköl");
+		assertThat(result.getTitle()).isEqualTo("Anmälan om servering av folköl");
+		assertThat(result.getDescription()).isEqualTo("Anmälan om servering av folköl, Kafé Solsidan");
 		assertThat(result.getValidFrom()).isEqualTo(validFrom);
 		assertThat(result.getValidTo()).isNull();
 		assertThat(result.getDecidedAt()).isEqualTo(decidedAt);
