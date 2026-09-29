@@ -1,0 +1,27 @@
+{
+	"name": "decision_api-party-assets-get-asset-drafts",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-party-assets/2281/asset-drafts",
+		"queryParameters": {
+			"partyId": {
+				"equalTo": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
+			},
+			"assetId": {
+				"equalTo": "95636865-d694-4670-b1f3-304b6f633ee4"
+			}
+		},
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [],
+		"status": 200
+	}
+}

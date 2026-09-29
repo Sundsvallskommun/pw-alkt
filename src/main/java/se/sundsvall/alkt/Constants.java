@@ -14,6 +14,7 @@ public final class Constants {
 	public static final String PROCESS_KEY_E_CIGARETTE_SALES = "e-cigarette-sales";
 	public static final String PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING = "low-alcohol-beer-serving";
 	public static final String PROCESS_KEY_LOW_ALCOHOL_BEER_SALES = "low-alcohol-beer-sales";
+	public static final String PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "low-alcohol-beer-sales-and-serving";
 	public static final String PROCESS_KEY_EXTERNAL_INSPECTION = "external-inspection";
 	public static final String PROCESS_KEY_INTERNAL_INSPECTION = "internal-inspection";
 
@@ -28,6 +29,7 @@ public final class Constants {
 		PROCESS_KEY_E_CIGARETTE_SALES,
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING,
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES,
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING,
 		PROCESS_KEY_EXTERNAL_INSPECTION,
 		PROCESS_KEY_INTERNAL_INSPECTION);
 

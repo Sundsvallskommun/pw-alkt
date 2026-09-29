@@ -22,8 +22,8 @@
 				"status": "COMPLETED",
 				"outcome": "APPROVAL",
 				"method": "AUTOMATIC",
-				"title": "Tillstånd för servering av folköl",
-				"description": "Anmälan om servering av folköl",
+				"title": "Anmälan om servering av folköl",
+				"description": "Anmälan om servering av folköl, Kafé Solsidan",
 				"validFrom": "2026-09-24",
 				"decidedAt": "2026-09-24T08:00:00Z",
 				"attachments": [
