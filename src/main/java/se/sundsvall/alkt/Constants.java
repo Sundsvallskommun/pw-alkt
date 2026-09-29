@@ -46,6 +46,9 @@ public final class Constants {
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
 	public static final String ERROR_CODE_TERMINATED = "TERMINATED";
 
+	// Must match the errorCode of the bpmn:error that the boundary event of a skippable step catches.
+	public static final String BPMN_ERROR_STEP_SKIPPED = "step_skipped";
+
 	// Must match process-engine.deployment.processes[].tenant in application.yaml.
 	public static final String TENANT_ID_ALKT = "ALKT";
 

@@ -24,7 +24,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.message",
-					"contains": "[2281][ALKT][tobacco-sales] Incident in external_task_notify_processing_started for errand a3690d5e-8f14-42b7-95ca-6d81e0b4f273"
+					"contains": "[2281][ALKT][low-alcohol-beer-sales] Incident in external_task_create_decision for errand a3690d5e-8f14-42b7-95ca-6d81e0b4f273"
 				}
 			}
 		]

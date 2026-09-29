@@ -2,6 +2,7 @@ package se.sundsvall.alkt.businesslogic.worker;
 
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -14,9 +15,12 @@ import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.CustomerMessageService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -24,6 +28,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MESSAGE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
 
 @ExtendWith(MockitoExtension.class)
 class NotifyCustomerWorkerTest {
@@ -83,5 +88,38 @@ class NotifyCustomerWorkerTest {
 			.hasMessage("Step 'external_task_notify_processing_started' has no input parameter 'message' naming the message to send");
 
 		verifyNoInteractions(customerMessageServiceMock, failureHandlerMock, processReportServiceMock);
+	}
+
+	@Test
+	void reportsTheWaitStateWhenAFailingStepIsSkipped() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_REQUEST_ID)).thenReturn("request-id");
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MESSAGE)).thenReturn(MESSAGE);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+		when(externalTaskMock.getProcessInstanceId()).thenReturn("instance-id");
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving");
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn("definition-id");
+		when(customerMessageServiceMock.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).thenThrow(new IllegalStateException("Support Management is down"));
+		when(failureHandlerMock.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "Support Management is down", true)).thenReturn(true);
+
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "instance-id", "alcohol-serving", null), "definition-id");
+		verify(externalTaskServiceMock, never()).complete(any(ExternalTask.class), any());
+	}
+
+	@Test
+	void reportsNoWaitStateWhenAFailingStepIsNotSkipped() {
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+		when(failureHandlerMock.handleSkippableFailure(externalTaskServiceMock, externalTaskMock,
+			"Step 'external_task_notify_processing_started' has no input parameter 'message' naming the message to send", false)).thenReturn(false);
+
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(processReportServiceMock, never()).reportWaitState(any(), any());
+		verify(failureHandlerMock, never()).handleIncident(any(), any(), any());
+		verifyNoInteractions(customerMessageServiceMock);
 	}
 }

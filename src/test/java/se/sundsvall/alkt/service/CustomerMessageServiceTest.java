@@ -45,6 +45,7 @@ class CustomerMessageServiceTest {
 	private static final String ERRAND_ID = "errand-id";
 	private static final String MESSAGE = "processing-started";
 	private static final String CONVERSATION_ID = "conversation-id";
+	private static final String PARTY = "party-id";
 	private static final String CONTENT = "Handläggningen av ditt ärende har påbörjats";
 
 	@Mock
@@ -58,29 +59,32 @@ class CustomerMessageServiceTest {
 	}
 
 	@Test
-	void sendsTheMessageInTheExternalConversationOfTheErrand() {
+	void sendsTheMessageInTheExternalConversationTheCustomerTakesPartIn() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
 			new Conversation().id("internal-id").type(INTERNAL),
-			new Conversation().id(CONVERSATION_ID).type(EXTERNAL)));
+			new Conversation().id("referral-id").type(EXTERNAL).participants(List.of(new Identifier().type(PARTY_ID).value("referral-party-id"))),
+			customerConversation()));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().content(List.of(customerMessage())).last(true));
 
 		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
 		verify(supportManagementIntegrationMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, new MessageRequest().content(CONTENT));
-		verify(supportManagementIntegrationMock, never()).getErrand(anyString(), anyString(), anyString());
 		verify(supportManagementIntegrationMock, never()).createConversation(anyString(), anyString(), anyString(), any());
 	}
 
 	@Test
-	void createsTheExternalConversationWithTheCustomerWhenTheErrandHasNone() {
-		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Conversation().id("internal-id").type(INTERNAL)));
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().stakeholders(List.of(
-			new Stakeholder().role(STAKEHOLDER_ROLE_PERMIT_HOLDER).externalId("party-id"))));
+	void createsTheExternalConversationWithTheCustomerWhenTheCustomerTakesPartInNone() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
+		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
+			new Conversation().id("internal-id").type(INTERNAL).participants(List.of(new Identifier().type(PARTY_ID).value(PARTY))),
+			new Conversation().id("referral-id").type(EXTERNAL).participants(List.of(new Identifier().type(PARTY_ID).value("referral-party-id"))),
+			new Conversation().id("no-participants-id").type(EXTERNAL).participants(null)));
 		when(supportManagementIntegrationMock.createConversation(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, new ConversationRequest()
 			.topic(CONVERSATION_TOPIC_CUSTOMER)
 			.type(EXTERNAL)
-			.participants(List.of(new Identifier().type(PARTY_ID).value("party-id"))))).thenReturn(CONVERSATION_ID);
+			.participants(List.of(new Identifier().type(PARTY_ID).value(PARTY))))).thenReturn(CONVERSATION_ID);
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().last(true));
 
@@ -91,7 +95,8 @@ class CustomerMessageServiceTest {
 
 	@Test
 	void sendsNothingWhenTheProcessHasAlreadySentTheMessage() {
-		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Conversation().id(CONVERSATION_ID).type(EXTERNAL)));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
+		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(customerConversation()));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().content(List.of(customerMessage(), processMessage("Another message"))).last(false));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 1, MESSAGE_PAGE_SIZE))
@@ -104,9 +109,10 @@ class CustomerMessageServiceTest {
 
 	@Test
 	void sendsTheMessageWhenTheSameTextCameFromSomeoneElse() {
-		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Conversation().id(CONVERSATION_ID).type(EXTERNAL)));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
+		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(customerConversation()));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
-			.thenReturn(new PageMessage().content(List.of(new Message().content(CONTENT), new Message().createdBy(new Identifier().type(PARTY_ID).value("party-id")).content(CONTENT))));
+			.thenReturn(new PageMessage().content(List.of(new Message().content(CONTENT), new Message().createdBy(new Identifier().type(PARTY_ID).value(PARTY)).content(CONTENT))));
 
 		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
@@ -116,7 +122,8 @@ class CustomerMessageServiceTest {
 	/** A paging that never says last must not hold the step, so an empty page ends the search. */
 	@Test
 	void stopsLookingOnAnEmptyPageThatIsNotTheLast() {
-		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Conversation().id(CONVERSATION_ID).type(EXTERNAL)));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
+		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(customerConversation()));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
 			.thenReturn(new PageMessage().content(List.of()).last(false));
 
@@ -127,8 +134,7 @@ class CustomerMessageServiceTest {
 	}
 
 	@Test
-	void failsWhenTheErrandHasNoCustomerToCreateTheConversationWith() {
-		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+	void failsWhenTheErrandHasNoCustomer() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 
 		assertThatThrownBy(() -> service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE))
@@ -136,6 +142,7 @@ class CustomerMessageServiceTest {
 			.hasFieldOrPropertyWithValue("status", NOT_FOUND)
 			.hasMessageContaining("Errand 'errand-id' has no stakeholder with role 'PRIMARY'");
 
+		verify(supportManagementIntegrationMock, never()).getConversations(anyString(), anyString(), anyString());
 		verify(supportManagementIntegrationMock, never()).createConversation(anyString(), anyString(), anyString(), any());
 		verify(supportManagementIntegrationMock, never()).createConversationMessage(anyString(), anyString(), anyString(), anyString(), any());
 	}
@@ -149,8 +156,18 @@ class CustomerMessageServiceTest {
 		verifyNoInteractions(supportManagementIntegrationMock);
 	}
 
+	private static Errand errandWithCustomer() {
+		return new Errand().stakeholders(List.of(new Stakeholder().role(STAKEHOLDER_ROLE_PERMIT_HOLDER).externalId(PARTY)));
+	}
+
+	private static Conversation customerConversation() {
+		return new Conversation().id(CONVERSATION_ID).type(EXTERNAL).participants(List.of(
+			new Identifier().type(UNKNOWN_DEFAULT_OPEN_API).value(PARTY),
+			new Identifier().type(PARTY_ID).value(PARTY)));
+	}
+
 	private static Message customerMessage() {
-		return new Message().createdBy(new Identifier().type(PARTY_ID).value("party-id")).content("A question");
+		return new Message().createdBy(new Identifier().type(PARTY_ID).value(PARTY)).content("A question");
 	}
 
 	private static Message processMessage(final String content) {

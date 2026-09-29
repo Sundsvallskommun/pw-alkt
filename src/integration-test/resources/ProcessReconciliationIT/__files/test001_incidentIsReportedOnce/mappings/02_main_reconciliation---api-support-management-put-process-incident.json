@@ -28,7 +28,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.currentActivityId",
-					"equalTo": "external_task_notify_processing_started"
+					"equalTo": "external_task_create_decision"
 				}
 			},
 			{

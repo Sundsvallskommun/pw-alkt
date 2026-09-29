@@ -370,9 +370,15 @@ notifications that are approved automatically, so they have no such step.</p>
 without a release; the service picks up a new text when it restarts. The step names the text in its input parameter
 <span class="code">message</span>, for example <span class="code">processing-started</span>. A step without the
 parameter, or one naming a text that is not configured, is a modelling fault and goes straight to an incident. The
-service does not start without at least one text. The step uses the first conversation of type <span class="code">EXTERNAL</span>, which may be one the
-customer started in Mina sidor. If there is none it creates one with the topic Mina Sidor and the stakeholder with the
-role <span class="code">PRIMARY</span> as participant.</p>
+service does not start without at least one text. The step uses the first conversation of type <span class="code">EXTERNAL</span> that has the stakeholder with the
+role <span class="code">PRIMARY</span> as a participant, which may be one the customer started in Mina sidor. An external
+conversation with anyone else, such as a referral body, is left alone. If there is none it creates one with the topic
+Mina Sidor and the stakeholder as participant.</p>
+
+<p>The notice must not hold up the errand. The step is retried as usual, but once the retries are spent, or at once for
+a modelling fault, it throws the BPMN error <span class="code">step_skipped</span> instead of raising an incident. A
+boundary event on the step catches the error and takes the process to the review gate, and the failure is alerted in
+Slack. The customer then gets no notice unless someone sends it by hand.</p>
 
 <p>A retry must not send the message twice, and a process variable cannot remember that it was sent. The step reads
 the messages of the conversation first, and sends nothing if pw-alkt has already written the same text there. If the

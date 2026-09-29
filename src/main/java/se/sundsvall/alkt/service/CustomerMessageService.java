@@ -52,24 +52,25 @@ public class CustomerMessageService {
 		return true;
 	}
 
-	// Why: Mina sidor shows the first external conversation of the errand, so one it created itself is used rather than a
-	// second one.
+	// Why: an external conversation can be held with another party, e.g. a referral body, so only one the customer takes
+	// part in is used.
 	private String findOrCreateConversation(final String municipalityId, final String namespace, final String errandId) {
-		return supportManagementIntegration.getConversations(municipalityId, namespace, errandId).stream()
-			.filter(conversation -> EXTERNAL == conversation.getType())
-			.map(Conversation::getId)
-			.findFirst()
-			.orElseGet(() -> createConversation(municipalityId, namespace, errandId));
-	}
-
-	private String createConversation(final String municipalityId, final String namespace, final String errandId) {
 		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER)));
 
-		return supportManagementIntegration.createConversation(municipalityId, namespace, errandId, new ConversationRequest()
-			.topic(CONVERSATION_TOPIC_CUSTOMER)
-			.type(EXTERNAL)
-			.participants(List.of(new Identifier().type(PARTY_ID).value(partyId))));
+		return supportManagementIntegration.getConversations(municipalityId, namespace, errandId).stream()
+			.filter(conversation -> EXTERNAL == conversation.getType() && hasParticipant(conversation, partyId))
+			.map(Conversation::getId)
+			.findFirst()
+			.orElseGet(() -> supportManagementIntegration.createConversation(municipalityId, namespace, errandId, new ConversationRequest()
+				.topic(CONVERSATION_TOPIC_CUSTOMER)
+				.type(EXTERNAL)
+				.participants(List.of(new Identifier().type(PARTY_ID).value(partyId)))));
+	}
+
+	private static boolean hasParticipant(final Conversation conversation, final String partyId) {
+		return Optional.ofNullable(conversation.getParticipants()).orElse(emptyList()).stream()
+			.anyMatch(participant -> PARTY_ID == participant.getType() && partyId.equals(participant.getValue()));
 	}
 
 	private boolean isAlreadySent(final String municipalityId, final String namespace, final String errandId, final String conversationId, final String content) {

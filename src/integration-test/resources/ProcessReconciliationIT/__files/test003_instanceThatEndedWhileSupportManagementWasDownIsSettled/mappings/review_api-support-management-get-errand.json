@@ -1,0 +1,28 @@
+{
+	"name": "review_api-support-management-get-errand",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/e1c47b93-6a25-4f80-b3d6-9c052f7ae184",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "e1c47b93-6a25-4f80-b3d6-9c052f7ae184",
+			"stakeholders": [
+				{
+					"role": "PRIMARY",
+					"externalIdType": "PRIVATE",
+					"externalId": "8f2a4c6e-1b3d-4e5f-9a7b-0c1d2e3f4a5b"
+				}
+			]
+		},
+		"status": 200
+	}
+}
