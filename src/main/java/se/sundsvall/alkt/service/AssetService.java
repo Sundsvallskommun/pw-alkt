@@ -25,6 +25,7 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPartyId;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
+import static se.sundsvall.alkt.util.FailureDescription.describe;
 
 @Service
 public class AssetService {
@@ -86,7 +87,7 @@ public class AssetService {
 			}
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);
 		} catch (final NonRetryableException e) {
-			throw new NonRetryableException(removeDraftAsset(municipalityId, assetId, e));
+			throw new NonRetryableException(removeDraftAsset(municipalityId, assetId, e), e);
 		} catch (final RuntimeException e) {
 			throw Problem.valueOf(BAD_GATEWAY, removeDraftAsset(municipalityId, assetId, e));
 		}
@@ -97,10 +98,10 @@ public class AssetService {
 	private String removeDraftAsset(final String municipalityId, final String assetId, final RuntimeException cause) {
 		try {
 			partyAssetsIntegration.removeDraftAsset(municipalityId, assetId);
-			return "The draft asset could not be completed and was removed again: %s".formatted(cause.getMessage());
+			return "The draft asset could not be completed and was removed again: %s".formatted(describe(cause));
 		} catch (final RuntimeException e) {
 			// The id is the only way to find the asset that is left behind, so it travels with both failures.
-			return "Draft asset '%s' could not be completed (%s) and could not be removed again: %s".formatted(assetId, cause.getMessage(), e.getMessage());
+			return "Draft asset '%s' could not be completed (%s) and could not be removed again: %s".formatted(assetId, describe(cause), describe(e));
 		}
 	}
 }

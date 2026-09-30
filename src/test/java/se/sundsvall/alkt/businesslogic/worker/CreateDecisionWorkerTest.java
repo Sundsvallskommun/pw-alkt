@@ -57,7 +57,7 @@ class CreateDecisionWorkerTest {
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_decision", null));
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_decision", null).withLogMessage("Decision 'decision-id' completed"));
 		verify(decisionServiceMock).createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}

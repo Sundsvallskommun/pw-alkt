@@ -1,6 +1,8 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
+import se.sundsvall.alkt.integration.operaton.ProcessModelCache.ModelElement;
 import se.sundsvall.alkt.integration.operaton.WaitState;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
@@ -51,12 +54,17 @@ class ProcessReportServiceTest {
 	private static final String PROCESS_KEY = "alcohol-serving";
 	private static final String EXTERNAL_TASK_ID = UUID.randomUUID().toString();
 	private static final String DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
+	private static final ProcessActivity PHASE_ENTRY = new ProcessActivity().activityType("PHASE");
+	private static final ProcessActivity TASK_ENTRY = new ProcessActivity().activityType("TASK");
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
 
 	@Mock
 	private OperatonIntegration operatonIntegrationMock;
+
+	@Mock
+	private ProcessLog processLogMock;
 
 	@Mock
 	private ExternalTask externalTaskMock;
@@ -154,7 +162,7 @@ class ProcessReportServiceTest {
 
 		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
 		assertThat(captor.getValue().getAwaitingSignals()).isNullOrEmpty();
-		verifyNoInteractions(operatonIntegrationMock);
+		verify(operatonIntegrationMock, never()).findProcessWideSignals(any(), any());
 	}
 
 	@Test
@@ -230,6 +238,138 @@ class ProcessReportServiceTest {
 		when(operatonIntegrationMock.findWaitState(PROCESS_INSTANCE_ID, DEFINITION_ID)).thenThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Operaton is down"));
 
 		assertThatNoException().isThrownBy(() -> service.reportWaitState(target, DEFINITION_ID));
+	}
+
+	@Test
+	void namesAReportAfterTheModelWhenItCarriesNoName() {
+		mockExternalTask();
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
+		when(operatonIntegrationMock.labelOf(DEFINITION_ID, "external_task_create_asset")).thenReturn("Create asset");
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.report(externalTaskMock, ProcessStateReport.retrying("RETRY", "Timeout"));
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getCurrentActivityId()).isEqualTo("external_task_create_asset");
+		assertThat(captor.getValue().getCurrentActivityName()).isEqualTo("Create asset");
+	}
+
+	@Test
+	void reportStartedEntersThePhaseOfTheStepWhenTheRowStoodInAnother() {
+		mockExternalTask();
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
+		when(operatonIntegrationMock.phaseOf(DEFINITION_ID, "external_task_create_asset")).thenReturn(Optional.of(new ModelElement("decision_phase", "Decision")));
+		when(operatonIntegrationMock.phaseOf(DEFINITION_ID, "investigation_phase")).thenReturn(Optional.empty());
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
+			new ErrandProcess().processInstanceId("another-instance").currentActivityId("decision_phase"),
+			new ErrandProcess().processInstanceId(PROCESS_INSTANCE_ID).currentActivityId("investigation_phase")));
+		when(processLogMock.phaseEntered("decision_phase", "Decision")).thenReturn(PHASE_ENTRY);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.reportStarted(externalTaskMock);
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getProcessStatus()).isEqualTo("RUNNING");
+		assertThat(captor.getValue().getCurrentActivityId()).isEqualTo("external_task_create_asset");
+		assertThat(captor.getValue().getActivities()).containsExactly(PHASE_ENTRY);
+	}
+
+	/** A phase that loops back to its own step is not entered again, so the row is read by the phase it stands in. */
+	@Test
+	void reportStartedEntersNoPhaseWhenTheRowStandsOnAStepOfTheSamePhase() {
+		mockExternalTask();
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
+		when(operatonIntegrationMock.phaseOf(DEFINITION_ID, "external_task_create_asset")).thenReturn(Optional.of(new ModelElement("decision_phase", "Decision")));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
+			new ErrandProcess().processInstanceId(PROCESS_INSTANCE_ID).currentActivityId("external_task_create_asset")));
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.reportStarted(externalTaskMock);
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getActivities()).isEmpty();
+		verifyNoInteractions(processLogMock);
+	}
+
+	@Test
+	void reportStartedReadsNoRowForAStepOutsideAPhase() {
+		mockExternalTask();
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
+
+		service.reportStarted(externalTaskMock);
+
+		verify(supportManagementIntegrationMock, never()).getErrandProcesses(any(), any(), any());
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), any());
+	}
+
+	/** A row that cannot be read costs the entry, not the report. */
+	@Test
+	void reportStartedReportsWithoutAnEntryWhenTheRowCannotBeRead() {
+		mockExternalTask();
+		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
+		when(operatonIntegrationMock.phaseOf(DEFINITION_ID, "external_task_create_asset")).thenReturn(Optional.of(new ModelElement("decision_phase", "Decision")));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Support Management is down"));
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.reportStarted(externalTaskMock);
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getActivities()).isEmpty();
+	}
+
+	@Test
+	void reportDoneLeavesAnEntryForWhatTheStepDid() {
+		mockExternalTask();
+		when(processLogMock.taskDone(externalTaskMock, "Asset 'asset-id' found or created")).thenReturn(TASK_ENTRY);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.reportDone(externalTaskMock, ProcessStateReport.completed().withLogMessage("Asset 'asset-id' found or created"));
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getProcessStatus()).isEqualTo("COMPLETED");
+		assertThat(captor.getValue().getActivities()).containsExactly(TASK_ENTRY);
+	}
+
+	@Test
+	void reportDoneLeavesNoEntryForAStepThatSaysNothing() {
+		mockExternalTask();
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.reportDone(externalTaskMock, ProcessStateReport.completed());
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getActivities()).isEmpty();
+		verifyNoInteractions(processLogMock);
+	}
+
+	@Test
+	void reportsTheWaitStateWithoutAnEntryWhenThePhaseIsUnchanged() {
+		final var target = new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, PROCESS_KEY, null);
+		when(operatonIntegrationMock.findWaitState(PROCESS_INSTANCE_ID, DEFINITION_ID)).thenReturn(Optional.of(new WaitState("review_phase", "Review", List.of())));
+		when(operatonIntegrationMock.phaseOf(DEFINITION_ID, "external_task_notify_processing_started")).thenReturn(Optional.of(new ModelElement("review_phase", "Review")));
+		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
+			new ErrandProcess().processInstanceId(PROCESS_INSTANCE_ID).currentActivityId("external_task_notify_processing_started")));
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.reportWaitState(target, DEFINITION_ID);
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getActivities()).isEmpty();
+		verifyNoInteractions(processLogMock);
+	}
+
+	/** A process with no row yet has just started, and its first wait state opens its first phase. */
+	@Test
+	void reportsTheWaitStateWithAnEntryWhenTheProcessHasNoRowYet() {
+		final var target = new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, PROCESS_KEY, null);
+		when(operatonIntegrationMock.findWaitState(PROCESS_INSTANCE_ID, DEFINITION_ID)).thenReturn(Optional.of(new WaitState("registration_phase", "Registration", List.of())));
+		when(processLogMock.phaseEntered("registration_phase", "Registration")).thenReturn(PHASE_ENTRY);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.reportWaitState(target, DEFINITION_ID);
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getActivities()).containsExactly(PHASE_ENTRY);
 	}
 
 	/** A refused report is the caller's problem to handle, so nothing is swallowed here. */

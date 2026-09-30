@@ -9,6 +9,51 @@ reconciliation:
 customer-message:
   texts:
     processing-started: "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
+process-log:
+  steps:
+    "[external_task_notify_processing_started]":
+      done: Kunden har fått besked om att handläggningen har börjat
+      retry: Beskedet till kunden kunde inte skickas just nu, ett nytt försök görs automatiskt
+      failed: Beskedet till kunden kunde inte skickas
+      skipped: Beskedet till kunden kunde inte skickas och hoppades över. Kontakta kunden vid behov
+    "[external_task_check_decision]":
+      done: Beslutet i ärendet har kontrollerats
+      retry: Beslutet kunde inte kontrolleras just nu, ett nytt försök görs automatiskt
+      failed: Beslutet kunde inte kontrolleras. Processen har stannat och felet behöver åtgärdas
+    "[external_task_create_decision]":
+      done: Beslut har fattats automatiskt
+      retry: Beslutet kunde inte skapas just nu, ett nytt försök görs automatiskt
+      failed: Beslutet kunde inte skapas. Processen har stannat och felet behöver åtgärdas
+    "[external_task_create_asset]":
+      done: Tillståndet har registrerats hos tillståndshavaren
+      retry: Tillståndet kunde inte registreras just nu, ett nytt försök görs automatiskt
+      failed: Tillståndet kunde inte registreras. Processen har stannat och felet behöver åtgärdas
+    "[external_task_complete_process]":
+      done: Processen är avslutad
+      retry: Processen kunde inte avslutas just nu, ett nytt försök görs automatiskt
+      failed: Processen kunde inte avslutas. Felet behöver åtgärdas
+    "[external_task_cancel_process]":
+      done: Processen är avbruten
+      retry: Processen kunde inte avbrytas just nu, ett nytt försök görs automatiskt
+      failed: Processen kunde inte avbrytas. Felet behöver åtgärdas
+  phases:
+    "[registration_phase]":
+      entered: Registrering har påbörjats
+    "[review_phase]":
+      entered: Granskning har påbörjats
+    "[investigation_phase]":
+      entered: Utredning har påbörjats
+    "[decision_phase]":
+      entered: Beslut har påbörjats
+    "[follow_up_phase]":
+      entered: Uppföljning har påbörjats
+    "[closure_phase]":
+      entered: Avslut har påbörjats
+    "[cancel_process_subprocess]":
+      entered: Ärendet avbryts
+  process:
+    settled-completed: Processen avslutades utan att rapportera det och har stämts av i efterhand
+    settled-terminated: Processen avbröts utanför ärendet och har stämts av i efterhand
 config:
   common:
     token-uri: http://localhost:${wiremock.server.port}/api-gateway/token

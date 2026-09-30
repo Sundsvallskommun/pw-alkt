@@ -13,7 +13,10 @@ import static se.sundsvall.alkt.service.model.ProcessStatus.RETRYING;
 import static se.sundsvall.alkt.service.model.ProcessStatus.RUNNING;
 import static se.sundsvall.alkt.service.model.ProcessStatus.WAITING;
 
-/** What a work step tells Support Management; variables is what the step hands back to the engine on complete. */
+/**
+ * What a work step tells Support Management; variables is what the step hands back to the engine on complete, and
+ * logMessage what it did, in technical terms, for the entry it leaves in the activity log.
+ */
 public record ProcessStateReport(
 	ProcessStatus status,
 	String currentActivityId,
@@ -22,7 +25,8 @@ public record ProcessStateReport(
 	ProcessError error,
 	List<ProcessActivity> activities,
 	List<AwaitingSignal> awaitingSignals,
-	Map<String, Object> variables) {
+	Map<String, Object> variables,
+	String logMessage) {
 
 	// The lengths Support Management accepts. A longer value is answered with 400, and that answer is swallowed further
 	// up, so the report is cut here rather than left to fail silently.
@@ -39,7 +43,7 @@ public record ProcessStateReport(
 	}
 
 	private static ProcessStateReport of(final ProcessStatus status, final String activityId, final String activityName, final ProcessError error) {
-		return new ProcessStateReport(status, activityId, activityName, null, error, null, null, null);
+		return new ProcessStateReport(status, activityId, activityName, null, error, null, null, null, null);
 	}
 
 	public static ProcessStateReport running(final String activityId, final String activityName) {
@@ -63,23 +67,31 @@ public record ProcessStateReport(
 	}
 
 	public ProcessStateReport atActivity(final String activityId) {
-		return new ProcessStateReport(status, activityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables);
+		return new ProcessStateReport(status, activityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage);
+	}
+
+	public ProcessStateReport named(final String activityName) {
+		return new ProcessStateReport(status, currentActivityId, activityName, errandVersion, error, activities, awaitingSignals, variables, logMessage);
+	}
+
+	public ProcessStateReport withLogMessage(final String logMessage) {
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage);
 	}
 
 	public ProcessStateReport withErrandVersion(final Long errandVersion) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage);
 	}
 
 	public ProcessStateReport withActivities(final List<ProcessActivity> activities) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage);
 	}
 
 	public ProcessStateReport withAwaitingSignals(final List<AwaitingSignal> awaitingSignals) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage);
 	}
 
 	public ProcessStateReport withVariables(final Map<String, Object> variables) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage);
 	}
 
 	private static ProcessError toError(final String code, final String message) {

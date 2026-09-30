@@ -45,6 +45,16 @@ public final class Constants {
 	public static final String ERROR_CODE_RETRY = "RETRY";
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
 	public static final String ERROR_CODE_TERMINATED = "TERMINATED";
+	public static final String ERROR_CODE_SKIPPED = "SKIPPED";
+
+	// The kinds and severities of the entries in the activity log. Support Management refuses a severity it does not know.
+	public static final String ACTIVITY_TYPE_TASK = "TASK";
+	public static final String ACTIVITY_TYPE_PHASE = "PHASE";
+	public static final String ACTIVITY_TYPE_INCIDENT = "INCIDENT";
+	public static final String ACTIVITY_TYPE_RECONCILIATION = "RECONCILIATION";
+	public static final String SEVERITY_INFO = "INFO";
+	public static final String SEVERITY_WARN = "WARN";
+	public static final String SEVERITY_ERROR = "ERROR";
 
 	// Must match the errorCode of the bpmn:error that the boundary event of a skippable step catches.
 	public static final String BPMN_ERROR_STEP_SKIPPED = "step_skipped";

@@ -27,6 +27,7 @@ public class CancelProcessWorker extends AbstractTaskWorker {
 		logInfo("Process instance {} of errand {} was cancelled and is reported as completed", sanitizeForLogging(externalTask.getProcessInstanceId()),
 			sanitizeForLogging(getErrandId(externalTask)));
 
-		return ProcessStateReport.completed();
+		return ProcessStateReport.completed()
+			.withLogMessage("Process instance cancelled");
 	}
 }

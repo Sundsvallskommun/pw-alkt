@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import se.sundsvall.alkt.integration.operaton.ProcessModelCache.ModelElement;
 import se.sundsvall.alkt.integration.operaton.ProcessModelCache.ProcessModel;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -498,6 +499,18 @@ class OperatonIntegrationTest {
 		when(operatonClientMock.getEventSubscriptions(processInstanceId, "message")).thenReturn(List.of(subscription(null, "nameless")));
 
 		assertThat(operatonIntegration.findWaitState(processInstanceId, DEFINITION_ID)).isEmpty();
+	}
+
+	@Test
+	void phaseOfAndLabelOfReadTheModel() {
+		when(processModelCacheMock.modelOf(DEFINITION_ID)).thenReturn(new ProcessModel(
+			Map.of("external_task_create_asset", "Create asset", "decision_phase", "Decision"),
+			Map.of("external_task_create_asset", "decision_phase")));
+
+		assertThat(operatonIntegration.phaseOf(DEFINITION_ID, "external_task_create_asset")).contains(new ModelElement("decision_phase", "Decision"));
+		assertThat(operatonIntegration.phaseOf(DEFINITION_ID, "external_task_complete_process")).isEmpty();
+		assertThat(operatonIntegration.labelOf(DEFINITION_ID, "external_task_create_asset")).isEqualTo("Create asset");
+		assertThat(operatonIntegration.labelOf(DEFINITION_ID, "external_task_complete_process")).isNull();
 	}
 
 	private static EventSubscriptionDto subscription(final String activityId, final String eventName) {

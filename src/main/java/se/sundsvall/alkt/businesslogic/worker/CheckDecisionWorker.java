@@ -10,6 +10,7 @@ import se.sundsvall.alkt.service.AssetService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_DECISION_OUTCOME;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
@@ -30,7 +31,13 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 
 		logInfo("Decision of errand {} has outcome {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(outcome));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
 			.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, outcome));
+
+		// Why: without a decision the step reruns every hour, and a check that found nothing is not worth an entry each time.
+		if (DECISION_OUTCOME_NONE.equals(outcome)) {
+			return report;
+		}
+		return report.withLogMessage("Decision outcome %s".formatted(outcome));
 	}
 }

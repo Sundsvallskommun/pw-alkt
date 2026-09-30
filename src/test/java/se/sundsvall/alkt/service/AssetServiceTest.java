@@ -169,7 +169,8 @@ class AssetServiceTest {
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
-			.hasMessageContaining("Templating is down");
+			.hasMessageContaining("ClientProblem 502")
+			.hasMessageNotContaining("Templating is down");
 
 		verify(partyAssetsIntegrationMock, never()).addAttachmentToDraft(any(), any(), any());
 		verify(partyAssetsIntegrationMock, never()).activateAsset(any(), any());
@@ -204,7 +205,8 @@ class AssetServiceTest {
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(ASSET_ID)
 			.hasMessageContaining("Missing template parameter 'premisesName'")
-			.hasMessageContaining("Party assets is down");
+			.hasMessageContaining("ClientProblem 502")
+			.hasMessageNotContaining("Party assets is down");
 	}
 
 	/** A blank parameter names no template, just as a missing one. */
@@ -271,7 +273,8 @@ class AssetServiceTest {
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
-			.hasMessageContaining("Party assets is down");
+			.hasMessageContaining("ClientProblem 502")
+			.hasMessageNotContaining("Party assets is down");
 
 		verify(supportManagementIntegrationMock, never()).getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "second");
 		verify(partyAssetsIntegrationMock, never()).activateAsset(any(), any());
@@ -286,7 +289,8 @@ class AssetServiceTest {
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
-			.hasMessageContaining("Party assets is down");
+			.hasMessageContaining("ClientProblem 502")
+			.hasMessageNotContaining("Party assets is down");
 
 		verify(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
 	}
@@ -300,8 +304,9 @@ class AssetServiceTest {
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining(ASSET_ID)
-			.hasMessageContaining("Party assets is down")
-			.hasMessageContaining("Party assets is still down");
+			.hasMessageContaining("ClientProblem 502")
+			.hasMessageNotContaining("Party assets is down")
+			.hasMessageNotContaining("Party assets is still down");
 	}
 
 	@Test

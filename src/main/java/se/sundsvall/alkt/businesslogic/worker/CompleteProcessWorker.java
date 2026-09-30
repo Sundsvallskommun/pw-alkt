@@ -26,6 +26,7 @@ public class CompleteProcessWorker extends AbstractTaskWorker {
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		logInfo("Process instance {} of errand {} reached its end", sanitizeForLogging(externalTask.getProcessInstanceId()), sanitizeForLogging(getErrandId(externalTask)));
 
-		return ProcessStateReport.completed();
+		return ProcessStateReport.completed()
+			.withLogMessage("Process instance ended");
 	}
 }

@@ -4,7 +4,6 @@ import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
-import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +16,7 @@ import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.service.ProcessLog.Outcome;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -47,23 +47,21 @@ public class ProcessReconciliationService {
 	private static final Logger LOG = LoggerFactory.getLogger(ProcessReconciliationService.class);
 
 	private static final String INCIDENT_TYPE_FAILED_EXTERNAL_TASK = "failedExternalTask";
-	private static final String ACTIVITY_TYPE_INCIDENT = "INCIDENT";
-	private static final String ACTIVITY_TYPE_RECONCILIATION = "RECONCILIATION";
-	private static final String SEVERITY_ERROR = "ERROR";
-	private static final String SEVERITY_WARN = "WARN";
 	private static final String MESSAGE_ENDED_WITHOUT_REPORT = "The process instance ended in the engine as %s without reporting it, settled by the reconciliation";
 
 	private final OperatonClient operatonClient;
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final ProcessReportService processReportService;
 	private final ReconciliationProperties properties;
+	private final ProcessLog processLog;
 
 	ProcessReconciliationService(final OperatonClient operatonClient, final SupportManagementIntegration supportManagementIntegration, final ProcessReportService processReportService,
-		final ReconciliationProperties properties) {
+		final ReconciliationProperties properties, final ProcessLog processLog) {
 		this.operatonClient = operatonClient;
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.processReportService = processReportService;
 		this.properties = properties;
+		this.processLog = processLog;
 	}
 
 	public void reconcile() {
@@ -96,7 +94,7 @@ public class ProcessReconciliationService {
 		}
 
 		resolveTarget(processInstanceId, instance.get().getProcessDefinitionKey(), externalTaskIdOf(incident))
-			.ifPresent(target -> reportUnless(target, row -> isReportedSince(row, incident), () -> toIncidentReport(incident)
+			.ifPresent(target -> reportUnless(target, row -> isReportedSince(row, incident), () -> toIncidentReport(incident, instance.get().getProcessDefinitionId())
 				.withAwaitingSignals(processReportService.processWideSignalsOf(processInstanceId, instance.get().getProcessDefinitionId()))));
 	}
 
@@ -210,43 +208,24 @@ public class ProcessReconciliationService {
 	}
 
 	/** Ends the model chose become COMPLETED, a cancellation from outside (e.g. Cockpit) becomes FAILED. */
-	private static ProcessStateReport toEndedReport(final HistoricProcessInstanceDto instance) {
+	private ProcessStateReport toEndedReport(final HistoricProcessInstanceDto instance) {
 		if (instance.getState() == null) {
 			return null;
 		}
 		final var message = MESSAGE_ENDED_WITHOUT_REPORT.formatted(instance.getState().getValue());
 		return switch (instance.getState()) {
-			case COMPLETED, INTERNALLY_TERMINATED -> toSettledReport(ProcessStateReport.completed(), SEVERITY_WARN, null, message, instance.getEndTime());
-			case EXTERNALLY_TERMINATED -> toSettledReport(ProcessStateReport.failed(ERROR_CODE_TERMINATED, message), SEVERITY_ERROR, ERROR_CODE_TERMINATED, message, instance.getEndTime());
+			case COMPLETED, INTERNALLY_TERMINATED -> ProcessStateReport.completed()
+				.withActivities(List.of(processLog.settled(Outcome.SETTLED_COMPLETED, message, instance.getEndTime())));
+			case EXTERNALLY_TERMINATED -> ProcessStateReport.failed(ERROR_CODE_TERMINATED, message)
+				.withActivities(List.of(processLog.settled(Outcome.SETTLED_TERMINATED, message, instance.getEndTime())));
 			default -> null;
 		};
 	}
 
-	private static ProcessStateReport toSettledReport(final ProcessStateReport report, final String severity, final String errorCode, final String message, final OffsetDateTime occurredAt) {
-		final var activity = new ProcessActivity()
-			.activityType(ACTIVITY_TYPE_RECONCILIATION)
-			.severity(severity)
-			.errorCode(errorCode)
-			.message(message)
-			.occurredAt(orNow(occurredAt));
-		return report.withActivities(List.of(activity));
-	}
-
-	private static ProcessStateReport toIncidentReport(final IncidentDto incident) {
+	private ProcessStateReport toIncidentReport(final IncidentDto incident, final String processDefinitionId) {
 		final var failed = ProcessStateReport.failed(ERROR_CODE_INCIDENT, incident.getIncidentMessage());
-		final var activity = new ProcessActivity()
-			.activityType(ACTIVITY_TYPE_INCIDENT)
-			.activityId(incident.getActivityId())
-			.severity(SEVERITY_ERROR)
-			.errorCode(ERROR_CODE_INCIDENT)
-			.message(failed.error().getMessage())
-			.occurredAt(orNow(incident.getIncidentTimestamp()));
+		final var activity = processLog.incident(processDefinitionId, incident.getActivityId(), failed.error().getMessage(), incident.getIncidentTimestamp());
 
 		return failed.atActivity(incident.getActivityId()).withActivities(List.of(activity));
-	}
-
-	/** Support Management requires occurredAt, but the engine fields it is read from are nullable. */
-	private static OffsetDateTime orNow(final OffsetDateTime occurredAt) {
-		return occurredAt != null ? occurredAt : OffsetDateTime.now(UTC);
 	}
 }

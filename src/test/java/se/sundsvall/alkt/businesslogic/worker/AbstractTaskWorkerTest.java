@@ -27,12 +27,10 @@ import se.sundsvall.dept44.requestid.RequestId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -168,8 +166,8 @@ class AbstractTaskWorkerTest {
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
 		final var inOrder = inOrder(processReportServiceMock, externalTaskServiceMock);
-		inOrder.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
-		inOrder.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
+		inOrder.verify(processReportServiceMock).reportStarted(externalTaskMock);
+		inOrder.verify(processReportServiceMock).reportDone(externalTaskMock, ProcessStateReport.completed());
 		inOrder.verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
 		verifyNoInteractions(failureHandlerMock);
 	}
@@ -244,8 +242,9 @@ class AbstractTaskWorkerTest {
 		workerWithVariables.execute(externalTaskMock, externalTaskServiceMock);
 
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
-		verify(processReportServiceMock, times(2)).report(any(ExternalTask.class), reportCaptor.capture());
-		assertThat(reportCaptor.getAllValues()).extracting(ProcessStateReport::status).containsExactly(RUNNING, RUNNING);
+		verify(processReportServiceMock).reportStarted(externalTaskMock);
+		verify(processReportServiceMock).reportDone(any(ExternalTask.class), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().status()).isEqualTo(RUNNING);
 		verify(externalTaskServiceMock).complete(externalTaskMock, Map.of("key", "value"));
 	}
 
@@ -261,7 +260,7 @@ class AbstractTaskWorkerTest {
 		readOnlyWorker.execute(externalTaskMock, externalTaskServiceMock);
 
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
-		verify(processReportServiceMock, times(2)).report(any(ExternalTask.class), reportCaptor.capture());
+		verify(processReportServiceMock).reportDone(any(ExternalTask.class), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().errandVersion()).isEqualTo(7L);
 	}
 
@@ -282,9 +281,9 @@ class AbstractTaskWorkerTest {
 		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
 		// Assert - RUNNING went out before the throw, and it's the only report from execute() itself
-		verify(processReportServiceMock, times(1)).report(any(ExternalTask.class), any());
-		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
-		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Boom");
+		verify(processReportServiceMock).reportStarted(externalTaskMock);
+		verify(processReportServiceMock, never()).reportDone(any(), any());
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "IllegalStateException");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();
 	}
@@ -323,14 +322,14 @@ class AbstractTaskWorkerTest {
 		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
 		// Assert - not caught anywhere between reportProcess and here, so the task is retried rather than completed
-		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "Bad Gateway: Precondition Failed");
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "ClientProblem 502");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 	}
 
 	@Test
 	void executeStillRunsTheStepWhenTheRunningReportFails() {
 		// Arrange - Support Management being unreachable for the RUNNING report must not fail the business task
-		doThrow(new IllegalStateException("Support Management down")).when(processReportServiceMock).report(any(ExternalTask.class), any());
+		doThrow(new IllegalStateException("Support Management down")).when(processReportServiceMock).reportStarted(any(ExternalTask.class));
 
 		// Act
 		worker.execute(externalTaskMock, externalTaskServiceMock);
@@ -343,9 +342,7 @@ class AbstractTaskWorkerTest {
 	@Test
 	void executeStillCompletesWhenTheFinalReportFails() {
 		// Arrange - the RUNNING report succeeds, the COMPLETED report fails; the failure must not undo the completion
-		doNothing()
-			.doThrow(new IllegalStateException("Support Management down"))
-			.when(processReportServiceMock).report(any(ExternalTask.class), any());
+		doThrow(new IllegalStateException("Support Management down")).when(processReportServiceMock).reportDone(any(ExternalTask.class), any());
 
 		// Act
 		worker.execute(externalTaskMock, externalTaskServiceMock);
@@ -358,25 +355,20 @@ class AbstractTaskWorkerTest {
 	@Test
 	void executeDoesNotCompleteWhenTheFinalReportGetsAPreconditionFailed() {
 		// Arrange - the decoder keeps the status of a 412 from Support Management
-		doNothing()
-			.doThrow(new ClientProblem(HttpStatus.PRECONDITION_FAILED, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
-			.when(processReportServiceMock).report(any(ExternalTask.class), any());
+		doThrow(new ClientProblem(HttpStatus.PRECONDITION_FAILED, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}")).when(processReportServiceMock).reportDone(any(ExternalTask.class), any());
 
 		// Act
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
 		// Assert
 		verify(externalTaskServiceMock, never()).complete(any(), any());
-		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock,
-			"Precondition Failed: support-management error: {status=412 Precondition Failed, title=Precondition Failed}");
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "ClientProblem 412 from support-management (remote 412 Precondition Failed)");
 	}
 
 	/** Only the status says 412; an errand id with 412 in it is no reason to retry a step that did its work. */
 	@Test
 	void executeCompletesWhenAFailedReportOnlyMentions412() {
-		doNothing()
-			.doThrow(new ClientProblem(HttpStatus.NOT_FOUND, "support-management error: {status=404 Not Found, detail=Errand 9a412b00 not found}"))
-			.when(processReportServiceMock).report(any(ExternalTask.class), any());
+		doThrow(new ClientProblem(HttpStatus.NOT_FOUND, "support-management error: {status=404 Not Found, detail=Errand 9a412b00 not found}")).when(processReportServiceMock).reportDone(any(ExternalTask.class), any());
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 

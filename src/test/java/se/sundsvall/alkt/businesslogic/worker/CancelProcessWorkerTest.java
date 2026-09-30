@@ -36,7 +36,7 @@ class CancelProcessWorkerTest {
 
 	@Test
 	void reportsTheProcessAsCompleted() {
-		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock)).isEqualTo(ProcessStateReport.completed());
+		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock)).isEqualTo(ProcessStateReport.completed().withLogMessage("Process instance cancelled"));
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 
@@ -45,8 +45,8 @@ class CancelProcessWorkerTest {
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
 		final var order = inOrder(processReportServiceMock, externalTaskServiceMock);
-		order.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null));
-		order.verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.completed());
+		order.verify(processReportServiceMock).reportStarted(externalTaskMock);
+		order.verify(processReportServiceMock).reportDone(externalTaskMock, ProcessStateReport.completed().withLogMessage("Process instance cancelled"));
 		order.verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
 		verifyNoInteractions(failureHandlerMock);
 	}
