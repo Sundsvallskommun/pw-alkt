@@ -3,6 +3,7 @@ package se.sundsvall.alkt.util;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -18,7 +19,8 @@ public final class FailureDescription {
 	// The error decoders write the detail as "<client-id> error: {detail=..., status=503 Service Unavailable, title=...}",
 	// keys sorted, so the status they wrote is the one followed by the title or the end.
 	private static final Pattern CLIENT_ID = Pattern.compile("^([a-z][a-z-]*) error: ");
-	private static final Pattern REMOTE_STATUS = Pattern.compile("status=(\\d{3}) [^,}]*(?:(?:, title=)|(?:\\}$))");
+	private static final Pattern REMOTE_STATUS_BEFORE_TITLE = Pattern.compile("status=(\\d{3}) [^,}]*, title=");
+	private static final Pattern REMOTE_STATUS_LAST = Pattern.compile("status=(\\d{3}) [^,}]*}$");
 
 	private FailureDescription() {}
 
@@ -48,7 +50,8 @@ public final class FailureDescription {
 		if (clientId.find()) {
 			description.append(" from ").append(clientId.group(1));
 		}
-		REMOTE_STATUS.matcher(detail).results()
+		Stream.of(REMOTE_STATUS_BEFORE_TITLE, REMOTE_STATUS_LAST)
+			.flatMap(pattern -> pattern.matcher(detail).results())
 			.map(result -> HttpStatus.resolve(Integer.parseInt(result.group(1))))
 			.filter(Objects::nonNull)
 			.findFirst()
