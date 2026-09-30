@@ -23,7 +23,7 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
  */
 class DecisionOutcomeGatewayTest {
 
-	private static final String MODEL = "processmodels/alcohol-serving.bpmn";
+	private static final String MODEL = "processmodels/application/alcohol-serving.bpmn";
 	private static final String BPMN_NAMESPACE = "http://www.omg.org/spec/BPMN/20100524/MODEL";
 	private static final Pattern QUOTED_OUTCOME = Pattern.compile("'([A-Z_]+)'");
 

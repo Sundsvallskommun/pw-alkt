@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TenantAwareAutoDeploymentTest {
 
-	private static final String PROCESSMODEL_PATH = "processmodels/";
+	private static final String PROCESSMODEL_PATH = "processmodels/application/";
 	private static final String PROCESSMODEL_FILE = "alcohol-serving.bpmn";
 
 	private static final String DEFAULT_PATTERN_PREFIX = "classpath*:**/*.";

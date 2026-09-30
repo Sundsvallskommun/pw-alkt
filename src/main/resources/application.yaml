@@ -84,9 +84,19 @@ process-engine:
     processes:
       - name: Alkt processes
         tenant: ALKT
-        bpmnResourcePattern: classpath*:processmodels/*.bpmn
-        dmnResourcePattern: classpath*:processmodels/*.dmn
-        formResourcePattern: classpath*:processmodels/*.form
+        bpmnResourcePattern: classpath*:processmodels/application/*.bpmn
+        dmnResourcePattern: classpath*:processmodels/application/*.dmn
+        formResourcePattern: classpath*:processmodels/application/*.form
+      - name: Alkt processes
+        tenant: ALKT
+        bpmnResourcePattern: classpath*:processmodels/notification/*.bpmn
+        dmnResourcePattern: classpath*:processmodels/notification/*.dmn
+        formResourcePattern: classpath*:processmodels/notification/*.form
+      - name: Alkt processes
+        tenant: ALKT
+        bpmnResourcePattern: classpath*:processmodels/inspection/*.bpmn
+        dmnResourcePattern: classpath*:processmodels/inspection/*.dmn
+        formResourcePattern: classpath*:processmodels/inspection/*.form
       - name: Alkt reconciliation
         tenant: ALKT
         bpmnResourcePattern: classpath*:processmodels/reconciliation/*.bpmn

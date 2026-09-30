@@ -36,7 +36,7 @@ class ProcessModelCacheTest {
 
 	@BeforeEach
 	void setUp() throws IOException {
-		try (var model = getClass().getResourceAsStream("/processmodels/alcohol-serving.bpmn")) {
+		try (var model = getClass().getResourceAsStream("/processmodels/application/alcohol-serving.bpmn")) {
 			modelXml = new String(model.readAllBytes(), StandardCharsets.UTF_8);
 		}
 	}

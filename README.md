@@ -91,8 +91,14 @@ disagrees with Cockpit.</p>
 
 <h3>Process definitions</h3>
 
-<p>Every model in <span class="code">src/main/resources/processmodels</span> is deployed to the tenant
-<span class="code">ALKT</span> at startup, so a new schema is picked up by adding the file. The
+<p>The models in <span class="code">src/main/resources/processmodels</span> are sorted by kind of errand:
+<span class="code">application</span> for applications (alcohol serving), <span class="code">notification</span> for
+notifications (low-alcohol beer, tobacco and e-cigarettes), and <span class="code">inspection</span> for the
+inspections. Each folder has an entry of its own under <span class="code">process-engine.deployment.processes</span>,
+and every model in them is deployed to the tenant <span class="code">ALKT</span> at startup, so a new schema is picked
+up by adding the file to the folder of its kind. A model placed directly in <span class="code">processmodels</span> is
+not deployed. The three entries share the name <span class="code">Alkt processes</span>, since the deployment in the
+engine is named after it and the file, and a new name would deploy every model again. The
 <span class="code">id</span> of the <span class="code">bpmn:process</span> element is the process key, and it has a
 matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 
