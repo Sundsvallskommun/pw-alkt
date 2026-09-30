@@ -18,7 +18,7 @@ public final class FailureDescription {
 	// The error decoders write the detail as "<client-id> error: {detail=..., status=503 Service Unavailable, title=...}",
 	// keys sorted, so the status they wrote is the one followed by the title or the end.
 	private static final Pattern CLIENT_ID = Pattern.compile("^([a-z][a-z-]*) error: ");
-	private static final Pattern REMOTE_STATUS = Pattern.compile("status=(\\d{3}) [^,}]*(?:, title=|}$)");
+	private static final Pattern REMOTE_STATUS = Pattern.compile("status=(\\d{3}) [^,}]*(?:(?:, title=)|(?:\\}$))");
 
 	private FailureDescription() {}
 

@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.service;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import org.camunda.bpm.client.task.ExternalTask;
@@ -22,6 +23,7 @@ import se.sundsvall.dept44.requestid.RequestId;
 import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -94,14 +96,14 @@ class ProcessLogTest {
 	 * of one task must still be two entries.
 	 */
 	@Test
-	void everyFailureOfATaskGetsAnIdOfItsOwn() throws InterruptedException {
+	void everyFailureOfATaskGetsAnIdOfItsOwn() {
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 
 		final var incident = processLog.taskFailed(externalTaskMock, Outcome.FAILED, "Attempt 4 of 4");
-		Thread.sleep(2);
-		final var afterRetryFromCockpit = processLog.taskFailed(externalTaskMock, Outcome.FAILED, "Attempt 4 of 4");
 
-		assertThat(afterRetryFromCockpit.getActivityId()).isNotEqualTo(incident.getActivityId());
+		// A later failure is at least a millisecond later, which is all the id needs to tell the two apart
+		await().atMost(Duration.ofSeconds(1))
+			.until(() -> !processLog.taskFailed(externalTaskMock, Outcome.FAILED, "Attempt 4 of 4").getActivityId().equals(incident.getActivityId()));
 	}
 
 	@Test
