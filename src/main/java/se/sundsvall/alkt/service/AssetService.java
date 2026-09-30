@@ -1,8 +1,8 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.supportmanagement.Decision;
-import java.util.List;
 import java.util.Optional;
+import java.util.TreeSet;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
@@ -16,9 +16,9 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
-import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
-import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_REJECTION;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
@@ -28,8 +28,6 @@ import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.t
 
 @Service
 public class AssetService {
-
-	private static final List<String> KNOWN_OUTCOMES = List.of(DECISION_OUTCOME_APPROVAL, DECISION_OUTCOME_REJECTION);
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final PartyAssetsIntegration partyAssetsIntegration;
@@ -49,18 +47,18 @@ public class AssetService {
 
 	private static String toKnownOutcome(final Decision decision, final String errandId) {
 		return Optional.ofNullable(decision.getOutcome())
-			.filter(KNOWN_OUTCOMES::contains)
+			.filter(DECISION_OUTCOMES::contains)
 			.orElseThrow(() -> Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has outcome '%s', expected one of %s"
-				.formatted(errandId, decision.getOutcome(), KNOWN_OUTCOMES)));
+				.formatted(errandId, decision.getOutcome(), new TreeSet<>(DECISION_OUTCOMES))));
 	}
 
 	/** Without a certificate template the asset gets no certificate. */
 	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate) {
 		final var decision = supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no completed decision to create an asset from".formatted(errandId)));
-		if (!DECISION_OUTCOME_APPROVAL.equals(decision.getOutcome())) {
-			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has outcome '%s', an asset is only created from %s"
-				.formatted(errandId, decision.getOutcome(), DECISION_OUTCOME_APPROVAL));
+		if (decision.getOutcome() == null || !DECISION_OUTCOMES_CREATING_ASSET.contains(decision.getOutcome())) {
+			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has outcome '%s', an asset is only created from one of %s"
+				.formatted(errandId, decision.getOutcome(), new TreeSet<>(DECISION_OUTCOMES_CREATING_ASSET)));
 		}
 		if (isBlank(decision.getId())) {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));

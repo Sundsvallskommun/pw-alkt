@@ -66,9 +66,26 @@ public final class Constants {
 	// Must match the id of the cancellation step in every bpmn schema; the row of a cancelled process is left on it.
 	public static final String ACTIVITY_CANCEL_PROCESS = "external_task_cancel_process";
 
+	// Set by CheckDecisionTask while there is no completed decision; not an outcome Support Management knows.
 	public static final String DECISION_OUTCOME_NONE = "NONE";
+
+	// Must match the outcomes registered for the namespace in Support Management, and the gateway of every bpmn schema that
+	// checks the decision.
 	public static final String DECISION_OUTCOME_APPROVAL = "APPROVAL";
-	public static final String DECISION_OUTCOME_REJECTION = "REJECTION";
+	public static final String DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS = "APPROVAL_WITH_CONDITIONS";
+	public static final String DECISION_OUTCOME_REJECTED = "REJECTED";
+	public static final String DECISION_OUTCOME_DISMISSED = "DISMISSED";
+	public static final String DECISION_OUTCOME_INADMISSIBLE = "INADMISSIBLE";
+	public static final Set<String> DECISION_OUTCOMES = Set.of(
+		DECISION_OUTCOME_APPROVAL,
+		DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS,
+		DECISION_OUTCOME_REJECTED,
+		DECISION_OUTCOME_DISMISSED,
+		DECISION_OUTCOME_INADMISSIBLE);
+	public static final Set<String> DECISION_OUTCOMES_CREATING_ASSET = Set.of(
+		DECISION_OUTCOME_APPROVAL,
+		DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS);
+
 	public static final String DECISION_STATUS_COMPLETED = "COMPLETED";
 	public static final String DECISION_STATUS_DRAFT = "DRAFT";
 	public static final String DECISION_METHOD_AUTOMATIC = "AUTOMATIC";

@@ -19,7 +19,7 @@
 				"type": "PERMIT",
 				"status": "COMPLETED",
 				"title": "Beslut om serveringstillstånd",
-				"outcome": "REJECTED",
+				"outcome": "INADMISSIBLE",
 				"method": "MANUAL",
 				"decidedAt": "2026-09-20T10:00:00+02:00",
 				"legalBasis": "8 kap. 12 § alkohollagen",

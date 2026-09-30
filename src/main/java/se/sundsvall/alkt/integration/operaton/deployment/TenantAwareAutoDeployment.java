@@ -18,9 +18,9 @@ import static org.springframework.util.DigestUtils.md5DigestAsHex;
 import static se.sundsvall.dept44.util.ResourceUtils.requireNotBlank;
 
 /**
- * Deploys every process resource matched by the configured patterns to the tenant that owns it, at startup. All process
- * definitions of this service are picked up by the same resource pattern, so
- * adding a schema to {@code processmodels/} is enough to have it deployed.
+ * Deploys every process resource matched by the configured patterns to the tenant that owns it, at startup. Each folder
+ * under {@code processmodels/} has a pattern of its own, so adding a schema to one of them is enough to have it
+ * deployed.
  */
 @Configuration
 public class TenantAwareAutoDeployment {

@@ -109,7 +109,7 @@ class DecisionServiceTest {
 	@Test
 	void createDecisionLeavesADraftOfACaseWorkerAlone() {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
-			new Decision().id("manual").status("DRAFT").method("MANUAL").decidedBy("case-worker").outcome("REJECTION"),
+			new Decision().id("manual").status("DRAFT").method("MANUAL").decidedBy("case-worker").outcome("REJECTED"),
 			new Decision().id("automatic").status("DRAFT").method("AUTOMATIC").decidedBy("another-service")));
 
 		assertThatThrownBy(() -> decisionService.createDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES))
