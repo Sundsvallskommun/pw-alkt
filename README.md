@@ -165,8 +165,14 @@ found.</p>
 
 <h3>Process definitions</h3>
 
-<p>Every model in <span class="code">src/main/resources/processmodels</span> is deployed to the tenant
-<span class="code">ALKT</span> at startup, so a new schema is picked up by adding the file. The
+<p>The models in <span class="code">src/main/resources/processmodels</span> are sorted by kind of errand:
+<span class="code">application</span> for applications (alcohol serving), <span class="code">notification</span> for
+notifications (low-alcohol beer, tobacco and e-cigarettes), and <span class="code">inspection</span> for the
+inspections. Each folder has an entry of its own under <span class="code">process-engine.deployment.processes</span>,
+and every model in them is deployed to the tenant <span class="code">ALKT</span> at startup, so a new schema is picked
+up by adding the file to the folder of its kind. A model placed directly in <span class="code">processmodels</span> is
+not deployed. The three entries share the name <span class="code">Alkt processes</span>, since the deployment in the
+engine is named after it and the file, and a new name would deploy every model again. The
 <span class="code">id</span> of the <span class="code">bpmn:process</span> element is the process key, and it has a
 matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 
@@ -389,22 +395,26 @@ was not waiting for it, since such an event correlates against nothing and is go
 			<td>Goes back to waiting (<span class="code">NONE</span>)</td>
 		</tr>
 		<tr>
-			<td><span class="code">APPROVAL</span></td>
+			<td><span class="code">APPROVAL</span>, <span class="code">APPROVAL_WITH_CONDITIONS</span></td>
 			<td>Creates the permit, then ends</td>
 		</tr>
 		<tr>
-			<td><span class="code">REJECTION</span></td>
+			<td><span class="code">REJECTED</span>, <span class="code">DISMISSED</span>, <span class="code">INADMISSIBLE</span></td>
 			<td>Ends without a permit</td>
 		</tr>
 		<tr>
 			<td>Any other outcome</td>
 			<td>The step fails and ends in an incident. A completed decision is locked in Support Management, so waiting
-			would never help. The outcomes registered for the namespace should be exactly these two</td>
+			would never help. The outcomes registered for the namespace should be exactly these five</td>
 		</tr>
 	</tbody>
 </table>
 
-<p><span class="code">CreateAssetTask</span> builds the permit in party-assets from the approved decision. The id of
+<p>The outcomes live in two places: <span class="code">Constants</span> says which are known and which create a permit,
+and the gateway of <span class="code">alcohol-serving.bpmn</span> lists them in its conditions. A new outcome needs both,
+and must be registered for the namespace in Support Management as well.</p>
+
+<p><span class="code">CreateAssetTask</span> builds the permit in party-assets from a decision that grants it. The id of
 the decision is the <span class="code">assetId</span> of the permit, and the party is the stakeholder with the role
 <span class="code">PRIMARY</span>. The step first looks for a permit with that id and is done if it finds one, so a
 retry after a lost answer creates nothing twice. Otherwise it removes any draft an earlier attempt left behind, creates

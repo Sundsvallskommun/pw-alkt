@@ -73,26 +73,22 @@ class AssetServiceTest {
 	@InjectMocks
 	private AssetService assetService;
 
-	@Test
-	void getDecisionOutcomeAnswersWithTheOutcomeOfTheCompletedDecision() {
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"APPROVAL", "APPROVAL_WITH_CONDITIONS", "REJECTED", "DISMISSED", "INADMISSIBLE"
+	})
+	void getDecisionOutcomeAnswersWithTheOutcomeOfTheCompletedDecision(final String outcome) {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(Optional.of(new Decision().outcome("APPROVAL")));
+			.thenReturn(Optional.of(new Decision().outcome(outcome)));
 
-		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("APPROVAL");
+		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(outcome);
 	}
 
-	@Test
-	void getDecisionOutcomeAnswersWithRejection() {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(Optional.of(new Decision().outcome("REJECTION")));
-
-		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("REJECTION");
-	}
-
+	/** REJECTION was the outcome of a rejection before REJECTED took its place. */
 	@ParameterizedTest
 	@NullSource
 	@ValueSource(strings = {
-		"PARTIAL_APPROVAL", "approval"
+		"REJECTION", "PARTIAL_APPROVAL", "approval"
 	})
 	void getDecisionOutcomeFailsOnAnOutcomeItDoesNotKnow(final String outcome) {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
@@ -100,7 +96,7 @@ class AssetServiceTest {
 
 		assertThatThrownBy(() -> assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(Problem.class)
-			.hasMessageContaining("expected one of [APPROVAL, REJECTION]");
+			.hasMessageContaining("expected one of [APPROVAL, APPROVAL_WITH_CONDITIONS, DISMISSED, INADMISSIBLE, REJECTED]");
 	}
 
 	@Test
@@ -324,14 +320,28 @@ class AssetServiceTest {
 		verifyNoInteractions(partyAssetsIntegrationMock);
 	}
 
+	/** An approval with conditions grants the permit as well, so it is created the same way. */
 	@Test
-	void findOrCreateAssetFailsOnARejection() {
+	void findOrCreateAssetCreatesThePermitOfAnApprovalWithConditions() {
+		givenADraftFor(new Decision().id(DECISION_ID).outcome("APPROVAL_WITH_CONDITIONS"));
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+	}
+
+	@ParameterizedTest
+	@NullSource
+	@ValueSource(strings = {
+		"REJECTED", "DISMISSED", "INADMISSIBLE"
+	})
+	void findOrCreateAssetFailsOnAnOutcomeThatGrantsNoPermit(final String outcome) {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(Optional.of(new Decision().id(DECISION_ID).outcome("REJECTION")));
+			.thenReturn(Optional.of(new Decision().id(DECISION_ID).outcome(outcome)));
 
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null))
 			.isInstanceOf(Problem.class)
-			.hasMessageContaining("only created from APPROVAL");
+			.hasMessageContaining("only created from one of [APPROVAL, APPROVAL_WITH_CONDITIONS]");
 
 		verifyNoInteractions(partyAssetsIntegrationMock);
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
