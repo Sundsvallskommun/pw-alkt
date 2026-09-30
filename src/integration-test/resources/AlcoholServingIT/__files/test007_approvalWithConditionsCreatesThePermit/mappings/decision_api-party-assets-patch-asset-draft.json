@@ -1,0 +1,23 @@
+{
+	"name": "decision_api-party-assets-patch-asset-draft",
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-party-assets/2281/asset-drafts/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "ACTIVE"
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 204
+	}
+}

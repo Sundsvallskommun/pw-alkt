@@ -315,22 +315,26 @@ was not waiting for it, since such an event correlates against nothing and is go
 			<td>Goes back to waiting (<span class="code">NONE</span>)</td>
 		</tr>
 		<tr>
-			<td><span class="code">APPROVAL</span></td>
+			<td><span class="code">APPROVAL</span>, <span class="code">APPROVAL_WITH_CONDITIONS</span></td>
 			<td>Creates the permit, then ends</td>
 		</tr>
 		<tr>
-			<td><span class="code">REJECTION</span></td>
+			<td><span class="code">REJECTED</span>, <span class="code">DISMISSED</span>, <span class="code">INADMISSIBLE</span></td>
 			<td>Ends without a permit</td>
 		</tr>
 		<tr>
 			<td>Any other outcome</td>
 			<td>The step fails and ends in an incident. A completed decision is locked in Support Management, so waiting
-			would never help. The outcomes registered for the namespace should be exactly these two</td>
+			would never help. The outcomes registered for the namespace should be exactly these five</td>
 		</tr>
 	</tbody>
 </table>
 
-<p><span class="code">CreateAssetTask</span> builds the permit in party-assets from the approved decision. The id of
+<p>The outcomes live in two places: <span class="code">Constants</span> says which are known and which create a permit,
+and the gateway of <span class="code">alcohol-serving.bpmn</span> lists them in its conditions. A new outcome needs both,
+and must be registered for the namespace in Support Management as well.</p>
+
+<p><span class="code">CreateAssetTask</span> builds the permit in party-assets from a decision that grants it. The id of
 the decision is the <span class="code">assetId</span> of the permit, and the party is the stakeholder with the role
 <span class="code">PRIMARY</span>. The step first looks for a permit with that id and is done if it finds one, so a
 retry after a lost answer creates nothing twice. Otherwise it removes any draft an earlier attempt left behind, creates
