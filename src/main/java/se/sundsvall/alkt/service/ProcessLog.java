@@ -54,8 +54,12 @@ public class ProcessLog {
 		this.operatonIntegration = operatonIntegration;
 	}
 
+	/**
+	 * The incident the reconciliation writes for this task has the bare activity id, so a task that succeeds on a retry
+	 * from Cockpit needs another id. A fixed suffix still lets a replayed done report be dropped.
+	 */
 	public ProcessActivity taskDone(final ExternalTask externalTask, final String logMessage) {
-		return entry(ACTIVITY_TYPE_TASK, externalTask.getActivityId(), nameOf(externalTask, Outcome.DONE), SEVERITY_INFO, null,
+		return entry(ACTIVITY_TYPE_TASK, externalTask.getActivityId() + "#done", nameOf(externalTask, Outcome.DONE), SEVERITY_INFO, null,
 			"%s, x-request-id %s".formatted(logMessage, RequestId.get()), now());
 	}
 

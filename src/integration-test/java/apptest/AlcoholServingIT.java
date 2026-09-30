@@ -57,10 +57,10 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'PHASE' && @.activityId == 'registration_phase')].activityName",
 				containing("Registrering har påbörjats"))));
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
-			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_notify_processing_started')].activityName",
+			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_notify_processing_started#done')].activityName",
 				containing("Kunden har fått besked om att handläggningen har börjat"))));
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
-			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_asset' && @.severity == 'INFO')].message",
+			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_asset#done' && @.severity == 'INFO')].message",
 				containing("x-request-id"))));
 
 		// Verify process pathway

@@ -62,7 +62,7 @@ class ProcessLogTest {
 		final var entry = processLog.taskDone(externalTaskMock, "Asset 'asset-id' found or created");
 
 		assertThat(entry.getActivityType()).isEqualTo("TASK");
-		assertThat(entry.getActivityId()).isEqualTo(ACTIVITY_ID);
+		assertThat(entry.getActivityId()).isEqualTo(ACTIVITY_ID + "#done");
 		assertThat(entry.getActivityName()).isEqualTo("Tillståndet har registrerats");
 		assertThat(entry.getSeverity()).isEqualTo("INFO");
 		assertThat(entry.getErrorCode()).isNull();
@@ -104,6 +104,20 @@ class ProcessLogTest {
 		// A later failure is at least a millisecond later, which is all the id needs to tell the two apart
 		await().atMost(Duration.ofSeconds(1))
 			.until(() -> !processLog.taskFailed(externalTaskMock, Outcome.FAILED, "Attempt 4 of 4").getActivityId().equals(incident.getActivityId()));
+	}
+
+	/**
+	 * Reported with the same external task id, the reconciliation's incident must not make Support Management drop the done
+	 * entry.
+	 */
+	@Test
+	void taskDoneAfterReconciledIncidentGetsAnIdOfItsOwn() {
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+
+		final var incident = processLog.incident(DEFINITION_ID, ACTIVITY_ID, "Timeout", null);
+		final var done = processLog.taskDone(externalTaskMock, "Asset 'asset-id' found or created");
+
+		assertThat(done.getActivityId()).isNotEqualTo(incident.getActivityId());
 	}
 
 	@Test
