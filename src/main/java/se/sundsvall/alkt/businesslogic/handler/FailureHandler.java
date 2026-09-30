@@ -91,9 +91,8 @@ public class FailureHandler {
 
 	/**
 	 * A task that is gone was taken away by a cancellation or deletion; there is no failure to report or alert on. The
-	 * engine
-	 * is told first on purpose, so a cancelled step is not reported FAILED; any other fault in telling it skips the report
-	 * and the alert.
+	 * engine is told first on purpose, so a cancelled step is not reported FAILED; any other fault in telling it skips the
+	 * report and the alert.
 	 */
 	private static boolean tellEngine(final ExternalTask externalTask, final Runnable handleFailure) {
 		try {

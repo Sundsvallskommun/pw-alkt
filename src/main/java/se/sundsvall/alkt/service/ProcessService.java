@@ -103,7 +103,6 @@ public class ProcessService {
 		final Optional<String> reached;
 		try {
 			reached = operatonIntegration.correlateMessage(messageName, errandEvent.getErrandId(), TENANT_ID_ALKT);
-			LOG.info("Correlated '{}' for errand {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()));
 		} catch (final ClientProblem e) {
 			// Only a 400 means the message matched no wait state; anything else is a fault the signal must not be lost to.
 			if (!BAD_REQUEST.equals(e.getStatus())) {
@@ -114,6 +113,15 @@ public class ProcessService {
 				sanitizeForLogging(e.getMessage()));
 			return;
 		}
+
+		// The cancellation is correlated to all, which answers no process with an empty result rather than a 400, so the log
+		// must not claim a correlation then.
+		if (reached.isEmpty()) {
+			LOG.info("Message '{}' reached no running process of errand {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()));
+			return;
+		}
+		LOG.info("Correlated '{}' for errand {} to process instance {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()),
+			sanitizeForLogging(reached.get()));
 
 		// The cancellation leaves no wait state behind, and its own step reports what happened.
 		if (MESSAGE_PROCESS_CANCELLED.equals(messageName)) {
