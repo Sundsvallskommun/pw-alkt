@@ -15,10 +15,12 @@ class ProcessModelFoldersTest {
 
 	@Test
 	void everyModelLiesInADeployedFolder() throws IOException {
-		final var models = resolver.getResources("classpath*:processmodels/**/*.bpmn");
+		final var folders = Arrays.stream(resolver.getResources("classpath*:processmodels/**/*.bpmn"))
+			.map(ProcessModelFoldersTest::folderOf)
+			.toList();
 
-		assertThat(models).isNotEmpty();
-		assertThat(Arrays.stream(models).map(ProcessModelFoldersTest::folderOf))
+		assertThat(folders)
+			.isNotEmpty()
 			.allMatch(folder -> folder.matches("processmodels/(application|notification|inspection|reconciliation)"));
 	}
 
