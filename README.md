@@ -342,9 +342,10 @@ where the cancellation is the only thing listening stands on a work step and wai
 reported. The cancellation is told apart by its message name, <span class="code">process_cancelled</span>.</p>
 
 <p>Support Management replaces the buttons on every report, so the cancellation rides on every live report, not only on
-<span class="code">WAITING</span>. A <span class="code">RUNNING</span> or <span class="code">RETRYING</span> report
-from a work step carries the subscriptions that listen in every phase, read from the engine at the time of the report.
-A terminal report carries none, and neither does the <span class="code">RUNNING</span> of
+<span class="code">WAITING</span>. A <span class="code">RUNNING</span>, <span class="code">RETRYING</span> or
+<span class="code">FAILED</span> report from a work step carries the subscriptions that listen in every phase, read from
+the engine at the time of the report. A <span class="code">COMPLETED</span> report carries none, and neither does the
+<span class="code">RUNNING</span> of
 <span class="code">CancelProcessTask</span> itself, since the cancellation no longer listens by then. If the
 subscriptions cannot be read, the report goes out without them.</p>
 
@@ -356,9 +357,11 @@ reported before that may reach Support Management before or after the <span clas
 cancellation. Either way the row ends up <span class="code">COMPLETED</span>, since Support Management keeps a completed
 row as it is.</p>
 
-<p>A process that stands on an incident is reported <span class="code">FAILED</span>, and Support Management takes no
-signal for a process it holds as ended. Such a process cannot be cancelled from the user interface until the incident is
-resolved and the step reports again.</p>
+<p>A process that stands on an incident is reported <span class="code">FAILED</span>, but the instance lives and still
+listens, so the incident report carries the cancellation, both from the work step and from the reconciliation. From
+api-service-support-management#760, Support Management takes the signals of a <span class="code">FAILED</span> row and
+refuses only those of a <span class="code">COMPLETED</span> one, so such a process can be cancelled from the user
+interface.</p>
 
 <h3>The decision phase and the permit</h3>
 

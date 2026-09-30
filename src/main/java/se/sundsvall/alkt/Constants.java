@@ -59,6 +59,9 @@ public final class Constants {
 	// Must match the errorCode of the bpmn:error that the boundary event of a skippable step catches.
 	public static final String BPMN_ERROR_STEP_SKIPPED = "step_skipped";
 
+	// One wording wherever a step finds its task gone, so the log can be searched for it.
+	public static final String LOG_TASK_GONE = "Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)";
+
 	// Must match process-engine.deployment.processes[].tenant in application.yaml.
 	public static final String TENANT_ID_ALKT = "ALKT";
 

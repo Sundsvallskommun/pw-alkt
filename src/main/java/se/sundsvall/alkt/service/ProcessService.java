@@ -15,6 +15,7 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
 import static se.sundsvall.alkt.Constants.MESSAGE_DECISION_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_ERRAND_UPDATED;
+import static se.sundsvall.alkt.Constants.MESSAGE_PROCESS_CANCELLED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
@@ -102,7 +103,6 @@ public class ProcessService {
 		final Optional<String> reached;
 		try {
 			reached = operatonIntegration.correlateMessage(messageName, errandEvent.getErrandId(), TENANT_ID_ALKT);
-			LOG.info("Correlated '{}' for errand {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()));
 		} catch (final ClientProblem e) {
 			// Only a 400 means the message matched no wait state; anything else is a fault the signal must not be lost to.
 			if (!BAD_REQUEST.equals(e.getStatus())) {
@@ -114,6 +114,20 @@ public class ProcessService {
 			return;
 		}
 
+		// The cancellation is correlated to all, which answers no process with an empty result rather than a 400, so the log
+		// must not claim a correlation then.
+		if (reached.isEmpty()) {
+			LOG.info("Message '{}' reached no running process of errand {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()));
+			return;
+		}
+		LOG.info("Correlated '{}' for errand {} to process instance {}", sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId()),
+			sanitizeForLogging(reached.get()));
+
+		// The cancellation leaves no wait state behind, and its own step reports what happened.
+		if (MESSAGE_PROCESS_CANCELLED.equals(messageName)) {
+			return;
+		}
+
 		// Looked up rather than taken from the event: the correlation picks on the subscription, so the instance it reached
 		// is not always one the process key of the event names. The lookup is guarded because the message is already
 		// correlated, so a failure here must cost the report rather than the event.
@@ -122,7 +136,7 @@ public class ProcessService {
 				.ifPresentOrElse(
 					instance -> processReportService.reportWaitState(
 						new ReportTarget(municipalityId, namespace, errandEvent.getErrandId(), instance.getId(), instance.getDefinitionKey(), null), instance.getDefinitionId()),
-					() -> LOG.info("Message '{}' ran the process of errand {} to its end, so there is no wait state left to report",
+					() -> LOG.info("Message '{}' left no running process of errand {}, so there is no wait state to report",
 						sanitizeForLogging(messageName), sanitizeForLogging(errandEvent.getErrandId())));
 		} catch (final Exception e) {
 			LOG.error("Could not report the wait state that message '{}' of errand {} left the process in", sanitizeForLogging(messageName),

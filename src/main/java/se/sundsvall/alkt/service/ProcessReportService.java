@@ -16,7 +16,6 @@ import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandProcessReport;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toReportTarget;
-import static se.sundsvall.alkt.service.model.ProcessStatus.COMPLETED;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Service
@@ -81,7 +80,7 @@ public class ProcessReportService {
 		if (placed.currentActivityName() == null) {
 			placed = placed.named(operatonIntegration.labelOf(externalTask.getProcessDefinitionId(), placed.currentActivityId()));
 		}
-		if (report.status() != COMPLETED && report.awaitingSignals().isEmpty()) {
+		if (report.status().takesSignals() && report.awaitingSignals().isEmpty()) {
 			placed = placed.withAwaitingSignals(processWideSignalsOf(externalTask.getProcessInstanceId(), externalTask.getProcessDefinitionId()));
 		}
 		report(toReportTarget(externalTask), placed);

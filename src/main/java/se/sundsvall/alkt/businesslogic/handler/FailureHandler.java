@@ -19,6 +19,7 @@ import se.sundsvall.dept44.requestid.RequestId;
 import static se.sundsvall.alkt.Constants.BPMN_ERROR_STEP_SKIPPED;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
+import static se.sundsvall.alkt.Constants.LOG_TASK_GONE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -108,14 +109,17 @@ public class FailureHandler {
 		alert(INCIDENT_MESSAGE, externalTask, message);
 	}
 
-	/** A task that is gone was taken away by a cancellation or deletion; there is no failure to report or alert on. */
+	/**
+	 * A task that is gone was taken away by a cancellation or deletion; there is no failure to report or alert on. The
+	 * engine is told first on purpose, so a cancelled step is not reported FAILED; any other fault in telling it skips the
+	 * report and the alert.
+	 */
 	private static boolean tellEngine(final ExternalTask externalTask, final Runnable handleFailure) {
 		try {
 			handleFailure.run();
 			return true;
 		} catch (final NotFoundException e) {
-			LOG.info("Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)", sanitizeForLogging(externalTask.getId()),
-				sanitizeForLogging(externalTask.getProcessInstanceId()));
+			LOG.info(LOG_TASK_GONE, sanitizeForLogging(externalTask.getId()), sanitizeForLogging(externalTask.getProcessInstanceId()));
 			return false;
 		}
 	}

@@ -20,7 +20,8 @@ public class OperatonConfiguration {
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(final ClientRegistrationRepository clientRepository, final OperatonProperties properties) {
 		return FeignMultiCustomizer.create()
-			// 400 keeps its status: a message that matches no wait state is an answer, and the only 400 the service expects
+			// 400 keeps its status for the correlation, where a message that matches no wait state is an answer. The calls
+			// Support Management waits for turn it back into a gateway fault in OperatonIntegration.
 			.withErrorDecoder(new JsonPathErrorDecoder(CLIENT_ID, List.of(BAD_REQUEST.value()), new JsonPathSetup("$.type", "$.message")))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))
