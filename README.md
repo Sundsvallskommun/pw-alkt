@@ -463,6 +463,10 @@ sender as unknown.</p>
 
 <h3>Automatic deployment</h3>
 
+<p>The engine is shared with other process workers, and topic names such as <span class="code">CheckDecisionTask</span>
+recur among them. Every subscription therefore fetches only tasks of the tenant <span class="code">ALKT</span>, and a
+process added to this service must be deployed to that tenant, or its tasks are never fetched.</p>
+
 <p>The automatic deployment interprets properties present in the application yaml file. The following settings are used to configure the automatic deployment mechanism:</p>
 
 <table class="settings">
