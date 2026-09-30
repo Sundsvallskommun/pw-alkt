@@ -15,6 +15,7 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static java.util.Collections.emptyMap;
+import static se.sundsvall.alkt.Constants.BPMN_ERROR_STEP_SKIPPED;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
@@ -33,6 +34,7 @@ public class FailureHandler {
 	private static final Logger LOG = LoggerFactory.getLogger(FailureHandler.class);
 
 	private static final String INCIDENT_MESSAGE = "[%s][%s][%s] Incident in %s for errand %s (process instance %s, x-request-id %s): %s";
+	private static final String SKIPPED_MESSAGE = "[%s][%s][%s] Skipped %s for errand %s (process instance %s, x-request-id %s): %s";
 
 	private final int maxRetries;
 
@@ -60,6 +62,23 @@ public class FailureHandler {
 	/** For a failure no retry can fix: the incident is raised and alerted on the first attempt. */
 	public void handleIncident(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message) {
 		handleFailure(externalTaskService, externalTask, message, 0);
+	}
+
+	/**
+	 * For a step the process can go on without: once the retries are spent the error is thrown into the model, where a
+	 * boundary event takes the process past the step, instead of raising an incident. Returns true when it was thrown.
+	 */
+	public boolean handleSkippableFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final boolean retryable) {
+		final var retries = retryable ? calculateRetries(externalTask) : 0;
+		if (retries > 0) {
+			handleFailure(externalTaskService, externalTask, message, retries);
+			return false;
+		}
+		if (!tellEngine(externalTask, () -> externalTaskService.handleBpmnError(externalTask, BPMN_ERROR_STEP_SKIPPED, message))) {
+			return false;
+		}
+		alert(SKIPPED_MESSAGE, externalTask, message);
+		return true;
 	}
 
 	private void handleFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final int retries) {
@@ -118,10 +137,13 @@ public class FailureHandler {
 		if (retries > 0) {
 			return;
 		}
+		alert(INCIDENT_MESSAGE, externalTask, message);
+	}
 
+	private void alert(final String template, final ExternalTask externalTask, final String message) {
 		final String municipalityId = externalTask.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID);
 		try {
-			messagingIntegration.sendSlack(municipalityId, INCIDENT_MESSAGE.formatted(
+			messagingIntegration.sendSlack(municipalityId, template.formatted(
 				municipalityId,
 				externalTask.getVariable(PROCESS_VARIABLE_NAMESPACE),
 				externalTask.getProcessDefinitionKey(),

@@ -9,6 +9,7 @@ import se.sundsvall.alkt.service.AssetService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_CERTIFICATE_TEMPLATE;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -27,7 +28,8 @@ public class CreateAssetWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var assetId = assetService.findOrCreateAsset(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
+		final var assetId = assetService.findOrCreateAsset(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
+			externalTask.getVariable(PROCESS_VARIABLE_CERTIFICATE_TEMPLATE));
 
 		logInfo("Errand {} has asset {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 

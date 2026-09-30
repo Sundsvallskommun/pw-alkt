@@ -19,11 +19,14 @@ import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.Collections.emptyList;
+import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class PartyAssetsMapper {
 
 	static final String ATTACHMENT_PART_NAME = "attachment";
+	static final String CERTIFICATE_FILE_NAME = "tillstandsbevis.pdf";
+	static final String CERTIFICATE_CATEGORY = "Tillståndsbevis";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 	static final String PARAMETER_ERRAND_ID = "errandId";
@@ -59,6 +62,10 @@ public final class PartyAssetsMapper {
 			Optional.ofNullable(attachment.getPurpose())
 				.map(ErrandAttachmentPurpose::getDisplayName)
 				.orElse(null));
+	}
+
+	public static AssetFile toCertificateFile(final byte[] content) {
+		return new AssetFile(new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, CERTIFICATE_FILE_NAME, APPLICATION_PDF_VALUE, content), CERTIFICATE_CATEGORY);
 	}
 
 	public static Optional<String> toPartyId(final Errand errand) {

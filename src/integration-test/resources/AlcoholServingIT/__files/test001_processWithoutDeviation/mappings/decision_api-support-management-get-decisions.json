@@ -32,6 +32,12 @@
 						"sortOrder": 1,
 						"category": "serveringstid",
 						"text": "Servering får ske mellan 11.00 och 01.00."
+					},
+					{
+						"id": "7b2c4d6e-8f0a-4b1c-9d3e-5f7a9b1c3d5e",
+						"sortOrder": 2,
+						"category": "permitHolderName",
+						"text": "Runt Hörnet AB"
 					}
 				],
 				"attachments": [

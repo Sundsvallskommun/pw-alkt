@@ -4,12 +4,15 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.dept44.problem.Problem;
 
 import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
@@ -19,7 +22,9 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_REJECTION;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPartyId;
+import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 
 @Service
 public class AssetService {
@@ -28,10 +33,12 @@ public class AssetService {
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final PartyAssetsIntegration partyAssetsIntegration;
+	private final TemplatingIntegration templatingIntegration;
 
-	AssetService(final SupportManagementIntegration supportManagementIntegration, final PartyAssetsIntegration partyAssetsIntegration) {
+	AssetService(final SupportManagementIntegration supportManagementIntegration, final PartyAssetsIntegration partyAssetsIntegration, final TemplatingIntegration templatingIntegration) {
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.partyAssetsIntegration = partyAssetsIntegration;
+		this.templatingIntegration = templatingIntegration;
 	}
 
 	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId) {
@@ -47,7 +54,8 @@ public class AssetService {
 				.formatted(errandId, decision.getOutcome(), KNOWN_OUTCOMES)));
 	}
 
-	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId) {
+	/** Without a certificate template the asset gets no certificate. */
+	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate) {
 		final var decision = supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no completed decision to create an asset from".formatted(errandId)));
 		if (!DECISION_OUTCOME_APPROVAL.equals(decision.getOutcome())) {
@@ -62,18 +70,25 @@ public class AssetService {
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER)));
 
 		return partyAssetsIntegration.findAssetId(municipalityId, partyId, decision.getId())
-			.orElseGet(() -> createAsset(municipalityId, namespace, errandId, decision, partyId));
+			.orElseGet(() -> createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate));
 	}
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
-	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final String partyId) {
+	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final String partyId,
+		final String certificateTemplate) {
 		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, toAssetCreateRequest(decision, errandId, partyId));
 
 		try {
 			Optional.ofNullable(decision.getAttachments()).orElse(emptyList())
 				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
+			if (isNotBlank(certificateTemplate)) {
+				partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
+					toCertificateFile(templatingIntegration.renderPdf(municipalityId, certificateTemplate, toTemplateParameters(decision.getTerms()))));
+			}
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);
+		} catch (final NonRetryableException e) {
+			throw new NonRetryableException(removeDraftAsset(municipalityId, assetId, e));
 		} catch (final RuntimeException e) {
 			throw Problem.valueOf(BAD_GATEWAY, removeDraftAsset(municipalityId, assetId, e));
 		}

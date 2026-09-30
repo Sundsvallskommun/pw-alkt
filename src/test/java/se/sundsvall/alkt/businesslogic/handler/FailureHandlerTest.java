@@ -19,11 +19,15 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -31,6 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.Constants.BPMN_ERROR_STEP_SKIPPED;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
@@ -93,6 +98,64 @@ class FailureHandlerTest {
 		verify(externalTaskServiceMock).handleFailure(id, message, null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verify(messagingIntegrationMock).sendSlack(eq("2281"), contains(message));
 		verify(externalTaskMock, never()).getRetries();
+	}
+
+	@Test
+	void handleSkippableFailureRetriesWhileRetriesRemain() {
+		final var id = UUID.randomUUID().toString();
+		when(externalTaskMock.getId()).thenReturn(id);
+		when(externalTaskMock.getRetries()).thenReturn(3);
+
+		assertThat(failureHandler.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "Support Management is down", true)).isFalse();
+
+		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.retrying(ERROR_CODE_RETRY, "Support Management is down"));
+		verify(externalTaskServiceMock).handleFailure(id, "Support Management is down", null, 2, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
+		verify(externalTaskServiceMock, never()).handleBpmnError(any(ExternalTask.class), any(), any());
+		verifyNoInteractions(messagingIntegrationMock);
+	}
+
+	@Test
+	void handleSkippableFailureThrowsTheSkipErrorAndAlertsWhenTheLastRetryFails() {
+		when(externalTaskMock.getRetries()).thenReturn(1);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn("2281");
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn("ALKT");
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn("errand-id");
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving");
+		when(externalTaskMock.getActivityId()).thenReturn("external_task_notify_processing_started");
+		when(externalTaskMock.getProcessInstanceId()).thenReturn("instance-id");
+
+		RequestId.init("request-id");
+		try {
+			assertThat(failureHandler.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "Support Management is down", true)).isTrue();
+		} finally {
+			RequestId.reset();
+		}
+
+		verify(externalTaskServiceMock).handleBpmnError(externalTaskMock, BPMN_ERROR_STEP_SKIPPED, "Support Management is down");
+		verify(externalTaskServiceMock, never()).handleFailure(nullable(String.class), any(), any(), anyInt(), anyLong());
+		verify(messagingIntegrationMock).sendSlack("2281",
+			"[2281][ALKT][alcohol-serving] Skipped external_task_notify_processing_started for errand errand-id (process instance instance-id, x-request-id request-id): Support Management is down");
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void handleSkippableFailureSkipsOnTheFirstAttemptWhenNoRetryCanFixIt() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn("2281");
+
+		assertThat(failureHandler.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "No text is configured", false)).isTrue();
+
+		verify(externalTaskServiceMock).handleBpmnError(externalTaskMock, BPMN_ERROR_STEP_SKIPPED, "No text is configured");
+		verify(messagingIntegrationMock).sendSlack(eq("2281"), contains("No text is configured"));
+		verify(externalTaskMock, never()).getRetries();
+	}
+
+	@Test
+	void handleSkippableFailureLeavesATaskThatIsGoneWithoutAnAlert() {
+		doThrow(mock(NotFoundException.class)).when(externalTaskServiceMock).handleBpmnError(externalTaskMock, BPMN_ERROR_STEP_SKIPPED, "message");
+
+		assertThat(failureHandler.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "message", false)).isFalse();
+
+		verifyNoInteractions(processReportServiceMock, messagingIntegrationMock);
 	}
 
 	/** A task that is gone was taken away by a cancellation, so there is no failure to report or alert on. */

@@ -1,25 +1,14 @@
-#========================================
-# Integration test specific settings
-#========================================
-#----------------------------------------
-# Spring settings
-#----------------------------------------
 spring:
   application:
     name: pw-alkt-it
   main:
     banner-mode: "off"
-#----------------------------------------
-# Process reconciliation
-# The shared engine fires the reconciliation timer during any test. Off by default so it cannot call WireMock behind a
-# test's back; ProcessReconciliationIT turns it on.
-#----------------------------------------
 reconciliation:
   worker:
     enabled: false
-#----------------------------------------
-# Integration settings
-#----------------------------------------
+customer-message:
+  texts:
+    processing-started: "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
 config:
   common:
     token-uri: http://localhost:${wiremock.server.port}/api-gateway/token
@@ -56,6 +45,11 @@ config:
       channel: slack-channel
   support-management:
     base-url: http://localhost:${wiremock.server.port}/api-support-management
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
+  templating:
+    base-url: http://localhost:${wiremock.server.port}/api-templating
     token-uri: ${config.common.token-uri}
     client-id: ${config.common.client-id}
     client-secret: ${config.common.client-secret}

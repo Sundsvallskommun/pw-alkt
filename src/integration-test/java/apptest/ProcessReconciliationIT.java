@@ -21,6 +21,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 
@@ -46,14 +47,12 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test001_incidentIsReportedOnce() throws JacksonException {
-		// === Start process === every report it sends is refused, so the last work step leaves an incident behind
-		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT);
-
-		completeEveryPhase(ERRAND_ID_INCIDENT, processInstanceId);
+		// === Start process === every report it sends is refused, so the first work step leaves an incident behind
+		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES);
 
 		await()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, PROCESS_KEY_TOBACCO_SALES).stream()
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES).stream()
 				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
 
 		stubRowsOfTheErrand(processInstanceId);
@@ -72,7 +71,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	@Test
 	void test002_instanceThatVanishedIsSettled() throws JacksonException {
 		// === Start process ===
-		final var processInstanceId = startProcess(ERRAND_ID_VANISHED);
+		final var processInstanceId = startProcess(ERRAND_ID_VANISHED, PROCESS_KEY_TOBACCO_SALES);
 
 		// Someone cancels the instance from outside, and nothing reports it
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -87,7 +86,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	@Test
 	void test003_instanceThatEndedWhileSupportManagementWasDownIsSettled() throws JacksonException {
 		// === Start process === every report it sends on the way is answered with 500 and swallowed
-		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN);
+		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN, PROCESS_KEY_TOBACCO_SALES);
 
 		completeEveryPhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId);
 
@@ -110,19 +109,19 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 			.whenScenarioStateIs(STARTED)
 			.willSetStateTo("first-sweep-is-running")
 			.willReturn(okJson("""
-				{"processes":[{"processInstanceId":"%s","processKey":"tobacco-sales","processStatus":"RUNNING"}]}""".formatted(processInstanceId))
+				{"processes":[{"processInstanceId":"%s","processKey":"low-alcohol-beer-sales","processStatus":"RUNNING"}]}""".formatted(processInstanceId))
 				.withHeader("Content-Encoding", "identity")));
 
 		stubFor(get(urlPathEqualTo(PROCESSES_PATH_INCIDENT))
 			.inScenario(SCENARIO_INCIDENT)
 			.whenScenarioStateIs("incident-has-been-reported")
 			.willReturn(okJson("""
-				{"processes":[{"processInstanceId":"%s","processKey":"tobacco-sales","processStatus":"FAILED","error":{"code":"INCIDENT"}}]}"""
+				{"processes":[{"processInstanceId":"%s","processKey":"low-alcohol-beer-sales","processStatus":"FAILED","error":{"code":"INCIDENT"}}]}"""
 				.formatted(processInstanceId))
 				.withHeader("Content-Encoding", "identity")));
 	}
 
-	private String startProcess(final String errandId) throws JacksonException {
+	private String startProcess(final String errandId, final String processKey) throws JacksonException {
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
 			.withHttpMethod(POST)
@@ -131,7 +130,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		return awaitProcessInstance(errandId, PROCESS_KEY_TOBACCO_SALES);
+		return awaitProcessInstance(errandId, processKey);
 	}
 
 	private void completeEveryPhase(final String errandId, final String processInstanceId) {

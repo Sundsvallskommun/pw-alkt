@@ -1,16 +1,7 @@
-#========================================
-# Unit test specific settings
-#========================================
-#----------------------------------------
-# Spring settings
-#----------------------------------------
 spring:
   main:
     banner-mode: "off"
 
-#----------------------------------------
-# External task client settings
-#----------------------------------------
 camunda:
   bpm:
     client:
@@ -29,9 +20,9 @@ process-engine:
         bpmnResourcePattern: bpmnResourcePattern_2
         dmnResourcePattern: dmnResourcePattern_2
         formResourcePattern: formResourcePattern_2
-#----------------------------------------
-# Integration settings
-#----------------------------------------
+customer-message:
+  texts:
+    processing-started: "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
 config:
   common:
     token-uri: token.url
@@ -68,6 +59,11 @@ config:
       channel: slack.channel
   support-management:
     base-url: support-management.base.url
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
+  templating:
+    base-url: templating.base.url
     token-uri: ${config.common.token-uri}
     client-id: ${config.common.client-id}
     client-secret: ${config.common.client-secret}
