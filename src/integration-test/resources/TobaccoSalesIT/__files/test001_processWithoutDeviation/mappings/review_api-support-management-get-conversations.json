@@ -1,0 +1,25 @@
+{
+	"name": "review_api-support-management-get-conversations",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/5a2d7e13-4b98-4c26-8f71-3e0a9b6d5c82/communication/conversations",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "0a9b8c7d-6e5f-4a3b-2c1d-0e9f8a7b6c5d",
+				"topic": "Intern dialog",
+				"type": "INTERNAL"
+			}
+		],
+		"status": 200
+	}
+}

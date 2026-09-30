@@ -1,6 +1,6 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.supportmanagement.ErrandProcess;
+import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import java.util.List;
 import java.util.Optional;
@@ -67,7 +67,7 @@ class ProcessReportServiceTest {
 	@Test
 	void reportsToTheRowOfTheTarget() {
 		final var target = new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, PROCESS_KEY, EXTERNAL_TASK_ID);
-		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
 		service.report(target, ProcessStateReport.failed("INCIDENT", "Timeout"));
 
@@ -89,7 +89,7 @@ class ProcessReportServiceTest {
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY);
 		when(externalTaskMock.getId()).thenReturn(EXTERNAL_TASK_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_complete_process");
-		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
 		service.report(externalTaskMock, ProcessStateReport.completed().withErrandVersion(7L));
 
@@ -111,7 +111,7 @@ class ProcessReportServiceTest {
 		when(externalTaskMock.getProcessInstanceId()).thenReturn(PROCESS_INSTANCE_ID);
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY);
 		when(externalTaskMock.getId()).thenReturn(EXTERNAL_TASK_ID);
-		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
 		service.report(externalTaskMock, ProcessStateReport.completed().atActivity("closure_phase"));
 
@@ -130,7 +130,7 @@ class ProcessReportServiceTest {
 		mockExternalTask();
 		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
 		when(operatonIntegrationMock.findProcessWideSignals(PROCESS_INSTANCE_ID, DEFINITION_ID)).thenReturn(List.of(new AwaitingSignal("process_cancelled", "Process cancelled")));
-		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
 		service.report(externalTaskMock, report);
 
@@ -148,7 +148,7 @@ class ProcessReportServiceTest {
 	@Test
 	void leavesTheSignalsOutOfACompletedReport() {
 		mockExternalTask();
-		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
 		service.report(externalTaskMock, ProcessStateReport.completed());
 
@@ -160,7 +160,7 @@ class ProcessReportServiceTest {
 	@Test
 	void keepsTheSignalsAReportAlreadyCarries() {
 		mockExternalTask();
-		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
 		service.report(externalTaskMock, ProcessStateReport.waiting("review_phase", "Review").withAwaitingSignals(List.of(new AwaitingSignal("review_completed", "Review completed"))));
 
@@ -175,7 +175,7 @@ class ProcessReportServiceTest {
 		mockExternalTask();
 		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
 		when(operatonIntegrationMock.findProcessWideSignals(PROCESS_INSTANCE_ID, DEFINITION_ID)).thenThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Operaton is down"));
-		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
 		service.report(externalTaskMock, ProcessStateReport.running("external_task_create_asset", null));
 
@@ -199,7 +199,7 @@ class ProcessReportServiceTest {
 		final var target = new ReportTarget(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, PROCESS_KEY, null);
 		final var signal = new AwaitingSignal("review_completed", "Review completed");
 		when(operatonIntegrationMock.findWaitState(PROCESS_INSTANCE_ID, DEFINITION_ID)).thenReturn(Optional.of(new WaitState("review_phase", "Review", List.of(signal))));
-		final var captor = ArgumentCaptor.forClass(ErrandProcess.class);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
 		service.reportWaitState(target, DEFINITION_ID);
 

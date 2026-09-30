@@ -46,6 +46,9 @@ public final class Constants {
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
 	public static final String ERROR_CODE_TERMINATED = "TERMINATED";
 
+	// Must match the errorCode of the bpmn:error that the boundary event of a skippable step catches.
+	public static final String BPMN_ERROR_STEP_SKIPPED = "step_skipped";
+
 	// One wording wherever a step finds its task gone, so the log can be searched for it.
 	public static final String LOG_TASK_GONE = "Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)";
 
@@ -71,8 +74,16 @@ public final class Constants {
 	public static final String DECISION_METHOD_AUTOMATIC = "AUTOMATIC";
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
 
+	// The topic Mina sidor gives the external conversation it creates, so the conversation looks the same whoever starts
+	// it.
+	public static final String CONVERSATION_TOPIC_CUSTOMER = "Mina Sidor";
+
+	// An input parameter of the step in the bpmn schema, not a process variable. A step without it creates no certificate.
+	public static final String PROCESS_VARIABLE_CERTIFICATE_TEMPLATE = "certificateTemplate";
 	public static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
+	// An input parameter of the step in the bpmn schema, not a process variable.
+	public static final String PROCESS_VARIABLE_MESSAGE = "message";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";

@@ -60,11 +60,11 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 				return;
 			} catch (final NonRetryableException e) {
 				logException(externalTask, e);
-				failureHandler.handleIncident(externalTaskService, externalTask, e.getMessage());
+				handleFailure(externalTaskService, externalTask, e.getMessage(), false);
 				return;
 			} catch (final Exception e) {
 				logException(externalTask, e);
-				failureHandler.handleException(externalTaskService, externalTask, e.getMessage());
+				handleFailure(externalTaskService, externalTask, e.getMessage(), true);
 				return;
 			}
 
@@ -75,6 +75,14 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 			}
 		} finally {
 			RequestId.reset();
+		}
+	}
+
+	protected void handleFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final boolean retryable) {
+		if (retryable) {
+			failureHandler.handleException(externalTaskService, externalTask, message);
+		} else {
+			failureHandler.handleIncident(externalTaskService, externalTask, message);
 		}
 	}
 
@@ -94,7 +102,7 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	}
 
 	// Only after complete: the engine moves on when the task completes, so before that there is no subscription to read.
-	private void reportWaitState(final ExternalTask externalTask) {
+	protected void reportWaitState(final ExternalTask externalTask) {
 		try {
 			processReportService.reportWaitState(
 				new ReportTarget(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), externalTask.getProcessInstanceId(),

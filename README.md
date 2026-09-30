@@ -339,6 +339,15 @@ If any of that fails the draft is removed again. A permit assembled as a draft g
 carries <span class="code">X-Sent-By: pw-alkt; type=processEngine</span>, so the history of the permit shows that the
 process created it.</p>
 
+<p>A step with the input parameter <span class="code">certificateTemplate</span> also adds a permit certificate to the
+draft before it is activated, today only in alcohol-serving. Templating renders the named template as a PDF, and it is
+added as <span class="code">tillstandsbevis.pdf</span> in the category Tillståndsbevis. Every term of the decision is a
+placeholder named by its category as it is, so the term <span class="code">permitHolderName</span> is
+<span class="code">{{ permitHolderName }}</span> in the template. A term without text is left out, as if it were
+missing, so an empty required field is caught like a missing one. pw-alkt does not check that the terms fill the
+template; the template is strict, and Templating answers 400 with the name of a missing placeholder. That is a fault in
+the decision, so the draft is removed and the step raises an incident at once instead of retrying.</p>
+
 <p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
 A case worker cannot move the phase on by any other means.</p>
 
@@ -351,6 +360,39 @@ carries only the attachments the case worker linked. Support Management locks a 
 included, so the step writes a draft, links the attachments and completes it last. A retry picks up the draft an earlier
 attempt left behind and links only what is missing, and a completed decision is left as it is. Every write carries
 <span class="code">X-Trigger-Process: false</span>, so it does not wake the process that made it.</p>
+
+<h3>Messages to the customer</h3>
+
+<p><span class="code">NotifyCustomerTask</span> writes a message to the customer in the external conversation of the
+errand in Support Management. The message shows on the errand and in Mina sidor, and Support Management sends the
+customer a notice by SMS or e-mail. The step does not call Messaging itself. The step opens the review phase of every
+model with a manual gate, and tells the customer that the processing has started. The two folköl models are
+notifications that are approved automatically, so they have no such step.</p>
+
+<p>The text lives in configuration under <span class="code">customer-message.texts</span>, so it can be changed
+without a release; the service picks up a new text when it restarts. The step names the text in its input parameter
+<span class="code">message</span>, for example <span class="code">processing-started</span>. A step without the
+parameter, or one naming a text that is not configured, is a modelling fault and goes straight to an incident. The
+service does not start without at least one text. The step uses the first conversation of type <span class="code">EXTERNAL</span> that has the stakeholder with the
+role <span class="code">PRIMARY</span> as a participant, which may be one the customer started in Mina sidor. An external
+conversation with anyone else, such as a referral body, is left alone. If there is none it creates one with the topic
+Mina Sidor and the stakeholder as participant.</p>
+
+<p>The notice must not hold up the errand. The step is retried as usual, but once the retries are spent, or at once for
+a modelling fault, it throws the BPMN error <span class="code">step_skipped</span> instead of raising an incident. A
+boundary event on the step catches the error and takes the process to the review gate, and the failure is alerted in
+Slack. The customer then gets no notice unless someone sends it by hand.</p>
+
+<p>A retry must not send the message twice, and a process variable cannot remember that it was sent. The step reads
+the messages of the conversation first, and sends nothing if pw-alkt has already written the same text there. If the
+text changes between two attempts, the customer gets both texts. Message Exchange stores pw-alkt as the sender with
+the type <span class="code">processEngine</span>, which the spec of Support Management does not list, so the models
+generated from it accept unknown enum values. The text of a message is never logged.</p>
+
+<p>Outside pw-alkt the message needs a <span class="code">CONVERSATION</span> entry with
+a <span class="code">supportText</span> for the namespace in messaging-settings, or the notice is empty. Mina sidor
+also has to list the ALKT namespace, and until it knows the type <span class="code">processEngine</span> it shows the
+sender as unknown.</p>
 
 <h3>Automatic deployment</h3>
 

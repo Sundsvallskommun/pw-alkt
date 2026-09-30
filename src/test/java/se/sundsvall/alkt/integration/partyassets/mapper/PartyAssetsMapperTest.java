@@ -24,6 +24,7 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPartyId;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
 
@@ -145,6 +146,19 @@ class PartyAssetsMapperTest {
 	@Test
 	void toAssetFileWithoutPurposeHasNoCategory() {
 		assertThat(toAssetFile(new ErrandAttachment(), new byte[0]).category()).isNull();
+	}
+
+	@Test
+	void toCertificateFileIsAPdfInTheCertificateCategory() throws IOException {
+		final var content = "%PDF-1.7".getBytes();
+
+		final var result = toCertificateFile(content);
+
+		assertThat(result.file().getName()).isEqualTo(ATTACHMENT_PART_NAME);
+		assertThat(result.file().getOriginalFilename()).isEqualTo("tillstandsbevis.pdf");
+		assertThat(result.file().getContentType()).isEqualTo("application/pdf");
+		assertThat(result.file().getBytes()).isEqualTo(content);
+		assertThat(result.category()).isEqualTo("Tillståndsbevis");
 	}
 
 	@Test

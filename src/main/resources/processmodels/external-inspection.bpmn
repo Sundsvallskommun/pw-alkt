@@ -8,6 +8,7 @@
   <bpmn:message id="message_follow_up_completed" name="follow_up_completed" />
   <bpmn:message id="message_closure_completed" name="closure_completed" />
   <bpmn:message id="message_process_cancelled" name="process_cancelled" />
+  <bpmn:error id="error_step_skipped" name="Step skipped" errorCode="step_skipped" />
   <bpmn:process id="external-inspection" name="PROCESS External inspection" isExecutable="true" camunda:historyTimeToLive="P30D">
     <bpmn:documentation>Skeleton of the process. The phases run in sequence and each one waits for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
@@ -40,12 +41,30 @@
       <bpmn:incoming>flow_registration_to_review</bpmn:incoming>
       <bpmn:outgoing>flow_review_to_investigation</bpmn:outgoing>
       <bpmn:startEvent id="start_review_phase" name="Start review phase">
-        <bpmn:outgoing>flow_review_start_to_await</bpmn:outgoing>
+        <bpmn:outgoing>flow_review_start_to_notify</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_review_start_to_await" sourceRef="start_review_phase" targetRef="await_review_completed" />
+      <bpmn:sequenceFlow id="flow_review_start_to_notify" sourceRef="start_review_phase" targetRef="external_task_notify_processing_started" />
+      <bpmn:serviceTask id="external_task_notify_processing_started" name="Notify customer processing started" camunda:type="external" camunda:topic="NotifyCustomerTask">
+        <bpmn:documentation>Tells the customer, in the external conversation of the errand, that the processing has started. The text is the one configured under customer-message.texts with the name in the input parameter. Kept out of any loop so the message is sent once.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="message">processing-started</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_review_start_to_notify</bpmn:incoming>
+        <bpmn:outgoing>flow_review_notify_to_await</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_review_notify_to_await" sourceRef="external_task_notify_processing_started" targetRef="await_review_completed" />
+      <bpmn:boundaryEvent id="boundary_notify_processing_started_skipped" name="Notice skipped" attachedToRef="external_task_notify_processing_started">
+        <bpmn:documentation>Takes the process past the notice once its retries are spent, so a failing notice never holds the errand. The failure is alerted instead of raised as an incident.</bpmn:documentation>
+        <bpmn:outgoing>flow_review_notify_skipped_to_await</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="errordef_notify_processing_started_skipped" errorRef="error_step_skipped" />
+      </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="flow_review_notify_skipped_to_await" sourceRef="boundary_notify_processing_started_skipped" targetRef="await_review_completed" />
       <bpmn:intermediateCatchEvent id="await_review_completed" name="Review completed">
         <bpmn:documentation>Waits until a case worker marks the review as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
-        <bpmn:incoming>flow_review_start_to_await</bpmn:incoming>
+        <bpmn:incoming>flow_review_notify_to_await</bpmn:incoming>
+        <bpmn:incoming>flow_review_notify_skipped_to_await</bpmn:incoming>
         <bpmn:outgoing>flow_review_await_to_end</bpmn:outgoing>
         <bpmn:messageEventDefinition id="messagedef_review_completed" messageRef="message_review_completed" />
       </bpmn:intermediateCatchEvent>
@@ -273,25 +292,44 @@
           <dc:Bounds x="155" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_notify_processing_started" bpmnElement="external_task_notify_processing_started">
+        <dc:Bounds x="266" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_await_review_completed" bpmnElement="await_review_completed">
-        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <dc:Bounds x="422" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="247" y="225" width="86" height="27" />
+          <dc:Bounds x="397" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
-        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <dc:Bounds x="522" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="347" y="225" width="86" height="27" />
+          <dc:Bounds x="497" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_await" bpmnElement="flow_review_start_to_await">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_notify" bpmnElement="flow_review_start_to_notify">
         <di:waypoint x="216" y="200" />
-        <di:waypoint x="272" y="200" />
+        <di:waypoint x="266" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_notify_to_await" bpmnElement="flow_review_notify_to_await">
+        <di:waypoint x="366" y="200" />
+        <di:waypoint x="422" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_boundary_notify_processing_started_skipped" bpmnElement="boundary_notify_processing_started_skipped">
+        <dc:Bounds x="298" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="344" y="258" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_notify_skipped_to_await" bpmnElement="flow_review_notify_skipped_to_await">
+        <di:waypoint x="316" y="258" />
+        <di:waypoint x="316" y="290" />
+        <di:waypoint x="440" y="290" />
+        <di:waypoint x="440" y="218" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_await_to_end" bpmnElement="flow_review_await_to_end">
-        <di:waypoint x="308" y="200" />
-        <di:waypoint x="372" y="200" />
+        <di:waypoint x="458" y="200" />
+        <di:waypoint x="522" y="200" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

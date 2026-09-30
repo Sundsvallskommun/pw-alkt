@@ -51,7 +51,7 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
-	void toErrandProcess() {
+	void toErrandProcessReport() {
 		final var externalTaskId = UUID.randomUUID().toString();
 		final var target = new ReportTarget("2281", "ALKT", UUID.randomUUID().toString(), UUID.randomUUID().toString(), "alcohol-serving", externalTaskId);
 		final var occurredAt = OffsetDateTime.now();
@@ -59,7 +59,7 @@ class SupportManagementMapperTest {
 		final var error = new ProcessError().code("INCIDENT").message("Timeout");
 		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), List.of(), Map.of());
 
-		final var result = SupportManagementMapper.toErrandProcess(target, report);
+		final var result = SupportManagementMapper.toErrandProcessReport(target, report);
 
 		assertThat(result.getProcessService()).isEqualTo("pw-alkt");
 		assertThat(result.getProcessKey()).isEqualTo("alcohol-serving");
@@ -79,7 +79,7 @@ class SupportManagementMapperTest {
 		final var target = new ReportTarget("2281", "ALKT", UUID.randomUUID().toString(), UUID.randomUUID().toString(), "alcohol-serving", null);
 		final var signal = new AwaitingSignal("review_completed", "Review completed");
 
-		final var result = SupportManagementMapper.toErrandProcess(target, ProcessStateReport.waiting("review_phase", "Review").withAwaitingSignals(List.of(signal)));
+		final var result = SupportManagementMapper.toErrandProcessReport(target, ProcessStateReport.waiting("review_phase", "Review").withAwaitingSignals(List.of(signal)));
 
 		assertThat(result.getProcessStatus()).isEqualTo("WAITING");
 		assertThat(result.getCurrentActivityId()).isEqualTo("review_phase");
@@ -93,7 +93,7 @@ class SupportManagementMapperTest {
 	void toErrandProcessFromACompletedReport() {
 		final var target = new ReportTarget("2281", "ALKT", UUID.randomUUID().toString(), UUID.randomUUID().toString(), "external-inspection", null);
 
-		final var result = SupportManagementMapper.toErrandProcess(target, ProcessStateReport.completed());
+		final var result = SupportManagementMapper.toErrandProcessReport(target, ProcessStateReport.completed());
 
 		assertThat(result.getProcessStatus()).isEqualTo("COMPLETED");
 		assertThat(result.getCurrentActivityId()).isNull();

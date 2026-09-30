@@ -1,0 +1,768 @@
+openapi: 3.1.0
+info:
+  title: Templating
+  contact: {}
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+  version: "2.1"
+servers:
+- url: http://localhost:63896
+  description: Generated server url
+paths:
+  /{municipalityId}/templates:
+    get:
+      tags:
+      - Template resources
+      summary: "Get all available templates, content excluded"
+      operationId: getAllTemplates
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      - name: showOnlyLatest
+        in: query
+        description: "If true, only return the latest version of each template"
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: filters
+        in: query
+        description: "Metadata filters (dictionary/map: <code>{ \"key\": \"value\"\
+          , ... }</code> ). Not required"
+        required: false
+        schema:
+          type: object
+          additionalProperties:
+            type: string
+          default: "{}"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      tags:
+      - Template resources
+      summary: Store a template
+      operationId: saveTemplate
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateRequest"
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/templates/search:
+    post:
+      tags:
+      - Template resources
+      summary: "Search available templates by metadata, content excluded"
+      operationId: searchTemplates
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      - name: showOnlyLatest
+        in: query
+        description: "If true, only return the latest version of each template"
+        required: false
+        schema:
+          type: boolean
+          default: false
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Expression"
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/render:
+    post:
+      tags:
+      - Rendering resources
+      summary: "Render a stored template, optionally with parameters"
+      description: Either 'identifier' or 'metadata' is required to identify the template
+        to render
+      operationId: render
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenderRequest"
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RenderResponse"
+        "404":
+          description: Not Found - the template could not be found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RenderResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/render/pdf:
+    post:
+      tags:
+      - Rendering resources
+      summary: "Render a stored template as a PDF, optionally with parameters"
+      operationId: renderPdf
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenderRequest"
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RenderResponse"
+        "404":
+          description: Not Found - the template could not be found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RenderResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/render/direct:
+    post:
+      tags:
+      - Rendering resources
+      summary: "Render provided template contents, optionally with parameters"
+      operationId: renderDirect
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectRenderRequest"
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectRenderResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/render/direct/pdf:
+    post:
+      tags:
+      - Rendering resources
+      summary: "Render provided template contents as a PDF, optionally with parameters"
+      operationId: renderDirectPdf
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectRenderRequest"
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectRenderResponse"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/templates/{identifier}/{version}:
+    get:
+      tags:
+      - Template resources
+      summary: "Get a specific version of a template by identifier, including content"
+      operationId: getTemplate
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      - name: identifier
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetailedTemplateResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Template resources
+      summary: Delete a specific version of a template
+      operationId: deleteTemplate
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      - name: identifier
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    patch:
+      tags:
+      - Template resources
+      summary: Update (specific version of) a template
+      operationId: updateTemplate
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      - name: identifier
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: "#/components/schemas/JsonPatch"
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /{municipalityId}/templates/{identifier}:
+    get:
+      tags:
+      - Template resources
+      summary: "Get the latest version of a template by identifier, including content"
+      operationId: getTemplate_1
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      - name: identifier
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetailedTemplateResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+    delete:
+      tags:
+      - Template resources
+      summary: "Delete a template, including all its versions"
+      operationId: deleteTemplate_1
+      parameters:
+      - name: municipalityId
+        in: path
+        description: Municipality ID
+        required: true
+        schema:
+          type: string
+        example: 2281
+      - name: identifier
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+  /api-docs:
+    get:
+      tags:
+      - API
+      summary: OpenAPI
+      operationId: getApiDocs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/yaml:
+              schema:
+                type: string
+      x-auth-type: None
+      x-throttling-tier: Unlimited
+      x-wso2-mutual-ssl: Optional
+components:
+  schemas:
+    DefaultValue:
+      type: object
+      description: Template default value
+      properties:
+        fieldName:
+          type: string
+          description: Field name
+        value:
+          type: string
+          description: Value
+    IncrementMode:
+      type: string
+      enum:
+      - MAJOR
+      - MINOR
+    Metadata:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+    TemplateRequest:
+      type: object
+      description: Template request
+      properties:
+        identifier:
+          type: string
+          description: "Identifier. May contain letters, digits, dashes and dots"
+        versionIncrement:
+          $ref: "#/components/schemas/IncrementMode"
+          description: Version increment mode
+        name:
+          type: string
+          description: Name
+        description:
+          type:
+          - string
+          - "null"
+          description: Description
+        content:
+          type: string
+          description: "Content, as a BASE64-encoded string"
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+            description: Metadata
+        defaultValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/DefaultValue"
+            description: Default values
+        changeLog:
+          type: string
+          description: A changelog
+      required:
+      - content
+      - identifier
+      - name
+    TemplateResponse:
+      type: object
+      description: Template
+      properties:
+        identifier:
+          type: string
+          description: Identifier
+        version:
+          type: string
+          description: Version
+        type:
+          type: string
+          description: Type
+          enum:
+          - PEBBLE
+          - WORD
+        name:
+          type: string
+          description: Name
+        description:
+          type: string
+          description: Description
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+            description: Metadata
+        defaultValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/DefaultValue"
+            description: Default values
+        changeLog:
+          type: string
+          description: Changelog
+        lastModifiedAt:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+    Problem:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        type:
+          type: string
+          format: uri
+        status:
+          type: integer
+          format: int32
+    Expression:
+      description: Search filter expression
+      examples:
+      - or:
+        - eq:
+            process: PRH
+        - eq:
+            verksamhet: SBK
+    KeyValue:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+        value:
+          type: string
+          minLength: 1
+      required:
+      - key
+      - value
+    RenderRequest:
+      type: object
+      description: Request to render a template
+      properties:
+        identifier:
+          type:
+          - string
+          - "null"
+          description: Template identifier
+        version:
+          type:
+          - string
+          - "null"
+          description: Template version
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/KeyValue"
+            description: Template metadata
+        parameters:
+          type:
+          - string
+          - "null"
+          additionalProperties: {}
+          description: "Parameters (string values may be BASE64-encoded, and in that\
+            \ case they should be on the form \"BASE64:<base64-encoded-value>\")"
+          examples:
+          - someKey: someValue
+            otherKey:
+            - otherValue1
+            - otherValue2
+            anotherKey:
+              someKey: BASE64:c29tZUJhc2VFbmNvZGVkVmFsdWU=
+    RenderResponse:
+      type: object
+      properties:
+        output:
+          type: string
+          description: "Output, as a BASE64-encoded string"
+    DirectRenderRequest:
+      type: object
+      description: Request to render a template directly
+      properties:
+        content:
+          type: string
+          description: "The template content, as a BASE64-encoded string"
+          minLength: 1
+        parameters:
+          type:
+          - string
+          - "null"
+          additionalProperties: {}
+          description: "Parameters (string values may be BASE64-encoded, and in that\
+            \ case they should be on the form \"BASE64:<base64-encoded-value>\")"
+          examples:
+          - someKey: someValue
+            otherKey:
+            - otherValue1
+            - otherValue2
+            anotherKey:
+              someKey: BASE64:c29tZUJhc2VFbmNvZGVkVmFsdWU=
+      required:
+      - content
+    DirectRenderResponse:
+      type: object
+      properties:
+        output:
+          type: string
+          description: "Output, as a BASE64-encoded string"
+    JsonPatch:
+      examples:
+      - - op: add|remove|replace
+          path: /some/attribute/path
+          value: '...'
+    DetailedTemplateResponse:
+      type: object
+      description: Detailed template
+      properties:
+        identifier:
+          type: string
+          description: Identifier
+        version:
+          type: string
+          description: Version
+        type:
+          type: string
+          description: Type
+          enum:
+          - PEBBLE
+          - WORD
+        name:
+          type: string
+          description: Name
+        description:
+          type: string
+          description: Description
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metadata"
+            description: Metadata
+        defaultValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/DefaultValue"
+            description: Default values
+        changeLog:
+          type: string
+          description: Changelog
+        lastModifiedAt:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+        content:
+          type: string
+          description: "Content, as a BASE64-encoded string"
+  securitySchemes: {}

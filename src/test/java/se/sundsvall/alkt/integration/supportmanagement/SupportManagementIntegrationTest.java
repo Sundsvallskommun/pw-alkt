@@ -1,10 +1,15 @@
 package se.sundsvall.alkt.integration.supportmanagement;
 
+import generated.se.sundsvall.supportmanagement.Conversation;
+import generated.se.sundsvall.supportmanagement.ConversationRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
-import generated.se.sundsvall.supportmanagement.ErrandProcesses;
+import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
+import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.MessageRequest;
+import generated.se.sundsvall.supportmanagement.PageMessage;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -39,7 +44,7 @@ class SupportManagementIntegrationTest {
 
 	@Test
 	void reportProcessSendsTheReport() {
-		final var report = new ErrandProcess();
+		final var report = new ErrandProcessReport();
 
 		supportManagementIntegration.reportProcess(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_INSTANCE_ID, report);
 
@@ -51,7 +56,7 @@ class SupportManagementIntegrationTest {
 	void getErrandProcessesAnswersWithTheRows() {
 		final var row = new ErrandProcess().processInstanceId(PROCESS_INSTANCE_ID);
 		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(ResponseEntity.ok(new ErrandProcesses().processes(List.of(row))));
+			.thenReturn(ResponseEntity.ok(new ErrandProcessOverview().processes(List.of(row))));
 
 		assertThat(supportManagementIntegration.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsExactly(row);
 	}
@@ -65,7 +70,7 @@ class SupportManagementIntegrationTest {
 
 	@Test
 	void getErrandProcessesAnswersWithNothingWhenTheBodyCarriesNoRows() {
-		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcesses()));
+		when(supportManagementClientMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(new ErrandProcessOverview()));
 
 		assertThat(supportManagementIntegration.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
 	}
@@ -176,6 +181,57 @@ class SupportManagementIntegrationTest {
 		supportManagementIntegration.linkDecisionAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "attachment-id");
 
 		verify(supportManagementClientMock).linkDecisionAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "attachment-id", false);
+		verifyNoMoreInteractions(supportManagementClientMock);
+	}
+
+	@Test
+	void getConversationsAnswersWithTheConversations() {
+		final var conversation = new Conversation().id("conversation-id");
+		when(supportManagementClientMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(conversation)));
+
+		assertThat(supportManagementIntegration.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsExactly(conversation);
+	}
+
+	@Test
+	void getConversationsAnswersWithNothingWithoutABody() {
+		when(supportManagementClientMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
+
+		assertThat(supportManagementIntegration.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+	}
+
+	@Test
+	void createConversationAnswersWithTheIdWithoutWakingTheProcess() {
+		final var conversation = new ConversationRequest();
+		final var headers = new HttpHeaders();
+		headers.add(HttpHeaders.LOCATION, "https://support-management.example.com/2281/ALKT/errands/" + ERRAND_ID + "/communication/conversations/conversation-id");
+		when(supportManagementClientMock.createConversation(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, false, conversation)).thenReturn(ResponseEntity.status(CREATED).headers(headers).build());
+
+		assertThat(supportManagementIntegration.createConversation(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, conversation)).isEqualTo("conversation-id");
+	}
+
+	@Test
+	void getConversationMessagesAnswersWithThePage() {
+		final var page = new PageMessage().last(true);
+		when(supportManagementClientMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", 1, 100)).thenReturn(ResponseEntity.ok(page));
+
+		assertThat(supportManagementIntegration.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", 1, 100)).isSameAs(page);
+	}
+
+	@Test
+	void getConversationMessagesFailsWithoutABody() {
+		when(supportManagementClientMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", 0, 100)).thenReturn(ResponseEntity.ok(null));
+
+		assertThatThrownBy(() -> supportManagementIntegration.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", 0, 100))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("came back without content");
+	}
+
+	@Test
+	void createConversationMessageSendsTheMessageAsJsonWithoutWakingTheProcess() {
+		supportManagementIntegration.createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", new MessageRequest().content("Hej"));
+
+		verify(supportManagementClientMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", false,
+			"{\"content\":\"Hej\",\"attachmentIds\":[]}");
 		verifyNoMoreInteractions(supportManagementClientMock);
 	}
 }

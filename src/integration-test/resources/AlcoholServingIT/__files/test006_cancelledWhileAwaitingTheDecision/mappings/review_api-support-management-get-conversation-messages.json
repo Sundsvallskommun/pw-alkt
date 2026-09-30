@@ -1,0 +1,54 @@
+{
+	"name": "review_api-support-management-get-conversation-messages",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/communication/conversations/5b1e9c7a-2d4f-4a86-9e3b-7c0d1f2a3b4c/messages",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"queryParameters": {
+			"page": {
+				"equalTo": "0"
+			},
+			"size": {
+				"equalTo": "100"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"content": [
+				{
+					"id": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+					"createdBy": {
+						"type": "partyId",
+						"value": "8f2a4c6e-1b3d-4e5f-9a7b-0c1d2e3f4a5b"
+					},
+					"content": "Hur lång tid tar det?",
+					"type": "USER_CREATED"
+				},
+				{
+					"id": "2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f6a",
+					"createdBy": {
+						"type": "processEngine",
+						"value": "pw-alkt"
+					},
+					"content": "Ett annat meddelande.",
+					"type": "USER_CREATED"
+				}
+			],
+			"number": 0,
+			"size": 100,
+			"totalElements": 2,
+			"totalPages": 1,
+			"first": true,
+			"last": true
+		},
+		"status": 200
+	}
+}
