@@ -80,7 +80,8 @@ current activity, the signals the process waits for, and any error. Reports come
 	</tbody>
 </table>
 
-<p>Nothing compares against the row before writing it, except the reconciliation. A retried step reports
+<p>Nothing compares against the row before writing it, except the reconciliation and the phase check of the activity
+log below. A retried step reports
 <span class="code">RUNNING</span> again, and idempotence at the receiver is cheaper than a read before every write.
 Today a six-gate process without work steps of its own is eight reports over its whole life.</p>
 
@@ -88,6 +89,75 @@ Today a six-gate process without work steps of its own is eight reports over its
 about one instance can therefore land out of order. The window is short and the next report corrects the row, because
 every report reads the engine anew instead of replaying something remembered. Worth knowing before trusting a row that
 disagrees with Cockpit.</p>
+
+<h3>The activity log</h3>
+
+<p>A report can carry entries for the activity log of the errand, which Draken shows as the process log. Support
+Management appends them in the same call as the state and gives them back through
+<span class="code">GET .../errands/{errandId}/process-activities</span>. Each entry is written for two readers.
+<span class="code">activityName</span> is a sentence in Swedish for the case worker, and
+<span class="code">message</span> is the technical account for whoever debugs, ending in the
+<span class="code">x-request-id</span> to search the logs for.</p>
+
+<table class="settings">
+	<thead>
+		<tr>
+			<th>Entry</th>
+			<th>Written when</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><span class="code">TASK</span>, <span class="code">INFO</span></td>
+			<td>A work step did its work. Checking the decision leaves no entry while there is none yet, since the step then
+			reruns every hour</td>
+		</tr>
+		<tr>
+			<td><span class="code">TASK</span>, <span class="code">WARN</span> with code <span class="code">RETRY</span> or
+			<span class="code">SKIPPED</span></td>
+			<td>A step failed and will be retried, or a skippable step was skipped</td>
+		</tr>
+		<tr>
+			<td><span class="code">TASK</span>, <span class="code">ERROR</span> with code <span class="code">INCIDENT</span></td>
+			<td>A step raised an incident</td>
+		</tr>
+		<tr>
+			<td><span class="code">PHASE</span>, <span class="code">INFO</span></td>
+			<td>The process entered a phase</td>
+		</tr>
+		<tr>
+			<td><span class="code">INCIDENT</span>, <span class="code">RECONCILIATION</span></td>
+			<td>The reconciliation reported what the work steps could not</td>
+		</tr>
+	</tbody>
+</table>
+
+<p>Support Management keeps one entry per task and activity id, and a retry runs under the same task. The id of a failed
+attempt therefore ends in its number, <span class="code">external_task_create_asset#2</span>, or the second attempt
+would be dropped as a replay of the first.</p>
+
+<p>A phase is entered when a report places the process in a phase other than the one its row stands in. The row is read
+first, and both sides are reduced to their phase, so a decision phase that loops back to its own step every hour is not
+entered again. The check runs before the wait state and before a work step, since some phases open with a step. A row
+that cannot be read costs the entry, not the report.</p>
+
+<p>The technical account never holds the text of another service's answer, since there is no telling what it holds.
+A failure is described by its kind, its status and the service that answered, for example
+<span class="code">ServerProblem 502 from party-assets (remote 503 Service Unavailable). Attempt 2 of 4</span>. Our own
+messages carry ids only and are kept in full. The same description goes into the error of the row, the incident in
+Operaton and the alert.</p>
+
+<p>The texts live in configuration under <span class="code">process-log.texts</span>, set per environment like the
+messages to the customer, and the service does not start without them. The test profiles hold a full set to copy from.
+<span class="code">steps</span> is keyed by the id of the step in the model, and each step
+needs <span class="code">done</span>, <span class="code">retry</span> and <span class="code">failed</span>, plus
+<span class="code">skipped</span> when the model can skip it. <span class="code">phases</span> is keyed by the id of the
+phase and holds <span class="code">entered</span>. <span class="code">process</span> holds
+<span class="code">settled-completed</span> and <span class="code">settled-terminated</span> for the reconciliation. A
+step that lacks one of its required texts stops the start. A step or phase with no texts at all falls back to the name
+in the model and then to the id. A key holding an underscore must be written in brackets,
+<span class="code">"[external_task_create_asset]"</span>, or Spring drops the underscore and the texts are never
+found.</p>
 
 <h3>Process definitions</h3>
 
@@ -515,7 +585,9 @@ every incident in the tenant as <span class="code">FAILED</span> with code <span
 settles each instance that ended within <span class="code">reconciliation.lookback</span> whose row is still live:
 <span class="code">COMPLETED</span> for an end the model chose, <span class="code">FAILED</span> with code
 <span class="code">TERMINATED</span> for one cancelled from outside. Rows that already say so are skipped, and an errand
-that is gone (404) is left alone.</p>
+that is gone (404) is left alone. Each report leaves an entry in the activity log, named from
+<span class="code">process-log.texts</span>. The id of an incident entry is the activity alone, as it has always been, so
+an incident already in the log is not written again.</p>
 
 <p>It runs as a process of its own, <span class="code">process-reconciliation.bpmn</span>: a timer start event every
 five minutes followed by the external task <span class="code">ReconcileProcessesTask</span>. That is what makes a run
@@ -556,9 +628,10 @@ failing errand never stops the rest of a run.</p>
 <h3>Incident alerts</h3>
 
 <p>An incident needs someone to act in Operaton, so the step that raises it also posts to Slack through
-api-service-messaging. The message names the municipality, namespace, process key, activity, errand, process instance
-and the <span class="code">x-request-id</span> of the event that started the process, which is the id to search the logs
-for. A failed alert is logged and does not stop the engine from being told about the failure. Only a work step that runs out
+api-service-messaging. The message names the municipality, namespace, process key, activity, errand and process
+instance, followed by the description of the failure from the activity log. That ends in the attempt and the
+<span class="code">x-request-id</span> of the event that started the process, which is the id to search the logs for.
+A failed alert is logged and does not stop the engine from being told about the failure. Only a work step that runs out
 of retries sends an alert. A step that throws <span class="code">NonRetryableException</span>, for a fault no retry can
 fix such as a process key without a decision title, skips the retries and raises the incident and the alert on the first
 attempt. An incident the engine raises on its own, such as a failing timer job, shows up only through the

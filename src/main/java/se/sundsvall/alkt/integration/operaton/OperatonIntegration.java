@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
+import se.sundsvall.alkt.integration.operaton.ProcessModelCache.ModelElement;
 import se.sundsvall.alkt.integration.operaton.ProcessModelCache.ProcessModel;
 import se.sundsvall.alkt.integration.operaton.mapper.OperatonMapper;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
@@ -105,6 +106,15 @@ public class OperatonIntegration {
 		}
 
 		return toSignals(cancellation, processModelCache.modelOf(processDefinitionId));
+	}
+
+	public Optional<ModelElement> phaseOf(final String processDefinitionId, final String activityId) {
+		return processModelCache.modelOf(processDefinitionId).phaseOf(activityId);
+	}
+
+	/** Null when the model gives the element no name. */
+	public String labelOf(final String processDefinitionId, final String activityId) {
+		return processModelCache.modelOf(processDefinitionId).labelOf(activityId, null);
 	}
 
 	private static boolean isCancellation(final EventSubscriptionDto subscription) {

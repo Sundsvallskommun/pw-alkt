@@ -10,6 +10,7 @@ import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ProcessStatus;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
@@ -19,6 +20,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
+import static se.sundsvall.alkt.service.model.ProcessStatus.RUNNING;
+import static se.sundsvall.alkt.util.FailureDescription.describe;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 public abstract class AbstractTaskWorker implements ExternalTaskHandler {
@@ -43,13 +46,13 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 		try {
 			final ProcessStateReport report;
 			try {
-				reportProcessState(externalTask, ProcessStateReport.running(externalTask.getActivityId(), null));
+				reportProcessState(externalTask, RUNNING, () -> processReportService.reportStarted(externalTask));
 
 				report = executeBusinessLogic(externalTask, externalTaskService);
 
 				// Reported even when it is the same RUNNING again: Support Management holds the step as working until the task
 				// reports a second time, and warns of concurrent tasks otherwise.
-				reportProcessState(externalTask, report);
+				reportProcessState(externalTask, report.status(), () -> processReportService.reportDone(externalTask, report));
 				externalTaskService.complete(externalTask, report.variables());
 			} catch (final NotFoundException e) {
 				// The task is gone: the process was cancelled or deleted while the step ran, or another worker completed it after
@@ -59,11 +62,11 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 				return;
 			} catch (final NonRetryableException e) {
 				logException(externalTask, e);
-				handleFailure(externalTaskService, externalTask, e.getMessage(), false);
+				handleFailure(externalTaskService, externalTask, describe(e), false);
 				return;
 			} catch (final Exception e) {
 				logException(externalTask, e);
-				handleFailure(externalTaskService, externalTask, e.getMessage(), true);
+				handleFailure(externalTaskService, externalTask, describe(e), true);
 				return;
 			}
 
@@ -87,16 +90,16 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 
 	// A failed report must not fail the business task. The one exception is a 412, which means the errand moved under us:
 	// it propagates so the step reruns and rereads the errand.
-	private void reportProcessState(final ExternalTask externalTask, final ProcessStateReport report) {
+	private void reportProcessState(final ExternalTask externalTask, final ProcessStatus status, final Runnable report) {
 		try {
-			processReportService.report(externalTask, report);
+			report.run();
 		} catch (final ClientProblem e) {
 			if (PRECONDITION_FAILED.equals(e.getStatus())) {
 				throw e;
 			}
-			logger.error("Could not report {} for task {}", report.status(), sanitizeForLogging(externalTask.getId()), e);
+			logger.error("Could not report {} for task {}", status, sanitizeForLogging(externalTask.getId()), e);
 		} catch (final Exception e) {
-			logger.error("Could not report {} for task {}", report.status(), sanitizeForLogging(externalTask.getId()), e);
+			logger.error("Could not report {} for task {}", status, sanitizeForLogging(externalTask.getId()), e);
 		}
 	}
 

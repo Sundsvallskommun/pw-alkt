@@ -32,6 +32,7 @@ public class CreateDecisionWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} has decision {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(decisionId));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null);
+		return ProcessStateReport.running(externalTask.getActivityId(), null)
+			.withLogMessage("Decision '%s' completed".formatted(decisionId));
 	}
 }

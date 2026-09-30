@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,8 +22,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import se.sundsvall.alkt.configuration.ProcessLogProperties;
+import se.sundsvall.alkt.configuration.ProcessLogProperties.PhaseTexts;
+import se.sundsvall.alkt.configuration.ProcessLogProperties.ProcessTexts;
+import se.sundsvall.alkt.configuration.ProcessLogProperties.StepTexts;
 import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
+import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
@@ -70,11 +76,19 @@ class ProcessReconciliationServiceTest {
 	@Mock
 	private ProcessReportService processReportServiceMock;
 
+	@Mock
+	private OperatonIntegration operatonIntegrationMock;
+
 	private ProcessReconciliationService service;
 
 	@BeforeEach
 	void setUp() {
-		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2)));
+		final var processLog = new ProcessLog(new ProcessLogProperties(
+			Map.of("external_task_complete_process", new StepTexts("Processen är avslutad", "Nytt försök görs", "Processen kunde inte avslutas", null)),
+			Map.of("registration_phase", new PhaseTexts("Registrering har påbörjats")),
+			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock);
+		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2)),
+			processLog);
 	}
 
 	// Incidents
@@ -100,6 +114,7 @@ class ProcessReconciliationServiceTest {
 		assertThat(report.error().getMessage()).isEqualTo("Timeout against Support Management");
 		assertThat(report.activities()).singleElement().satisfies(activity -> {
 			assertThat(activity.getActivityType()).isEqualTo("INCIDENT");
+			assertThat(activity.getActivityName()).isEqualTo("Processen kunde inte avslutas");
 			assertThat(activity.getActivityId()).isEqualTo("external_task_complete_process");
 			assertThat(activity.getSeverity()).isEqualTo("ERROR");
 			assertThat(activity.getErrorCode()).isEqualTo("INCIDENT");
@@ -285,6 +300,7 @@ class ProcessReconciliationServiceTest {
 		assertThat(report.error()).isNull();
 		assertThat(report.activities()).singleElement().satisfies(activity -> {
 			assertThat(activity.getActivityType()).isEqualTo("RECONCILIATION");
+			assertThat(activity.getActivityName()).isEqualTo("Avstämd som avslutad");
 			assertThat(activity.getSeverity()).isEqualTo("WARN");
 			assertThat(activity.getErrorCode()).isNull();
 			assertThat(activity.getMessage()).contains("COMPLETED");
@@ -320,6 +336,7 @@ class ProcessReconciliationServiceTest {
 		assertThat(report.activities()).singleElement().satisfies(activity -> {
 			assertThat(activity.getSeverity()).isEqualTo("ERROR");
 			assertThat(activity.getErrorCode()).isEqualTo("TERMINATED");
+			assertThat(activity.getActivityName()).isEqualTo("Avstämd som avbruten");
 		});
 		verify(operatonClientMock, never()).getHistoricActivities(any());
 	}

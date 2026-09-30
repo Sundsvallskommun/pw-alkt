@@ -13,6 +13,7 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static se.sundsvall.alkt.util.FailureDescription.describe;
 
 @Component
 public class TemplatingIntegration {
@@ -30,7 +31,7 @@ public class TemplatingIntegration {
 			response = templatingClient.renderPdf(municipalityId, new RenderRequest().identifier(templateId).parameters(parameters));
 		} catch (final ClientProblem e) {
 			if (BAD_REQUEST.equals(e.getStatus())) {
-				throw new NonRetryableException("Template '%s' cannot be rendered from the decision: %s".formatted(templateId, e.getMessage()));
+				throw new NonRetryableException("Template '%s' cannot be rendered from the decision: %s".formatted(templateId, describe(e)), e);
 			}
 			throw e;
 		}

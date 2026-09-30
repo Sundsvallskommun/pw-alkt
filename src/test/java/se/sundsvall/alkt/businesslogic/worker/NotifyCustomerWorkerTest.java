@@ -71,7 +71,8 @@ class NotifyCustomerWorkerTest {
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		assertThat(result).isEqualTo(ProcessStateReport.running(ACTIVITY_ID, null));
+		assertThat(result).isEqualTo(ProcessStateReport.running(ACTIVITY_ID, null)
+			.withLogMessage(sent ? "Message '%s' sent".formatted(MESSAGE) : "Message '%s' already sent, not sent again".formatted(MESSAGE)));
 		verify(customerMessageServiceMock).sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
@@ -102,7 +103,7 @@ class NotifyCustomerWorkerTest {
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving");
 		when(externalTaskMock.getProcessDefinitionId()).thenReturn("definition-id");
 		when(customerMessageServiceMock.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).thenThrow(new IllegalStateException("Support Management is down"));
-		when(failureHandlerMock.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "Support Management is down", true)).thenReturn(true);
+		when(failureHandlerMock.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "IllegalStateException", true)).thenReturn(true);
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
@@ -114,7 +115,7 @@ class NotifyCustomerWorkerTest {
 	void reportsNoWaitStateWhenAFailingStepIsNotSkipped() {
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 		when(failureHandlerMock.handleSkippableFailure(externalTaskServiceMock, externalTaskMock,
-			"Step 'external_task_notify_processing_started' has no input parameter 'message' naming the message to send", false)).thenReturn(false);
+			"NonRetryableException: Step 'external_task_notify_processing_started' has no input parameter 'message' naming the message to send", false)).thenReturn(false);
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 

@@ -62,7 +62,7 @@ class CreateAssetWorkerTest {
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_asset", null));
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_asset", null).withLogMessage("Asset 'asset-id' found or created"));
 		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}

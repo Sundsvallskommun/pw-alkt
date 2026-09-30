@@ -1,0 +1,23 @@
+{
+	"name": "00_main_any-worker---api-support-management-get-processes-while-down",
+	"metadata": {
+		"comment": "A work step reads the row to tell whether it entered a phase, and Support Management is down for that as well. The step swallows it and reports without the entry."
+	},
+	"priority": 1,
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/e1c47b93-6a25-4f80-b3d6-9c052f7ae184/processes"
+	},
+	"scenarioName": "support-management-comes-back",
+	"requiredScenarioState": "Started",
+	"response": {
+		"headers": {
+			"Content-Type": "application/problem+json"
+		},
+		"jsonBody": {
+			"title": "Internal Server Error",
+			"status": 500
+		},
+		"status": 500
+	}
+}

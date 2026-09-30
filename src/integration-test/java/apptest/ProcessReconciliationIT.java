@@ -9,6 +9,12 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
@@ -56,6 +62,8 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
 
 		stubRowsOfTheErrand(processInstanceId);
+		// The work step read the row as well, to tell whether it entered a phase
+		final var readsByTheProcess = wiremock.findAll(getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT))).size();
 
 		// The first sweep finds a row that still says RUNNING and reports the incident
 		runReconciliation();
@@ -63,7 +71,14 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		// The second finds the row it just wrote, and has nothing to add. Its mappings allow one report and no more.
 		runReconciliation();
 
-		verify(exactly(2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT)));
+		verify(exactly(readsByTheProcess + 2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT)));
+		// The step left its own entry: the attempt in the id, the description and the request id in the message
+		verify(putRequestedFor(urlPathMatching(PROCESSES_PATH_INCIDENT + "/[^/]+"))
+			.withRequestBody(matchingJsonPath("$.processStatus", equalTo("FAILED")))
+			.withRequestBody(matchingJsonPath("$.activities[0].activityType", equalTo("TASK")))
+			.withRequestBody(matchingJsonPath("$.activities[0].activityId", matching("external_task_[a-z_]+#1")))
+			.withRequestBody(matchingJsonPath("$.activities[0].errorCode", equalTo("INCIDENT")))
+			.withRequestBody(matchingJsonPath("$.activities[0].message", containing("Attempt 1 of 1, x-request-id "))));
 		verifyAllStubs();
 		verify(exactly(1), postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack")));
 	}
@@ -93,6 +108,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// Support Management is back and never heard the process end
+		wiremock.setScenarioState("support-management-comes-back", "support-management-is-back");
 		runReconciliation();
 
 		verifyAllStubs();

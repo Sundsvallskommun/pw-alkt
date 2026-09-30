@@ -37,13 +37,14 @@ public class NotifyCustomerWorker extends AbstractTaskWorker {
 			.orElseThrow(() -> new NonRetryableException("Step '%s' has no input parameter '%s' naming the message to send"
 				.formatted(externalTask.getActivityId(), PROCESS_VARIABLE_MESSAGE)));
 
+		final var report = ProcessStateReport.running(externalTask.getActivityId(), null);
 		if (customerMessageService.sendMessage(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), message)) {
 			logInfo("Message {} was sent to the customer of errand {}", sanitizeForLogging(message), sanitizeForLogging(getErrandId(externalTask)));
-		} else {
-			logInfo("Message {} had already been sent to the customer of errand {}", sanitizeForLogging(message), sanitizeForLogging(getErrandId(externalTask)));
+			return report.withLogMessage("Message '%s' sent".formatted(message));
 		}
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null);
+		logInfo("Message {} had already been sent to the customer of errand {}", sanitizeForLogging(message), sanitizeForLogging(getErrandId(externalTask)));
+		return report.withLogMessage("Message '%s' already sent, not sent again".formatted(message));
 	}
 
 	// Why: the notice is not worth holding the errand for, so a step that keeps failing is skipped rather than left as an

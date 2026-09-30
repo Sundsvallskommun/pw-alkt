@@ -1,7 +1,7 @@
 {
 	"name": "02_main_reconciliation---api-support-management-get-processes-running",
 	"metadata": {
-		"comment": "Reading the row is the only call a sweep makes that the process itself never does, so it marks the point where Support Management is back and the reports below start being accepted."
+		"comment": "The first read once the test has said Support Management is back. It marks the point where the reports below start being accepted."
 	},
 	"priority": 1,
 	"request": {
@@ -9,7 +9,7 @@
 		"urlPath": "/api-support-management/2281/ALKT/errands/e1c47b93-6a25-4f80-b3d6-9c052f7ae184/processes"
 	},
 	"scenarioName": "support-management-comes-back",
-	"requiredScenarioState": "Started",
+	"requiredScenarioState": "support-management-is-back",
 	"newScenarioState": "reconciliation-is-sweeping",
 	"response": {
 		"headers": {
