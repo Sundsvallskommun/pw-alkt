@@ -1,7 +1,8 @@
 package se.sundsvall.alkt.integration.operaton;
 
-import java.util.List;
-import org.camunda.bpm.client.spring.SpringTopicSubscription;
+import org.camunda.bpm.client.ExternalTaskClient;
+import org.camunda.bpm.client.impl.ExternalTaskClientImpl;
+import org.camunda.bpm.client.topic.TopicSubscription;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,11 +18,14 @@ import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 class TenantAwareSubscriptionsTest {
 
 	@Autowired
-	private List<SpringTopicSubscription> subscriptions;
+	private ExternalTaskClient client;
 
+	/** Read from the subscriptions the client opened, since a tenant set after opening would never reach a fetch. */
 	@Test
-	void everySubscriptionIsScopedToTheTenant() {
-		assertThat(subscriptions).extracting(SpringTopicSubscription::getTopicName).containsExactlyInAnyOrder(
+	void everyOpenedSubscriptionIsScopedToTheTenant() {
+		final var subscriptions = ((ExternalTaskClientImpl) client).getTopicSubscriptionManager().getSubscriptions();
+
+		assertThat(subscriptions).extracting(TopicSubscription::getTopicName).containsExactlyInAnyOrder(
 			"CancelProcessTask",
 			"CheckDecisionTask",
 			"CompleteProcessTask",

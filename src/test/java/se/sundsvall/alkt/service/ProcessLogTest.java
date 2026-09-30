@@ -69,7 +69,7 @@ class ProcessLogTest {
 		verifyNoInteractions(operatonIntegrationMock);
 	}
 
-	/** The attempt goes into the id, since Support Management keeps one entry per task and id. */
+	/** The time goes into the id, since Support Management keeps one entry per task and id. */
 	@ParameterizedTest
 	@CsvSource({
 		"RETRY, WARN, RETRY, Nytt försök görs",
@@ -79,14 +79,29 @@ class ProcessLogTest {
 	void taskFailed(final Outcome outcome, final String severity, final String errorCode, final String name) {
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 
-		final var entry = processLog.taskFailed(externalTaskMock, outcome, 2, "ServerProblem 502 from party-assets. Attempt 2 of 4, x-request-id request-id");
+		final var entry = processLog.taskFailed(externalTaskMock, outcome, "ServerProblem 502 from party-assets. Attempt 2 of 4, x-request-id request-id");
 
 		assertThat(entry.getActivityType()).isEqualTo("TASK");
-		assertThat(entry.getActivityId()).isEqualTo(ACTIVITY_ID + "#2");
+		assertThat(entry.getActivityId()).isEqualTo(ACTIVITY_ID + "#" + entry.getOccurredAt().toInstant().toEpochMilli());
 		assertThat(entry.getActivityName()).isEqualTo(name);
 		assertThat(entry.getSeverity()).isEqualTo(severity);
 		assertThat(entry.getErrorCode()).isEqualTo(errorCode);
 		assertThat(entry.getMessage()).isEqualTo("ServerProblem 502 from party-assets. Attempt 2 of 4, x-request-id request-id");
+	}
+
+	/**
+	 * A retry from Cockpit runs the same task again with the retries set anew, so the attempt count repeats. Two failures
+	 * of one task must still be two entries.
+	 */
+	@Test
+	void everyFailureOfATaskGetsAnIdOfItsOwn() throws InterruptedException {
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+
+		final var incident = processLog.taskFailed(externalTaskMock, Outcome.FAILED, "Attempt 4 of 4");
+		Thread.sleep(2);
+		final var afterRetryFromCockpit = processLog.taskFailed(externalTaskMock, Outcome.FAILED, "Attempt 4 of 4");
+
+		assertThat(afterRetryFromCockpit.getActivityId()).isNotEqualTo(incident.getActivityId());
 	}
 
 	@Test
@@ -109,7 +124,7 @@ class ProcessLogTest {
 		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
 		when(operatonIntegrationMock.labelOf(DEFINITION_ID, ACTIVITY_ID)).thenReturn("Create asset");
 
-		assertThat(processLog.taskFailed(externalTaskMock, Outcome.SKIPPED, 1, "message").getActivityName()).isEqualTo("Create asset");
+		assertThat(processLog.taskFailed(externalTaskMock, Outcome.SKIPPED, "message").getActivityName()).isEqualTo("Create asset");
 		assertThat(processLog.phaseEntered("review_phase", "Review").getActivityName()).isEqualTo("Review");
 	}
 
@@ -182,7 +197,7 @@ class ProcessLogTest {
 		when(externalTaskMock.getActivityId()).thenReturn("a".repeat(300));
 		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
 
-		final var entry = processLog.taskFailed(externalTaskMock, Outcome.RETRY, 1, "m".repeat(3000));
+		final var entry = processLog.taskFailed(externalTaskMock, Outcome.RETRY, "m".repeat(3000));
 
 		assertThat(entry.getActivityId()).hasSize(255);
 		assertThat(entry.getActivityName()).hasSize(255);

@@ -15,10 +15,10 @@ import se.sundsvall.dept44.problem.ThrowableProblem;
  */
 public final class FailureDescription {
 
-	// ClientProblem and ServerProblem only come from the error decoders, whose detail reads
-	// "<client-id> error: {detail=..., status=503 Service Unavailable, title=...}".
+	// The error decoders write the detail as "<client-id> error: {detail=..., status=503 Service Unavailable, title=...}",
+	// keys sorted, so the status they wrote is the one followed by the title or the end.
 	private static final Pattern CLIENT_ID = Pattern.compile("^([a-z][a-z-]*) error: ");
-	private static final Pattern REMOTE_STATUS = Pattern.compile("status=(\\d{3})");
+	private static final Pattern REMOTE_STATUS = Pattern.compile("status=(\\d{3}) [^,}]*(?:, title=|}$)");
 
 	private FailureDescription() {}
 
@@ -26,12 +26,18 @@ public final class FailureDescription {
 		return switch (throwable) {
 			case final ClientProblem problem -> describeRemote(problem);
 			case final ServerProblem problem -> describeRemote(problem);
+			// A decoder answers a status outside 4xx and 5xx with a plain problem, so the detail tells, not the type.
+			case final ThrowableProblem problem when isDecoded(problem) -> describeRemote(problem);
 			case final ThrowableProblem problem -> withText("%s %s".formatted(nameOf(problem), statusOf(problem)), problem.getDetail());
-			case final NonRetryableException exception -> withText(nameOf(exception), exception.getMessage());
+			case final NonRetryableException exception -> Optional.ofNullable(exception.getMessage()).orElseGet(() -> nameOf(exception));
 			default -> nameOf(throwable) + Optional.ofNullable(throwable.getCause())
 				.map(cause -> " caused by " + nameOf(cause))
 				.orElse("");
 		};
+	}
+
+	private static boolean isDecoded(final ThrowableProblem problem) {
+		return problem.getDetail() != null && CLIENT_ID.matcher(problem.getDetail()).find();
 	}
 
 	private static String describeRemote(final ThrowableProblem problem) {
@@ -42,12 +48,11 @@ public final class FailureDescription {
 		if (clientId.find()) {
 			description.append(" from ").append(clientId.group(1));
 		}
-		// The last one, since the remote detail comes first and may itself mention a status.
-		final var remoteStatus = REMOTE_STATUS.matcher(detail).results()
+		REMOTE_STATUS.matcher(detail).results()
 			.map(result -> HttpStatus.resolve(Integer.parseInt(result.group(1))))
 			.filter(Objects::nonNull)
-			.reduce((first, second) -> second);
-		remoteStatus.ifPresent(status -> description.append(" (remote %s %s)".formatted(status.value(), status.getReasonPhrase())));
+			.findFirst()
+			.ifPresent(status -> description.append(" (remote %s %s)".formatted(status.value(), status.getReasonPhrase())));
 
 		return description.toString();
 	}

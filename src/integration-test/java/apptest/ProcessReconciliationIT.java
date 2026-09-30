@@ -72,11 +72,11 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		runReconciliation();
 
 		verify(exactly(readsByTheProcess + 2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT)));
-		// The step left its own entry: the attempt in the id, the description and the request id in the message
+		// The step left its own entry: the time in the id, the attempt and the request id in the message
 		verify(putRequestedFor(urlPathMatching(PROCESSES_PATH_INCIDENT + "/[^/]+"))
 			.withRequestBody(matchingJsonPath("$.processStatus", equalTo("FAILED")))
 			.withRequestBody(matchingJsonPath("$.activities[0].activityType", equalTo("TASK")))
-			.withRequestBody(matchingJsonPath("$.activities[0].activityId", matching("external_task_[a-z_]+#1")))
+			.withRequestBody(matchingJsonPath("$.activities[0].activityId", matching("external_task_[a-z_]+#[0-9]+")))
 			.withRequestBody(matchingJsonPath("$.activities[0].errorCode", equalTo("INCIDENT")))
 			.withRequestBody(matchingJsonPath("$.activities[0].message", containing("Attempt 1 of 1, x-request-id "))));
 		verifyAllStubs();

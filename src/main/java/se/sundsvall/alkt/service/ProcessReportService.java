@@ -3,7 +3,6 @@ package se.sundsvall.alkt.service;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import java.util.List;
-import java.util.stream.Stream;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +65,7 @@ public class ProcessReportService {
 			report(externalTask, report);
 			return;
 		}
-		report(externalTask, report.withActivities(Stream.concat(report.activities().stream(), Stream.of(processLog.taskDone(externalTask, report.logMessage()))).toList()));
+		report(externalTask, report.withActivities(List.of(processLog.taskDone(externalTask, report.logMessage()))));
 	}
 
 	/**

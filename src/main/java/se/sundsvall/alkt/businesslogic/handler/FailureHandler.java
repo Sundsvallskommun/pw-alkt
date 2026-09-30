@@ -123,7 +123,7 @@ public class FailureHandler {
 	/** Best effort. A failed report is only logged, the alert must go out regardless. */
 	private void reportFailure(final ExternalTask externalTask, final ProcessStateReport report, final Outcome outcome, final String message) {
 		try {
-			processReportService.report(externalTask, report.withActivities(List.of(processLog.taskFailed(externalTask, outcome, attemptOf(externalTask), message))));
+			processReportService.report(externalTask, report.withActivities(List.of(processLog.taskFailed(externalTask, outcome, message))));
 		} catch (final Exception e) {
 			LOG.error("Could not report {} for task {} of process instance {} to Support Management", report.status(), sanitizeForLogging(externalTask.getId()),
 				sanitizeForLogging(externalTask.getProcessInstanceId()), e);

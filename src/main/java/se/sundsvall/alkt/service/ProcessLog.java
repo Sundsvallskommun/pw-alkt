@@ -59,16 +59,20 @@ public class ProcessLog {
 			"%s, x-request-id %s".formatted(logMessage, RequestId.get()), now());
 	}
 
-	/** The attempt goes into the id, or Support Management would take every retry of the task for the first one. */
-	public ProcessActivity taskFailed(final ExternalTask externalTask, final Outcome outcome, final int attempt, final String technicalMessage) {
+	/**
+	 * Support Management keeps one entry per task and id, and every run of a task, a retry from Cockpit included, is the
+	 * same task. The time of the failure goes into the id, since the attempt count starts over when Cockpit sets retries.
+	 */
+	public ProcessActivity taskFailed(final ExternalTask externalTask, final Outcome outcome, final String technicalMessage) {
 		final var severity = outcome == Outcome.FAILED ? SEVERITY_ERROR : SEVERITY_WARN;
 		final var errorCode = switch (outcome) {
 			case FAILED -> ERROR_CODE_INCIDENT;
 			case SKIPPED -> ERROR_CODE_SKIPPED;
 			default -> ERROR_CODE_RETRY;
 		};
-		return entry(ACTIVITY_TYPE_TASK, "%s#%d".formatted(externalTask.getActivityId(), attempt), nameOf(externalTask, outcome), severity, errorCode,
-			technicalMessage, now());
+		final var occurredAt = now();
+		return entry(ACTIVITY_TYPE_TASK, "%s#%d".formatted(externalTask.getActivityId(), occurredAt.toInstant().toEpochMilli()), nameOf(externalTask, outcome),
+			severity, errorCode, technicalMessage, occurredAt);
 	}
 
 	public ProcessActivity phaseEntered(final String phaseId, final String phaseName) {

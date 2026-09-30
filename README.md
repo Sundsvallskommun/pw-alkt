@@ -132,14 +132,18 @@ Management appends them in the same call as the state and gives them back throug
 	</tbody>
 </table>
 
-<p>Support Management keeps one entry per task and activity id, and a retry runs under the same task. The id of a failed
-attempt therefore ends in its number, <span class="code">external_task_create_asset#2</span>, or the second attempt
-would be dropped as a replay of the first.</p>
+<p>Support Management keeps one entry per task and activity id, and every run of a task is the same task, a retry from
+Cockpit included. The id of a failure therefore ends in the time it happened,
+<span class="code">external_task_create_asset#1790680986123</span>, or a later failure would be dropped as a replay of
+an earlier one. The attempt is in the message instead. It is read from the retries the engine holds, so after a retry
+from Cockpit it counts from wherever the retries were set.</p>
 
 <p>A phase is entered when a report places the process in a phase other than the one its row stands in. The row is read
 first, and both sides are reduced to their phase, so a decision phase that loops back to its own step every hour is not
-entered again. The check runs before the wait state and before a work step, since some phases open with a step. A row
-that cannot be read costs the entry, not the report.</p>
+entered again. The check runs before the wait state and before a work step, since some phases open with a step. It is
+best effort: a row that cannot be read costs the entry, not the report, and a phase entry whose report is lost is not
+written again, since the next report finds the row in that phase already. A wait state is taken to be a phase, which
+holds for every model today; a gate outside a phase would be logged as one.</p>
 
 <p>The technical account never holds the text of another service's answer, since there is no telling what it holds.
 A failure is described by its kind, its status and the service that answered, for example
@@ -147,7 +151,7 @@ A failure is described by its kind, its status and the service that answered, fo
 messages carry ids only and are kept in full. The same description goes into the error of the row, the incident in
 Operaton and the alert.</p>
 
-<p>The texts live in configuration under <span class="code">process-log.texts</span>, set per environment like the
+<p>The texts live in configuration under <span class="code">process-log</span>, set per environment like the
 messages to the customer, and the service does not start without them. The test profiles hold a full set to copy from.
 <span class="code">steps</span> is keyed by the id of the step in the model, and each step
 needs <span class="code">done</span>, <span class="code">retry</span> and <span class="code">failed</span>, plus
@@ -590,7 +594,7 @@ settles each instance that ended within <span class="code">reconciliation.lookba
 <span class="code">COMPLETED</span> for an end the model chose, <span class="code">FAILED</span> with code
 <span class="code">TERMINATED</span> for one cancelled from outside. Rows that already say so are skipped, and an errand
 that is gone (404) is left alone. Each report leaves an entry in the activity log, named from
-<span class="code">process-log.texts</span>. The id of an incident entry is the activity alone, as it has always been, so
+<span class="code">process-log.steps</span> and <span class="code">process-log.process</span>. The id of an incident entry is the activity alone, as it has always been, so
 an incident already in the log is not written again.</p>
 
 <p>It runs as a process of its own, <span class="code">process-reconciliation.bpmn</span>: a timer start event every

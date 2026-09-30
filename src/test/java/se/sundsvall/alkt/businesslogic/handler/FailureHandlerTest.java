@@ -77,7 +77,7 @@ class FailureHandlerTest {
 	@BeforeEach
 	void setUp() {
 		RequestId.init("request-id");
-		when(processLogMock.taskFailed(eq(externalTaskMock), any(), anyInt(), anyString())).thenReturn(ACTIVITY);
+		when(processLogMock.taskFailed(eq(externalTaskMock), any(), anyString())).thenReturn(ACTIVITY);
 	}
 
 	@AfterEach
@@ -105,7 +105,7 @@ class FailureHandlerTest {
 	@Test
 	void handleIncidentRaisesTheIncidentAndAlertsOnTheFirstAttempt() {
 		final var id = UUID.randomUUID().toString();
-		final var message = "NonRetryableException: Process 'alcohol-serving' has no title for a decision made automatically";
+		final var message = "Process 'alcohol-serving' has no title for a decision made automatically";
 		final var expected = message + ". Attempt 1, not retried, x-request-id request-id";
 		when(externalTaskMock.getId()).thenReturn(id);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn("2281");
@@ -114,7 +114,7 @@ class FailureHandlerTest {
 
 		failureHandler.handleIncident(externalTaskServiceMock, externalTaskMock, message);
 
-		verify(processLogMock).taskFailed(externalTaskMock, Outcome.FAILED, 1, expected);
+		verify(processLogMock).taskFailed(externalTaskMock, Outcome.FAILED, expected);
 		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.failed(ERROR_CODE_INCIDENT, expected).withActivities(List.of(ACTIVITY)));
 		verify(externalTaskServiceMock).handleFailure(id, expected, null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verify(messagingIntegrationMock).sendSlack(eq("2281"), contains(expected));
@@ -129,7 +129,7 @@ class FailureHandlerTest {
 
 		assertThat(failureHandler.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "Support Management is down", true)).isFalse();
 
-		verify(processLogMock).taskFailed(externalTaskMock, Outcome.RETRY, 2, expected);
+		verify(processLogMock).taskFailed(externalTaskMock, Outcome.RETRY, expected);
 		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.retrying(ERROR_CODE_RETRY, expected).withActivities(List.of(ACTIVITY)));
 		verify(externalTaskServiceMock).handleFailure(id, expected, null, 2, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verify(externalTaskServiceMock, never()).handleBpmnError(any(ExternalTask.class), any(), any());
@@ -151,7 +151,7 @@ class FailureHandlerTest {
 
 		verify(externalTaskServiceMock).handleBpmnError(externalTaskMock, BPMN_ERROR_STEP_SKIPPED, expected);
 		verify(externalTaskServiceMock, never()).handleFailure(nullable(String.class), any(), any(), anyInt(), anyLong());
-		verify(processLogMock).taskFailed(externalTaskMock, Outcome.SKIPPED, 4, expected);
+		verify(processLogMock).taskFailed(externalTaskMock, Outcome.SKIPPED, expected);
 		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null).withActivities(List.of(ACTIVITY)));
 		verify(messagingIntegrationMock).sendSlack("2281",
 			"[2281][ALKT][alcohol-serving] Skipped external_task_notify_processing_started for errand errand-id (process instance instance-id): " + expected);
@@ -166,7 +166,7 @@ class FailureHandlerTest {
 		assertThat(failureHandler.handleSkippableFailure(externalTaskServiceMock, externalTaskMock, "No text is configured", false)).isTrue();
 
 		verify(externalTaskServiceMock).handleBpmnError(externalTaskMock, BPMN_ERROR_STEP_SKIPPED, expected);
-		verify(processLogMock).taskFailed(externalTaskMock, Outcome.SKIPPED, 1, expected);
+		verify(processLogMock).taskFailed(externalTaskMock, Outcome.SKIPPED, expected);
 		verify(messagingIntegrationMock).sendSlack(eq("2281"), contains(expected));
 	}
 
@@ -245,7 +245,7 @@ class FailureHandlerTest {
 
 		failureHandler.handleException(externalTaskServiceMock, externalTaskMock, "message");
 
-		verify(processLogMock).taskFailed(externalTaskMock, Outcome.RETRY, 3, expected);
+		verify(processLogMock).taskFailed(externalTaskMock, Outcome.RETRY, expected);
 		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.retrying(ERROR_CODE_RETRY, expected).withActivities(List.of(ACTIVITY)));
 	}
 
@@ -257,7 +257,7 @@ class FailureHandlerTest {
 
 		failureHandler.handleException(externalTaskServiceMock, externalTaskMock, "message");
 
-		verify(processLogMock).taskFailed(externalTaskMock, Outcome.FAILED, 4, expected);
+		verify(processLogMock).taskFailed(externalTaskMock, Outcome.FAILED, expected);
 		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.failed(ERROR_CODE_INCIDENT, expected).withActivities(List.of(ACTIVITY)));
 	}
 

@@ -115,7 +115,7 @@ class NotifyCustomerWorkerTest {
 	void reportsNoWaitStateWhenAFailingStepIsNotSkipped() {
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 		when(failureHandlerMock.handleSkippableFailure(externalTaskServiceMock, externalTaskMock,
-			"NonRetryableException: Step 'external_task_notify_processing_started' has no input parameter 'message' naming the message to send", false)).thenReturn(false);
+			"Step 'external_task_notify_processing_started' has no input parameter 'message' naming the message to send", false)).thenReturn(false);
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 

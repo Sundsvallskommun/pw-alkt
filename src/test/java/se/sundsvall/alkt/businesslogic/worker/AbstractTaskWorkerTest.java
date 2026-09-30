@@ -299,7 +299,7 @@ class AbstractTaskWorkerTest {
 
 		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(failureHandlerMock).handleIncident(externalTaskServiceMock, externalTaskMock, "NonRetryableException: Not configured");
+		verify(failureHandlerMock).handleIncident(externalTaskServiceMock, externalTaskMock, "Not configured");
 		verify(failureHandlerMock, never()).handleException(any(), any(), any());
 		verify(externalTaskServiceMock, never()).complete(any(), any());
 		assertThat(RequestId.get()).isNull();

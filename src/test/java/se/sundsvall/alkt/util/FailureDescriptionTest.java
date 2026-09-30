@@ -48,10 +48,28 @@ class FailureDescriptionTest {
 		assertThat(FailureDescription.describe(Problem.valueOf(NOT_FOUND))).isEqualTo("ThrowableProblem 404");
 	}
 
+	/** A status outside 4xx and 5xx comes back from the decoder as a plain problem, with the remote text in its detail. */
+	@Test
+	void describesAnAnswerFromAnotherServiceByItsDetailRatherThanItsType() {
+		final var problem = Problem.valueOf(BAD_GATEWAY, "party error: {detail=Moved to 199001012385, status=302 Found, title=Found}");
+
+		assertThat(FailureDescription.describe(problem))
+			.isEqualTo("ThrowableProblem 502 from party (remote 302 Found)")
+			.doesNotContain("199001012385");
+	}
+
+	@Test
+	void takesTheStatusTheDecoderWroteRatherThanOneInTheRemoteTitle() {
+		final var problem = new ServerProblem(BAD_GATEWAY, "party-assets error: {status=503 Service Unavailable, title=Upstream answered status=500 once}");
+
+		assertThat(FailureDescription.describe(problem)).isEqualTo("ServerProblem 502 from party-assets (remote 503 Service Unavailable)");
+	}
+
+	/** The text is ours, and a wrapped failure would otherwise repeat the class name at every level. */
 	@Test
 	void keepsTheTextOfAFailureNoRetryCanFix() {
 		assertThat(FailureDescription.describe(new NonRetryableException("No text is configured for message 'processing-started'")))
-			.isEqualTo("NonRetryableException: No text is configured for message 'processing-started'");
+			.isEqualTo("No text is configured for message 'processing-started'");
 		assertThat(FailureDescription.describe(new NonRetryableException(null))).isEqualTo("NonRetryableException");
 	}
 
