@@ -47,7 +47,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.title",
-					"equalTo": "Tillstånd för servering av folköl"
+					"equalTo": "Anmälan om servering av folköl"
 				}
 			}
 		]

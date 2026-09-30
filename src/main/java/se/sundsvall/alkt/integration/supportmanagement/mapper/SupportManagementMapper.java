@@ -20,6 +20,7 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
@@ -31,8 +32,9 @@ public final class SupportManagementMapper {
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
 
 	private static final Map<String, String> DECISION_TITLES = Map.of(
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Tillstånd för försäljning av folköl",
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, "Tillstånd för servering av folköl");
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Anmälan om försäljning av folköl",
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, "Anmälan om servering av folköl",
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, "Anmälan om försäljning och servering av folköl");
 
 	private SupportManagementMapper() {}
 

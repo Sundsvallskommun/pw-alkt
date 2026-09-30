@@ -1,0 +1,8 @@
+{
+	"eventId": "304c2474-52ac-4906-87ba-5ec2e9077b85",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "16fee0b4-7c49-403b-9887-ed1b2f1d1230",
+	"processKey": "low-alcohol-beer-sales-and-serving",
+	"startAllowed": true
+}

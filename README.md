@@ -151,6 +151,11 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 			<td>Försäljning av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
 		</tr>
 		<tr>
+			<td class="code">low-alcohol-beer-sales-and-serving.bpmn</td>
+			<td class="code">low-alcohol-beer-sales-and-serving</td>
+			<td>Försäljning och servering av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
+		</tr>
+		<tr>
 			<td class="code">external-inspection.bpmn</td>
 			<td class="code">external-inspection</td>
 			<td>Yttre tillsyn, dvs. tillsyn på serveringsstället</td>
@@ -169,8 +174,8 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 	</tbody>
 </table>
 
-<p>All eleven errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
-Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The two folköl
+<p>All twelve errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
+Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The three folköl
 models are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
 first three phases pass straight through and Support Management first hears from them in the decision phase, which
 makes the decision and creates the permit on its own, see the next section. Follow up is the first phase that waits.</p>
@@ -194,7 +199,7 @@ which is described in the next section. Support Management publishes that as a
 correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
 between two gates when the change arrived and redelivering would not help.</p>
 
-<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All eleven models
+<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All twelve models
 share their message names, and every correlation is made on the errand id, so two live processes on one errand
 make every signal match two executions at once. Operaton answers that with <span class="code">400</span> and the
 signal is lost. The cancellation is the exception: it is correlated to every process of the errand, so it ends them
@@ -288,7 +293,7 @@ interface.</p>
 
 <p>In <span class="code">alcohol-serving</span> the decision phase waits for the decision itself, not for a button. Eight
 of the other models still wait for <span class="code">decision_completed</span> and move over once this one has proved
-itself. The two folköl models make the decision themselves and wait for no one.</p>
+itself. The three folköl models make the decision themselves and wait for no one.</p>
 
 <p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
 an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
@@ -337,7 +342,7 @@ process created it.</p>
 <p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
 A case worker cannot move the phase on by any other means.</p>
 
-<p>In the two folköl models <span class="code">CreateDecisionTask</span> approves the notification, and
+<p>In the three folköl models <span class="code">CreateDecisionTask</span> approves the notification, and
 <span class="code">CreateAssetTask</span> then creates the permit from that decision as above. The decision has the
 type <span class="code">PERMIT</span>, the outcome <span class="code">APPROVAL</span>, the method
 <span class="code">AUTOMATIC</span>, a title per process and the title of the errand as description. It is valid from

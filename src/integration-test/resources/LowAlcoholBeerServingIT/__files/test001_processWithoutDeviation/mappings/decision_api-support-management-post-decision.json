@@ -39,13 +39,13 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.title",
-					"equalTo": "Tillstånd för servering av folköl"
+					"equalTo": "Anmälan om servering av folköl"
 				}
 			},
 			{
 				"matchesJsonPath": {
 					"expression": "$.description",
-					"equalTo": "Anmälan om servering av folköl"
+					"equalTo": "Anmälan om servering av folköl, Kafé Solsidan"
 				}
 			},
 			{
