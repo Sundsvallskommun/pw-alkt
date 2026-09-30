@@ -356,11 +356,39 @@ class ProcessReconciliationServiceTest {
 	@Test
 	void leavesAnEndedInstanceWhoseRowIsAlreadyFailed() {
 		mockEndedInstance(StateEnum.EXTERNALLY_TERMINATED);
-		mockErrandProcesses(row("FAILED", "INCIDENT"));
+		mockErrandProcesses(row("FAILED", "TERMINATED"));
 
 		service.reconcile();
 
 		verifyNoInteractions(processReportServiceMock);
+	}
+
+	/** An incident leaves the instance alive, so an incident row of an instance that has since ended is not settled. */
+	@Test
+	void settlesACancelledInstanceWhoseRowStillSaysIncident() {
+		mockEndedInstance(StateEnum.COMPLETED);
+		when(operatonClientMock.getHistoricActivities(PROCESS_INSTANCE_ID)).thenReturn(List.of(new HistoricActivityInstanceDto().activityId("external_task_cancel_process")));
+		mockErrandProcesses(row("FAILED", "INCIDENT"));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().status()).isEqualTo(COMPLETED);
+		assertThat(reportCaptor.getValue().currentActivityId()).isEqualTo("external_task_cancel_process");
+	}
+
+	@Test
+	void settlesATerminatedInstanceWhoseRowStillSaysIncident() {
+		mockEndedInstance(StateEnum.EXTERNALLY_TERMINATED);
+		mockErrandProcesses(row("FAILED", "INCIDENT"));
+		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
+
+		service.reconcile();
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
+		assertThat(reportCaptor.getValue().status()).isEqualTo(FAILED);
+		assertThat(reportCaptor.getValue().error().getCode()).isEqualTo("TERMINATED");
 	}
 
 	@Test

@@ -8,14 +8,19 @@ import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.integration.operaton.ProcessModelCache.ProcessModel;
 import se.sundsvall.alkt.integration.operaton.mapper.OperatonMapper;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
+import se.sundsvall.dept44.exception.ClientProblem;
+import se.sundsvall.dept44.problem.Problem;
 
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.partitioningBy;
+import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static se.sundsvall.alkt.Constants.MESSAGE_DECISION_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_ERRAND_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_PROCESS_CANCELLED;
@@ -37,7 +42,7 @@ public class OperatonIntegration {
 	}
 
 	public List<ProcessInstanceDto> findProcessInstances(final String errandId, final String processKey, final String tenantId) {
-		return operatonClient.findProcessInstances(errandId, processKey, tenantId);
+		return asGatewayFault(() -> operatonClient.findProcessInstances(errandId, processKey, tenantId));
 	}
 
 	/** Empty for an instance that is no longer running, since the engine keeps no runtime row for one that ended. */
@@ -46,7 +51,7 @@ public class OperatonIntegration {
 	}
 
 	public ProcessInstanceWithVariablesDto startProcess(final String municipalityId, final String namespace, final String errandId, final String processKey, final String tenantId) {
-		return operatonClient.startProcessWithTenant(processKey, tenantId, OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandId));
+		return asGatewayFault(() -> operatonClient.startProcessWithTenant(processKey, tenantId, OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandId)));
 	}
 
 	/** The correlation picks among the processes of an errand on the subscription, not on the key the event carried. */
@@ -66,7 +71,23 @@ public class OperatonIntegration {
 	}
 
 	public void deleteProcessInstance(final String processInstanceId) {
-		operatonClient.deleteProcessInstance(processInstanceId, false);
+		asGatewayFault(() -> {
+			operatonClient.deleteProcessInstance(processInstanceId, false);
+			return null;
+		});
+	}
+
+	// Why: 400 keeps its status for the correlation only. On a call Support Management waits for it is a fault of the
+	// engine, and a 400 passed on would tell Support Management its own request was wrong.
+	private static <T> T asGatewayFault(final Supplier<T> call) {
+		try {
+			return call.get();
+		} catch (final ClientProblem e) {
+			if (BAD_REQUEST.equals(e.getStatus())) {
+				throw Problem.valueOf(BAD_GATEWAY, e.getMessage());
+			}
+			throw e;
+		}
 	}
 
 	/**
@@ -86,7 +107,7 @@ public class OperatonIntegration {
 		// alternative of an event-based gateway sits in the same phase, so the first gate is as good as any.
 		final var ownGates = gatesOf(ownSubscriptions);
 		final var activityId = ownGates.stream().findFirst().orElseGet(ownSubscriptions::getFirst).getActivityId();
-		final var signals = Stream.concat(toSignals(ownGates, model).stream(), toSignals(byCancellation.get(true), model).stream()).toList();
+		final var signals = toSignals(Stream.concat(ownGates.stream(), byCancellation.get(true).stream()).toList(), model);
 
 		// Id and name are taken from the same element or from neither: a phase without a name in the model must not be
 		// reported under the name of the catch event inside it.

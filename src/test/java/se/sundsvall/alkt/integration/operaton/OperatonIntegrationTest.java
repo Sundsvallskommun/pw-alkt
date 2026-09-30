@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.integration.operaton.ProcessModelCache.ProcessModel;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.dept44.exception.ClientProblem;
+import se.sundsvall.dept44.problem.Problem;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static generated.se.sundsvall.operaton.MessageCorrelationResultWithVariableDto.ResultTypeEnum.EXECUTION;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -149,6 +151,50 @@ class OperatonIntegrationTest {
 		when(operatonClientMock.correlateMessage(any())).thenReturn(List.of());
 
 		assertThat(operatonIntegration.correlateMessage("review_completed", randomUUID().toString(), TENANT_ID)).isEmpty();
+	}
+
+	/** Only the correlation keeps a 400; a call Support Management waits for passes it on as a gateway fault. */
+	@Test
+	void findProcessInstancesTurnsA400IntoAGatewayFault() {
+		when(operatonClientMock.findProcessInstances(any(), any(), any())).thenThrow(new ClientProblem(HttpStatus.BAD_REQUEST, "Bad query"));
+
+		assertThatThrownBy(() -> operatonIntegration.findProcessInstances(randomUUID().toString(), PROCESS_KEY, TENANT_ID))
+			.isInstanceOfSatisfying(Problem.class, problem -> assertThat(problem.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY))
+			.hasMessageContaining("Bad query");
+	}
+
+	@Test
+	void startProcessTurnsA400IntoAGatewayFault() {
+		when(operatonClientMock.startProcessWithTenant(eq(PROCESS_KEY), eq(TENANT_ID), any())).thenThrow(new ClientProblem(HttpStatus.BAD_REQUEST, "Bad variables"));
+
+		assertThatThrownBy(() -> operatonIntegration.startProcess(MUNICIPALITY_ID, NAMESPACE, randomUUID().toString(), PROCESS_KEY, TENANT_ID))
+			.isInstanceOfSatisfying(Problem.class, problem -> assertThat(problem.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY))
+			.hasMessageContaining("Bad variables");
+	}
+
+	@Test
+	void deleteProcessInstanceTurnsA400IntoAGatewayFault() {
+		final var processInstanceId = randomUUID().toString();
+		doThrow(new ClientProblem(HttpStatus.BAD_REQUEST, "Bad id")).when(operatonClientMock).deleteProcessInstance(processInstanceId, false);
+
+		assertThatThrownBy(() -> operatonIntegration.deleteProcessInstance(processInstanceId))
+			.isInstanceOfSatisfying(Problem.class, problem -> assertThat(problem.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY));
+	}
+
+	@Test
+	void startProcessLetsAnyOtherFailureThrough() {
+		final var failure = new ClientProblem(HttpStatus.BAD_GATEWAY, "Operaton is down");
+		when(operatonClientMock.startProcessWithTenant(eq(PROCESS_KEY), eq(TENANT_ID), any())).thenThrow(failure);
+
+		assertThatThrownBy(() -> operatonIntegration.startProcess(MUNICIPALITY_ID, NAMESPACE, randomUUID().toString(), PROCESS_KEY, TENANT_ID)).isSameAs(failure);
+	}
+
+	@Test
+	void correlateMessageKeepsA400() {
+		final var noWaitState = new ClientProblem(HttpStatus.BAD_REQUEST, "No matching wait state");
+		when(operatonClientMock.correlateMessage(any())).thenThrow(noWaitState);
+
+		assertThatThrownBy(() -> operatonIntegration.correlateMessage("review_completed", randomUUID().toString(), TENANT_ID)).isSameAs(noWaitState);
 	}
 
 	@Test

@@ -246,6 +246,27 @@ class ProcessServiceTest {
 		verify(operatonIntegrationMock).correlateMessage("review_completed", errandId, TENANT_ID);
 	}
 
+	/** The cancellation step reports for itself, so the instance the cancellation reached is not looked up. */
+	@Test
+	void reportsNothingAfterTheCancellation() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType("SIGNAL");
+		errandEvent.setSignalName("process_cancelled");
+
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+		when(operatonIntegrationMock.correlateMessage("process_cancelled", errandId, TENANT_ID)).thenReturn(Optional.of(randomUUID().toString()));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		verify(operatonIntegrationMock, never()).findProcessInstance(any());
+		verifyNoInteractions(processReportServiceMock);
+	}
+
 	/** A signal without a name can never become correlatable, so redelivering it would be pointless. */
 	@Test
 	void acceptsASignalWithoutANameWithoutCorrelating() {

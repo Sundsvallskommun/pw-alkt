@@ -8,8 +8,15 @@ public enum ProcessStatus {
 	COMPLETED,
 	FAILED;
 
-	/** A state the instance does not leave, so there is no wait state after it to report. */
+	/** A state with no wait state after it to report: the instance has ended, or stands on an incident. */
 	public boolean isTerminal() {
 		return (this == COMPLETED) || (this == FAILED);
+	}
+
+	/**
+	 * Every state but COMPLETED: an instance on an incident is FAILED but still listens, for the cancellation among others.
+	 */
+	public boolean takesSignals() {
+		return this != COMPLETED;
 	}
 }
