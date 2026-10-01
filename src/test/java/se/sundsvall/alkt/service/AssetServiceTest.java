@@ -5,6 +5,7 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
 import java.util.List;
@@ -135,15 +136,17 @@ class AssetServiceTest {
 	}
 
 	@Test
-	void findOrCreateAssetAttachesTheCertificateRenderedFromTheTermsBeforeActivating() throws IOException {
+	void findOrCreateAssetAttachesTheCertificateRenderedFromTheDecisionBeforeActivating() throws IOException {
 		final var attachment = new ErrandAttachment().id("first").fileName("beslut.pdf").mimeType("application/pdf");
 		final var pdf = "%PDF-1.7".getBytes();
 
 		givenADraftFor(approval()
 			.attachments(List.of(attachment))
-			.terms(List.of(new DecisionTerm().category("caseNumber").text("IAN-2026-00209"), new DecisionTerm().category("permitHolderName").text("Runt Hörnet AB"))));
+			.parameters(List.of(new Parameter().key("caseNumber").values(List.of("IAN-2026-00209")), new Parameter().key("permitHolderName").values(List.of("Runt Hörnet AB"))))
+			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat."))));
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
-		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, CERTIFICATE_TEMPLATE, Map.of("caseNumber", "IAN-2026-00209", "permitHolderName", "Runt Hörnet AB")))
+		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, CERTIFICATE_TEMPLATE,
+			Map.of("caseNumber", "IAN-2026-00209", "permitHolderName", "Runt Hörnet AB", "conditions", "Serveringsområdet ska vara avgränsat.")))
 			.thenReturn(pdf);
 
 		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE)).isEqualTo(ASSET_ID);

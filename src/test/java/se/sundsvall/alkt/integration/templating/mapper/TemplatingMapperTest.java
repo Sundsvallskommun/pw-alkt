@@ -1,51 +1,65 @@
 package se.sundsvall.alkt.integration.templating.mapper;
 
+import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 
 class TemplatingMapperTest {
 
 	@Test
-	void toTemplateParametersNamesEachTermByItsCategory() {
-		final var terms = List.of(term("caseNumber", "IAN-2026-00209"), term("permitHolderName", "Runt Hörnet AB"));
+	void toTemplateParametersNamesEachParameterByItsKey() {
+		final var decision = new Decision().parameters(List.of(parameter("caseNumber", "IAN-2026-00209"), parameter("permitHolderName", "Runt Hörnet AB")));
 
-		assertThat(toTemplateParameters(terms)).containsExactly(
+		assertThat(toTemplateParameters(decision)).containsExactly(
 			entry("caseNumber", "IAN-2026-00209"),
-			entry("permitHolderName", "Runt Hörnet AB"));
+			entry("permitHolderName", "Runt Hörnet AB"),
+			entry(PARAMETER_CONDITIONS, ""));
+	}
+
+	@Test
+	void toTemplateParametersJoinsTheValuesOfAParameter() {
+		final var decision = new Decision().parameters(List.of(parameter("serveringsyta", "Matsalen", "Uteserveringen")));
+
+		assertThat(toTemplateParameters(decision)).containsEntry("serveringsyta", "Matsalen, Uteserveringen");
 	}
 
 	/** A missing key makes the strict template answer 400 naming it, where an empty one would render an empty field. */
 	@ParameterizedTest
 	@NullAndEmptySource
 	@ValueSource(strings = "  ")
-	void toTemplateParametersLeavesOutATermWithoutText(final String text) {
-		assertThat(toTemplateParameters(List.of(term("premisesName", text), term("caseNumber", "IAN-2026-00209")))).containsExactly(entry("caseNumber", "IAN-2026-00209"));
+	void toTemplateParametersLeavesOutAParameterWithoutValue(final String value) {
+		final var decision = new Decision().parameters(List.of(new Parameter().key("premisesName").values(singletonList(value)), new Parameter().key("premisesPhone")));
+
+		assertThat(toTemplateParameters(decision)).containsOnlyKeys(PARAMETER_CONDITIONS);
 	}
 
 	@Test
-	void toTemplateParametersLeavesOutATermWithoutCategory() {
-		assertThat(toTemplateParameters(List.of(term(null, "text"), term("caseNumber", "IAN-2026-00209")))).containsExactly(entry("caseNumber", "IAN-2026-00209"));
+	void toTemplateParametersPutsTheTermsAsConditionsOnePerLineInTheirOrder() {
+		final var decision = new Decision().terms(List.of(
+			new DecisionTerm().sortOrder(2).text("Godkänd matsal ska finnas."),
+			new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat."),
+			new DecisionTerm().sortOrder(3).text(" ")));
+
+		assertThat(toTemplateParameters(decision)).containsEntry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat.\nGodkänd matsal ska finnas.");
 	}
 
 	@Test
-	void toTemplateParametersKeepsTheLastTermOfACategory() {
-		assertThat(toTemplateParameters(List.of(term("caseNumber", "first"), term("caseNumber", "second")))).containsExactly(entry("caseNumber", "second"));
+	void toTemplateParametersHasEmptyConditionsForAnEmptyDecision() {
+		assertThat(toTemplateParameters(new Decision())).containsExactly(entry(PARAMETER_CONDITIONS, ""));
 	}
 
-	@Test
-	void toTemplateParametersIsEmptyWithoutTerms() {
-		assertThat(toTemplateParameters(null)).isEmpty();
-	}
-
-	private static DecisionTerm term(final String category, final String text) {
-		return new DecisionTerm().category(category).text(text);
+	private static Parameter parameter(final String key, final String... values) {
+		return new Parameter().key(key).values(List.of(values));
 	}
 }

@@ -5,6 +5,7 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -12,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.integration.partyassets.model.ByteArrayMultipartFile;
 import se.sundsvall.dept44.support.Relation;
@@ -19,6 +21,8 @@ import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.joining;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
@@ -89,10 +93,22 @@ public final class PartyAssetsMapper {
 		parameters.put(PARAMETER_ERRAND_ID, errandId);
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PARAMETER_LEGAL_BASIS, value));
 		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PARAMETER_DELEGATION_REFERENCE, value));
-		// Why: the terms go in last, so a term entered on the decision wins over a key of our own with the same name.
-		Optional.ofNullable(decision.getTerms()).orElse(emptyList()).stream()
-			.filter(term -> term.getCategory() != null)
-			.forEach(term -> parameters.put(term.getCategory(), term.getText()));
+		// Why: the parameters of the decision go in last, so one entered on the decision wins over a key of our own with the
+		// same
+		// name.
+		Optional.ofNullable(decision.getParameters()).orElse(emptyList())
+			.forEach(parameter -> {
+				final var value = toValue(parameter);
+				if (isNotBlank(value)) {
+					parameters.put(parameter.getKey(), value);
+				}
+			});
 		return parameters;
+	}
+
+	private static String toValue(final Parameter parameter) {
+		return Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream()
+			.filter(StringUtils::isNotBlank)
+			.collect(joining(", "));
 	}
 }

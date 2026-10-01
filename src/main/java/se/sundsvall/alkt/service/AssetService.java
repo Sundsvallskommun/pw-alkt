@@ -83,7 +83,7 @@ public class AssetService {
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
 			if (isNotBlank(certificateTemplate)) {
 				partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
-					toCertificateFile(templatingIntegration.renderPdf(municipalityId, certificateTemplate, toTemplateParameters(decision.getTerms()))));
+					toCertificateFile(templatingIntegration.renderPdf(municipalityId, certificateTemplate, toTemplateParameters(decision))));
 			}
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);
 		} catch (final NonRetryableException e) {

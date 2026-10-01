@@ -26,18 +26,26 @@
 				"decidedAt": "2026-09-20T10:00:00+02:00",
 				"legalBasis": "8 kap. 12 § alkohollagen",
 				"validFrom": "2026-10-01",
+				"parameters": [
+					{
+						"key": "serveringstid",
+						"values": [
+							"Servering får ske mellan 11.00 och 01.00."
+						]
+					},
+					{
+						"key": "permitHolderName",
+						"values": [
+							"Runt Hörnet AB"
+						]
+					}
+				],
 				"terms": [
 					{
 						"id": "4e6a8c20-1b3d-4f5a-9c7e-2d4f6a8b0c13",
 						"sortOrder": 1,
-						"category": "serveringstid",
-						"text": "Servering får ske mellan 11.00 och 01.00."
-					},
-					{
-						"id": "7b2c4d6e-8f0a-4b1c-9d3e-5f7a9b1c3d5e",
-						"sortOrder": 2,
-						"category": "permitHolderName",
-						"text": "Runt Hörnet AB"
+						"category": "ordningsvakt",
+						"text": "Ordningsvakt ska finnas efter 23.00."
 					}
 				],
 				"attachments": [
