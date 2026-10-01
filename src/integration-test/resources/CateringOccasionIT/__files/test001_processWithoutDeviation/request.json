@@ -1,0 +1,8 @@
+{
+	"eventId": "cfaf27e2-25fe-4193-a065-a43107b79eac",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "9696b9e6-6753-48ca-aa9d-cd1ca7f18d70",
+	"processKey": "catering-occasion",
+	"startAllowed": true
+}

@@ -227,11 +227,12 @@ class SupportManagementIntegrationTest {
 	}
 
 	@Test
-	void createConversationMessageSendsTheMessageAsJsonWithoutWakingTheProcess() {
-		supportManagementIntegration.createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", new MessageRequest().content("Hej"));
+	void createConversationMessageSendsTheMessageWithoutWakingTheProcess() {
+		final var message = new MessageRequest().content("Hej");
 
-		verify(supportManagementClientMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", false,
-			"{\"content\":\"Hej\",\"attachmentIds\":[]}");
+		supportManagementIntegration.createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", message);
+
+		verify(supportManagementClientMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", false, message);
 		verifyNoMoreInteractions(supportManagementClientMock);
 	}
 }

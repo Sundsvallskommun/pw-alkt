@@ -167,7 +167,7 @@ found.</p>
 
 <p>The models in <span class="code">src/main/resources/processmodels</span> are sorted by kind of errand:
 <span class="code">application</span> for applications (alcohol serving), <span class="code">notification</span> for
-notifications (low-alcohol beer, tobacco and e-cigarettes), and <span class="code">inspection</span> for the
+notifications (low-alcohol beer, tobacco, e-cigarettes and catering occasions), and <span class="code">inspection</span> for the
 inspections. Each folder has an entry of its own under <span class="code">process-engine.deployment.processes</span>,
 and every model in them is deployed to the tenant <span class="code">ALKT</span> at startup, so a new schema is picked
 up by adding the file to the folder of its kind. A model placed directly in <span class="code">processmodels</span> is
@@ -236,6 +236,11 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 			<td>Försäljning och servering av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
 		</tr>
 		<tr>
+			<td class="code">catering-occasion.bpmn</td>
+			<td class="code">catering-occasion</td>
+			<td>Anmälan om cateringtillfälle</td>
+		</tr>
+		<tr>
 			<td class="code">external-inspection.bpmn</td>
 			<td class="code">external-inspection</td>
 			<td>Yttre tillsyn, dvs. tillsyn på serveringsstället</td>
@@ -254,7 +259,7 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 	</tbody>
 </table>
 
-<p>All twelve errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
+<p>All thirteen errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
 Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The three folköl
 models are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
 first three phases pass straight through and Support Management first hears from them in the decision phase, which
@@ -279,7 +284,7 @@ which is described in the next section. Support Management publishes that as a
 correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
 between two gates when the change arrived and redelivering would not help.</p>
 
-<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All twelve models
+<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All thirteen models
 share their message names, and every correlation is made on the errand id, so two live processes on one errand
 make every signal match two executions at once. Operaton answers that with <span class="code">400</span> and the
 signal is lost. The cancellation is the exception: it is correlated to every process of the errand, so it ends them
