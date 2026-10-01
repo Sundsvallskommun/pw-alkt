@@ -28,8 +28,8 @@ class TemplatingMapperTest {
 	}
 
 	@Test
-	void toTemplateParametersJoinsTheValuesOfAParameter() {
-		final var decision = new Decision().parameters(List.of(parameter("serveringsyta", "Matsalen", "Uteserveringen")));
+	void toTemplateParametersJoinsTheValuesOfAParameterLeavingOutBlankOnes() {
+		final var decision = new Decision().parameters(List.of(parameter("serveringsyta", "Matsalen", " ", "Uteserveringen")));
 
 		assertThat(toTemplateParameters(decision)).containsEntry("serveringsyta", "Matsalen, Uteserveringen");
 	}
@@ -52,6 +52,29 @@ class TemplatingMapperTest {
 			new DecisionTerm().sortOrder(3).text(" ")));
 
 		assertThat(toTemplateParameters(decision)).containsEntry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat.\nGodkänd matsal ska finnas.");
+	}
+
+	@Test
+	void toTemplateParametersPutsTheParametersFirstAndATermWithoutSortOrderLast() {
+		final var decision = new Decision()
+			.parameters(List.of(parameter("caseNumber", "IAN-2026-00209"), parameter("permitHolderName", "Runt Hörnet AB")))
+			.terms(List.of(
+				new DecisionTerm().text("Ordningsvakt ska finnas efter 23.00."),
+				new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
+
+		assertThat(toTemplateParameters(decision)).containsExactly(
+			entry("caseNumber", "IAN-2026-00209"),
+			entry("permitHolderName", "Runt Hörnet AB"),
+			entry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat.\nOrdningsvakt ska finnas efter 23.00."));
+	}
+
+	@Test
+	void toTemplateParametersLetsTheTermsWinOverAParameterNamedConditions() {
+		final var decision = new Decision()
+			.parameters(List.of(parameter(PARAMETER_CONDITIONS, "Från en parameter.")))
+			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
+
+		assertThat(toTemplateParameters(decision)).containsExactly(entry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
 	}
 
 	@Test
