@@ -17,14 +17,17 @@
 				"headers": {
 					"Content-Disposition": {
 						"contains": "name=\"message\""
+					},
+					"Content-Type": {
+						"contains": "application/json"
 					}
 				},
 				"bodyPatterns": [
 					{
 						"equalToJson": {
-							"content": "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
-						},
-						"ignoreExtraElements": true
+							"content": "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras.",
+							"attachmentIds": []
+						}
 					}
 				]
 			}

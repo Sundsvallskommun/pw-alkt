@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.problem.Problem;
-import tools.jackson.databind.json.JsonMapper;
 
 import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
@@ -100,6 +99,6 @@ public class SupportManagementIntegration {
 	}
 
 	public void createConversationMessage(final String municipalityId, final String namespace, final String errandId, final String conversationId, final MessageRequest message) {
-		supportManagementClient.createConversationMessage(municipalityId, namespace, errandId, conversationId, false, JsonMapper.shared().writeValueAsString(message));
+		supportManagementClient.createConversationMessage(municipalityId, namespace, errandId, conversationId, false, message);
 	}
 }
