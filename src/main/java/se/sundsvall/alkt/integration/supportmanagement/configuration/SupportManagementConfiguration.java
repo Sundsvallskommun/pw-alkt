@@ -2,6 +2,7 @@ package se.sundsvall.alkt.integration.supportmanagement.configuration;
 
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignBuilderCustomizer;
+import org.springframework.cloud.openfeign.support.JsonFormWriter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -32,5 +33,11 @@ public class SupportManagementConfiguration {
 			.withRequestInterceptor(template -> template.header("X-Request-Group-Id", RequestId.get()))
 			.withRequestInterceptor(template -> template.header(Identifier.HEADER_NAME, SENT_BY))
 			.composeCustomizersToOne();
+	}
+
+	/** Writes a POJO sent as a request part as JSON, with the mapper of the application context. */
+	@Bean
+	JsonFormWriter jsonFormWriter() {
+		return new JsonFormWriter();
 	}
 }
