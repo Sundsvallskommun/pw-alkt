@@ -9,10 +9,10 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageMessage;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
+import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.dept44.problem.Problem;
 
 import static java.util.Collections.emptyList;
@@ -93,7 +93,7 @@ public class SupportManagementIntegration {
 		return getIdOfCreatedResource(supportManagementClient.createConversation(municipalityId, namespace, errandId, false, conversation), SERVICE);
 	}
 
-	public PageMessage getConversationMessages(final String municipalityId, final String namespace, final String errandId, final String conversationId, final int page, final int size) {
+	public MessagePage getConversationMessages(final String municipalityId, final String namespace, final String errandId, final String conversationId, final int page, final int size) {
 		return Optional.ofNullable(supportManagementClient.getConversationMessages(municipalityId, namespace, errandId, conversationId, page, size).getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Messages of conversation '%s' of errand '%s' came back without content".formatted(conversationId, errandId)));
 	}

@@ -9,7 +9,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageMessage;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -19,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.dept44.problem.Problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -211,7 +211,7 @@ class SupportManagementIntegrationTest {
 
 	@Test
 	void getConversationMessagesAnswersWithThePage() {
-		final var page = new PageMessage().last(true);
+		final var page = new MessagePage(null, true);
 		when(supportManagementClientMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", 1, 100)).thenReturn(ResponseEntity.ok(page));
 
 		assertThat(supportManagementIntegration.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", 1, 100)).isSameAs(page);

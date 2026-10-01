@@ -9,7 +9,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageMessage;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -24,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration;
+import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 
 import static org.springframework.http.MediaType.ALL_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -126,7 +126,7 @@ public interface SupportManagementClient {
 		@RequestBody ConversationRequest conversation);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations/{conversationId}/messages", produces = APPLICATION_JSON_VALUE)
-	ResponseEntity<PageMessage> getConversationMessages(
+	ResponseEntity<MessagePage> getConversationMessages(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@PathVariable String errandId,
