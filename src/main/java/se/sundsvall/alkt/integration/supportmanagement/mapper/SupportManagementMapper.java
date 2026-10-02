@@ -1,20 +1,28 @@
 package se.sundsvall.alkt.integration.supportmanagement.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.task.ExternalTask;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
+import static java.util.Collections.emptyList;
+import static java.util.Comparator.nullsLast;
+import static java.util.stream.Collectors.joining;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
@@ -60,11 +68,37 @@ public final class SupportManagementMapper {
 			.validFrom(validFrom);
 	}
 
+	// Why: the generated model starts parameters as an empty list, and an empty list removes the decision's parameters.
 	public static Decision toDecisionCompletion(final OffsetDateTime decidedAt) {
 		return new Decision()
 			.status(DECISION_STATUS_COMPLETED)
 			.decidedAt(decidedAt)
-			.completedAt(decidedAt);
+			.completedAt(decidedAt)
+			.parameters(null);
+	}
+
+	/** Each parameter of the decision by its key, its values joined. A parameter without a value is left out. */
+	public static Map<String, String> toParameterValues(final Decision decision) {
+		final var parameterValues = new LinkedHashMap<String, String>();
+		Optional.ofNullable(decision.getParameters()).orElse(emptyList())
+			.forEach(parameter -> {
+				final var value = Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream()
+					.filter(StringUtils::isNotBlank)
+					.collect(joining(", "));
+				if (isNotBlank(value)) {
+					parameterValues.put(parameter.getKey(), value);
+				}
+			});
+		return parameterValues;
+	}
+
+	/** The terms of the decision are its conditions, one per line in their order, and empty for a decision without any. */
+	public static String toConditions(final Decision decision) {
+		return Optional.ofNullable(decision.getTerms()).orElse(emptyList()).stream()
+			.sorted(Comparator.comparing(DecisionTerm::getSortOrder, nullsLast(Comparator.naturalOrder())))
+			.map(DecisionTerm::getText)
+			.filter(StringUtils::isNotBlank)
+			.collect(joining("\n"));
 	}
 
 	public static ReportTarget toReportTarget(final ExternalTask externalTask) {

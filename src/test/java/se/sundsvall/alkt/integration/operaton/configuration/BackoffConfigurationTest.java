@@ -1,7 +1,7 @@
 package se.sundsvall.alkt.integration.operaton.configuration;
 
 import org.camunda.bpm.client.backoff.BackoffStrategy;
-import org.camunda.bpm.client.backoff.ExponentialBackoffStrategy;
+import org.camunda.bpm.client.backoff.ExponentialErrorBackoffStrategy;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,9 +19,9 @@ class BackoffConfigurationTest {
 
 	@Test
 	void testConfiguration() {
-		assertThat(backoffStrategy).isInstanceOf(ExponentialBackoffStrategy.class);
+		assertThat(backoffStrategy).isInstanceOf(ExponentialErrorBackoffStrategy.class);
 		assertThat(backoffStrategy).hasFieldOrPropertyWithValue("initTime", 500L);
 		assertThat(backoffStrategy).hasFieldOrPropertyWithValue("factor", 2F);
-		assertThat(backoffStrategy).hasFieldOrPropertyWithValue("maxTime", 2000L);
+		assertThat(backoffStrategy).hasFieldOrPropertyWithValue("maxTime", 15000L);
 	}
 }

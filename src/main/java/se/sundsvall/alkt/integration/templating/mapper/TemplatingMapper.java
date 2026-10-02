@@ -1,18 +1,13 @@
 package se.sundsvall.alkt.integration.templating.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
-import generated.se.sundsvall.supportmanagement.DecisionTerm;
-import generated.se.sundsvall.supportmanagement.Parameter;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
-import org.apache.commons.lang3.StringUtils;
+import se.sundsvall.alkt.exception.NonRetryableException;
 
-import static java.util.Collections.emptyList;
-import static java.util.Comparator.nullsLast;
-import static java.util.stream.Collectors.joining;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 
 public final class TemplatingMapper {
 
@@ -26,29 +21,14 @@ public final class TemplatingMapper {
 	 * conditions of the decision, one per line, and empty for a decision without conditions.
 	 */
 	public static Map<String, Object> toTemplateParameters(final Decision decision) {
-		final var templateParameters = new LinkedHashMap<String, Object>();
-		Optional.ofNullable(decision.getParameters()).orElse(emptyList())
-			.forEach(parameter -> {
-				final var value = toValue(parameter);
-				if (isNotBlank(value)) {
-					templateParameters.put(parameter.getKey(), value);
-				}
-			});
-		templateParameters.put(PARAMETER_CONDITIONS, toConditions(decision));
+		final var conditions = toConditions(decision);
+		// Why: an empty conditions field is valid for a plain approval, so the template would render the permit without them.
+		if (DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS.equals(decision.getOutcome()) && conditions.isEmpty()) {
+			throw new NonRetryableException("Decision %s is an approval with conditions but has no conditions, so no certificate is made".formatted(decision.getId()));
+		}
+
+		final var templateParameters = new LinkedHashMap<String, Object>(toParameterValues(decision));
+		templateParameters.put(PARAMETER_CONDITIONS, conditions);
 		return templateParameters;
-	}
-
-	private static String toValue(final Parameter parameter) {
-		return Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream()
-			.filter(StringUtils::isNotBlank)
-			.collect(joining(", "));
-	}
-
-	private static String toConditions(final Decision decision) {
-		return Optional.ofNullable(decision.getTerms()).orElse(emptyList()).stream()
-			.sorted(Comparator.comparing(DecisionTerm::getSortOrder, nullsLast(Comparator.naturalOrder())))
-			.map(DecisionTerm::getText)
-			.filter(StringUtils::isNotBlank)
-			.collect(joining("\n"));
 	}
 }

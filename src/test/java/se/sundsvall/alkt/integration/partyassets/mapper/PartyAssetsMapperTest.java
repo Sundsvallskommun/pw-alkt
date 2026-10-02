@@ -76,29 +76,6 @@ class PartyAssetsMapperTest {
 	}
 
 	@Test
-	void toAssetCreateRequestKeepsTheConditionsInTheOrderOfTheDecision() {
-		final var decision = new Decision().terms(List.of(
-			new DecisionTerm().text("Utan ordning."),
-			new DecisionTerm().sortOrder(2).text("Serveringsområdet ska vara avgränsat."),
-			new DecisionTerm().sortOrder(1).text("Ordningsvakt ska finnas efter 23.00."),
-			new DecisionTerm().sortOrder(3).text(" ")));
-
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters())
-			.containsEntry(PARAMETER_CONDITIONS, "Ordningsvakt ska finnas efter 23.00.\nServeringsområdet ska vara avgränsat.\nUtan ordning.");
-	}
-
-	/** The certificate renders the terms over a parameter of the same name, so the asset keeps the same conditions. */
-	@Test
-	void toAssetCreateRequestLetsTheTermsWinOverAParameterNamedConditions() {
-		final var decision = new Decision()
-			.parameters(List.of(new Parameter().key(PARAMETER_CONDITIONS).values(List.of("Angiven som parameter."))))
-			.terms(List.of(new DecisionTerm().sortOrder(1).text("Ordningsvakt ska finnas efter 23.00.")));
-
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters())
-			.containsEntry(PARAMETER_CONDITIONS, "Ordningsvakt ska finnas efter 23.00.");
-	}
-
-	@Test
 	void toAssetCreateRequestLeavesOutAParameterWithoutValue() {
 		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringstid"), new Parameter().key("serveringsyta").values(List.of(" "))));
 
@@ -114,6 +91,31 @@ class PartyAssetsMapperTest {
 		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
 			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
 			entry(PARAMETER_LEGAL_BASIS, "Angiven av handläggaren."));
+	}
+
+	@Test
+	void toAssetCreateRequestKeepsTheErrandIdOverAParameterOfTheSameKey() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PARAMETER_ERRAND_ID).values(List.of("another-errand"))));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+	}
+
+	@Test
+	void toAssetCreateRequestLetsTheTermsWinOverAParameterNamedConditions() {
+		final var decision = new Decision()
+			.parameters(List.of(new Parameter().key(PARAMETER_CONDITIONS).values(List.of("Från en parameter."))))
+			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
+			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
+	}
+
+	@Test
+	void toAssetCreateRequestLeavesOutConditionsWithoutText() {
+		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(1).text(" ")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test

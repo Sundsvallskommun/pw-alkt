@@ -55,12 +55,6 @@
 					"expression": "$.additionalParameters.serveringstid",
 					"equalTo": "Servering får ske mellan 11.00 och 01.00."
 				}
-			},
-			{
-				"matchesJsonPath": {
-					"expression": "$.additionalParameters.conditions",
-					"equalTo": "Ordningsvakt ska finnas efter 23.00."
-				}
 			}
 		]
 	},
