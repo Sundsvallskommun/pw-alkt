@@ -89,8 +89,8 @@ class PartyAssetsMapperTest {
 	}
 
 	@Test
-	void toAssetCreateRequestJoinsTheValuesOfAParameter() {
-		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringsyta").values(List.of("Matsalen", "Uteserveringen"))));
+	void toAssetCreateRequestJoinsTheValuesOfAParameterLeavingOutBlankOnes() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringsyta").values(List.of("Matsalen", " ", "Uteserveringen"))));
 
 		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsEntry("serveringsyta", "Matsalen, Uteserveringen");
 	}

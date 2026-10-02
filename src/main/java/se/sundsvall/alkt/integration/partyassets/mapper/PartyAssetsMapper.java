@@ -93,9 +93,7 @@ public final class PartyAssetsMapper {
 		parameters.put(PARAMETER_ERRAND_ID, errandId);
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PARAMETER_LEGAL_BASIS, value));
 		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PARAMETER_DELEGATION_REFERENCE, value));
-		// Why: the parameters of the decision go in last, so one entered on the decision wins over a key of our own with the
-		// same
-		// name.
+		// Why: the decision's parameters go in last, so they win over a key of our own.
 		Optional.ofNullable(decision.getParameters()).orElse(emptyList())
 			.forEach(parameter -> {
 				final var value = toValue(parameter);

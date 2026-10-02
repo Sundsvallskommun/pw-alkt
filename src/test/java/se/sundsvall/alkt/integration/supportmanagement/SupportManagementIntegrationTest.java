@@ -11,7 +11,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
-import generated.se.sundsvall.supportmanagement.PageMessage;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.dept44.problem.Problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -222,7 +222,7 @@ class SupportManagementIntegrationTest {
 
 	@Test
 	void getConversationMessagesAnswersWithThePage() {
-		final var page = new PageMessage().last(true);
+		final var page = new MessagePage(null, true);
 		when(supportManagementClientMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", 1, 100)).thenReturn(ResponseEntity.ok(page));
 
 		assertThat(supportManagementIntegration.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", 1, 100)).isSameAs(page);
@@ -238,11 +238,12 @@ class SupportManagementIntegrationTest {
 	}
 
 	@Test
-	void createConversationMessageSendsTheMessageAsJsonWithoutWakingTheProcess() {
-		supportManagementIntegration.createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", new MessageRequest().content("Hej"));
+	void createConversationMessageSendsTheMessageWithoutWakingTheProcess() {
+		final var message = new MessageRequest().content("Hej");
 
-		verify(supportManagementClientMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", false,
-			"{\"content\":\"Hej\",\"attachmentIds\":[]}");
+		supportManagementIntegration.createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", message);
+
+		verify(supportManagementClientMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", false, message);
 		verifyNoMoreInteractions(supportManagementClientMock);
 	}
 

@@ -1,12 +1,15 @@
 package apptest;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import org.assertj.core.groups.Tuple;
+import org.camunda.bpm.client.ExternalTaskClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import se.sundsvall.alkt.api.model.ErrandEvent;
@@ -27,7 +30,10 @@ import static java.util.Objects.isNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static java.util.stream.Stream.concat;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,11 +52,15 @@ import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.UPDATE;
  * Base for the integration tests that run a process: points the application at a live Operaton container and carries
  * the helpers for driving and reading the engine.
  */
+@TestPropertySource(properties = "camunda.bpm.client.disable-auto-fetching=true")
 abstract class AbstractOperatonAppTest extends AbstractAppTest {
 
 	protected static final int DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS = 30;
 	protected static final String ERRAND_EVENTS_PATH = "/2281/ALKT/process/errand-events";
 
+	private static final String TOKEN_PATH = "/api-gateway/token";
+	// The external task client's client registration carries no scope, unlike the token requests of the Feign clients
+	private static final String EXTERNAL_TASK_CLIENT_TOKEN_REQUEST = "grant_type=client_credentials";
 	private static final String TENANT_ID_ALKT = "ALKT";
 	// The errand processes plus process-reconciliation, which is deployed on its own and has no key in PROCESS_KEYS
 	private static final int EXPECTED_DEPLOYMENTS = PROCESS_KEYS.size() + 1;
@@ -74,6 +84,9 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 
 	@Autowired
 	protected OperatonClient operatonClient;
+
+	@Autowired
+	private ExternalTaskClient externalTaskClient;
 
 	/**
 	 * Both properties target the same container: the external task client poll URL and the Operaton Feign client the
@@ -103,13 +116,33 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 			.until(() -> operatonClient.getDeployments(null, null, TENANT_ID_ALKT).size(), equalTo(EXPECTED_DEPLOYMENTS));
 	}
 
-	/** The engine outlives every test class, so whatever the previous one left running is cleared before the next. */
+	/**
+	 * The engine outlives every test class, so whatever the previous one left running is cleared before the next, and
+	 * only then does the external task client start polling.
+	 */
 	@BeforeEach
 	void resetSharedEngineState() {
 		operatonClient.findProcessInstances(null, null, TENANT_ID_ALKT)
 			.forEach(instance -> operatonClient.deleteProcessInstance(instance.getId(), false));
 
 		wiremock.resetRequests();
+		startExternalTaskClient();
+	}
+
+	/**
+	 * Starts the external task client, which the test properties keep from polling on its own. Its token request is
+	 * answered with a token that outlives the test class, so the client asks for a token once, here, after WireMock has
+	 * been reset for the test case, and never while WireMock is reset between test cases. Starting a running client does
+	 * nothing.
+	 */
+	private void startExternalTaskClient() {
+		wiremock.stubFor(post(urlEqualTo(TOKEN_PATH))
+			.atPriority(1)
+			.withRequestBody(WireMock.equalTo(EXTERNAL_TASK_CLIENT_TOKEN_REQUEST))
+			.willReturn(okJson("""
+				{"access_token":"external-task-client-token","token_type":"bearer","expires_in":3600}""")));
+
+		externalTaskClient.start();
 	}
 
 	protected List<HistoricActivityInstanceDto> getProcessInstanceRoute(String processInstanceId) {
