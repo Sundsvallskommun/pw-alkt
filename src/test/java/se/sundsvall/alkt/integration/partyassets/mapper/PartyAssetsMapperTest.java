@@ -5,6 +5,7 @@ import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ATTACHMENT_PART_NAME;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ORIGIN;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_LEGAL_BASIS;
@@ -45,9 +47,10 @@ class PartyAssetsMapperTest {
 			.decidedAt(OffsetDateTime.of(2026, 9, 20, 10, 0, 0, 0, ZoneOffset.UTC))
 			.legalBasis("8 kap. 12 § alkohollagen")
 			.delegationReference("3.2.1")
-			.terms(List.of(
-				new DecisionTerm().category("serveringstid").text("Servering får ske mellan 11.00 och 01.00."),
-				new DecisionTerm().category("serveringsyta").text("Servering får ske i matsalen.")));
+			.parameters(List.of(
+				new Parameter().key("serveringstid").values(List.of("Servering får ske mellan 11.00 och 01.00.")),
+				new Parameter().key("serveringsyta").values(List.of("Servering får ske i matsalen."))))
+			.terms(List.of(new DecisionTerm().category("villkor").text("Ordningsvakt ska finnas efter 23.00.")));
 
 		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID);
 
@@ -65,21 +68,22 @@ class PartyAssetsMapperTest {
 			entry(PARAMETER_LEGAL_BASIS, "8 kap. 12 § alkohollagen"),
 			entry(PARAMETER_DELEGATION_REFERENCE, "3.2.1"),
 			entry("serveringstid", "Servering får ske mellan 11.00 och 01.00."),
-			entry("serveringsyta", "Servering får ske i matsalen."));
+			entry("serveringsyta", "Servering får ske i matsalen."),
+			entry(PARAMETER_CONDITIONS, "Ordningsvakt ska finnas efter 23.00."));
 	}
 
 	@Test
-	void toAssetCreateRequestLeavesOutATermWithoutCategory() {
-		final var decision = new Decision().terms(List.of(new DecisionTerm().text("Villkor utan kategori.")));
+	void toAssetCreateRequestLeavesOutAParameterWithoutValue() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringstid"), new Parameter().key("serveringsyta").values(List.of(" "))));
 
 		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
-	void toAssetCreateRequestLetsATermWinOverAKeyOfOurOwn() {
+	void toAssetCreateRequestLetsAParameterWinOverAKeyOfOurOwn() {
 		final var decision = new Decision()
 			.legalBasis("8 kap. 12 § alkohollagen")
-			.terms(List.of(new DecisionTerm().category(PARAMETER_LEGAL_BASIS).text("Angiven av handläggaren.")));
+			.parameters(List.of(new Parameter().key(PARAMETER_LEGAL_BASIS).values(List.of("Angiven av handläggaren."))));
 
 		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
 			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
@@ -87,12 +91,35 @@ class PartyAssetsMapperTest {
 	}
 
 	@Test
-	void toAssetCreateRequestKeepsTheLastTermOfACategory() {
-		final var decision = new Decision().terms(List.of(
-			new DecisionTerm().category("serveringstid").text("Första."),
-			new DecisionTerm().category("serveringstid").text("Sista.")));
+	void toAssetCreateRequestKeepsTheErrandIdOverAParameterOfTheSameKey() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PARAMETER_ERRAND_ID).values(List.of("another-errand"))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsEntry("serveringstid", "Sista.");
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+	}
+
+	@Test
+	void toAssetCreateRequestLetsTheTermsWinOverAParameterNamedConditions() {
+		final var decision = new Decision()
+			.parameters(List.of(new Parameter().key(PARAMETER_CONDITIONS).values(List.of("Från en parameter."))))
+			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
+			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
+	}
+
+	@Test
+	void toAssetCreateRequestLeavesOutConditionsWithoutText() {
+		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(1).text(" ")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+	}
+
+	@Test
+	void toAssetCreateRequestJoinsTheValuesOfAParameterLeavingOutBlankOnes() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringsyta").values(List.of("Matsalen", " ", "Uteserveringen"))));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsEntry("serveringsyta", "Matsalen, Uteserveringen");
 	}
 
 	@Test
