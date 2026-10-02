@@ -5,7 +5,6 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
-import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -21,10 +20,10 @@ import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.Collections.emptyList;
-import static java.util.stream.Collectors.joining;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 
 public final class PartyAssetsMapper {
 
@@ -36,6 +35,7 @@ public final class PartyAssetsMapper {
 	static final String PARAMETER_ERRAND_ID = "errandId";
 	static final String PARAMETER_LEGAL_BASIS = "legalBasis";
 	static final String PARAMETER_DELEGATION_REFERENCE = "delegationReference";
+	static final String PARAMETER_CONDITIONS = "conditions";
 	static final String ERRAND_RESOURCE_TYPE = "case";
 	static final String ERRAND_SERVICE = "supportmanagement";
 
@@ -93,20 +93,11 @@ public final class PartyAssetsMapper {
 		parameters.put(PARAMETER_ERRAND_ID, errandId);
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PARAMETER_LEGAL_BASIS, value));
 		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PARAMETER_DELEGATION_REFERENCE, value));
-		// Why: the decision's parameters go in last, so they win over a key of our own.
-		Optional.ofNullable(decision.getParameters()).orElse(emptyList())
-			.forEach(parameter -> {
-				final var value = toValue(parameter);
-				if (isNotBlank(value)) {
-					parameters.put(parameter.getKey(), value);
-				}
-			});
+		// Why: the decision's parameters go in after our own keys, so they win over them, except the conditions, which the
+		// terms carry as on the certificate, and the errand id that links the asset back to its errand.
+		parameters.putAll(toParameterValues(decision));
+		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PARAMETER_CONDITIONS, value));
+		parameters.put(PARAMETER_ERRAND_ID, errandId);
 		return parameters;
-	}
-
-	private static String toValue(final Parameter parameter) {
-		return Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream()
-			.filter(StringUtils::isNotBlank)
-			.collect(joining(", "));
 	}
 }

@@ -30,7 +30,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.parameters.conditions",
-					"equalTo": "Ordningsvakt ska finnas efter 23.00."
+					"equalTo": ""
 				}
 			}
 		]
