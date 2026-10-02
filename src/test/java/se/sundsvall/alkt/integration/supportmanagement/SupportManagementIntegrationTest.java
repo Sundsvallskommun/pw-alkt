@@ -8,25 +8,33 @@ import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
+import generated.se.sundsvall.supportmanagement.PageErrand;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.dept44.problem.Problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 
 @ExtendWith(MockitoExtension.class)
 class SupportManagementIntegrationTest {
@@ -38,6 +46,9 @@ class SupportManagementIntegrationTest {
 
 	@Mock
 	private SupportManagementClient supportManagementClientMock;
+
+	@Captor
+	private ArgumentCaptor<MultipartFile> multipartFileCaptor;
 
 	@InjectMocks
 	private SupportManagementIntegration supportManagementIntegration;
@@ -234,5 +245,65 @@ class SupportManagementIntegrationTest {
 
 		verify(supportManagementClientMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "conversation-id", false, message);
 		verifyNoMoreInteractions(supportManagementClientMock);
+	}
+
+	@Test
+	void createPdfAttachmentAnswersWithTheIdWithoutWakingTheProcess() throws IOException {
+		final var content = new byte[] {
+			1, 2, 3
+		};
+		final var headers = new HttpHeaders();
+		headers.add(HttpHeaders.LOCATION, "https://support-management.example.com/2281/ALKT/errands/" + ERRAND_ID + "/attachments/attachment-id");
+		when(supportManagementClientMock.createAttachment(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(false), multipartFileCaptor.capture()))
+			.thenReturn(ResponseEntity.status(CREATED).headers(headers).build());
+
+		assertThat(supportManagementIntegration.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll.pdf", content)).isEqualTo("attachment-id");
+
+		final var file = multipartFileCaptor.getValue();
+		assertThat(file.getName()).isEqualTo("errandAttachment");
+		assertThat(file.getOriginalFilename()).isEqualTo("Tillsynsprotokoll.pdf");
+		assertThat(file.getContentType()).isEqualTo(APPLICATION_PDF_VALUE);
+		assertThat(file.getBytes()).isEqualTo(content);
+	}
+
+	@Test
+	void getInvestigationsAnswersWithTheInvestigations() {
+		final var investigation = new Investigation().id("investigation-id");
+		when(supportManagementClientMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(investigation)));
+
+		assertThat(supportManagementIntegration.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsExactly(investigation);
+	}
+
+	@Test
+	void getInvestigationsAnswersWithNothingWithoutABody() {
+		when(supportManagementClientMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
+
+		assertThat(supportManagementIntegration.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+	}
+
+	@Test
+	void findErrandIdByExternalTagAnswersWithTheFirstMatch() {
+		when(supportManagementClientMock.findErrands(MUNICIPALITY_ID, NAMESPACE, "externalTags.key:'inspectionErrandId' and externalTags.value:'" + ERRAND_ID + "'"))
+			.thenReturn(ResponseEntity.ok(new PageErrand().content(List.of(new Errand().id("action-errand-id")))));
+
+		assertThat(supportManagementIntegration.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).contains("action-errand-id");
+	}
+
+	@Test
+	void findErrandIdByExternalTagAnswersWithNothingWithoutABody() {
+		when(supportManagementClientMock.findErrands(MUNICIPALITY_ID, NAMESPACE, "externalTags.key:'inspectionErrandId' and externalTags.value:'" + ERRAND_ID + "'"))
+			.thenReturn(ResponseEntity.ok(null));
+
+		assertThat(supportManagementIntegration.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).isEmpty();
+	}
+
+	@Test
+	void createErrandAnswersWithTheId() {
+		final var errand = new Errand();
+		final var headers = new HttpHeaders();
+		headers.add(HttpHeaders.LOCATION, "https://support-management.example.com/2281/ALKT/errands/action-errand-id");
+		when(supportManagementClientMock.createErrand(MUNICIPALITY_ID, NAMESPACE, "referred-from", errand)).thenReturn(ResponseEntity.status(CREATED).headers(headers).build());
+
+		assertThat(supportManagementIntegration.createErrand(MUNICIPALITY_ID, NAMESPACE, "referred-from", errand)).isEqualTo("action-errand-id");
 	}
 }

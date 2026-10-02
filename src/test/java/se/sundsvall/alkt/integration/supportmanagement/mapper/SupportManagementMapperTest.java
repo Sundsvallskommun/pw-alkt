@@ -60,7 +60,7 @@ class SupportManagementMapperTest {
 		final var occurredAt = OffsetDateTime.now();
 		final var activity = new ProcessActivity().activityType("INCIDENT").activityId("investigation_phase").severity("ERROR").occurredAt(occurredAt);
 		final var error = new ProcessError().code("INCIDENT").message("Timeout");
-		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), List.of(), Map.of(), null);
+		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), List.of(), Map.of(), null, false);
 
 		final var result = SupportManagementMapper.toErrandProcessReport(target, report);
 

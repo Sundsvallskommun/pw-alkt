@@ -45,7 +45,7 @@ class ProcessLogTest {
 	void setUp() {
 		RequestId.init("request-id");
 		processLog = new ProcessLog(new ProcessLogProperties(
-			Map.of(ACTIVITY_ID, new StepTexts("Tillståndet har registrerats", "Nytt försök görs", "Processen har stannat", "Hoppades över")),
+			Map.of(ACTIVITY_ID, new StepTexts("Tillståndet har registrerats", "Nytt försök görs", "Processen har stannat", "Hoppades över", "Avvisades")),
 			Map.of("review_phase", new PhaseTexts("Granskning har påbörjats")),
 			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock);
 	}
@@ -106,6 +106,37 @@ class ProcessLogTest {
 			.until(() -> !processLog.taskFailed(externalTaskMock, Outcome.FAILED, "Attempt 4 of 4").getActivityId().equals(incident.getActivityId()));
 	}
 
+	@Test
+	void taskRejected() {
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+		when(externalTaskMock.getId()).thenReturn("external-task-id");
+
+		final var entry = processLog.taskRejected(externalTaskMock, "No deficiencies, no action errand created");
+
+		assertThat(entry.getActivityType()).isEqualTo("TASK");
+		assertThat(entry.getActivityId()).isEqualTo(ACTIVITY_ID + "#rejected#external-task-id");
+		assertThat(entry.getActivityName()).isEqualTo("Avvisades");
+		assertThat(entry.getSeverity()).isEqualTo("WARN");
+		assertThat(entry.getErrorCode()).isEqualTo("REJECTED");
+		assertThat(entry.getMessage()).isEqualTo("No deficiencies, no action errand created, x-request-id request-id");
+		assertThat(entry.getOccurredAt()).isCloseTo(OffsetDateTime.now(), within(5, SECONDS));
+		verifyNoInteractions(operatonIntegrationMock);
+	}
+
+	/** A new choice is a new external task and an entry of its own; a replay of the same task is the same entry. */
+	@Test
+	void everyRejectedRunGetsAnIdOfItsOwnAndAReplayKeepsIt() {
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+		when(externalTaskMock.getId()).thenReturn("first-task", "first-task", "second-task");
+
+		final var first = processLog.taskRejected(externalTaskMock, "message");
+		final var replay = processLog.taskRejected(externalTaskMock, "message");
+		final var second = processLog.taskRejected(externalTaskMock, "message");
+
+		assertThat(replay.getActivityId()).isEqualTo(first.getActivityId());
+		assertThat(second.getActivityId()).isNotEqualTo(first.getActivityId());
+	}
+
 	/**
 	 * Reported with the same external task id, the reconciliation's incident must not make Support Management drop the done
 	 * entry.
@@ -133,7 +164,7 @@ class ProcessLogTest {
 	@Test
 	void outcomeWithoutTextIsNamedAfterTheModel() {
 		processLog = new ProcessLog(new ProcessLogProperties(
-			Map.of(ACTIVITY_ID, new StepTexts("Klart", "Nytt försök", "Stannat", null)),
+			Map.of(ACTIVITY_ID, new StepTexts("Klart", "Nytt försök", "Stannat", null, null)),
 			Map.of(),
 			new ProcessTexts("Avslutad", "Avbruten")), operatonIntegrationMock);
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);

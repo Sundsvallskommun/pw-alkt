@@ -8,15 +8,19 @@ import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
+import generated.se.sundsvall.supportmanagement.PageErrand;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
+import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import se.sundsvall.dept44.problem.Problem;
 
 import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
@@ -100,5 +104,28 @@ public class SupportManagementIntegration {
 
 	public void createConversationMessage(final String municipalityId, final String namespace, final String errandId, final String conversationId, final MessageRequest message) {
 		supportManagementClient.createConversationMessage(municipalityId, namespace, errandId, conversationId, false, message);
+	}
+
+	public String createPdfAttachment(final String municipalityId, final String namespace, final String errandId, final String fileName, final byte[] content) {
+		return getIdOfCreatedResource(supportManagementClient.createAttachment(municipalityId, namespace, errandId, false,
+			new ByteArrayMultipartFile("errandAttachment", fileName, APPLICATION_PDF_VALUE, content)), SERVICE);
+	}
+
+	public List<Investigation> getInvestigations(final String municipalityId, final String namespace, final String errandId) {
+		return Optional.ofNullable(supportManagementClient.getInvestigations(municipalityId, namespace, errandId).getBody())
+			.orElse(emptyList());
+	}
+
+	public Optional<String> findErrandIdByExternalTag(final String municipalityId, final String namespace, final String key, final String value) {
+		return Optional.ofNullable(supportManagementClient.findErrands(municipalityId, namespace, "externalTags.key:'%s' and externalTags.value:'%s'".formatted(key, value)).getBody())
+			.map(PageErrand::getContent)
+			.orElse(emptyList())
+			.stream()
+			.map(Errand::getId)
+			.findFirst();
+	}
+
+	public String createErrand(final String municipalityId, final String namespace, final String referredFrom, final Errand errand) {
+		return getIdOfCreatedResource(supportManagementClient.createErrand(municipalityId, namespace, referredFrom, errand), SERVICE);
 	}
 }

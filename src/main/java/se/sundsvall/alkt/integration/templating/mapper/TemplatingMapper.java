@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.templating.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.Investigation;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import se.sundsvall.alkt.exception.NonRetryableException;
@@ -30,5 +31,10 @@ public final class TemplatingMapper {
 		final var templateParameters = new LinkedHashMap<String, Object>(toParameterValues(decision));
 		templateParameters.put(PARAMETER_CONDITIONS, conditions);
 		return templateParameters;
+	}
+
+	/** The same placeholders as for a decision, without conditions since an investigation has none. */
+	public static Map<String, Object> toTemplateParameters(final Investigation investigation) {
+		return new LinkedHashMap<>(toParameterValues(investigation.getParameters()));
 	}
 }

@@ -1,0 +1,89 @@
+package se.sundsvall.alkt.businesslogic.worker;
+
+import java.util.Map;
+import java.util.Optional;
+import org.camunda.bpm.client.task.ExternalTask;
+import org.camunda.bpm.client.task.ExternalTaskService;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
+import se.sundsvall.alkt.service.ActionErrandService;
+import se.sundsvall.alkt.service.ProcessReportService;
+import se.sundsvall.alkt.service.model.ProcessStateReport;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ACTION_ERRAND_CREATED;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ACTION_ERRAND_TYPE;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
+
+@ExtendWith(MockitoExtension.class)
+class CreateActionErrandWorkerTest {
+
+	private static final String MUNICIPALITY_ID = "2281";
+	private static final String NAMESPACE = "ALKT";
+	private static final String ERRAND_ID = "errand-id";
+
+	@Mock
+	private ProcessReportService processReportServiceMock;
+
+	@Mock
+	private FailureHandler failureHandlerMock;
+
+	@Mock
+	private ActionErrandService actionErrandServiceMock;
+
+	@Mock
+	private ExternalTask externalTaskMock;
+
+	@Mock
+	private ExternalTaskService externalTaskServiceMock;
+
+	@InjectMocks
+	private CreateActionErrandWorker worker;
+
+	@Test
+	void createsTheActionErrandWithTheClassificationOfTheStep() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY)).thenReturn("INSPECTION");
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ACTION_ERRAND_TYPE)).thenReturn("ACTION_ERRAND");
+		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_action_errand");
+		when(actionErrandServiceMock.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "INSPECTION", "ACTION_ERRAND")).thenReturn(Optional.of("action-errand-id"));
+
+		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
+
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_action_errand", null)
+			.withVariables(Map.of(PROCESS_VARIABLE_ACTION_ERRAND_CREATED, true))
+			.withLogMessage("Action errand 'action-errand-id' created"));
+		verify(actionErrandServiceMock).createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "INSPECTION", "ACTION_ERRAND");
+		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
+	}
+
+	@Test
+	void rejectsAndSendsTheProcessBackWhenNoActionErrandWasCreated() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY)).thenReturn("INSPECTION");
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ACTION_ERRAND_TYPE)).thenReturn("ACTION_ERRAND");
+		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_action_errand");
+		when(actionErrandServiceMock.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "INSPECTION", "ACTION_ERRAND")).thenReturn(Optional.empty());
+
+		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
+
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_action_errand", null)
+			.withVariables(Map.of(PROCESS_VARIABLE_ACTION_ERRAND_CREATED, false))
+			.withRejection("The inspection errand has no deficiencies, no action errand created"));
+		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
+	}
+}

@@ -4,6 +4,7 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -79,8 +80,12 @@ public final class SupportManagementMapper {
 
 	/** Each parameter of the decision by its key, its values joined. A parameter without a value is left out. */
 	public static Map<String, String> toParameterValues(final Decision decision) {
+		return toParameterValues(decision.getParameters());
+	}
+
+	public static Map<String, String> toParameterValues(final List<Parameter> parameters) {
 		final var parameterValues = new LinkedHashMap<String, String>();
-		Optional.ofNullable(decision.getParameters()).orElse(emptyList())
+		Optional.ofNullable(parameters).orElse(emptyList())
 			.forEach(parameter -> {
 				final var value = Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream()
 					.filter(StringUtils::isNotBlank)
