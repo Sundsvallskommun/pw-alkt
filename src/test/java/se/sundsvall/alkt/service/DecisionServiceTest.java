@@ -74,7 +74,7 @@ class DecisionServiceTest {
 		assertThat(draft.getDecidedAt()).isNotNull();
 
 		final var completion = decisionCaptor.getAllValues().getLast();
-		assertThat(completion).isEqualTo(new Decision().status("COMPLETED").decidedAt(draft.getDecidedAt()).completedAt(draft.getDecidedAt()));
+		assertThat(completion).isEqualTo(new Decision().status("COMPLETED").decidedAt(draft.getDecidedAt()).completedAt(draft.getDecidedAt()).parameters(null));
 	}
 
 	@Test

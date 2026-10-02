@@ -149,6 +149,7 @@ class SupportManagementMapperTest {
 
 		final var result = SupportManagementMapper.toDecisionCompletion(decidedAt);
 
-		assertThat(result).isEqualTo(new Decision().status("COMPLETED").decidedAt(decidedAt).completedAt(decidedAt));
+		assertThat(result).isEqualTo(new Decision().status("COMPLETED").decidedAt(decidedAt).completedAt(decidedAt).parameters(null));
+		assertThat(result.getParameters()).isNull();
 	}
 }

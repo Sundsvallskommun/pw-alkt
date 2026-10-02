@@ -60,11 +60,13 @@ public final class SupportManagementMapper {
 			.validFrom(validFrom);
 	}
 
+	// Why: the generated model starts parameters as an empty list, and an empty list removes the decision's parameters.
 	public static Decision toDecisionCompletion(final OffsetDateTime decidedAt) {
 		return new Decision()
 			.status(DECISION_STATUS_COMPLETED)
 			.decidedAt(decidedAt)
-			.completedAt(decidedAt);
+			.completedAt(decidedAt)
+			.parameters(null);
 	}
 
 	public static ReportTarget toReportTarget(final ExternalTask externalTask) {
