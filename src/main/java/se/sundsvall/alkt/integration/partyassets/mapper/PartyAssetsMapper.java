@@ -1,6 +1,8 @@
 package se.sundsvall.alkt.integration.partyassets.mapper;
 
+import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
@@ -20,6 +22,7 @@ import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
@@ -58,6 +61,18 @@ public final class PartyAssetsMapper {
 			.title(decision.getTitle())
 			.description(decision.getDescription())
 			.additionalParameters(toAdditionalParameters(decision, errandId));
+	}
+
+	/**
+	 * The parameters of the decision go on top of those the asset has, so a change need only carry what it changes. The
+	 * asset keeps its validTo unless the decision gives one.
+	 */
+	public static AssetUpdateRequest toAssetUpdateRequest(final Asset current, final Decision decision, final String errandId) {
+		final var parameters = new LinkedHashMap<>(Optional.ofNullable(current.getAdditionalParameters()).orElse(emptyMap()));
+		parameters.putAll(toAdditionalParameters(decision, errandId));
+		return new AssetUpdateRequest()
+			.validTo(decision.getValidTo())
+			.additionalParameters(parameters);
 	}
 
 	public static AssetFile toAssetFile(final ErrandAttachment attachment, final byte[] content) {

@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.integration.partyassets.mapper;
 
+import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
@@ -26,6 +28,7 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPartyId;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
@@ -151,6 +154,36 @@ class PartyAssetsMapperTest {
 	@Test
 	void toAssetCreateRequestLeavesIssuedOutWithoutAnyDate() {
 		assertThat(toAssetCreateRequest(new Decision(), ERRAND_ID, PARTY_ID).getIssued()).isNull();
+	}
+
+	@Test
+	void toAssetUpdateRequestPutsTheDecisionOnTopOfTheParametersOfTheAsset() {
+		final var current = new Asset().additionalParameters(Map.of(
+			PARAMETER_ERRAND_ID, "earlier-errand-id",
+			"serveringstid", "Servering får ske mellan 11.00 och 01.00.",
+			"serveringsyta", "Servering får ske i matsalen."));
+		final var decision = new Decision()
+			.validTo(LocalDate.of(2027, 9, 30))
+			.parameters(List.of(new Parameter().key("serveringstid").values(List.of("Servering får ske mellan 11.00 och 02.00."))));
+
+		final var result = toAssetUpdateRequest(current, decision, ERRAND_ID);
+
+		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
+		assertThat(result.getTitle()).isNull();
+		assertThat(result.getStatus()).isNull();
+		assertThat(result.getAdditionalParameters()).containsOnly(
+			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry("serveringstid", "Servering får ske mellan 11.00 och 02.00."),
+			entry("serveringsyta", "Servering får ske i matsalen."));
+	}
+
+	@Test
+	void toAssetUpdateRequestLeavesValidToOutWhenTheDecisionHasNone() {
+		final var result = toAssetUpdateRequest(new Asset().additionalParameters(null), new Decision(), ERRAND_ID);
+
+		assertThat(result.getValidTo()).isNull();
+		assertThat(result.getIndefinitely()).isNull();
+		assertThat(result.getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test

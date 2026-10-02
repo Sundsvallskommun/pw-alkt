@@ -1,0 +1,8 @@
+{
+	"eventId": "f751f389-8576-4782-8b86-cb9c03b69ae2",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44",
+	"processKey": "alcohol-serving-change",
+	"startAllowed": true
+}
