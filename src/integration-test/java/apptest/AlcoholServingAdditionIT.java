@@ -7,6 +7,8 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
@@ -32,11 +34,11 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING_ADDITION);
 
-		// Wait for the process to park in each phase, then signal that phase completed
+		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "registration");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "review");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "investigation");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "decision");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION);
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "closure");
 
@@ -74,7 +76,13 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 				// Decision
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Decision completed", "await_decision_completed"),
+				tuple("Check decision", "external_task_check_decision"), // No decision yet
+				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Await decision", "gateway_await_decision"),
+				tuple("Decision updated", "await_decision_updated"),
+				tuple("Check decision", "external_task_check_decision"), // Approved
+				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -179,5 +187,32 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
 				tuple("Investigation completed", "await_investigation_completed"));
+	}
+
+	@Test
+	void test005_decisionRejectedBeforeThePhaseCreatesNoAssetAndDoesNotWait() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING_ADDITION);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING_ADDITION, "investigation");
+
+		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+
+		assertThat(getProcessInstanceRoute(processInstanceId))
+			.extracting(HistoricActivityInstanceDto::getActivityId)
+			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
 	}
 }

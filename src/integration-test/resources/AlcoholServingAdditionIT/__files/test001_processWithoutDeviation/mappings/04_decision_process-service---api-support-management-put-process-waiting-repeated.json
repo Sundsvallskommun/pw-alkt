@@ -1,5 +1,5 @@
 {
-	"name": "04_decision_process-service---api-support-management-put-process-waiting",
+	"name": "04_decision_process-service---api-support-management-put-process-waiting-repeated",
 	"request": {
 		"method": "PUT",
 		"urlPathPattern": "/api-support-management/2281/ALKT/errands/0b93f26d-8c47-4e51-b27a-9d4c5e6f7081/processes/[^/]+",
@@ -47,8 +47,7 @@
 			}
 		]
 	},
-	"newScenarioState": "decision_process-service---api-support-management-put-process-waiting",
-	"requiredScenarioState": "investigation_process-service---api-support-management-put-process-waiting",
+	"requiredScenarioState": "decision_process-service---api-support-management-put-process-waiting",
 	"response": {
 		"headers": {
 			"Content-Type": "application/json",

@@ -1,5 +1,5 @@
 {
-	"name": "04_decision_process-service---api-support-management-put-process-waiting",
+	"name": "01_registration_process-service---api-support-management-put-process-waiting",
 	"request": {
 		"method": "PUT",
 		"urlPathPattern": "/api-support-management/2281/ALKT/errands/0b93f26d-8c47-4e51-b27a-9d4c5e6f7081/processes/[^/]+",
@@ -24,31 +24,30 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.currentActivityId",
-					"equalTo": "decision_phase"
+					"equalTo": "registration_phase"
 				}
 			},
 			{
 				"matchesJsonPath": {
 					"expression": "$.currentActivityName",
-					"equalTo": "Decision"
+					"equalTo": "Registration"
 				}
 			},
 			{
 				"matchesJsonPath": {
 					"expression": "$.awaitingSignals[0].name",
-					"equalTo": "process_cancelled"
+					"equalTo": "registration_completed"
 				}
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.awaitingSignals[1]",
-					"absent": true
+					"expression": "$.awaitingSignals[0].label",
+					"equalTo": "Registration completed"
 				}
 			}
 		]
 	},
-	"newScenarioState": "decision_process-service---api-support-management-put-process-waiting",
-	"requiredScenarioState": "investigation_process-service---api-support-management-put-process-waiting",
+	"newScenarioState": "registration_process-service---api-support-management-put-process-waiting",
 	"response": {
 		"headers": {
 			"Content-Type": "application/json",
