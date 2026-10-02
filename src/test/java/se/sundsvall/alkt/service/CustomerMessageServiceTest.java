@@ -6,7 +6,6 @@ import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Identifier;
 import generated.se.sundsvall.supportmanagement.Message;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageMessage;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.configuration.CustomerMessageProperties;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.dept44.problem.Problem;
 
 import static generated.se.sundsvall.supportmanagement.ConversationType.EXTERNAL;
@@ -66,7 +66,7 @@ class CustomerMessageServiceTest {
 			new Conversation().id("referral-id").type(EXTERNAL).participants(List.of(new Identifier().type(PARTY_ID).value("referral-party-id"))),
 			customerConversation()));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
-			.thenReturn(new PageMessage().content(List.of(customerMessage())).last(true));
+			.thenReturn(new MessagePage(List.of(customerMessage()), true));
 
 		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
@@ -86,7 +86,7 @@ class CustomerMessageServiceTest {
 			.type(EXTERNAL)
 			.participants(List.of(new Identifier().type(PARTY_ID).value(PARTY))))).thenReturn(CONVERSATION_ID);
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
-			.thenReturn(new PageMessage().last(true));
+			.thenReturn(new MessagePage(null, true));
 
 		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
@@ -98,9 +98,9 @@ class CustomerMessageServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(customerConversation()));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
-			.thenReturn(new PageMessage().content(List.of(customerMessage(), processMessage("Another message"))).last(false));
+			.thenReturn(new MessagePage(List.of(customerMessage(), processMessage("Another message")), false));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 1, MESSAGE_PAGE_SIZE))
-			.thenReturn(new PageMessage().content(List.of(processMessage(CONTENT))).last(true));
+			.thenReturn(new MessagePage(List.of(processMessage(CONTENT)), true));
 
 		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isFalse();
 
@@ -112,7 +112,7 @@ class CustomerMessageServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(customerConversation()));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
-			.thenReturn(new PageMessage().content(List.of(new Message().content(CONTENT), new Message().createdBy(new Identifier().type(PARTY_ID).value(PARTY)).content(CONTENT))));
+			.thenReturn(new MessagePage(List.of(new Message().content(CONTENT), new Message().createdBy(new Identifier().type(PARTY_ID).value(PARTY)).content(CONTENT)), null));
 
 		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
@@ -125,7 +125,7 @@ class CustomerMessageServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
 		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(customerConversation()));
 		when(supportManagementIntegrationMock.getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 0, MESSAGE_PAGE_SIZE))
-			.thenReturn(new PageMessage().content(List.of()).last(false));
+			.thenReturn(new MessagePage(List.of(), false));
 
 		assertThat(service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE)).isTrue();
 
