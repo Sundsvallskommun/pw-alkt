@@ -69,12 +69,14 @@ camunda:
   bpm:
     client:
       base-url: ${config.operaton.base-url}
-      # Long polling, kept under the 30 second timeout of the gateway in front of Operaton
-      async-response-timeout: 20000
+      # Long polling picks up a new task at once whatever the timeout, so the timeout is kept short: it bounds how long a
+      # shutdown waits and how late a retried task, which wakes no poll, is picked up
+      async-response-timeout: 5000
+      # Backs off after a failed fetch only, see BackoffConfiguration
       backoff:
         initTime: 500
         factor: 2
-        maxTime: 2000
+        maxTime: 15000
   worker:
     max:
       retries: 3
