@@ -8,10 +8,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 
@@ -80,6 +84,29 @@ class TemplatingMapperTest {
 	@Test
 	void toTemplateParametersHasEmptyConditionsForAnEmptyDecision() {
 		assertThat(toTemplateParameters(new Decision())).containsExactly(entry(PARAMETER_CONDITIONS, ""));
+	}
+
+	@Test
+	void toTemplateParametersHasEmptyConditionsForAnApprovalWithoutTerms() {
+		assertThat(toTemplateParameters(new Decision().outcome(DECISION_OUTCOME_APPROVAL))).containsExactly(entry(PARAMETER_CONDITIONS, ""));
+	}
+
+	@ParameterizedTest
+	@NullAndEmptySource
+	@ValueSource(strings = "  ")
+	void toTemplateParametersRefusesAnApprovalWithConditionsWithoutConditions(final String text) {
+		final var decision = new Decision().id("decision-id").outcome(DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS).terms(List.of(new DecisionTerm().sortOrder(1).text(text)));
+
+		assertThatThrownBy(() -> toTemplateParameters(decision))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Decision decision-id is an approval with conditions but has no conditions, so no certificate is made");
+	}
+
+	@Test
+	void toTemplateParametersRefusesAnApprovalWithConditionsWithoutTerms() {
+		final var decision = new Decision().outcome(DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS);
+
+		assertThatThrownBy(() -> toTemplateParameters(decision)).isInstanceOf(NonRetryableException.class);
 	}
 
 	private static Parameter parameter(final String key, final String... values) {

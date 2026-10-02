@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ATTACHMENT_PART_NAME;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ORIGIN;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_LEGAL_BASIS;
@@ -67,7 +68,8 @@ class PartyAssetsMapperTest {
 			entry(PARAMETER_LEGAL_BASIS, "8 kap. 12 § alkohollagen"),
 			entry(PARAMETER_DELEGATION_REFERENCE, "3.2.1"),
 			entry("serveringstid", "Servering får ske mellan 11.00 och 01.00."),
-			entry("serveringsyta", "Servering får ske i matsalen."));
+			entry("serveringsyta", "Servering får ske i matsalen."),
+			entry(PARAMETER_CONDITIONS, "Ordningsvakt ska finnas efter 23.00."));
 	}
 
 	@Test
@@ -86,6 +88,31 @@ class PartyAssetsMapperTest {
 		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
 			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
 			entry(PARAMETER_LEGAL_BASIS, "Angiven av handläggaren."));
+	}
+
+	@Test
+	void toAssetCreateRequestKeepsTheErrandIdOverAParameterOfTheSameKey() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PARAMETER_ERRAND_ID).values(List.of("another-errand"))));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+	}
+
+	@Test
+	void toAssetCreateRequestLetsTheTermsWinOverAParameterNamedConditions() {
+		final var decision = new Decision()
+			.parameters(List.of(new Parameter().key(PARAMETER_CONDITIONS).values(List.of("Från en parameter."))))
+			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
+			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
+	}
+
+	@Test
+	void toAssetCreateRequestLeavesOutConditionsWithoutText() {
+		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(1).text(" ")));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
