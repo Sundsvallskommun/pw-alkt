@@ -19,6 +19,6 @@ class BackoffPropertiesTest {
 	void testProperties() {
 		assertThat(properties.initTime()).isEqualTo(500);
 		assertThat(properties.factor()).isEqualTo(2);
-		assertThat(properties.maxTime()).isEqualTo(15000);
+		assertThat(properties.maxTime()).isEqualTo(2000);
 	}
 }
