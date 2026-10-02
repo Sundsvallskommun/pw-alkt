@@ -100,6 +100,8 @@ public final class Constants {
 	public static final String DECISION_STATUS_DRAFT = "DRAFT";
 	public static final String DECISION_METHOD_AUTOMATIC = "AUTOMATIC";
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
+	// The id in party-assets of the permit an errand changes, chosen by the customer when the errand is created.
+	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
 
 	// The topic Mina sidor gives the external conversation it creates, so the conversation looks the same whoever starts
 	// it.

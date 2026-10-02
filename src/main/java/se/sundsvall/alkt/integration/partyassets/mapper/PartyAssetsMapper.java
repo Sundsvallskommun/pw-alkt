@@ -1,7 +1,10 @@
 package se.sundsvall.alkt.integration.partyassets.mapper;
 
+import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
@@ -9,6 +12,7 @@ import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -21,6 +25,8 @@ import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
+import static java.util.Comparator.nullsLast;
 import static java.util.stream.Collectors.joining;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
@@ -36,6 +42,8 @@ public final class PartyAssetsMapper {
 	static final String PARAMETER_ERRAND_ID = "errandId";
 	static final String PARAMETER_LEGAL_BASIS = "legalBasis";
 	static final String PARAMETER_DELEGATION_REFERENCE = "delegationReference";
+	// Must match the placeholder of the conditions in the certificate template.
+	static final String PARAMETER_CONDITIONS = "conditions";
 	static final String ERRAND_RESOURCE_TYPE = "case";
 	static final String ERRAND_SERVICE = "supportmanagement";
 
@@ -58,6 +66,18 @@ public final class PartyAssetsMapper {
 			.title(decision.getTitle())
 			.description(decision.getDescription())
 			.additionalParameters(toAdditionalParameters(decision, errandId));
+	}
+
+	/**
+	 * The parameters of the decision go on top of those the asset has, so a change need only carry what it changes. The
+	 * asset keeps its validTo unless the decision gives one.
+	 */
+	public static AssetUpdateRequest toAssetUpdateRequest(final Asset current, final Decision decision, final String errandId) {
+		final var parameters = new LinkedHashMap<>(Optional.ofNullable(current.getAdditionalParameters()).orElse(emptyMap()));
+		parameters.putAll(toAdditionalParameters(decision, errandId));
+		return new AssetUpdateRequest()
+			.validTo(decision.getValidTo())
+			.additionalParameters(parameters);
 	}
 
 	public static AssetFile toAssetFile(final ErrandAttachment attachment, final byte[] content) {
@@ -103,7 +123,19 @@ public final class PartyAssetsMapper {
 					parameters.put(parameter.getKey(), value);
 				}
 			});
+		// Why: a change carries the conditions of the permit over to its certificate, so they are kept on the asset. They go
+		// in after the parameters so the terms win, as they do in the certificate.
+		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PARAMETER_CONDITIONS, value));
 		return parameters;
+	}
+
+	// Same order and joining as the conditions TemplatingMapper renders into the certificate.
+	private static String toConditions(final Decision decision) {
+		return Optional.ofNullable(decision.getTerms()).orElse(emptyList()).stream()
+			.sorted(Comparator.comparing(DecisionTerm::getSortOrder, nullsLast(Comparator.naturalOrder())))
+			.map(DecisionTerm::getText)
+			.filter(StringUtils::isNotBlank)
+			.collect(joining("\n"));
 	}
 
 	private static String toValue(final Parameter parameter) {
