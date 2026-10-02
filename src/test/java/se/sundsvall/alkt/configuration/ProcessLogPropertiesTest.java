@@ -41,11 +41,15 @@ class ProcessLogPropertiesTest {
 			"external_task_check_decision",
 			"external_task_create_decision",
 			"external_task_create_asset",
+			"external_task_create_protocol",
+			"external_task_create_action_errand",
 			"external_task_complete_process",
 			"external_task_cancel_process");
 		assertThat(properties.steps().get("external_task_create_asset").done()).isEqualTo("Tillståndet har registrerats hos tillståndshavaren");
 		assertThat(properties.steps().get("external_task_create_asset").skipped()).isNull();
+		assertThat(properties.steps().get("external_task_create_asset").rejected()).isNull();
 		assertThat(properties.steps().get("external_task_notify_processing_started").skipped()).isNotBlank();
+		assertThat(properties.steps().get("external_task_create_action_errand").rejected()).isNotBlank();
 		assertThat(properties.phases()).containsOnlyKeys(
 			"registration_phase",
 			"review_phase",

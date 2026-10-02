@@ -154,6 +154,21 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 				.withRequestBody(matchingJsonPath("$[?(@.currentActivityId == '%s')]".formatted(activityId)))).isEmpty());
 	}
 
+	/** For a process that comes back to where it already reported: count the reports before, then await more than that. */
+	protected void awaitReportsAt(String activityId, int count) {
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.until(() -> countReportsAt(activityId) >= count);
+	}
+
+	protected int countReportsAt(String activityId) {
+		return countReports("$[?(@.currentActivityId == '%s')]".formatted(activityId));
+	}
+
+	protected int countReports(String jsonPath) {
+		return wiremock.findAll(putRequestedFor(urlPathMatching(".*/processes/.*")).withRequestBody(matchingJsonPath(jsonPath))).size();
+	}
+
 	protected void awaitProcessState(String processInstanceId, String state, long timeoutInSeconds) {
 		await()
 			.ignoreExceptions()

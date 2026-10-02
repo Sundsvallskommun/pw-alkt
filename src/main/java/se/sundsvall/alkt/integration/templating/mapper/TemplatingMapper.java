@@ -2,9 +2,11 @@ package se.sundsvall.alkt.integration.templating.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
+import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
@@ -26,15 +28,25 @@ public final class TemplatingMapper {
 	 * conditions of the decision, one per line, and empty for a decision without conditions.
 	 */
 	public static Map<String, Object> toTemplateParameters(final Decision decision) {
+		final var templateParameters = toTemplateParameters(decision.getParameters());
+		templateParameters.put(PARAMETER_CONDITIONS, toConditions(decision));
+		return templateParameters;
+	}
+
+	/** The same placeholders as for a decision, without conditions since an investigation has none. */
+	public static Map<String, Object> toTemplateParameters(final Investigation investigation) {
+		return toTemplateParameters(investigation.getParameters());
+	}
+
+	private static Map<String, Object> toTemplateParameters(final List<Parameter> parameters) {
 		final var templateParameters = new LinkedHashMap<String, Object>();
-		Optional.ofNullable(decision.getParameters()).orElse(emptyList())
+		Optional.ofNullable(parameters).orElse(emptyList())
 			.forEach(parameter -> {
 				final var value = toValue(parameter);
 				if (isNotBlank(value)) {
 					templateParameters.put(parameter.getKey(), value);
 				}
 			});
-		templateParameters.put(PARAMETER_CONDITIONS, toConditions(decision));
 		return templateParameters;
 	}
 

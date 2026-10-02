@@ -1,4 +1,4 @@
-package se.sundsvall.alkt.integration.partyassets.model;
+package se.sundsvall.alkt.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;

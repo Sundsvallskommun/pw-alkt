@@ -29,8 +29,10 @@ class TenantAwareSubscriptionsTest {
 			"CancelProcessTask",
 			"CheckDecisionTask",
 			"CompleteProcessTask",
+			"CreateActionErrandTask",
 			"CreateAssetTask",
 			"CreateDecisionTask",
+			"CreateProtocolTask",
 			"NotifyCustomerTask",
 			"ReconcileProcessesTask");
 		assertThat(subscriptions).allSatisfy(subscription -> assertThat(subscription.getTenantIdIn())

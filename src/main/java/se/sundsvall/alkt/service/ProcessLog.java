@@ -17,6 +17,7 @@ import static se.sundsvall.alkt.Constants.ACTIVITY_TYPE_PHASE;
 import static se.sundsvall.alkt.Constants.ACTIVITY_TYPE_RECONCILIATION;
 import static se.sundsvall.alkt.Constants.ACTIVITY_TYPE_TASK;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
+import static se.sundsvall.alkt.Constants.ERROR_CODE_REJECTED;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_SKIPPED;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_TERMINATED;
@@ -36,6 +37,7 @@ public class ProcessLog {
 		RETRY,
 		FAILED,
 		SKIPPED,
+		REJECTED,
 		SETTLED_COMPLETED,
 		SETTLED_TERMINATED
 	}
@@ -61,6 +63,15 @@ public class ProcessLog {
 	public ProcessActivity taskDone(final ExternalTask externalTask, final String logMessage) {
 		return entry(ACTIVITY_TYPE_TASK, externalTask.getActivityId() + "#done", nameOf(externalTask, Outcome.DONE), SEVERITY_INFO, null,
 			"%s, x-request-id %s".formatted(logMessage, RequestId.get()), now());
+	}
+
+	/**
+	 * Every choice by the case worker runs the step as a new external task, so its id gives each refusal an entry of its
+	 * own while a replayed report of the same run is dropped.
+	 */
+	public ProcessActivity taskRejected(final ExternalTask externalTask, final String logMessage) {
+		return entry(ACTIVITY_TYPE_TASK, "%s#rejected#%s".formatted(externalTask.getActivityId(), externalTask.getId()), nameOf(externalTask, Outcome.REJECTED),
+			SEVERITY_WARN, ERROR_CODE_REJECTED, "%s, x-request-id %s".formatted(logMessage, RequestId.get()), now());
 	}
 
 	/**
@@ -113,6 +124,7 @@ public class ProcessLog {
 				case RETRY -> texts.retry();
 				case FAILED -> texts.failed();
 				case SKIPPED -> texts.skipped();
+				case REJECTED -> texts.rejected();
 				default -> null;
 			});
 	}

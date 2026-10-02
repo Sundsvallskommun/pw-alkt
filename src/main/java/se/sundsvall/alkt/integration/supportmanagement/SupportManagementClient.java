@@ -8,6 +8,8 @@ import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.Investigation;
+import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.PageMessage;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.List;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration;
 
 import static org.springframework.http.MediaType.ALL_VALUE;
@@ -142,4 +145,35 @@ public interface SupportManagementClient {
 		@PathVariable String conversationId,
 		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
 		@RequestPart("message") String message);
+
+	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> createAttachment(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestPart("errandAttachment") MultipartFile errandAttachment);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/investigations", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<Investigation>> getInvestigations(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<PageErrand> findErrands(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@RequestParam("filter") String filter);
+
+	/**
+	 * Support Management creates the relation named in referredFrom along with the errand. No X-Trigger-Process: the new
+	 * errand is not this process's own, and the header would keep its own process from starting.
+	 */
+	@PostMapping(path = "/{municipalityId}/{namespace}/errands", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> createErrand(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@RequestParam("referredFrom") String referredFrom,
+		@RequestBody Errand errand);
 }

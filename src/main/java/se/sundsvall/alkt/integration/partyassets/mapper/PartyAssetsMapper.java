@@ -15,7 +15,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
-import se.sundsvall.alkt.integration.partyassets.model.ByteArrayMultipartFile;
+import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import se.sundsvall.dept44.support.Relation;
 import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 

@@ -2,6 +2,7 @@ package se.sundsvall.alkt.integration.templating.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
+import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,20 @@ class TemplatingMapperTest {
 	@Test
 	void toTemplateParametersHasEmptyConditionsForAnEmptyDecision() {
 		assertThat(toTemplateParameters(new Decision())).containsExactly(entry(PARAMETER_CONDITIONS, ""));
+	}
+
+	@Test
+	void toTemplateParametersOfAnInvestigationHasItsParametersAndNoConditions() {
+		final var investigation = new Investigation().parameters(List.of(parameter("visitDate", "2026-09-15"), parameter("checkpoints", "Godkänt", "Brist"), parameter("note")));
+
+		assertThat(toTemplateParameters(investigation)).containsExactly(
+			entry("visitDate", "2026-09-15"),
+			entry("checkpoints", "Godkänt, Brist"));
+	}
+
+	@Test
+	void toTemplateParametersOfAnEmptyInvestigationIsEmpty() {
+		assertThat(toTemplateParameters(new Investigation())).isEmpty();
 	}
 
 	private static Parameter parameter(final String key, final String... values) {

@@ -1,0 +1,8 @@
+{
+	"eventId": "b8239ca3-2281-4acf-bf17-0f036dbd0fb0",
+	"eventType": "UPDATE",
+	"eventSubType": "PROCESS",
+	"errandId": "4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345",
+	"processKey": "external-inspection",
+	"startAllowed": true
+}

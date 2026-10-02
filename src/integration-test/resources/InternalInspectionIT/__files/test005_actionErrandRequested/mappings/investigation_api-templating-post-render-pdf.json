@@ -1,0 +1,35 @@
+{
+	"name": "investigation_api-templating-post-render-pdf",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-templating/2281/render/pdf",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.identifier",
+					"equalTo": "inspection.internal.report"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.permitHolderName",
+					"equalTo": "Runt Hörnet AB"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"output": "JVBERi0xLjcgdGlsbHN5bnNyYXBwb3J0"
+		},
+		"status": 200
+	}
+}

@@ -84,7 +84,7 @@ class ProcessReconciliationServiceTest {
 	@BeforeEach
 	void setUp() {
 		final var processLog = new ProcessLog(new ProcessLogProperties(
-			Map.of("external_task_complete_process", new StepTexts("Processen är avslutad", "Nytt försök görs", "Processen kunde inte avslutas", null)),
+			Map.of("external_task_complete_process", new StepTexts("Processen är avslutad", "Nytt försök görs", "Processen kunde inte avslutas", null, null)),
 			Map.of("registration_phase", new PhaseTexts("Registrering har påbörjats")),
 			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock);
 		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2)),

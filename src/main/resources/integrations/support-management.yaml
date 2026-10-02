@@ -22306,6 +22306,12 @@ components:
           items:
             $ref: "#/components/schemas/ErrandAttachment"
             readOnly: true
+        parameters:
+          type: array
+          description: "Parameters of the investigation, unstructured metadata as\
+            \ keys with lists of values"
+          items:
+            $ref: "#/components/schemas/Parameter"
         createdBy:
           type: string
           description: User who created the investigation
