@@ -8,7 +8,7 @@ import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
-import generated.se.sundsvall.supportmanagement.PageMessage;
+import generated.se.sundsvall.supportmanagement.MessageRequest;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration;
+import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 
 import static org.springframework.http.MediaType.ALL_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
@@ -125,7 +126,7 @@ public interface SupportManagementClient {
 		@RequestBody ConversationRequest conversation);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations/{conversationId}/messages", produces = APPLICATION_JSON_VALUE)
-	ResponseEntity<PageMessage> getConversationMessages(
+	ResponseEntity<MessagePage> getConversationMessages(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@PathVariable String errandId,
@@ -133,7 +134,7 @@ public interface SupportManagementClient {
 		@RequestParam("page") int page,
 		@RequestParam("size") int size);
 
-	/** The message part is the MessageRequest as a JSON string, Support Management parses it itself. */
+	/** The message part is written as JSON by the JsonFormWriter of {@link SupportManagementConfiguration}. */
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations/{conversationId}/messages", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createConversationMessage(
 		@PathVariable String municipalityId,
@@ -141,5 +142,5 @@ public interface SupportManagementClient {
 		@PathVariable String errandId,
 		@PathVariable String conversationId,
 		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
-		@RequestPart("message") String message);
+		@RequestPart("message") MessageRequest message);
 }

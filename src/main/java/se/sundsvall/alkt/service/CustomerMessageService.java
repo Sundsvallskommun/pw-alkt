@@ -76,12 +76,12 @@ public class CustomerMessageService {
 	private boolean isAlreadySent(final String municipalityId, final String namespace, final String errandId, final String conversationId, final String content) {
 		for (var page = 0;; page++) {
 			final var messages = supportManagementIntegration.getConversationMessages(municipalityId, namespace, errandId, conversationId, page, MESSAGE_PAGE_SIZE);
-			final var onPage = Optional.ofNullable(messages.getContent()).orElse(emptyList());
+			final var onPage = Optional.ofNullable(messages.content()).orElse(emptyList());
 			if (onPage.stream().anyMatch(message -> isSentByProcess(message, content))) {
 				return true;
 			}
 			// An empty page ends the search as well, so a paging that never says last cannot hold the step.
-			if (onPage.isEmpty() || !FALSE.equals(messages.getLast())) {
+			if (onPage.isEmpty() || !FALSE.equals(messages.last())) {
 				return false;
 			}
 		}
