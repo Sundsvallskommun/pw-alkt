@@ -39,6 +39,7 @@ class DecisionServiceTest {
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
 	private static final String DECISION_ID = "decision-id";
+	private static final String PERMIT_TYPE = "AlcoholServingPermit";
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
@@ -167,10 +168,10 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(supportManagementIntegrationMock.createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), decisionCaptor.capture())).thenReturn(DECISION_ID);
 
-		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(DECISION_ID);
+		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE)).isEqualTo(DECISION_ID);
 
 		final InOrder inOrder = inOrder(assetServiceMock, supportManagementIntegrationMock);
-		inOrder.verify(assetServiceMock).getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID);
+		inOrder.verify(assetServiceMock).getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, PERMIT_TYPE);
 		inOrder.verify(supportManagementIntegrationMock).createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
 		assertThat(decisionCaptor.getValue().getStatus()).isEqualTo("DRAFT");
 		assertThat(decisionCaptor.getValue().getParameters()).extracting(Parameter::getKey).containsExactly("serveringstid");
@@ -181,7 +182,7 @@ class DecisionServiceTest {
 	void createChangeDraftAnswersWithTheDecisionAlreadyOnTheErrand() {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Decision().id(DECISION_ID).status("DRAFT")));
 
-		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(DECISION_ID);
+		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE)).isEqualTo(DECISION_ID);
 
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
 		verifyNoInteractions(assetServiceMock);
@@ -192,9 +193,9 @@ class DecisionServiceTest {
 		final var errand = new Errand();
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
-		when(assetServiceMock.getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID)).thenThrow(new NonRetryableException("Errand 'errand-id' names no asset to change"));
+		when(assetServiceMock.getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, PERMIT_TYPE)).thenThrow(new NonRetryableException("Errand 'errand-id' names no asset to change"));
 
-		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' names no asset to change");
 

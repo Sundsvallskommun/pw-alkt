@@ -37,13 +37,13 @@ public final class PartyAssetsMapper {
 
 	private PartyAssetsMapper() {}
 
-	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId) {
+	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final String permitType) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
 			.status(DRAFT)
 			.origin(ORIGIN)
 			.partyId(partyId)
-			.type(decision.getType())
+			.type(permitType)
 			.issued(toIssued(decision))
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())

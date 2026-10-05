@@ -66,6 +66,11 @@
       <bpmn:sequenceFlow id="flow_decision_create_decision_to_create_asset" sourceRef="external_task_create_decision" targetRef="external_task_create_asset" />
       <bpmn:serviceTask id="external_task_create_asset" name="Create asset" camunda:type="external" camunda:topic="CreateAssetTask">
         <bpmn:documentation>Creates the permit in party-assets from the decision.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="permitType">LowAlcoholBeerServingPermit</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_create_decision_to_create_asset</bpmn:incoming>
         <bpmn:outgoing>flow_decision_create_asset_to_end</bpmn:outgoing>
       </bpmn:serviceTask>

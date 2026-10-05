@@ -44,7 +44,6 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";
-	private static final String TENANT_ID_ALKT = "ALKT";
 	private static final String ERRAND_ID_INCIDENT = "a3690d5e-8f14-42b7-95ca-6d81e0b4f273";
 	private static final String SCENARIO_INCIDENT = "incident-is-reported-once";
 	private static final String PROCESSES_PATH_INCIDENT = "/api-support-management/2281/ALKT/errands/%s/processes".formatted(ERRAND_ID_INCIDENT);

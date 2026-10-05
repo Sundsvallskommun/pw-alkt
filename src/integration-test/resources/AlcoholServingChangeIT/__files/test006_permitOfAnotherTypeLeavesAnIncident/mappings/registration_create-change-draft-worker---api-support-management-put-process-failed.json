@@ -1,0 +1,39 @@
+{
+	"name": "registration_create-change-draft-worker---api-support-management-put-process-failed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "FAILED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].errorCode",
+					"equalTo": "INCIDENT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].message",
+					"contains": "is of type 'LowAlcoholBeerServingPermit', the process changes only type 'AlcoholServingPermit'"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

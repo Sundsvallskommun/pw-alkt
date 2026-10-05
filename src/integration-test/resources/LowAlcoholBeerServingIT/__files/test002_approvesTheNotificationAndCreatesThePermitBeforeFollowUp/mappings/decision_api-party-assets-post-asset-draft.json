@@ -35,7 +35,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.type",
-					"equalTo": "PERMIT"
+					"equalTo": "LowAlcoholBeerServingPermit"
 				}
 			},
 			{

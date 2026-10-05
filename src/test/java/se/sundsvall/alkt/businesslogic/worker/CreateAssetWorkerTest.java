@@ -22,6 +22,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_CERTIFICATE_TEMPLATE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_PERMIT_TYPE;
 
 @ExtendWith(MockitoExtension.class)
 class CreateAssetWorkerTest {
@@ -29,6 +30,7 @@ class CreateAssetWorkerTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
+	private static final String PERMIT_TYPE = "AlcoholServingPermit";
 
 	@Mock
 	private ProcessReportService processReportServiceMock;
@@ -57,13 +59,14 @@ class CreateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_CERTIFICATE_TEMPLATE)).thenReturn(certificateTemplate);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_PERMIT_TYPE)).thenReturn(PERMIT_TYPE);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_asset");
-		when(assetServiceMock.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate)).thenReturn("asset-id");
+		when(assetServiceMock.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE)).thenReturn("asset-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_asset", null).withLogMessage("Asset 'asset-id' found or created"));
-		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate);
+		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

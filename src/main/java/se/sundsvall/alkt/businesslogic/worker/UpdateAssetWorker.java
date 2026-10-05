@@ -10,6 +10,7 @@ import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_CERTIFICATE_TEMPLATE;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_PERMIT_TYPE;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -30,7 +31,7 @@ public class UpdateAssetWorker extends AbstractTaskWorker {
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final var assetId = assetService.updateAsset(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
-			externalTask.getVariable(PROCESS_VARIABLE_CERTIFICATE_TEMPLATE));
+			externalTask.getVariable(PROCESS_VARIABLE_CERTIFICATE_TEMPLATE), externalTask.getVariable(PROCESS_VARIABLE_PERMIT_TYPE));
 
 		logInfo("Errand {} changed asset {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 
