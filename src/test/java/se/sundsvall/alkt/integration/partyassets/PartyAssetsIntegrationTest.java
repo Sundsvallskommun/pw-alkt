@@ -1,9 +1,12 @@
 package se.sundsvall.alkt.integration.partyassets;
 
 import generated.se.sundsvall.partyassets.Asset;
+import generated.se.sundsvall.partyassets.AssetAttachment;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.partyassets.DraftAssetUpdateRequest;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,8 +16,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.configuration.PartyAssetsProperties;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
+import se.sundsvall.alkt.integration.partyassets.model.VersionedAsset;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
@@ -31,7 +36,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @ExtendWith(MockitoExtension.class)
 class PartyAssetsIntegrationTest {
@@ -125,7 +132,7 @@ class PartyAssetsIntegrationTest {
 
 		partyAssetsIntegration.addAttachmentToDraft(MUNICIPALITY_ID, "asset-id", new AssetFile(file, "LOKALRITNING"));
 
-		verify(partyAssetsClientMock).createAttachment(MUNICIPALITY_ID, "asset-id", file, "LOKALRITNING", null);
+		verify(partyAssetsClientMock).createAttachment(MUNICIPALITY_ID, "asset-id", file, "LOKALRITNING", null, null);
 		verifyNoMoreInteractions(partyAssetsClientMock);
 	}
 
@@ -138,11 +145,119 @@ class PartyAssetsIntegrationTest {
 	}
 
 	@Test
+	void activateAssetFailsWithoutRetryWhenPartyAssetsRefusesIt() {
+		final var problem = new ClientProblem(BAD_REQUEST, "validTo must be in the future when activating an asset");
+		when(partyAssetsClientMock.updateDraftAsset(MUNICIPALITY_ID, "asset-id", new DraftAssetUpdateRequest().status(ACTIVE))).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.activateAsset(MUNICIPALITY_ID, "asset-id"))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageStartingWith("Asset 'asset-id' cannot be activated")
+			.hasCause(problem);
+	}
+
+	@Test
+	void activateAssetPassesOnAnyOtherFailure() {
+		final var problem = new ClientProblem(BAD_GATEWAY, "Party assets is down");
+		when(partyAssetsClientMock.updateDraftAsset(MUNICIPALITY_ID, "asset-id", new DraftAssetUpdateRequest().status(ACTIVE))).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.activateAsset(MUNICIPALITY_ID, "asset-id")).isSameAs(problem);
+	}
+
+	@Test
 	void removeDraftAssetDeletesTheDraft() {
 		partyAssetsIntegration.removeDraftAsset(MUNICIPALITY_ID, "asset-id");
 
 		verify(partyAssetsClientMock).deleteAsset(MUNICIPALITY_ID, "asset-id");
 		verifyNoMoreInteractions(partyAssetsClientMock);
+	}
+
+	@Test
+	void getAssetAnswersWithTheAssetAndItsVersion() {
+		final var asset = new Asset().id("asset-id");
+		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok().eTag("\"3\"").body(asset));
+
+		assertThat(partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id")).isEqualTo(new VersionedAsset(asset, "\"3\""));
+	}
+
+	@Test
+	void getAssetHasNoVersionWithoutAnETag() {
+		final var asset = new Asset().id("asset-id");
+		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(asset));
+
+		assertThat(partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id")).isEqualTo(new VersionedAsset(asset, null));
+	}
+
+	@Test
+	void getAssetFailsWithoutRetryWhenTheIdNamesNoAsset() {
+		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenThrow(new ClientProblem(NOT_FOUND, "No asset"));
+
+		assertThatThrownBy(() -> partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id"))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("Asset 'asset-id' cannot be read")
+			.hasCauseInstanceOf(ClientProblem.class);
+	}
+
+	@Test
+	void getAssetLeavesAnyOtherFailureToBeRetried() {
+		final var problem = new ClientProblem(BAD_GATEWAY, "Party assets is down");
+		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id")).isSameAs(problem);
+	}
+
+	@Test
+	void getAssetFailsWithoutABody() {
+		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(null));
+
+		assertThatThrownBy(() -> partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id"))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("Asset 'asset-id' came back without content");
+	}
+
+	@Test
+	void updateAssetPatchesTheVersionThatWasRead() {
+		final var request = new AssetUpdateRequest().additionalParameters(Map.of("key", "value"));
+
+		partyAssetsIntegration.updateAsset(MUNICIPALITY_ID, "asset-id", "\"3\"", request);
+
+		verify(partyAssetsClientMock).updateAsset(MUNICIPALITY_ID, "asset-id", "\"3\"", request);
+		verifyNoMoreInteractions(partyAssetsClientMock);
+	}
+
+	@Test
+	void replaceCertificateReplacesTheCertificateTheAssetHas() {
+		final var file = mock(MultipartFile.class);
+
+		when(partyAssetsClientMock.getAttachments(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(List.of(
+			new AssetAttachment().id("drawing").category("LOKALRITNING"),
+			new AssetAttachment().id("uncategorised"),
+			new AssetAttachment().id("old-certificate").category("Tillståndsbevis"))));
+
+		partyAssetsIntegration.replaceCertificate(MUNICIPALITY_ID, "asset-id", new AssetFile(file, "Tillståndsbevis"));
+
+		verify(partyAssetsClientMock).createAttachment(MUNICIPALITY_ID, "asset-id", file, "Tillståndsbevis", null, "old-certificate");
+	}
+
+	@Test
+	void replaceCertificateAddsTheCertificateToAnAssetWithoutOne() {
+		final var file = mock(MultipartFile.class);
+
+		when(partyAssetsClientMock.getAttachments(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(List.of(new AssetAttachment().id("drawing").category("LOKALRITNING"))));
+
+		partyAssetsIntegration.replaceCertificate(MUNICIPALITY_ID, "asset-id", new AssetFile(file, "Tillståndsbevis"));
+
+		verify(partyAssetsClientMock).createAttachment(MUNICIPALITY_ID, "asset-id", file, "Tillståndsbevis", null, null);
+	}
+
+	@Test
+	void replaceCertificateAddsTheCertificateWhenTheAttachmentsComeBackWithoutBody() {
+		final var file = mock(MultipartFile.class);
+
+		when(partyAssetsClientMock.getAttachments(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(null));
+
+		partyAssetsIntegration.replaceCertificate(MUNICIPALITY_ID, "asset-id", new AssetFile(file, "Tillståndsbevis"));
+
+		verify(partyAssetsClientMock).createAttachment(MUNICIPALITY_ID, "asset-id", file, "Tillståndsbevis", null, null);
 	}
 
 	private static AssetCreateRequest asset() {

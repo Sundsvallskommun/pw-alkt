@@ -1,0 +1,65 @@
+{
+	"name": "registration_api-support-management-post-decision",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "DRAFT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.method",
+					"equalTo": "AUTOMATIC"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.decidedBy",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.outcome",
+					"equalTo": "APPROVAL"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.type",
+					"equalTo": "PERMIT"
+				}
+			},
+			{
+				"matchesJsonPath": "$.parameters[?(@.key == 'serveringstid' && @.values[0] == 'Servering får ske mellan 11.00 och 02.00.')]"
+			},
+			{
+				"matchesJsonPath": "$.parameters[?(@.key == 'uteservering')]"
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters[?(@.key == 'assetId')]",
+					"absent": true
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44/decisions/3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b"
+		},
+		"status": 201
+	}
+}

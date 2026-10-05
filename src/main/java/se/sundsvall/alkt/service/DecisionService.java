@@ -15,6 +15,7 @@ import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toAutomaticDecision;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraft;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionCompletion;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionTitle;
 
@@ -24,9 +25,11 @@ public class DecisionService {
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
 	private final SupportManagementIntegration supportManagementIntegration;
+	private final AssetService assetService;
 
-	DecisionService(final SupportManagementIntegration supportManagementIntegration) {
+	DecisionService(final SupportManagementIntegration supportManagementIntegration, final AssetService assetService) {
 		this.supportManagementIntegration = supportManagementIntegration;
+		this.assetService = assetService;
 	}
 
 	/**
@@ -61,6 +64,22 @@ public class DecisionService {
 
 		supportManagementIntegration.updateDecision(municipalityId, namespace, errandId, decisionId, toDecisionCompletion(decidedAt));
 		return decisionId;
+	}
+
+	/**
+	 * Drafts the decision of a change errand from the change the customer asks for. An errand has one decision at most, so
+	 * one already there is the draft of an earlier attempt.
+	 */
+	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId) {
+		return supportManagementIntegration.getDecisions(municipalityId, namespace, errandId).stream()
+			.findFirst()
+			.map(Decision::getId)
+			.orElseGet(() -> {
+				final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+				// Why: a fault in the permit the customer chose shows now, not once the decision is locked.
+				assetService.getPermitToChange(municipalityId, errand, errandId);
+				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, OffsetDateTime.now(SWEDISH_TIME)));
+			});
 	}
 
 	private static boolean isOwnDraft(final Decision decision) {

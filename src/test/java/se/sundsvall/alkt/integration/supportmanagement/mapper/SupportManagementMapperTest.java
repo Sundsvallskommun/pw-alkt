@@ -127,6 +127,49 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
+	void toChangeDraftCarriesTheChangeOfTheErrandAsAnAutomaticDraft() {
+		final var decidedAt = OffsetDateTime.parse("2026-10-05T10:00:00+02:00");
+		final var errand = new Errand()
+			.title("Ändring av serveringstillstånd, Runt Hörnet")
+			.parameters(List.of(
+				new Parameter().key("assetId").values(List.of("9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d")),
+				new Parameter().key("conditions").values(List.of("Inga villkor")),
+				new Parameter().key("errandId").values(List.of()),
+				new Parameter().key("legalBasis").values(List.of("Från kunden")),
+				new Parameter().key("serveringstid").values(List.of("11.00–02.00")),
+				new Parameter().key("uteservering").values(List.of())));
+
+		final var result = SupportManagementMapper.toChangeDraft(errand, decidedAt);
+
+		assertThat(result.getType()).isEqualTo("PERMIT");
+		assertThat(result.getStatus()).isEqualTo("DRAFT");
+		assertThat(result.getMethod()).isEqualTo("AUTOMATIC");
+		assertThat(result.getDecidedBy()).isEqualTo("pw-alkt");
+		assertThat(result.getDecidedAt()).isEqualTo(decidedAt);
+		assertThat(result.getOutcome()).isEqualTo("APPROVAL");
+		assertThat(result.getTitle()).isEqualTo("Ändring av serveringstillstånd");
+		assertThat(result.getDescription()).isEqualTo("Ändring av serveringstillstånd, Runt Hörnet");
+		assertThat(result.getParameters()).extracting(Parameter::getKey).containsExactly("serveringstid", "uteservering");
+	}
+
+	@Test
+	void toChangeDraftOfAnErrandWithoutParametersHasNone() {
+		assertThat(SupportManagementMapper.toChangeDraft(new Errand().parameters(null), OffsetDateTime.now()).getParameters()).isEmpty();
+	}
+
+	@Test
+	void toRemovedParameterKeysAreThoseWithoutAValue() {
+		final var decision = new Decision().parameters(List.of(
+			new Parameter().key("serveringstid").values(List.of("11.00–02.00")),
+			new Parameter().key("uteservering").values(List.of()),
+			new Parameter().key("ordningsvakt").values(List.of(" ", "")),
+			new Parameter().key("matsal")));
+
+		assertThat(SupportManagementMapper.toRemovedParameterKeys(decision)).containsExactlyInAnyOrder("uteservering", "ordningsvakt", "matsal");
+		assertThat(SupportManagementMapper.toRemovedParameterKeys(new Decision().parameters(null))).isEmpty();
+	}
+
+	@Test
 	void toAutomaticDecisionApprovesUntilFurtherNotice() {
 		final var validFrom = LocalDate.of(2026, 9, 24);
 		final var decidedAt = OffsetDateTime.now();

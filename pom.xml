@@ -151,6 +151,8 @@
 								<dateLibrary>java8</dateLibrary>
 								<apiPackage>generated</apiPackage>
 								<modelPackage>generated.se.sundsvall.partyassets</modelPackage>
+								<!-- party-assets replaces a container it is sent, so an empty one would clear what the asset has. -->
+								<containerDefaultToNull>true</containerDefaultToNull>
 								<openApiNullable>false</openApiNullable>
 								<generatePom>false</generatePom>
 								<useBeanValidation>true</useBeanValidation>

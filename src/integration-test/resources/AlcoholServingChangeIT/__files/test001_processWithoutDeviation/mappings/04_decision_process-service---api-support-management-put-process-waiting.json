@@ -36,17 +36,14 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.awaitingSignals[0].name",
-					"equalTo": "decision_completed"
+					"equalTo": "process_cancelled"
 				}
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.awaitingSignals[0].label",
-					"equalTo": "Decision completed"
+					"expression": "$.awaitingSignals[1]",
+					"absent": true
 				}
-			},
-			{
-				"matchesJsonPath": "$.awaitingSignals[?(@.name == 'process_cancelled')]"
 			}
 		]
 	},
