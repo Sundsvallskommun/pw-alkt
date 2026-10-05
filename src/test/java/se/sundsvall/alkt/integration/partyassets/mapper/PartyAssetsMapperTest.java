@@ -159,31 +159,45 @@ class PartyAssetsMapperTest {
 	@Test
 	void toAssetUpdateRequestPutsTheDecisionOnTopOfTheParametersOfTheAsset() {
 		final var current = new Asset().additionalParameters(Map.of(
-			PARAMETER_ERRAND_ID, "earlier-errand-id",
+			PARAMETER_ERRAND_ID, "granting-errand-id",
 			"serveringstid", "Servering får ske mellan 11.00 och 01.00.",
 			"serveringsyta", "Servering får ske i matsalen."));
 		final var decision = new Decision()
 			.validTo(LocalDate.of(2027, 9, 30))
 			.parameters(List.of(new Parameter().key("serveringstid").values(List.of("Servering får ske mellan 11.00 och 02.00."))));
 
-		final var result = toAssetUpdateRequest(current, decision, ERRAND_ID);
+		final var result = toAssetUpdateRequest(current, decision);
 
 		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
 		assertThat(result.getTitle()).isNull();
 		assertThat(result.getStatus()).isNull();
+		assertThat(result.getJsonParameters()).isNull();
 		assertThat(result.getAdditionalParameters()).containsOnly(
-			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PARAMETER_ERRAND_ID, "granting-errand-id"),
 			entry("serveringstid", "Servering får ske mellan 11.00 och 02.00."),
 			entry("serveringsyta", "Servering får ske i matsalen."));
 	}
 
 	@Test
 	void toAssetUpdateRequestLeavesValidToOutWhenTheDecisionHasNone() {
-		final var result = toAssetUpdateRequest(new Asset().additionalParameters(null), new Decision(), ERRAND_ID);
+		final var result = toAssetUpdateRequest(new Asset().additionalParameters(null), new Decision());
 
 		assertThat(result.getValidTo()).isNull();
 		assertThat(result.getIndefinitely()).isNull();
-		assertThat(result.getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(result.getAdditionalParameters()).isEmpty();
+	}
+
+	/**
+	 * errandId links the permit to the errand that granted it, which neither a change nor a parameter of its decision
+	 * replaces.
+	 */
+	@Test
+	void toAssetUpdateRequestKeepsTheErrandIdOfThePermit() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PARAMETER_ERRAND_ID).values(List.of("from-a-parameter"))));
+
+		assertThat(toAssetUpdateRequest(new Asset().additionalParameters(Map.of(PARAMETER_ERRAND_ID, "granting-errand-id")), decision).getAdditionalParameters())
+			.containsExactly(entry(PARAMETER_ERRAND_ID, "granting-errand-id"));
+		assertThat(toAssetUpdateRequest(new Asset(), decision).getAdditionalParameters()).isEmpty();
 	}
 
 	@Test

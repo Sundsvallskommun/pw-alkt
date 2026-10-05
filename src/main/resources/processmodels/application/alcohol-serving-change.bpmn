@@ -10,7 +10,7 @@
   <bpmn:message id="message_process_cancelled" name="process_cancelled" />
   <bpmn:error id="error_step_skipped" name="Step skipped" errorCode="step_skipped" />
   <bpmn:process id="alcohol-serving-change" name="PROCESS Change of an existing serving permit" isExecutable="true" camunda:historyTimeToLive="P30D">
-    <bpmn:documentation>Skeleton of the process. The phases run in sequence and each one waits for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
+    <bpmn:documentation>The phases run in sequence. Each one waits for a case worker to move the errand on through the user interface, except the decision phase, which waits for the decision itself. The activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
       <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>

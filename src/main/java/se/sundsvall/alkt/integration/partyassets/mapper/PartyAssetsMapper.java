@@ -65,11 +65,11 @@ public final class PartyAssetsMapper {
 
 	/**
 	 * The parameters of the decision go on top of those the asset has, so a change need only carry what it changes. The
-	 * asset keeps its validTo unless the decision gives one.
+	 * asset keeps its validTo unless the decision gives one, and the errandId of the errand that granted it.
 	 */
-	public static AssetUpdateRequest toAssetUpdateRequest(final Asset current, final Decision decision, final String errandId) {
+	public static AssetUpdateRequest toAssetUpdateRequest(final Asset current, final Decision decision) {
 		final var parameters = new LinkedHashMap<>(Optional.ofNullable(current.getAdditionalParameters()).orElse(emptyMap()));
-		parameters.putAll(toAdditionalParameters(decision, errandId));
+		parameters.putAll(toDecisionParameters(decision));
 		return new AssetUpdateRequest()
 			.validTo(decision.getValidTo())
 			.additionalParameters(parameters);
@@ -106,13 +106,20 @@ public final class PartyAssetsMapper {
 	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId) {
 		final var parameters = new LinkedHashMap<String, String>();
 		parameters.put(PARAMETER_ERRAND_ID, errandId);
+		parameters.putAll(toDecisionParameters(decision));
+		return parameters;
+	}
+
+	private static Map<String, String> toDecisionParameters(final Decision decision) {
+		final var parameters = new LinkedHashMap<String, String>();
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PARAMETER_LEGAL_BASIS, value));
 		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PARAMETER_DELEGATION_REFERENCE, value));
 		// Why: the decision's parameters go in after our own keys, so they win over them, except the conditions, which the
-		// terms carry as on the certificate, and the errand id that links the asset back to its errand.
+		// terms carry as on the certificate.
 		parameters.putAll(toParameterValues(decision));
 		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PARAMETER_CONDITIONS, value));
-		parameters.put(PARAMETER_ERRAND_ID, errandId);
+		// Why: errandId links the asset to the errand that granted it, which no decision parameter may change.
+		parameters.remove(PARAMETER_ERRAND_ID);
 		return parameters;
 	}
 }

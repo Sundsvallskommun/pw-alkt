@@ -47,7 +47,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.validTo",
-					"equalTo": "2026-10-31"
+					"equalTo": "2099-10-31"
 				}
 			},
 			{

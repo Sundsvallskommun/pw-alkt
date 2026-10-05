@@ -12,6 +12,7 @@ import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,6 +64,7 @@ class AssetServiceTest {
 	private static final String ASSET_ID = "9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d";
 	private static final String CERTIFICATE_TEMPLATE = "permit.serving.certificate";
 	private static final String VERSION = "\"3\"";
+	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
@@ -253,6 +255,42 @@ class AssetServiceTest {
 		verify(supportManagementIntegrationMock, never()).getAttachment(any(), any(), any(), any());
 	}
 
+	/** The permit was created when its decision still ended after today, so a rerun does not check it again. */
+	@Test
+	void findOrCreateAssetAnswersWithTheExistingAssetOfADecisionThatHasEnded() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().validTo(LocalDate.now(SWEDISH_TIME).minusDays(1))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of("existing-asset-id"));
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null)).isEqualTo("existing-asset-id");
+	}
+
+	@Test
+	void findOrCreateAssetCreatesAPermitThatEndsAfterToday() {
+		givenADraftFor(approval().validTo(LocalDate.now(SWEDISH_TIME).plusDays(2)));
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+	}
+
+	@ParameterizedTest
+	@ValueSource(longs = {
+		0, -1
+	})
+	void findOrCreateAssetFailsWithoutRetryOnADecisionThatDoesNotEndAfterToday(final long daysFromToday) {
+		final var validTo = LocalDate.now(SWEDISH_TIME).plusDays(daysFromToday);
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().validTo(validTo)));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Decision of errand 'errand-id' is valid to %s, which is not after today, so the permit cannot be activated".formatted(validTo));
+
+		verifyNoMoreInteractions(partyAssetsIntegrationMock);
+	}
+
 	@Test
 	void findOrCreateAssetWithoutAttachmentsOnTheDecision() {
 		givenADraftFor(approval().attachments(null));
@@ -391,12 +429,13 @@ class AssetServiceTest {
 	void updateAssetRendersTheCertificateBeforeItPatchesTheAssetAndReplacesTheCertificate() throws IOException {
 		final var pdf = "%PDF-1.7".getBytes();
 		final var asset = activeAsset().additionalParameters(Map.of(
+			"errandId", "granting-errand-id",
 			"permitHolderName", "Runt Hörnet AB",
 			"serveringstid", "11.00–01.00",
 			"conditions", "Ordningsvakt efter 23.00."));
 
 		givenAnErrandNaming(approval()
-			.validTo(LocalDate.of(2027, 9, 30))
+			.validTo(LocalDate.of(2099, 9, 30))
 			.parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00"))))
 			.terms(List.of(new DecisionTerm().sortOrder(1).text("Ordningsvakt efter 01.00."))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
@@ -409,12 +448,12 @@ class AssetServiceTest {
 		inOrder.verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		inOrder.verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), attachmentCaptor.capture());
 
-		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.of(2099, 9, 30));
 		assertThat(updateCaptor.getValue().getAdditionalParameters())
 			.containsEntry("permitHolderName", "Runt Hörnet AB")
 			.containsEntry("serveringstid", "11.00–02.00")
 			.containsEntry("conditions", "Ordningsvakt efter 01.00.")
-			.containsEntry("errandId", ERRAND_ID);
+			.containsEntry("errandId", "granting-errand-id");
 		assertThat(templateParametersCaptor.getValue())
 			.containsEntry("permitHolderName", "Runt Hörnet AB")
 			.containsEntry("serveringstid", "11.00–02.00")
@@ -438,6 +477,89 @@ class AssetServiceTest {
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getAdditionalParameters()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
 		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
+	}
+
+	@Test
+	void updateAssetKeepsTheConditionsOfThePermitForAnApprovalWithConditionsThatSetsNone() {
+		final var asset = activeAsset().additionalParameters(Map.of("conditions", "Ordningsvakt efter 23.00."));
+
+		givenAnErrandNaming(approval().outcome("APPROVAL_WITH_CONDITIONS").parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
+
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getAdditionalParameters()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
+		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
+	}
+
+	@Test
+	void updateAssetFailsWithoutRetryOnAnApprovalWithConditionsWhenNeitherItNorThePermitHasConditions() {
+		givenAnErrandNaming(approval().outcome("APPROVAL_WITH_CONDITIONS"));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("approval with conditions but has no conditions");
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	/** A rerun after the certificate failed finds the change made, and only the certificate is left to do. */
+	@Test
+	void updateAssetOnlyReplacesTheCertificateWhenTheAssetAlreadyHasTheChange() {
+		final var asset = activeAsset()
+			.validTo(LocalDate.of(2099, 9, 30))
+			.additionalParameters(Map.of("errandId", "granting-errand-id", "serveringstid", "11.00–02.00"));
+
+		givenAnErrandNaming(approval().validTo(LocalDate.of(2099, 9, 30)).parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE);
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
+	}
+
+	@Test
+	void updateAssetEndsThePermitTodayAtTheEarliest() {
+		givenAnErrandNaming(approval().validTo(LocalDate.now(SWEDISH_TIME)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.now(SWEDISH_TIME));
+	}
+
+	@Test
+	void updateAssetFailsWithoutRetryOnAValidToThatHasPassed() {
+		final var validTo = LocalDate.now(SWEDISH_TIME).minusDays(1);
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().validTo(validTo)));
+
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Decision of errand 'errand-id' is valid to %s, which has passed, so the permit is not changed".formatted(validTo));
+
+		verifyNoInteractions(partyAssetsIntegrationMock, templatingIntegrationMock);
+	}
+
+	@Test
+	void updateAssetPatchesTheAssetWhenOnlyItsValidToChanges() {
+		final var asset = activeAsset()
+			.validTo(LocalDate.of(2099, 9, 30))
+			.additionalParameters(Map.of("serveringstid", "11.00–02.00"));
+
+		givenAnErrandNaming(approval().validTo(LocalDate.of(2100, 9, 30)).parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.of(2100, 9, 30));
 	}
 
 	/**
@@ -475,7 +597,7 @@ class AssetServiceTest {
 		"", " "
 	})
 	void updateAssetLeavesTheCertificateAloneWithoutATemplate(final String certificateTemplate) {
-		givenAnErrandNaming(approval());
+		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
 		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate)).isEqualTo(ASSET_ID);
@@ -555,14 +677,14 @@ class AssetServiceTest {
 	}
 
 	@Test
-	void updateAssetFailsWithoutAPermitHolder() {
+	void updateAssetFailsWithoutRetryWithoutAPermitHolder() {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE))
-			.isInstanceOf(Problem.class)
-			.hasMessageContaining(STAKEHOLDER_ROLE_PERMIT_HOLDER);
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no stakeholder with role '%s'".formatted(STAKEHOLDER_ROLE_PERMIT_HOLDER));
 
 		verifyNoInteractions(partyAssetsIntegrationMock, templatingIntegrationMock);
 	}

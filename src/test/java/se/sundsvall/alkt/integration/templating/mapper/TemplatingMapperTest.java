@@ -4,6 +4,7 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -107,6 +108,34 @@ class TemplatingMapperTest {
 		final var decision = new Decision().outcome(DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS);
 
 		assertThatThrownBy(() -> toTemplateParameters(decision)).isInstanceOf(NonRetryableException.class);
+	}
+
+	@Test
+	void toTemplateParametersOfAChangeLetsThePermitWinOverTheDecision() {
+		final var decision = new Decision().parameters(List.of(parameter("serveringstid", "11.00–01.00"), parameter("caseNumber", "IAN-2026-00209")));
+
+		assertThat(toTemplateParameters(decision, Map.of("serveringstid", "11.00–02.00", "permitHolderName", "Runt Hörnet AB"))).containsOnly(
+			entry("serveringstid", "11.00–02.00"),
+			entry("caseNumber", "IAN-2026-00209"),
+			entry("permitHolderName", "Runt Hörnet AB"),
+			entry(PARAMETER_CONDITIONS, ""));
+	}
+
+	@Test
+	void toTemplateParametersOfAChangeTakesTheConditionsOfThePermitForAnApprovalWithConditions() {
+		final var decision = new Decision().outcome(DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS);
+
+		assertThat(toTemplateParameters(decision, Map.of(PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00.")))
+			.containsExactly(entry(PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00."));
+	}
+
+	@Test
+	void toTemplateParametersOfAChangeRefusesAnApprovalWithConditionsWhenThePermitHasNoneEither() {
+		final var decision = new Decision().id("decision-id").outcome(DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS);
+
+		assertThatThrownBy(() -> toTemplateParameters(decision, Map.of("serveringstid", "11.00–02.00")))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Decision decision-id is an approval with conditions but has no conditions, so no certificate is made");
 	}
 
 	private static Parameter parameter(final String key, final String... values) {

@@ -20,6 +20,7 @@ import se.sundsvall.dept44.configuration.feign.decoder.ProblemErrorDecoder;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.COLLECTION;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -80,7 +81,10 @@ class PartyAssetsConfigurationTest {
 		// Assert ErrorDecoder
 		assertThat(errorDecoderCaptor.getValue())
 			.isInstanceOf(ProblemErrorDecoder.class)
-			.hasFieldOrPropertyWithValue("integrationName", CLIENT_ID);
+			.hasFieldOrPropertyWithValue("integrationName", CLIENT_ID)
+			.extracting("bypassResponseCodes")
+			.asInstanceOf(COLLECTION)
+			.containsExactlyInAnyOrder(404, 400);
 
 		RequestId.init("test-request-id");
 		try {

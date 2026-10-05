@@ -27,7 +27,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.additionalParameters.errandId",
-					"equalTo": "7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44"
+					"equalTo": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d"
 				}
 			},
 			{
@@ -57,6 +57,12 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.title",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters",
 					"absent": true
 				}
 			}

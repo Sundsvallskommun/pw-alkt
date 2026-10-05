@@ -10,7 +10,7 @@
   <bpmn:message id="message_process_cancelled" name="process_cancelled" />
   <bpmn:error id="error_step_skipped" name="Step skipped" errorCode="step_skipped" />
   <bpmn:process id="alcohol-serving-addition" name="PROCESS Addition to an existing serving permit" isExecutable="true" camunda:historyTimeToLive="P30D">
-    <bpmn:documentation>Skeleton of the process. The phases run in sequence and each one waits for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
+    <bpmn:documentation>The phases run in sequence. Each one waits for a case worker to move the errand on through the user interface, except the decision phase, which waits for the decision itself. The activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
       <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>
@@ -95,7 +95,7 @@
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_investigation_to_decision" sourceRef="investigation_phase" targetRef="decision_phase" />
     <bpmn:subProcess id="decision_phase" name="Decision">
-      <bpmn:documentation>Waits for the decision in Support Management and creates the permit in party-assets when it is approved. The decision is read on entry, after every decision event and every hour.</bpmn:documentation>
+      <bpmn:documentation>Waits for the decision in Support Management and creates a separate permit in party-assets when it is approved. The decision is read on entry, after every decision event and every hour.</bpmn:documentation>
       <bpmn:incoming>flow_investigation_to_decision</bpmn:incoming>
       <bpmn:outgoing>flow_decision_to_follow_up</bpmn:outgoing>
       <bpmn:startEvent id="start_decision_phase" name="Start decision phase">
@@ -149,7 +149,7 @@
         <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decisionOutcome == 'REJECTED' || decisionOutcome == 'DISMISSED' || decisionOutcome == 'INADMISSIBLE'}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
       <bpmn:serviceTask id="external_task_create_asset" name="Create asset" camunda:type="external" camunda:topic="CreateAssetTask">
-        <bpmn:documentation>Creates the permit in party-assets from the approved decision, with its permit certificate.</bpmn:documentation>
+        <bpmn:documentation>Creates a separate permit in party-assets from the approved decision, with its permit certificate.</bpmn:documentation>
         <bpmn:extensionElements>
           <camunda:inputOutput>
             <camunda:inputParameter name="certificateTemplate">permit.serving.certificate</camunda:inputParameter>

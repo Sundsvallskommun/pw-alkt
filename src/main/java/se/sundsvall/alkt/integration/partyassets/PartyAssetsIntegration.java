@@ -20,6 +20,7 @@ import se.sundsvall.dept44.problem.Problem;
 import static generated.se.sundsvall.partyassets.Status.ACTIVE;
 import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
@@ -88,8 +89,16 @@ public class PartyAssetsIntegration {
 		partyAssetsClient.createAttachment(municipalityId, assetId, attachment.file(), attachment.category(), null, null);
 	}
 
+	/** party-assets refuses to activate a permit whose validTo has passed, which a retry does not change. */
 	public void activateAsset(final String municipalityId, final String assetId) {
-		partyAssetsClient.updateDraftAsset(municipalityId, assetId, new DraftAssetUpdateRequest().status(ACTIVE));
+		try {
+			partyAssetsClient.updateDraftAsset(municipalityId, assetId, new DraftAssetUpdateRequest().status(ACTIVE));
+		} catch (final ClientProblem e) {
+			if (BAD_REQUEST.equals(e.getStatus())) {
+				throw new NonRetryableException("Asset '%s' cannot be activated: %s".formatted(assetId, describe(e)), e);
+			}
+			throw e;
+		}
 	}
 
 	public void removeDraftAsset(final String municipalityId, final String assetId) {

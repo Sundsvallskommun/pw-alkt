@@ -376,9 +376,10 @@ interface.</p>
 
 <h3>The decision phase and the permit</h3>
 
-<p>In <span class="code">alcohol-serving</span> the decision phase waits for the decision itself, not for a button. Eight
-of the other models still wait for <span class="code">decision_completed</span> and move over once this one has proved
-itself. The three folköl models make the decision themselves and wait for no one.</p>
+<p>In <span class="code">alcohol-serving</span>, <span class="code">alcohol-serving-addition</span> and
+<span class="code">alcohol-serving-change</span> the decision phase waits for the decision itself, not for a button.
+Seven of the other models still wait for <span class="code">decision_completed</span> and move over once these have
+proved themselves. The three folköl models make the decision themselves and wait for no one.</p>
 
 <p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
 an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
@@ -401,7 +402,8 @@ was not waiting for it, since such an event correlates against nothing and is go
 		</tr>
 		<tr>
 			<td><span class="code">APPROVAL</span>, <span class="code">APPROVAL_WITH_CONDITIONS</span></td>
-			<td>Creates the permit, then ends</td>
+			<td>Creates the permit, then ends. In <span class="code">alcohol-serving-change</span> it changes the permit
+			the errand names instead</td>
 		</tr>
 		<tr>
 			<td><span class="code">REJECTED</span>, <span class="code">DISMISSED</span>, <span class="code">INADMISSIBLE</span></td>
@@ -416,8 +418,10 @@ was not waiting for it, since such an event correlates against nothing and is go
 </table>
 
 <p>The outcomes live in two places: <span class="code">Constants</span> says which are known and which create a permit,
-and the gateway of <span class="code">alcohol-serving.bpmn</span> lists them in its conditions. A new outcome needs both,
-and must be registered for the namespace in Support Management as well.</p>
+and the gateways of <span class="code">alcohol-serving.bpmn</span>, <span class="code">alcohol-serving-addition.bpmn</span>
+and <span class="code">alcohol-serving-change.bpmn</span> list them in their conditions. A new outcome needs
+<span class="code">Constants</span> and all three gateways, and must be registered for the namespace in Support
+Management as well.</p>
 
 <p><span class="code">CreateAssetTask</span> builds the permit in party-assets from a decision that grants it. The id of
 the decision is the <span class="code">assetId</span> of the permit, and the party is the stakeholder with the role
@@ -429,13 +433,41 @@ carries <span class="code">X-Sent-By: pw-alkt; type=processEngine</span>, so the
 process created it.</p>
 
 <p>A step with the input parameter <span class="code">certificateTemplate</span> also adds a permit certificate to the
-draft before it is activated, today only in alcohol-serving. Templating renders the named template as a PDF, and it is
+draft before it is activated, today in the three alcohol-serving models. Templating renders the named template as a PDF, and it is
 added as <span class="code">tillstandsbevis.pdf</span> in the category Tillståndsbevis. Every term of the decision is a
 placeholder named by its category as it is, so the term <span class="code">permitHolderName</span> is
 <span class="code">{{ permitHolderName }}</span> in the template. A term without text is left out, as if it were
 missing, so an empty required field is caught like a missing one. pw-alkt does not check that the terms fill the
 template; the template is strict, and Templating answers 400 with the name of a missing placeholder. That is a fault in
 the decision, so the draft is removed and the step raises an incident at once instead of retrying.</p>
+
+<p>In <span class="code">alcohol-serving-addition</span> the addition becomes a separate permit next to the main one.
+A permanent permit has no <span class="code">validTo</span>. party-assets refuses to activate a permit whose
+<span class="code">validTo</span> is not after today, so the step checks a decision that has one before it creates the
+draft, and raises an incident at once if it has already ended. A 400 on activation is not retried either.</p>
+
+<p>In <span class="code">alcohol-serving-change</span> the work step <span class="code">UpdateAssetTask</span> changes
+the permit the errand names in its parameter <span class="code">assetId</span>, which the customer chose when the errand
+was created. A missing <span class="code">assetId</span>, one that is not a UUID, a permit that is not active, a permit
+of another party or an errand without a <span class="code">PRIMARY</span> stakeholder all raise an incident at once.
+The parameters of the decision go on top of those the permit has, so a change only carries what it changes: a key the
+decision has replaces the permit's, and every other key stays. The conditions of the permit stay unless the decision has
+terms of its own, also for <span class="code">APPROVAL_WITH_CONDITIONS</span>. <span class="code">errandId</span> keeps
+naming the errand that granted the permit, and the permit keeps its <span class="code">validTo</span> unless the
+decision gives one. The change applies as soon as the decision is completed; the step does not wait for the
+<span class="code">validFrom</span> of the decision. A change can end the permit today at the earliest: a
+<span class="code">validTo</span> that has passed raises an incident before anything is written.</p>
+
+<p>The step renders the new certificate from the merged parameters before it writes anything, so a decision that does
+not fill the template leaves the permit as it was. The PATCH carries the version it read as
+<span class="code">If-Match</span>, and a permit changed in between answers 412, so the step reruns on a fresh read.
+party-assets keeps the earlier content as a revision. The step then replaces the certificate. A rerun that finds the
+change already on the permit skips the PATCH and only replaces the certificate, so a failed certificate does not add a
+revision per attempt.</p>
+
+<p>party-assets replaces any parameter container it is sent, and an empty one clears what the permit has. The models of
+party-assets are therefore generated with <span class="code">containerDefaultToNull</span>, so a request that does not
+set <span class="code">additionalParameters</span> or <span class="code">jsonParameters</span> leaves them out.</p>
 
 <p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
 A case worker cannot move the phase on by any other means.</p>

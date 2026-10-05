@@ -28,6 +28,10 @@ process-log:
       done: Tillståndet har registrerats hos tillståndshavaren
       retry: Tillståndet kunde inte registreras just nu, ett nytt försök görs automatiskt
       failed: Tillståndet kunde inte registreras. Processen har stannat och felet behöver åtgärdas
+    "[external_task_update_asset]":
+      done: Tillståndet har ändrats
+      retry: Tillståndet kunde inte ändras just nu, ett nytt försök görs automatiskt
+      failed: Tillståndet kunde inte ändras. Processen har stannat och felet behöver åtgärdas
     "[external_task_complete_process]":
       done: Processen är avslutad
       retry: Processen kunde inte avslutas just nu, ett nytt försök görs automatiskt

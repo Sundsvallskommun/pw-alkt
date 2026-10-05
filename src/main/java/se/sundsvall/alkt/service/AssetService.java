@@ -1,9 +1,11 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.partyassets.Asset;
+import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
@@ -17,6 +19,7 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static generated.se.sundsvall.partyassets.Status.ACTIVE;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
@@ -39,6 +42,7 @@ import static se.sundsvall.alkt.util.FailureDescription.describe;
 public class AssetService {
 
 	private static final ValidUuidConstraintValidator UUID_VALIDATOR = new ValidUuidConstraintValidator();
+	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final PartyAssetsIntegration partyAssetsIntegration;
@@ -63,7 +67,10 @@ public class AssetService {
 				.formatted(errandId, decision.getOutcome(), new TreeSet<>(DECISION_OUTCOMES))));
 	}
 
-	/** Without a certificate template the asset gets no certificate. */
+	/**
+	 * Without a certificate template the asset gets no certificate. A decision with a validTo must end after today, as
+	 * party-assets refuses to activate the permit otherwise.
+	 */
 	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		if (isBlank(decision.getId())) {
@@ -74,7 +81,10 @@ public class AssetService {
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER)));
 
 		return partyAssetsIntegration.findAssetId(municipalityId, partyId, decision.getId())
-			.orElseGet(() -> createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate));
+			.orElseGet(() -> {
+				requireNotEnded(decision, errandId);
+				return createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate);
+			});
 	}
 
 	/**
@@ -83,16 +93,17 @@ public class AssetService {
 	 */
 	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
+		requireNotPassed(decision, errandId);
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 
 		final var assetId = toAssetId(errand)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' names no asset to change".formatted(errandId)));
-		// Why: party-assets answers an id that is not a UUID with 400, which reaches us as 502 and would be retried in vain.
+		// Why: party-assets answers an id that is not a UUID with 400, which would be retried in vain.
 		if (!UUID_VALIDATOR.isValid(assetId)) {
 			throw new NonRetryableException("Errand '%s' names asset '%s', which is not an asset id".formatted(errandId, assetId));
 		}
 		final var partyId = toPartyId(errand)
-			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER)));
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER)));
 		final var versioned = partyAssetsIntegration.getAsset(municipalityId, assetId);
 		final var asset = versioned.asset();
 		if (asset.getStatus() != ACTIVE) {
@@ -102,16 +113,18 @@ public class AssetService {
 			throw new NonRetryableException("Asset '%s' does not belong to the permit holder of errand '%s'".formatted(assetId, errandId));
 		}
 
-		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was.
-		final var update = toAssetUpdateRequest(asset, decision, errandId);
-		final var certificate = isNotBlank(certificateTemplate)
-			? toCertificateFile(templatingIntegration.renderPdf(municipalityId, certificateTemplate, toCertificateParameters(update.getAdditionalParameters(), decision)))
-			: null;
+		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was,
+		// and from the parameters the asset gets, since the certificate shows the whole permit.
+		final var update = toAssetUpdateRequest(asset, decision);
+		final var certificate = Optional.ofNullable(certificateTemplate)
+			.filter(StringUtils::isNotBlank)
+			.map(template -> toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, update.getAdditionalParameters()))));
 
-		partyAssetsIntegration.updateAsset(municipalityId, assetId, versioned.version(), update);
-		if (certificate != null) {
-			partyAssetsIntegration.replaceCertificate(municipalityId, assetId, certificate);
+		// Why: a rerun after the certificate failed finds the change already made, and every PATCH adds a revision.
+		if (changes(update, asset)) {
+			partyAssetsIntegration.updateAsset(municipalityId, assetId, versioned.version(), update);
 		}
+		certificate.ifPresent(file -> partyAssetsIntegration.replaceCertificate(municipalityId, assetId, file));
 		return assetId;
 	}
 
@@ -133,12 +146,26 @@ public class AssetService {
 			.findFirst();
 	}
 
-	// Why: the certificate shows the whole permit, so it is rendered from the parameters the asset gets, conditions
-	// included. Those of the decision only fill in a placeholder the asset has no value for.
-	private static Map<String, Object> toCertificateParameters(final Map<String, String> assetParameters, final Decision decision) {
-		final var parameters = new LinkedHashMap<>(toTemplateParameters(decision));
-		parameters.putAll(assetParameters);
-		return parameters;
+	private static boolean changes(final AssetUpdateRequest update, final Asset asset) {
+		return !update.getAdditionalParameters().equals(Optional.ofNullable(asset.getAdditionalParameters()).orElse(emptyMap()))
+			|| (update.getValidTo() != null && !update.getValidTo().equals(asset.getValidTo()));
+	}
+
+	// Why: a change may end the permit today at the earliest, never backdate its end.
+	private static void requireNotPassed(final Decision decision, final String errandId) {
+		Optional.ofNullable(decision.getValidTo())
+			.filter(validTo -> validTo.isBefore(LocalDate.now(SWEDISH_TIME)))
+			.ifPresent(validTo -> {
+				throw new NonRetryableException("Decision of errand '%s' is valid to %s, which has passed, so the permit is not changed".formatted(errandId, validTo));
+			});
+	}
+
+	private static void requireNotEnded(final Decision decision, final String errandId) {
+		Optional.ofNullable(decision.getValidTo())
+			.filter(validTo -> !validTo.isAfter(LocalDate.now(SWEDISH_TIME)))
+			.ifPresent(validTo -> {
+				throw new NonRetryableException("Decision of errand '%s' is valid to %s, which is not after today, so the permit cannot be activated".formatted(errandId, validTo));
+			});
 	}
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.

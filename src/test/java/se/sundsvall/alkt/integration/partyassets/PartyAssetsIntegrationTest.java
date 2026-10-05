@@ -36,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -141,6 +142,25 @@ class PartyAssetsIntegrationTest {
 
 		verify(partyAssetsClientMock).updateDraftAsset(MUNICIPALITY_ID, "asset-id", new DraftAssetUpdateRequest().status(ACTIVE));
 		verifyNoMoreInteractions(partyAssetsClientMock);
+	}
+
+	@Test
+	void activateAssetFailsWithoutRetryWhenPartyAssetsRefusesIt() {
+		final var problem = new ClientProblem(BAD_REQUEST, "validTo must be in the future when activating an asset");
+		when(partyAssetsClientMock.updateDraftAsset(MUNICIPALITY_ID, "asset-id", new DraftAssetUpdateRequest().status(ACTIVE))).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.activateAsset(MUNICIPALITY_ID, "asset-id"))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageStartingWith("Asset 'asset-id' cannot be activated")
+			.hasCause(problem);
+	}
+
+	@Test
+	void activateAssetPassesOnAnyOtherFailure() {
+		final var problem = new ClientProblem(BAD_GATEWAY, "Party assets is down");
+		when(partyAssetsClientMock.updateDraftAsset(MUNICIPALITY_ID, "asset-id", new DraftAssetUpdateRequest().status(ACTIVE))).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.activateAsset(MUNICIPALITY_ID, "asset-id")).isSameAs(problem);
 	}
 
 	@Test
