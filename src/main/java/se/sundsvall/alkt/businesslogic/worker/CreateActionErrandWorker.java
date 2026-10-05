@@ -43,7 +43,7 @@ public class CreateActionErrandWorker extends AbstractTaskWorker {
 		return actionErrandId
 			.map(id -> {
 				logInfo("Errand {} has action errand {}", sanitizeForLogging(errandId), sanitizeForLogging(id));
-				return report.withLogMessage("Action errand '%s' created".formatted(id));
+				return report.withLogMessage("Action errand '%s' found or created".formatted(id));
 			})
 			.orElseGet(() -> {
 				logInfo("Errand {} has no deficiencies, no action errand created", sanitizeForLogging(errandId));

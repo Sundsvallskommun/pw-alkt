@@ -1,0 +1,44 @@
+{
+	"name": "decision_api-support-management-get-errand-with-deficiencies",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"requiredScenarioState": "deficiencies_added",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7",
+			"title": "Brister vid tillsyn",
+			"description": "Följande brister ska åtgärdas",
+			"stakeholders": [
+				{
+					"role": "PRIMARY",
+					"externalIdType": "PRIVATE",
+					"externalId": "8f2a4c6e-1b3d-4e5f-9a7b-0c1d2e3f4a5b"
+				}
+			],
+			"measures": [
+				{
+					"id": "2b4d6f8a-0c1e-4a3c-9e5b-7d9f1b3d5f7a",
+					"type": "DEFICIENCY",
+					"status": "ACTIVE",
+					"title": "Matsedel saknas",
+					"description": "Matsedel ska finnas tillgänglig för gästerna",
+					"addedByUser": "handlaggare",
+					"addedByRole": "CASE_WORKER",
+					"created": "2026-09-20T10:00:00+02:00"
+				}
+			]
+		},
+		"status": 200
+	},
+	"scenarioName": "internal-inspection-deficiencies"
+}

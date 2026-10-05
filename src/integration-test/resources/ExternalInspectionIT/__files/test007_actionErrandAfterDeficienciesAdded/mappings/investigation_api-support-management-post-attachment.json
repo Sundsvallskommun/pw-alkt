@@ -1,0 +1,36 @@
+{
+	"name": "investigation_api-support-management-post-attachment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ALL",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "filename=\"Tillsynsprotokoll.pdf\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalTo": "%PDF-1.7 tillsynsprotokoll"
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345/attachments/3a5c7e9f-1b2d-4f6a-8c0e-2d4f6a8b0c1e"
+		},
+		"status": 201
+	}
+}

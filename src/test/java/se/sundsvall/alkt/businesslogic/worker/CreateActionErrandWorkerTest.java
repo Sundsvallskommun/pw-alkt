@@ -64,7 +64,7 @@ class CreateActionErrandWorkerTest {
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_action_errand", null)
 			.withVariables(Map.of(PROCESS_VARIABLE_ACTION_ERRAND_CREATED, true))
-			.withLogMessage("Action errand 'action-errand-id' created"));
+			.withLogMessage("Action errand 'action-errand-id' found or created"));
 		verify(actionErrandServiceMock).createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "INSPECTION", "ACTION_ERRAND");
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}

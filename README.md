@@ -457,19 +457,23 @@ attempt left behind and links only what is missing, and a completed decision is 
 <p>No decision is made on an inspection. When the case worker completes the investigation,
 <span class="code">CreateProtocolTask</span> renders the protocol of an external inspection, or the report of an
 internal one, from the parameters of the investigation and attaches it to the errand as a PDF. The template and the file
-name are input parameters of the step in each model. An inspection has exactly one investigation: none is retried and
-then raised as an incident, several raise one at once. A retry finds a PDF an earlier attempt uploaded by its file name.</p>
+name are input parameters of the step in each model. The protocol is made from the one completed investigation of the
+inspection; a draft, active or cancelled one is left out. No completed investigation, or several, raise an incident at
+once. A retry finds a PDF an earlier attempt uploaded by its file name and by it being uploaded after the investigation
+was last changed, which is when it was completed. A file of that name uploaded before then, by the case worker or by an
+earlier process that was cancelled, does not count.</p>
 
 <p>The decision phase then offers two buttons. <span class="code">inspection_approved</span> ends the phase.
 <span class="code">action_errand_requested</span> runs <span class="code">CreateActionErrandTask</span>, which creates an
-action errand from the title, the description, the permit holder and the measures of the inspection, each measure being
-something the permit holder has to remedy. The errand gets the classification in the input parameters of the step, the
+action errand from the title, the description, the permit holder and the active measures of the inspection, each one
+being something the permit holder has to remedy. A draft, completed or cancelled measure is left out. The errand gets the classification in the input parameters of the step, the
 external tag <span class="code">inspectionErrandId</span> and, through <span class="code">referredFrom</span>, a
 <span class="code">LINK</span> relation to the inspection. The write carries no <span class="code">X-Trigger-Process</span>,
 since the new errand is not this process's own and the header would keep its process from starting. A retry finds an
-action errand an earlier attempt created by its tag. An inspection without measures gets no action errand: the step
+action errand an earlier attempt created by its tag. An inspection without active measures gets no action errand: the step
 leaves a <span class="code">REJECTED</span> entry in the activity log and the process goes back to the two buttons, so
-the case worker can add the measures and choose again.</p>
+the case worker can add the measures and choose again. An inspection without a permit holder raises an incident
+instead, since an action errand once created is found by its tag and could not be given the permit holder later.</p>
 
 <h3>Messages to the customer</h3>
 

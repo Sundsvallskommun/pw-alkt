@@ -17,7 +17,14 @@
 			{
 				"id": "2d4f6a8b-0c13-4e6a-8c20-1b3d4f5a9c7e",
 				"fileName": "foto-kontrollpunkt.jpg",
-				"mimeType": "image/jpeg"
+				"mimeType": "image/jpeg",
+				"created": "2026-09-16T08:00:00+02:00"
+			},
+			{
+				"id": "5a7c9e1b-3d5f-4a8c-9e0b-2c4d6f8a0b1d",
+				"fileName": "Tillsynsrapport.pdf",
+				"mimeType": "application/pdf",
+				"created": "2026-09-16T08:05:00+02:00"
 			}
 		],
 		"status": 200

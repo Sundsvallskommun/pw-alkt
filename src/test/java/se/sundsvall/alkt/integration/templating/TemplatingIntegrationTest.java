@@ -65,7 +65,7 @@ class TemplatingIntegrationTest {
 
 		assertThatThrownBy(() -> templatingIntegration.renderPdf(MUNICIPALITY_ID, TEMPLATE_ID, PARAMETERS))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Template 'permit.serving.certificate' cannot be rendered from the decision: ClientProblem 400")
+			.hasMessage("Template 'permit.serving.certificate' cannot be rendered from the given parameters: ClientProblem 400")
 			.hasCauseInstanceOf(ClientProblem.class);
 	}
 

@@ -61,7 +61,7 @@ class CreateProtocolWorkerTest {
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_protocol", null).withLogMessage("Protocol 'attachment-id' created"));
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_protocol", null).withLogMessage("Protocol 'attachment-id' found or created"));
 		verify(inspectionProtocolServiceMock).createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, FILE_NAME);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}

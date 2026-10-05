@@ -35,6 +35,6 @@ public class CreateProtocolWorker extends AbstractTaskWorker {
 		logInfo("Errand {} has protocol {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(attachmentId));
 
 		return ProcessStateReport.running(externalTask.getActivityId(), null)
-			.withLogMessage("Protocol '%s' created".formatted(attachmentId));
+			.withLogMessage("Protocol '%s' found or created".formatted(attachmentId));
 	}
 }

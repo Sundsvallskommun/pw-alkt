@@ -25,9 +25,13 @@ class ActionErrandMapperTest {
 			.description("Följande brister ska åtgärdas")
 			.stakeholders(List.of(permitHolder, new Stakeholder().role("CONTACT").externalId("contact-id")))
 			.measures(List.of(new Measure().id("measure-id").type("DEFICIENCY").title("Matsedel saknas").description("Matsedel ska finnas").goal("Matsedel finns").dueAt(dueAt)
-				.addedByUser("handlaggare").addedByRole("CASE_WORKER").created(dueAt)));
+				.addedByUser("handlaggare").addedByRole("CASE_WORKER").created(dueAt).status("ACTIVE"),
+				new Measure().type("DEFICIENCY").title("Utkast").status("DRAFT"),
+				new Measure().type("DEFICIENCY").title("Åtgärdad på plats").status("COMPLETED"),
+				new Measure().type("DEFICIENCY").title("Makulerad").status("CANCELLED"),
+				new Measure().type("DEFICIENCY").title("Utan status")));
 
-		final var result = toActionErrand(inspection, "INSPECTION", "ACTION_ERRAND");
+		final var result = toActionErrand(inspection, "errand-id", "INSPECTION", "ACTION_ERRAND");
 
 		assertThat(result.getId()).isNull();
 		assertThat(result.getTitle()).isEqualTo("Brister vid tillsyn");
@@ -36,12 +40,12 @@ class ActionErrandMapperTest {
 		assertThat(result.getStakeholders()).containsExactly(permitHolder);
 		assertThat(result.getMeasures()).containsExactly(new Measure().type("DEFICIENCY").title("Matsedel saknas").description("Matsedel ska finnas").goal("Matsedel finns").dueAt(dueAt)
 			.addedByUser("handlaggare").addedByRole("CASE_WORKER"));
-		assertThat(result.getExternalTags()).containsExactly(new ExternalTag().key("inspectionErrandId").value("inspection-id"));
+		assertThat(result.getExternalTags()).containsExactly(new ExternalTag().key("inspectionErrandId").value("errand-id"));
 	}
 
 	@Test
 	void toActionErrandOfAnInspectionWithoutStakeholdersOrMeasures() {
-		final var result = toActionErrand(new Errand().id("inspection-id"), "INSPECTION", "ACTION_ERRAND");
+		final var result = toActionErrand(new Errand().id("inspection-id"), "inspection-id", "INSPECTION", "ACTION_ERRAND");
 
 		assertThat(result.getStakeholders()).isEmpty();
 		assertThat(result.getMeasures()).isEmpty();
@@ -49,6 +53,6 @@ class ActionErrandMapperTest {
 
 	@Test
 	void toReferredFromLinksFromTheInspection() {
-		assertThat(toReferredFrom("inspection-id", "ALKT")).isEqualTo("LINK|inspection-id;errand;support-management;ALKT|");
+		assertThat(toReferredFrom("inspection-id", "ALKT")).isEqualTo("LINK|inspection-id;case;supportmanagement;ALKT|");
 	}
 }

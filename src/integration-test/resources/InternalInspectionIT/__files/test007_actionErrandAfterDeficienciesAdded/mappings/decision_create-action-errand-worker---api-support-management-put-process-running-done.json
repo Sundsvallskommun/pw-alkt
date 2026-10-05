@@ -1,0 +1,42 @@
+{
+	"name": "decision_create-action-errand-worker---api-support-management-put-process-running-done",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "RUNNING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_create_action_errand"
+				}
+			},
+			{
+				"matchesJsonPath": "$.activities[?(@.activityId == 'external_task_create_action_errand#done')]"
+			},
+			{
+				"matchesJsonPath": "$.awaitingSignals[?(@.name == 'process_cancelled')]"
+			}
+		]
+	},
+	"priority": 1,
+	"requiredScenarioState": "deficiencies_added",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "internal-inspection-deficiencies"
+}

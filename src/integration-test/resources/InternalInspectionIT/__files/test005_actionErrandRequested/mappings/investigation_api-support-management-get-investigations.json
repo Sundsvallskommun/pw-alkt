@@ -16,6 +16,9 @@
 		"jsonBody": [
 			{
 				"id": "6c1e3a5f-8b2d-4c7e-9f0a-1d2e3f4a5b6c",
+				"status": "COMPLETED",
+				"created": "2026-09-15T09:00:00+02:00",
+				"modified": "2026-09-20T10:00:00+02:00",
 				"title": "Tillsyn av serveringsställe",
 				"parameters": [
 					{

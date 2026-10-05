@@ -168,9 +168,11 @@ public interface SupportManagementClient {
 		@RequestParam("filter") String filter);
 
 	/**
-	 * Support Management creates the relation named in referredFrom along with the errand. No X-Trigger-Process: the new
-	 * errand is not this process's own, and the header would keep its own process from starting.
+	 * Support Management creates the relation named in referredFrom along with the errand, and starts the new errand's own
+	 * process.
 	 */
+	// Why: no X-Trigger-Process, since the new errand is not this process's own and the header would keep its process from
+	// starting.
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createErrand(
 		@PathVariable String municipalityId,

@@ -1,6 +1,7 @@
 package apptest;
 
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
+import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
 import se.sundsvall.alkt.Application;
@@ -268,5 +269,57 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 				tuple("Action errand created?", "gateway_action_errand_created"),
 				tuple("Inspection approved", "await_inspection_approved"),
 				tuple("End process", "end_process"));
+	}
+
+	@Test
+	void test007_actionErrandAfterDeficienciesAdded() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "investigation");
+		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitReportAt("decision_phase");
+		final var reportsBefore = countReportsAt("decision_phase");
+		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "action_errand_requested");
+
+		// The first attempt finds no deficiencies; the GET errand mapping has them once the refusal is reported
+		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitReportsAt("decision_phase", reportsBefore + 1);
+		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "action_errand_requested");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "closure");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		// The order of the refusal and the done entry is asserted by the scenario of the create action errand reports
+		verifyAllStubs();
+		assertThat(countReports("$.activities[?(@.severity == 'WARN' && @.activityId =~ /external_task_create_action_errand#rejected#.*/)]"))
+			.as("the refusal is in the log").isOne();
+		assertThat(operatonClient.getHistoricVariableInstances(processInstanceId))
+			.filteredOn(variable -> "actionErrandCreated".equals(variable.getName()))
+			.extracting(HistoricVariableInstanceDto::getValue)
+			.containsExactly(true);
+
+		final var route = getProcessInstanceRoute(processInstanceId);
+		assertThat(route)
+			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
+			.contains(
+				tuple("Action errand created?", "gateway_action_errand_created"),
+				tuple("End decision phase", "end_decision_phase"),
+				tuple("End process", "end_process"))
+			.doesNotContain(tuple("Inspection approved", "await_inspection_approved"));
+		assertThat(route).filteredOn(activity -> "external_task_create_action_errand".equals(activity.getActivityId()))
+			.as("the step ran twice").hasSize(2);
+		assertThat(route).filteredOn(activity -> "decision_phase".equals(activity.getActivityId()))
+			.as("the decision phase is entered once").hasSize(1);
 	}
 }
