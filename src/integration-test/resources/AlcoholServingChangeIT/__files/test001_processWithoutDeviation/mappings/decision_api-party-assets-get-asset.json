@@ -27,7 +27,8 @@
 				"errandId": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d",
 				"serveringstid": "Servering får ske mellan 11.00 och 01.00.",
 				"permitHolderName": "Runt Hörnet AB",
-				"conditions": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
+				"conditions": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar.",
+				"uteservering": "Servering får ske på uteserveringen mot torget."
 			}
 		},
 		"status": 200

@@ -104,6 +104,16 @@ public final class Constants {
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
 	// The id in party-assets of the permit an errand changes, chosen by the customer when the errand is created.
 	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
+	// Parameters of a permit that pw-alkt sets from the errand and the decision, so a decision cannot remove them.
+	public static final String PERMIT_PARAMETER_ERRAND_ID = "errandId";
+	public static final String PERMIT_PARAMETER_LEGAL_BASIS = "legalBasis";
+	public static final String PERMIT_PARAMETER_DELEGATION_REFERENCE = "delegationReference";
+	public static final String PERMIT_PARAMETER_CONDITIONS = "conditions";
+	public static final Set<String> PERMIT_PARAMETERS_OF_THE_PROCESS = Set.of(PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
+		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS);
+	// The parameters of a change errand that are not part of the change the customer asks for. Every other one is.
+	public static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
+		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS);
 
 	// The topic Mina sidor gives the external conversation it creates, so the conversation looks the same whoever starts
 	// it.

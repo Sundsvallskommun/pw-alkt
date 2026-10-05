@@ -446,17 +446,37 @@ A permanent permit has no <span class="code">validTo</span>. party-assets refuse
 <span class="code">validTo</span> is not after today, so the step checks a decision that has one before it creates the
 draft, and raises an incident at once if it has already ended. A 400 on activation is not retried either.</p>
 
-<p>In <span class="code">alcohol-serving-change</span> the work step <span class="code">UpdateAssetTask</span> changes
-the permit the errand names in its parameter <span class="code">assetId</span>, which the customer chose when the errand
-was created. A missing <span class="code">assetId</span>, one that is not a UUID, a permit that is not active, a permit
-of another party or an errand without a <span class="code">PRIMARY</span> stakeholder all raise an incident at once.
-The parameters of the decision go on top of those the permit has, so a change only carries what it changes: a key the
-decision has replaces the permit's, and every other key stays. The conditions of the permit stay unless the decision has
-terms of its own, also for <span class="code">APPROVAL_WITH_CONDITIONS</span>. <span class="code">errandId</span> keeps
-naming the errand that granted the permit, and the permit keeps its <span class="code">validTo</span> unless the
-decision gives one. The change applies as soon as the decision is completed; the step does not wait for the
-<span class="code">validFrom</span> of the decision. A change can end the permit today at the earliest: a
-<span class="code">validTo</span> that has passed raises an incident before anything is written.</p>
+<p>A change errand names the permit in its parameter <span class="code">assetId</span>, and every other parameter of
+the errand is a change the customer asks for, keyed as on the permit. A parameter without a value asks for the key to
+be removed. When the process starts, <span class="code">CreateChangeDraftTask</span> checks the permit and drafts the
+decision in Support Management with those changes, so the case worker sees them from the review on. A missing
+<span class="code">assetId</span>, one that is not a UUID, a permit that is not active, a permit of another party or an
+errand without a <span class="code">PRIMARY</span> stakeholder raise an incident there, before anyone decides. An
+errand has one decision at most, so a rerun that finds one leaves it as it is. The parameters pw-alkt sets on the permit
+itself, <span class="code">errandId</span>, <span class="code">legalBasis</span>,
+<span class="code">delegationReference</span> and <span class="code">conditions</span>, never come from the errand, and a
+decision cannot remove them.</p>
+
+<p>Support Management lets the process write only an automatic decision, and wants an outcome on it from the start, so
+the draft is <span class="code">AUTOMATIC</span>, decided by pw-alkt, with the outcome
+<span class="code">APPROVAL</span>. The case worker edits and completes it. The user interface has to make it
+<span class="code">MANUAL</span> with the case worker's account as it does so, or Support Management answers 403.</p>
+
+<p>Once the decision is completed, <span class="code">UpdateAssetTask</span> reads the permit afresh and puts the
+parameters of the decision on top: a key the decision has replaces the permit's, a key it has without a value is
+removed, and every other key stays. Fields the customer changes on their own, such as the person responsible for the
+serving, are never part of a change errand, so they come along from the fresh read with their latest value. The step
+checks the permit again, as it may have been deactivated while the errand was handled. The conditions of the permit
+stay unless the decision has terms of its own, also for <span class="code">APPROVAL_WITH_CONDITIONS</span>; a change
+cannot remove them yet. <span class="code">errandId</span> keeps naming the errand that granted the permit, and the
+permit keeps its <span class="code">validTo</span> unless the decision gives one. The change applies as soon as the
+decision is completed; the step does not wait for the <span class="code">validFrom</span> of the decision. A change
+can end the permit today at the earliest: a <span class="code">validTo</span> that has passed raises an incident before
+anything is written.</p>
+
+<p>A key the certificate template requires cannot be removed. The certificate is rendered from the merged parameters
+before anything is written, so Templating answers 400 for the missing placeholder, the step raises an incident at once
+and the permit stays as it was.</p>
 
 <p>The step renders the new certificate from the merged parameters before it writes anything, so a decision that does
 not fill the template leaves the permit as it was. The PATCH carries the version it read as

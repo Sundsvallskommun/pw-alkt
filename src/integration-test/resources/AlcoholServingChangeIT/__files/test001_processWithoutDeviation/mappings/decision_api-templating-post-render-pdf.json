@@ -32,6 +32,12 @@
 					"expression": "$.parameters.conditions",
 					"equalTo": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.uteservering",
+					"absent": true
+				}
 			}
 		]
 	},

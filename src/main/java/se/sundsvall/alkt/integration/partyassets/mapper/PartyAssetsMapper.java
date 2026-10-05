@@ -24,9 +24,15 @@ import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETERS_OF_THE_PROCESS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toRemovedParameterKeys;
 
 public final class PartyAssetsMapper {
 
@@ -35,10 +41,6 @@ public final class PartyAssetsMapper {
 	static final String CERTIFICATE_CATEGORY = "Tillståndsbevis";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
-	static final String PARAMETER_ERRAND_ID = "errandId";
-	static final String PARAMETER_LEGAL_BASIS = "legalBasis";
-	static final String PARAMETER_DELEGATION_REFERENCE = "delegationReference";
-	static final String PARAMETER_CONDITIONS = "conditions";
 	static final String ERRAND_RESOURCE_TYPE = "case";
 	static final String ERRAND_SERVICE = "supportmanagement";
 
@@ -64,12 +66,15 @@ public final class PartyAssetsMapper {
 	}
 
 	/**
-	 * The parameters of the decision go on top of those the asset has, so a change need only carry what it changes. The
-	 * asset keeps its validTo unless the decision gives one, and the errandId of the errand that granted it.
+	 * The decision's parameters go on top of the asset's, and one without a value removes the key. validTo and conditions
+	 * stay unless the decision gives new ones, and errandId keeps naming the granting errand.
 	 */
 	public static AssetUpdateRequest toAssetUpdateRequest(final Asset current, final Decision decision) {
 		final var parameters = new LinkedHashMap<>(Optional.ofNullable(current.getAdditionalParameters()).orElse(emptyMap()));
 		parameters.putAll(toDecisionParameters(decision));
+		toRemovedParameterKeys(decision).stream()
+			.filter(key -> !PERMIT_PARAMETERS_OF_THE_PROCESS.contains(key))
+			.forEach(parameters::remove);
 		return new AssetUpdateRequest()
 			.validTo(decision.getValidTo())
 			.additionalParameters(parameters);
@@ -105,21 +110,21 @@ public final class PartyAssetsMapper {
 
 	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId) {
 		final var parameters = new LinkedHashMap<String, String>();
-		parameters.put(PARAMETER_ERRAND_ID, errandId);
+		parameters.put(PERMIT_PARAMETER_ERRAND_ID, errandId);
 		parameters.putAll(toDecisionParameters(decision));
 		return parameters;
 	}
 
 	private static Map<String, String> toDecisionParameters(final Decision decision) {
 		final var parameters = new LinkedHashMap<String, String>();
-		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PARAMETER_LEGAL_BASIS, value));
-		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PARAMETER_DELEGATION_REFERENCE, value));
+		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_LEGAL_BASIS, value));
+		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_DELEGATION_REFERENCE, value));
 		// Why: the decision's parameters go in after our own keys, so they win over them, except the conditions, which the
 		// terms carry as on the certificate.
 		parameters.putAll(toParameterValues(decision));
-		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PARAMETER_CONDITIONS, value));
+		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_CONDITIONS, value));
 		// Why: errandId links the asset to the errand that granted it, which no decision parameter may change.
-		parameters.remove(PARAMETER_ERRAND_ID);
+		parameters.remove(PERMIT_PARAMETER_ERRAND_ID);
 		return parameters;
 	}
 }

@@ -17,7 +17,7 @@
 		},
 		"jsonBody": [
 			{
-				"id": "7b2e1c90-4d3a-4f6e-9a21-5c8d0e7f1a42",
+				"id": "3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b",
 				"type": "PERMIT",
 				"status": "COMPLETED",
 				"title": "Beslut om ändring av serveringstillstånd",
@@ -32,6 +32,10 @@
 						"values": [
 							"Servering får ske mellan 11.00 och 02.00."
 						]
+					},
+					{
+						"key": "uteservering",
+						"values": []
 					}
 				]
 			}

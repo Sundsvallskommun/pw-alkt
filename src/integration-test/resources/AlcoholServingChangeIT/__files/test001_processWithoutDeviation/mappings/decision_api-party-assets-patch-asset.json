@@ -65,6 +65,12 @@
 					"expression": "$.jsonParameters",
 					"absent": true
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.uteservering",
+					"absent": true
+				}
 			}
 		]
 	},

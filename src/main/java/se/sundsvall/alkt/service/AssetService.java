@@ -12,6 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
+import se.sundsvall.alkt.integration.partyassets.model.VersionedAsset;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.dept44.common.validators.annotation.impl.ValidUuidConstraintValidator;
@@ -94,8 +95,28 @@ public class AssetService {
 	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
-		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+		// Why: checked again at the decision, as the permit may have been deactivated while the errand was handled.
+		final var versioned = getPermitToChange(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId);
+		final var asset = versioned.asset();
+		final var assetId = asset.getId();
 
+		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was,
+		// and from the parameters the asset gets, since the certificate shows the whole permit.
+		final var update = toAssetUpdateRequest(asset, decision);
+		final var certificate = Optional.ofNullable(certificateTemplate)
+			.filter(StringUtils::isNotBlank)
+			.map(template -> toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, update.getAdditionalParameters()))));
+
+		// Why: a rerun after the certificate failed finds the change already made, and every PATCH adds a revision.
+		if (changes(update, asset)) {
+			partyAssetsIntegration.updateAsset(municipalityId, assetId, versioned.version(), update);
+		}
+		certificate.ifPresent(file -> partyAssetsIntegration.replaceCertificate(municipalityId, assetId, file));
+		return assetId;
+	}
+
+	/** The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. */
+	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId) {
 		final var assetId = toAssetId(errand)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' names no asset to change".formatted(errandId)));
 		// Why: party-assets answers an id that is not a UUID with 400, which would be retried in vain.
@@ -112,20 +133,7 @@ public class AssetService {
 		if (!partyId.equals(asset.getPartyId())) {
 			throw new NonRetryableException("Asset '%s' does not belong to the permit holder of errand '%s'".formatted(assetId, errandId));
 		}
-
-		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was,
-		// and from the parameters the asset gets, since the certificate shows the whole permit.
-		final var update = toAssetUpdateRequest(asset, decision);
-		final var certificate = Optional.ofNullable(certificateTemplate)
-			.filter(StringUtils::isNotBlank)
-			.map(template -> toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, update.getAdditionalParameters()))));
-
-		// Why: a rerun after the certificate failed finds the change already made, and every PATCH adds a revision.
-		if (changes(update, asset)) {
-			partyAssetsIntegration.updateAsset(municipalityId, assetId, versioned.version(), update);
-		}
-		certificate.ifPresent(file -> partyAssetsIntegration.replaceCertificate(municipalityId, assetId, file));
-		return assetId;
+		return versioned;
 	}
 
 	private Decision getApprovingDecision(final String municipalityId, final String namespace, final String errandId) {

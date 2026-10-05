@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS;
-import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.PARAMETER_CONDITIONS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 
 class TemplatingMapperTest {
@@ -29,7 +29,7 @@ class TemplatingMapperTest {
 		assertThat(toTemplateParameters(decision)).containsExactly(
 			entry("caseNumber", "IAN-2026-00209"),
 			entry("permitHolderName", "Runt Hörnet AB"),
-			entry(PARAMETER_CONDITIONS, ""));
+			entry(PERMIT_PARAMETER_CONDITIONS, ""));
 	}
 
 	@Test
@@ -46,7 +46,7 @@ class TemplatingMapperTest {
 	void toTemplateParametersLeavesOutAParameterWithoutValue(final String value) {
 		final var decision = new Decision().parameters(List.of(new Parameter().key("premisesName").values(singletonList(value)), new Parameter().key("premisesPhone")));
 
-		assertThat(toTemplateParameters(decision)).containsOnlyKeys(PARAMETER_CONDITIONS);
+		assertThat(toTemplateParameters(decision)).containsOnlyKeys(PERMIT_PARAMETER_CONDITIONS);
 	}
 
 	@Test
@@ -56,7 +56,7 @@ class TemplatingMapperTest {
 			new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat."),
 			new DecisionTerm().sortOrder(3).text(" ")));
 
-		assertThat(toTemplateParameters(decision)).containsEntry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat.\nGodkänd matsal ska finnas.");
+		assertThat(toTemplateParameters(decision)).containsEntry(PERMIT_PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat.\nGodkänd matsal ska finnas.");
 	}
 
 	@Test
@@ -70,26 +70,26 @@ class TemplatingMapperTest {
 		assertThat(toTemplateParameters(decision)).containsExactly(
 			entry("caseNumber", "IAN-2026-00209"),
 			entry("permitHolderName", "Runt Hörnet AB"),
-			entry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat.\nOrdningsvakt ska finnas efter 23.00."));
+			entry(PERMIT_PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat.\nOrdningsvakt ska finnas efter 23.00."));
 	}
 
 	@Test
 	void toTemplateParametersLetsTheTermsWinOverAParameterNamedConditions() {
 		final var decision = new Decision()
-			.parameters(List.of(parameter(PARAMETER_CONDITIONS, "Från en parameter.")))
+			.parameters(List.of(parameter(PERMIT_PARAMETER_CONDITIONS, "Från en parameter.")))
 			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
 
-		assertThat(toTemplateParameters(decision)).containsExactly(entry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
+		assertThat(toTemplateParameters(decision)).containsExactly(entry(PERMIT_PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
 	}
 
 	@Test
 	void toTemplateParametersHasEmptyConditionsForAnEmptyDecision() {
-		assertThat(toTemplateParameters(new Decision())).containsExactly(entry(PARAMETER_CONDITIONS, ""));
+		assertThat(toTemplateParameters(new Decision())).containsExactly(entry(PERMIT_PARAMETER_CONDITIONS, ""));
 	}
 
 	@Test
 	void toTemplateParametersHasEmptyConditionsForAnApprovalWithoutTerms() {
-		assertThat(toTemplateParameters(new Decision().outcome(DECISION_OUTCOME_APPROVAL))).containsExactly(entry(PARAMETER_CONDITIONS, ""));
+		assertThat(toTemplateParameters(new Decision().outcome(DECISION_OUTCOME_APPROVAL))).containsExactly(entry(PERMIT_PARAMETER_CONDITIONS, ""));
 	}
 
 	@ParameterizedTest
@@ -118,15 +118,15 @@ class TemplatingMapperTest {
 			entry("serveringstid", "11.00–02.00"),
 			entry("caseNumber", "IAN-2026-00209"),
 			entry("permitHolderName", "Runt Hörnet AB"),
-			entry(PARAMETER_CONDITIONS, ""));
+			entry(PERMIT_PARAMETER_CONDITIONS, ""));
 	}
 
 	@Test
 	void toTemplateParametersOfAChangeTakesTheConditionsOfThePermitForAnApprovalWithConditions() {
 		final var decision = new Decision().outcome(DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS);
 
-		assertThat(toTemplateParameters(decision, Map.of(PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00.")))
-			.containsExactly(entry(PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00."));
+		assertThat(toTemplateParameters(decision, Map.of(PERMIT_PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00.")))
+			.containsExactly(entry(PERMIT_PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00."));
 	}
 
 	@Test

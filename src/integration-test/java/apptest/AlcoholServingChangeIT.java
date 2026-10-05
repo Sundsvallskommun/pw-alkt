@@ -58,6 +58,7 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 				// Registration
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create change draft", "external_task_create_change_draft"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 
@@ -125,7 +126,8 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
-				tuple("Start registration phase", "start_registration_phase"));
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create change draft", "external_task_create_change_draft"));
 	}
 
 	@Test
@@ -151,6 +153,7 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 				tuple("Start process", "start_process"),
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create change draft", "external_task_create_change_draft"),
 				tuple("Registration completed", "await_registration_completed"));
 	}
 
@@ -178,6 +181,7 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 				tuple("Start process", "start_process"),
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create change draft", "external_task_create_change_draft"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),

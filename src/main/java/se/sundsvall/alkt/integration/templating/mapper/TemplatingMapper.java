@@ -8,12 +8,11 @@ import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static java.util.Collections.emptyMap;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 
 public final class TemplatingMapper {
-
-	static final String PARAMETER_CONDITIONS = "conditions";
 
 	private TemplatingMapper() {}
 
@@ -31,7 +30,7 @@ public final class TemplatingMapper {
 	 * conditions the permit keeps count as conditions of the decision.
 	 */
 	public static Map<String, Object> toTemplateParameters(final Decision decision, final Map<String, String> permitParameters) {
-		final var conditions = Optional.ofNullable(permitParameters.get(PARAMETER_CONDITIONS)).orElseGet(() -> toConditions(decision));
+		final var conditions = Optional.ofNullable(permitParameters.get(PERMIT_PARAMETER_CONDITIONS)).orElseGet(() -> toConditions(decision));
 		// Why: an empty conditions field is valid for a plain approval, so the template would render the permit without them.
 		if (DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS.equals(decision.getOutcome()) && conditions.isBlank()) {
 			throw new NonRetryableException("Decision %s is an approval with conditions but has no conditions, so no certificate is made".formatted(decision.getId()));
@@ -39,7 +38,7 @@ public final class TemplatingMapper {
 
 		final var templateParameters = new LinkedHashMap<String, Object>(toParameterValues(decision));
 		templateParameters.putAll(permitParameters);
-		templateParameters.put(PARAMETER_CONDITIONS, conditions);
+		templateParameters.put(PERMIT_PARAMETER_CONDITIONS, conditions);
 		return templateParameters;
 	}
 }

@@ -3,6 +3,7 @@ package se.sundsvall.alkt.service;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -41,6 +42,9 @@ class DecisionServiceTest {
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
+
+	@Mock
+	private AssetService assetServiceMock;
 
 	@Captor
 	private ArgumentCaptor<Decision> decisionCaptor;
@@ -152,5 +156,48 @@ class DecisionServiceTest {
 			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING);
 
 		verifyNoInteractions(supportManagementIntegrationMock);
+	}
+
+	@Test
+	void createChangeDraftChecksThePermitAndDraftsTheChangeOfTheErrand() {
+		final var errand = new Errand().parameters(List.of(
+			new Parameter().key("assetId").values(List.of("asset-id")),
+			new Parameter().key("serveringstid").values(List.of("11.00–02.00"))));
+		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
+		when(supportManagementIntegrationMock.createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), decisionCaptor.capture())).thenReturn(DECISION_ID);
+
+		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(DECISION_ID);
+
+		final InOrder inOrder = inOrder(assetServiceMock, supportManagementIntegrationMock);
+		inOrder.verify(assetServiceMock).getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID);
+		inOrder.verify(supportManagementIntegrationMock).createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
+		assertThat(decisionCaptor.getValue().getStatus()).isEqualTo("DRAFT");
+		assertThat(decisionCaptor.getValue().getParameters()).extracting(Parameter::getKey).containsExactly("serveringstid");
+	}
+
+	/** A rerun after a lost answer finds the draft of the earlier attempt. */
+	@Test
+	void createChangeDraftAnswersWithTheDecisionAlreadyOnTheErrand() {
+		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Decision().id(DECISION_ID).status("DRAFT")));
+
+		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(DECISION_ID);
+
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
+		verifyNoInteractions(assetServiceMock);
+	}
+
+	@Test
+	void createChangeDraftDraftsNothingWhenThePermitCannotBeChanged() {
+		final var errand = new Errand();
+		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
+		when(assetServiceMock.getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID)).thenThrow(new NonRetryableException("Errand 'errand-id' names no asset to change"));
+
+		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' names no asset to change");
+
+		verify(supportManagementIntegrationMock, never()).createDecision(anyString(), anyString(), anyString(), any());
 	}
 }

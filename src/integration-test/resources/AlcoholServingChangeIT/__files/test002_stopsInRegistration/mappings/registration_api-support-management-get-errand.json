@@ -1,5 +1,5 @@
 {
-	"name": "review_api-support-management-get-errand",
+	"name": "registration_api-support-management-get-errand",
 	"request": {
 		"method": "GET",
 		"urlPath": "/api-support-management/2281/ALKT/errands/7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44",
@@ -15,13 +15,6 @@
 		},
 		"jsonBody": {
 			"id": "7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44",
-			"stakeholders": [
-				{
-					"role": "PRIMARY",
-					"externalIdType": "PRIVATE",
-					"externalId": "8f2a4c6e-1b3d-4e5f-9a7b-0c1d2e3f4a5b"
-				}
-			],
 			"parameters": [
 				{
 					"key": "assetId",
@@ -34,6 +27,13 @@
 					"values": [
 						"Servering får ske mellan 11.00 och 02.00."
 					]
+				}
+			],
+			"stakeholders": [
+				{
+					"role": "PRIMARY",
+					"externalIdType": "ENTERPRISE",
+					"externalId": "d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f"
 				}
 			]
 		},

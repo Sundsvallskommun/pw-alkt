@@ -576,6 +576,24 @@ class AssetServiceTest {
 		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "");
 	}
 
+	/** A key the template requires cannot be removed: the render fails on it before the permit is touched. */
+	@Test
+	void updateAssetRendersTheCertificateWithoutARemovedKeyAndLeavesThePermitAloneWhenTheTemplateRequiresIt() {
+		final var asset = activeAsset().additionalParameters(Map.of("serveringstid", "11.00–01.00", "serveringsyta", "Matsalen"));
+
+		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringsyta").values(List.of()))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture()))
+			.thenThrow(new NonRetryableException("Template 'permit.serving.certificate' cannot be rendered from the decision: Missing placeholder 'serveringsyta'"));
+
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE))
+			.isInstanceOf(NonRetryableException.class);
+
+		assertThat(templateParametersCaptor.getValue()).containsEntry("serveringstid", "11.00–01.00").doesNotContainKey("serveringsyta");
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
+	}
+
 	@Test
 	void updateAssetLeavesTheAssetAloneWhenTheCertificateCannotBeRendered() {
 		givenAnErrandNaming(approval());
@@ -638,6 +656,16 @@ class AssetServiceTest {
 			.hasMessage("Errand 'errand-id' names asset '%s', which is not an asset id".formatted(assetId));
 
 		verifyNoInteractions(partyAssetsIntegrationMock, templatingIntegrationMock);
+	}
+
+	@Test
+	void getPermitToChangeAnswersWithTheActivePermitOfTheHolder() {
+		final var versioned = versioned(activeAsset());
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned);
+
+		assertThat(assetService.getPermitToChange(MUNICIPALITY_ID, errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID))
+			.isSameAs(versioned);
+		verifyNoInteractions(supportManagementIntegrationMock, templatingIntegrationMock);
 	}
 
 	@Test

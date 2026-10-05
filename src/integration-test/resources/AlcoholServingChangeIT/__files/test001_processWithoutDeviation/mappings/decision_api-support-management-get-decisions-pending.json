@@ -1,7 +1,7 @@
 {
 	"name": "decision_api-support-management-get-decisions-pending",
 	"scenarioName": "decision",
-	"requiredScenarioState": "Started",
+	"requiredScenarioState": "drafted",
 	"newScenarioState": "decided",
 	"request": {
 		"method": "GET",
@@ -16,7 +16,30 @@
 		"headers": {
 			"Content-Type": "application/json"
 		},
-		"jsonBody": [],
+		"jsonBody": [
+			{
+				"id": "3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b",
+				"type": "PERMIT",
+				"status": "DRAFT",
+				"title": "Ändring av serveringstillstånd",
+				"outcome": "APPROVAL",
+				"method": "AUTOMATIC",
+				"decidedBy": "pw-alkt",
+				"decidedAt": "2026-09-01T09:00:00+02:00",
+				"parameters": [
+					{
+						"key": "serveringstid",
+						"values": [
+							"Servering får ske mellan 11.00 och 02.00."
+						]
+					},
+					{
+						"key": "uteservering",
+						"values": []
+					}
+				]
+			}
+		],
 		"status": 200
 	}
 }
