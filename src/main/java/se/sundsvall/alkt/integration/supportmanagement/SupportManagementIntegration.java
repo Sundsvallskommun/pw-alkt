@@ -28,6 +28,8 @@ import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 public class SupportManagementIntegration {
 
 	private static final String SERVICE = "Support management";
+	// The part name createAttachment declares in SupportManagementClient.
+	private static final String ATTACHMENT_PART_NAME = "errandAttachment";
 
 	private final SupportManagementClient supportManagementClient;
 
@@ -108,7 +110,7 @@ public class SupportManagementIntegration {
 
 	public String createPdfAttachment(final String municipalityId, final String namespace, final String errandId, final String fileName, final byte[] content) {
 		return getIdOfCreatedResource(supportManagementClient.createAttachment(municipalityId, namespace, errandId, false,
-			new ByteArrayMultipartFile("errandAttachment", fileName, APPLICATION_PDF_VALUE, content)), SERVICE);
+			new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, fileName, APPLICATION_PDF_VALUE, content)), SERVICE);
 	}
 
 	public List<Investigation> getInvestigations(final String municipalityId, final String namespace, final String errandId) {

@@ -6,6 +6,7 @@ import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
+import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
@@ -20,9 +21,12 @@ import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
+import se.sundsvall.dept44.support.Relation;
+import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static java.util.Collections.emptyList;
 import static java.util.Comparator.nullsLast;
+import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -38,11 +42,14 @@ import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
+import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class SupportManagementMapper {
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
 	static final String CHANGE_DRAFT_TITLE = "Ändring av serveringstillstånd";
+	static final String ERRAND_RESOURCE_TYPE = "case";
+	static final String ERRAND_SERVICE = "supportmanagement";
 
 	private static final Map<String, String> DECISION_TITLES = Map.of(
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Anmälan om försäljning av folköl",
@@ -50,6 +57,28 @@ public final class SupportManagementMapper {
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, "Anmälan om försäljning och servering av folköl");
 
 	private SupportManagementMapper() {}
+
+	/** A relation from the errand; the target is left to the service that creates it. */
+	public static String toErrandRelation(final String relationType, final String errandId, final String namespace) {
+		return Relation.create(relationType, ResourceIdentifier.create(errandId, ERRAND_RESOURCE_TYPE, ERRAND_SERVICE, namespace), null)
+			.toRelationString();
+	}
+
+	/** A permit holder is the primary stakeholder, known by its external id. */
+	public static boolean isPermitHolder(final Stakeholder stakeholder) {
+		return STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole()) && nonNull(stakeholder.getExternalId());
+	}
+
+	public static Optional<String> toPartyId(final Errand errand) {
+		return Optional.ofNullable(errand.getStakeholders()).orElse(emptyList()).stream()
+			.filter(SupportManagementMapper::isPermitHolder)
+			.map(Stakeholder::getExternalId)
+			.findFirst();
+	}
+
+	public static String toNoPermitHolderMessage(final String errandId) {
+		return "Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER);
+	}
 
 	public static String toDecisionTitle(final String processKey) {
 		return Optional.ofNullable(processKey)
@@ -107,11 +136,7 @@ public final class SupportManagementMapper {
 			.parameters(null);
 	}
 
-	/** Each parameter of the decision by its key, its values joined. A parameter without a value is left out. */
-	public static Map<String, String> toParameterValues(final Decision decision) {
-		return toParameterValues(decision.getParameters());
-	}
-
+	/** Each parameter by its key, its values joined. A parameter without a value is left out. */
 	public static Map<String, String> toParameterValues(final List<Parameter> parameters) {
 		final var parameterValues = new LinkedHashMap<String, String>();
 		Optional.ofNullable(parameters).orElse(emptyList())

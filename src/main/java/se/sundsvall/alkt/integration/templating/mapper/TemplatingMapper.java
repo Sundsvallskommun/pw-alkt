@@ -37,7 +37,7 @@ public final class TemplatingMapper {
 			throw new NonRetryableException("Decision %s is an approval with conditions but has no conditions, so no certificate is made".formatted(decision.getId()));
 		}
 
-		final var templateParameters = new LinkedHashMap<String, Object>(toParameterValues(decision));
+		final var templateParameters = new LinkedHashMap<String, Object>(toParameterValues(decision.getParameters()));
 		templateParameters.putAll(permitParameters);
 		templateParameters.put(PERMIT_PARAMETER_CONDITIONS, conditions);
 		return templateParameters;

@@ -8,9 +8,10 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
-import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
+import static se.sundsvall.alkt.Constants.RELATION_TYPE_LINK;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ActionErrandMapper.toActionErrand;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.ActionErrandMapper.toReferredFrom;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandRelation;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toNoPermitHolderMessage;
 
 @Service
 public class ActionErrandService {
@@ -39,13 +40,13 @@ public class ActionErrandService {
 		return Optional.of(toActionErrand(inspection, errandId, category, type))
 			.filter(actionErrand -> !actionErrand.getMeasures().isEmpty())
 			.map(actionErrand -> requirePermitHolder(actionErrand, errandId))
-			.map(actionErrand -> supportManagementIntegration.createErrand(municipalityId, namespace, toReferredFrom(errandId, namespace), actionErrand));
+			.map(actionErrand -> supportManagementIntegration.createErrand(municipalityId, namespace, toErrandRelation(RELATION_TYPE_LINK, errandId, namespace), actionErrand));
 	}
 
 	// Why: a created action errand is found by its tag on every later run, so one without a permit holder cannot be redone.
 	private static Errand requirePermitHolder(final Errand actionErrand, final String errandId) {
 		if (actionErrand.getStakeholders().isEmpty()) {
-			throw new NonRetryableException("Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER));
+			throw new NonRetryableException(toNoPermitHolderMessage(errandId));
 		}
 		return actionErrand;
 	}

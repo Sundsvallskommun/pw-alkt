@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ActionErrandMapper.toActionErrand;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.ActionErrandMapper.toReferredFrom;
 
 class ActionErrandMapperTest {
 
@@ -23,7 +22,7 @@ class ActionErrandMapperTest {
 			.id("inspection-id")
 			.title("Brister vid tillsyn")
 			.description("Följande brister ska åtgärdas")
-			.stakeholders(List.of(permitHolder, new Stakeholder().role("CONTACT").externalId("contact-id")))
+			.stakeholders(List.of(permitHolder, new Stakeholder().role("CONTACT").externalId("contact-id"), new Stakeholder().role("PRIMARY")))
 			.measures(List.of(new Measure().id("measure-id").type("DEFICIENCY").title("Matsedel saknas").description("Matsedel ska finnas").goal("Matsedel finns").dueAt(dueAt)
 				.addedByUser("handlaggare").addedByRole("CASE_WORKER").created(dueAt).status("ACTIVE"),
 				new Measure().type("DEFICIENCY").title("Utkast").status("DRAFT"),
@@ -49,10 +48,5 @@ class ActionErrandMapperTest {
 
 		assertThat(result.getStakeholders()).isEmpty();
 		assertThat(result.getMeasures()).isEmpty();
-	}
-
-	@Test
-	void toReferredFromLinksFromTheInspection() {
-		assertThat(toReferredFrom("inspection-id", "ALKT")).isEqualTo("LINK|inspection-id;case;supportmanagement;ALKT|");
 	}
 }

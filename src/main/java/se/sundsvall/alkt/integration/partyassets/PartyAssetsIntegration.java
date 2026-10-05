@@ -22,7 +22,7 @@ import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandRelation;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
@@ -82,7 +82,7 @@ public class PartyAssetsIntegration {
 		idsOf(partyAssetsClient.getDraftAssets(municipalityId, asset.getPartyId(), asset.getAssetId()).getBody())
 			.forEach(draftId -> partyAssetsClient.deleteAsset(municipalityId, draftId));
 
-		return getIdOfCreatedResource(partyAssetsClient.createDraftAsset(municipalityId, toSourceReference(properties.relationType(), errandId, namespace), asset), SERVICE);
+		return getIdOfCreatedResource(partyAssetsClient.createDraftAsset(municipalityId, toErrandRelation(properties.relationType(), errandId, namespace), asset), SERVICE);
 	}
 
 	public void addAttachmentToDraft(final String municipalityId, final String assetId, final AssetFile attachment) {

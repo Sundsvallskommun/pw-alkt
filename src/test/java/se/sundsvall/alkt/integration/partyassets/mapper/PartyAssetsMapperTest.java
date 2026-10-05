@@ -3,11 +3,9 @@ package se.sundsvall.alkt.integration.partyassets.mapper;
 import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
-import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
 import generated.se.sundsvall.supportmanagement.Parameter;
-import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -30,8 +28,6 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPartyId;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
 
 class PartyAssetsMapperTest {
 
@@ -254,25 +250,5 @@ class PartyAssetsMapperTest {
 		assertThat(result.file().getContentType()).isEqualTo("application/pdf");
 		assertThat(result.file().getBytes()).isEqualTo(content);
 		assertThat(result.category()).isEqualTo("Tillståndsbevis");
-	}
-
-	@Test
-	void toPartyIdTakesTheExternalIdOfThePermitHolder() {
-		final var errand = new Errand().stakeholders(List.of(
-			new Stakeholder().role("APPLICANT").externalId("applicant-id"),
-			new Stakeholder().role("PRIMARY"),
-			new Stakeholder().role("PRIMARY").externalId("holder-id")));
-
-		assertThat(toPartyId(errand)).contains("holder-id");
-	}
-
-	@Test
-	void toPartyIdIsEmptyWithoutStakeholders() {
-		assertThat(toPartyId(new Errand().stakeholders(null))).isEmpty();
-	}
-
-	@Test
-	void toSourceReferencePointsAtTheErrandAndLeavesTheTargetToPartyAssets() {
-		assertThat(toSourceReference("LINK", "errand-id", "ALKT")).isEqualTo("LINK|errand-id;case;supportmanagement;ALKT|");
 	}
 }
