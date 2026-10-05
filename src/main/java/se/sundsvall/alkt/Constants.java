@@ -131,5 +131,9 @@ public final class Constants {
 	// The relation type Support Management gives the action errand towards the inspection, through referredFrom.
 	public static final String RELATION_TYPE_LINK = "LINK";
 
+	// Only an active measure is a deficiency, and only a completed investigation is one a protocol is made from.
+	public static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
+	public static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
+
 	private Constants() {}
 }

@@ -11,12 +11,12 @@ import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
 
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
+import static se.sundsvall.alkt.Constants.MEASURE_STATUS_ACTIVE;
 import static se.sundsvall.alkt.Constants.RELATION_TYPE_LINK;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class ActionErrandMapper {
 
-	static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
 	static final String ERRAND_RESOURCE_TYPE = "case";
 	static final String ERRAND_SERVICE = "supportmanagement";
 

@@ -458,10 +458,11 @@ attempt left behind and links only what is missing, and a completed decision is 
 <span class="code">CreateProtocolTask</span> renders the protocol of an external inspection, or the report of an
 internal one, from the parameters of the investigation and attaches it to the errand as a PDF. The template and the file
 name are input parameters of the step in each model. The protocol is made from the one completed investigation of the
-inspection; a draft, active or cancelled one is left out. No completed investigation, or several, raise an incident at
-once. A retry finds a PDF an earlier attempt uploaded by its file name and by it being uploaded after the investigation
-was last changed, which is when it was completed. A file of that name uploaded before then, by the case worker or by an
-earlier process that was cancelled, does not count.</p>
+inspection; a draft, active or cancelled one is left out. No completed investigation is retried, since the completion
+may not be saved yet when the phase ends, and then raised as an incident; several raise one at once. A retry finds a PDF
+an earlier attempt uploaded by its file name and by it being uploaded at or after the <span class="code">completedAt</span>
+of the investigation, or its last change when it has none. A file of that name uploaded before then, by the case worker
+or by an earlier process that was cancelled, does not count.</p>
 
 <p>The decision phase then offers two buttons. <span class="code">inspection_approved</span> ends the phase.
 <span class="code">action_errand_requested</span> runs <span class="code">CreateActionErrandTask</span>, which creates an
