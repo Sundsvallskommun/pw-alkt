@@ -1,0 +1,45 @@
+{
+	"name": "decision_api-support-management-get-decisions",
+	"scenarioName": "decision",
+	"requiredScenarioState": "decided",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b",
+				"type": "PERMIT",
+				"status": "COMPLETED",
+				"title": "Beslut om ändring av serveringstillstånd",
+				"outcome": "APPROVAL",
+				"method": "MANUAL",
+				"decidedAt": "2026-09-20T10:00:00+02:00",
+				"legalBasis": "8 kap. 12 § alkohollagen",
+				"validFrom": "2026-10-01",
+				"parameters": [
+					{
+						"key": "serveringstid",
+						"values": [
+							"Servering får ske mellan 11.00 och 02.00."
+						]
+					},
+					{
+						"key": "uteservering",
+						"values": []
+					}
+				]
+			}
+		],
+		"status": 200
+	}
+}

@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.integration.partyassets.mapper;
 
+import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
@@ -12,20 +13,22 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ATTACHMENT_PART_NAME;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ORIGIN;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_CONDITIONS;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_DELEGATION_REFERENCE;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_ERRAND_ID;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPartyId;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toSourceReference;
@@ -64,55 +67,55 @@ class PartyAssetsMapperTest {
 		assertThat(result.getDescription()).isEqualTo("Tillstånd för servering till allmänheten");
 		assertThat(result.getStatus()).isEqualTo(DRAFT);
 		assertThat(result.getAdditionalParameters()).containsExactly(
-			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
-			entry(PARAMETER_LEGAL_BASIS, "8 kap. 12 § alkohollagen"),
-			entry(PARAMETER_DELEGATION_REFERENCE, "3.2.1"),
+			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PERMIT_PARAMETER_LEGAL_BASIS, "8 kap. 12 § alkohollagen"),
+			entry(PERMIT_PARAMETER_DELEGATION_REFERENCE, "3.2.1"),
 			entry("serveringstid", "Servering får ske mellan 11.00 och 01.00."),
 			entry("serveringsyta", "Servering får ske i matsalen."),
-			entry(PARAMETER_CONDITIONS, "Ordningsvakt ska finnas efter 23.00."));
+			entry(PERMIT_PARAMETER_CONDITIONS, "Ordningsvakt ska finnas efter 23.00."));
 	}
 
 	@Test
 	void toAssetCreateRequestLeavesOutAParameterWithoutValue() {
 		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringstid"), new Parameter().key("serveringsyta").values(List.of(" "))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
 	void toAssetCreateRequestLetsAParameterWinOverAKeyOfOurOwn() {
 		final var decision = new Decision()
 			.legalBasis("8 kap. 12 § alkohollagen")
-			.parameters(List.of(new Parameter().key(PARAMETER_LEGAL_BASIS).values(List.of("Angiven av handläggaren."))));
+			.parameters(List.of(new Parameter().key(PERMIT_PARAMETER_LEGAL_BASIS).values(List.of("Angiven av handläggaren."))));
 
 		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
-			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
-			entry(PARAMETER_LEGAL_BASIS, "Angiven av handläggaren."));
+			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PERMIT_PARAMETER_LEGAL_BASIS, "Angiven av handläggaren."));
 	}
 
 	@Test
 	void toAssetCreateRequestKeepsTheErrandIdOverAParameterOfTheSameKey() {
-		final var decision = new Decision().parameters(List.of(new Parameter().key(PARAMETER_ERRAND_ID).values(List.of("another-errand"))));
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_ERRAND_ID).values(List.of("another-errand"))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
 	void toAssetCreateRequestLetsTheTermsWinOverAParameterNamedConditions() {
 		final var decision = new Decision()
-			.parameters(List.of(new Parameter().key(PARAMETER_CONDITIONS).values(List.of("Från en parameter."))))
+			.parameters(List.of(new Parameter().key(PERMIT_PARAMETER_CONDITIONS).values(List.of("Från en parameter."))))
 			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
 
 		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
-			entry(PARAMETER_ERRAND_ID, ERRAND_ID),
-			entry(PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
+			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PERMIT_PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
 	}
 
 	@Test
 	void toAssetCreateRequestLeavesOutConditionsWithoutText() {
 		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(1).text(" ")));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
@@ -129,7 +132,7 @@ class PartyAssetsMapperTest {
 		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID);
 
 		assertThat(result.getIssued()).isEqualTo(LocalDate.of(2026, 9, 20));
-		assertThat(result.getAdditionalParameters()).containsExactly(entry(PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(result.getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
@@ -151,6 +154,71 @@ class PartyAssetsMapperTest {
 	@Test
 	void toAssetCreateRequestLeavesIssuedOutWithoutAnyDate() {
 		assertThat(toAssetCreateRequest(new Decision(), ERRAND_ID, PARTY_ID).getIssued()).isNull();
+	}
+
+	@Test
+	void toAssetUpdateRequestPutsTheDecisionOnTopOfTheParametersOfTheAsset() {
+		final var current = new Asset().additionalParameters(Map.of(
+			PERMIT_PARAMETER_ERRAND_ID, "granting-errand-id",
+			"serveringstid", "Servering får ske mellan 11.00 och 01.00.",
+			"serveringsyta", "Servering får ske i matsalen."));
+		final var decision = new Decision()
+			.validTo(LocalDate.of(2027, 9, 30))
+			.parameters(List.of(new Parameter().key("serveringstid").values(List.of("Servering får ske mellan 11.00 och 02.00."))));
+
+		final var result = toAssetUpdateRequest(current, decision);
+
+		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
+		assertThat(result.getTitle()).isNull();
+		assertThat(result.getStatus()).isNull();
+		assertThat(result.getJsonParameters()).isNull();
+		assertThat(result.getAdditionalParameters()).containsOnly(
+			entry(PERMIT_PARAMETER_ERRAND_ID, "granting-errand-id"),
+			entry("serveringstid", "Servering får ske mellan 11.00 och 02.00."),
+			entry("serveringsyta", "Servering får ske i matsalen."));
+	}
+
+	@Test
+	void toAssetUpdateRequestLeavesValidToOutWhenTheDecisionHasNone() {
+		final var result = toAssetUpdateRequest(new Asset().additionalParameters(null), new Decision());
+
+		assertThat(result.getValidTo()).isNull();
+		assertThat(result.getIndefinitely()).isNull();
+		assertThat(result.getAdditionalParameters()).isEmpty();
+	}
+
+	@Test
+	void toAssetUpdateRequestRemovesAKeyTheDecisionGivesNoValue() {
+		final var current = new Asset().additionalParameters(Map.of(
+			PERMIT_PARAMETER_ERRAND_ID, "granting-errand-id",
+			PERMIT_PARAMETER_LEGAL_BASIS, "8 kap. 2 § alkohollagen",
+			"serveringstid", "11.00–01.00",
+			"uteservering", "Uteservering på torget",
+			PERMIT_PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00."));
+		final var decision = new Decision().parameters(List.of(
+			new Parameter().key("uteservering").values(List.of()),
+			new Parameter().key(PERMIT_PARAMETER_ERRAND_ID).values(List.of()),
+			new Parameter().key(PERMIT_PARAMETER_LEGAL_BASIS).values(List.of()),
+			new Parameter().key(PERMIT_PARAMETER_CONDITIONS).values(List.of(" "))));
+
+		assertThat(toAssetUpdateRequest(current, decision).getAdditionalParameters()).containsOnly(
+			entry(PERMIT_PARAMETER_ERRAND_ID, "granting-errand-id"),
+			entry(PERMIT_PARAMETER_LEGAL_BASIS, "8 kap. 2 § alkohollagen"),
+			entry("serveringstid", "11.00–01.00"),
+			entry(PERMIT_PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00."));
+	}
+
+	/**
+	 * errandId links the permit to the errand that granted it, which neither a change nor a parameter of its decision
+	 * replaces.
+	 */
+	@Test
+	void toAssetUpdateRequestKeepsTheErrandIdOfThePermit() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_ERRAND_ID).values(List.of("from-a-parameter"))));
+
+		assertThat(toAssetUpdateRequest(new Asset().additionalParameters(Map.of(PERMIT_PARAMETER_ERRAND_ID, "granting-errand-id")), decision).getAdditionalParameters())
+			.containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, "granting-errand-id"));
+		assertThat(toAssetUpdateRequest(new Asset(), decision).getAdditionalParameters()).isEmpty();
 	}
 
 	@Test

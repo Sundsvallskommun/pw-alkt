@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.task.ExternalTask;
 import se.sundsvall.alkt.exception.NonRetryableException;
@@ -23,11 +24,13 @@ import se.sundsvall.alkt.service.model.ReportTarget;
 import static java.util.Collections.emptyList;
 import static java.util.Comparator.nullsLast;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETERS_OUTSIDE_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
@@ -39,6 +42,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 public final class SupportManagementMapper {
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
+	static final String CHANGE_DRAFT_TITLE = "Ändring av serveringstillstånd";
 
 	private static final Map<String, String> DECISION_TITLES = Map.of(
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Anmälan om försäljning av folköl",
@@ -67,6 +71,31 @@ public final class SupportManagementMapper {
 			.title(title)
 			.description(errand.getTitle())
 			.validFrom(validFrom);
+	}
+
+	// Why: Support Management lets the process write only an automatic decision, with outcome and decidedAt already on the
+	// draft; the case worker's edit makes it manual. A parameter without a value asks for a removal, so it is kept.
+	public static Decision toChangeDraft(final Errand errand, final OffsetDateTime decidedAt) {
+		return new Decision()
+			.type(DECISION_TYPE_PERMIT)
+			.status(DECISION_STATUS_DRAFT)
+			.method(DECISION_METHOD_AUTOMATIC)
+			.decidedBy(PROCESS_SERVICE)
+			.decidedAt(decidedAt)
+			.outcome(DECISION_OUTCOME_APPROVAL)
+			.title(CHANGE_DRAFT_TITLE)
+			.description(errand.getTitle())
+			.parameters(Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
+				.filter(parameter -> !ERRAND_PARAMETERS_OUTSIDE_CHANGE.contains(parameter.getKey()))
+				.toList());
+	}
+
+	/** The keys of the parameters of the decision that have no value, which a change removes from the permit. */
+	public static Set<String> toRemovedParameterKeys(final Decision decision) {
+		return Optional.ofNullable(decision.getParameters()).orElse(emptyList()).stream()
+			.filter(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream().allMatch(StringUtils::isBlank))
+			.map(Parameter::getKey)
+			.collect(toSet());
 	}
 
 	// Why: the generated model starts parameters as an empty list, and an empty list removes the decision's parameters.

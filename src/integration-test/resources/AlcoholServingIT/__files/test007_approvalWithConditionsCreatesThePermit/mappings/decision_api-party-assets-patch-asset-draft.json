@@ -14,6 +14,18 @@
 					"expression": "$.status",
 					"equalTo": "ACTIVE"
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters",
+					"absent": true
+				}
 			}
 		]
 	},

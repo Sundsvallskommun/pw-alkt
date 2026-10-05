@@ -31,10 +31,12 @@ class TenantAwareSubscriptionsTest {
 			"CompleteProcessTask",
 			"CreateActionErrandTask",
 			"CreateAssetTask",
+			"CreateChangeDraftTask",
 			"CreateDecisionTask",
 			"CreateProtocolTask",
 			"NotifyCustomerTask",
-			"ReconcileProcessesTask");
+			"ReconcileProcessesTask",
+			"UpdateAssetTask");
 		assertThat(subscriptions).allSatisfy(subscription -> assertThat(subscription.getTenantIdIn())
 			.as("tenant filter for topic '%s'", subscription.getTopicName())
 			.isEqualTo(of(TENANT_ID_ALKT)));

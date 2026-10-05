@@ -1,7 +1,9 @@
 package se.sundsvall.alkt.integration.partyassets;
 
 import generated.se.sundsvall.partyassets.Asset;
+import generated.se.sundsvall.partyassets.AssetAttachment;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.partyassets.DraftAssetUpdateRequest;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.List;
@@ -13,11 +15,13 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.integration.partyassets.configuration.PartyAssetsConfiguration;
 
+import static org.springframework.http.HttpHeaders.IF_MATCH;
 import static org.springframework.http.MediaType.ALL_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
@@ -32,6 +36,18 @@ public interface PartyAssetsClient {
 		@PathVariable String municipalityId,
 		@RequestParam String partyId,
 		@RequestParam String assetId);
+
+	@GetMapping(path = "/{municipalityId}/assets/{id}", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<Asset> getAsset(
+		@PathVariable String municipalityId,
+		@PathVariable String id);
+
+	@PatchMapping(path = "/{municipalityId}/assets/{id}", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> updateAsset(
+		@PathVariable String municipalityId,
+		@PathVariable String id,
+		@RequestHeader(name = IF_MATCH, required = false) String ifMatch,
+		@RequestBody AssetUpdateRequest asset);
 
 	@GetMapping(path = "/{municipalityId}/asset-drafts", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<List<Asset>> getDraftAssets(
@@ -57,7 +73,13 @@ public interface PartyAssetsClient {
 		@PathVariable String assetId,
 		@RequestPart("attachment") MultipartFile attachment,
 		@RequestPart(name = "category", required = false) String category,
-		@RequestPart(name = "description", required = false) String description);
+		@RequestPart(name = "description", required = false) String description,
+		@RequestPart(name = "replaces", required = false) String replaces);
+
+	@GetMapping(path = "/{municipalityId}/assets/{assetId}/attachments", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<AssetAttachment>> getAttachments(
+		@PathVariable String municipalityId,
+		@PathVariable String assetId);
 
 	@DeleteMapping(path = "/{municipalityId}/assets/{id}", produces = ALL_VALUE)
 	ResponseEntity<Void> deleteAsset(
