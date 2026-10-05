@@ -24,7 +24,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 class TemplatingIntegrationTest {
 
 	private static final String MUNICIPALITY_ID = "2281";
-	private static final String TEMPLATE_ID = "permit.serving.certificate";
+	private static final String TEMPLATE_ID = "serving-permit-certificate";
 	private static final Map<String, Object> PARAMETERS = Map.of("caseNumber", "IAN-2026-00209");
 
 	@Mock
@@ -65,7 +65,7 @@ class TemplatingIntegrationTest {
 
 		assertThatThrownBy(() -> templatingIntegration.renderPdf(MUNICIPALITY_ID, TEMPLATE_ID, PARAMETERS))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Template 'permit.serving.certificate' cannot be rendered from the given parameters: ClientProblem 400")
+			.hasMessage("Template 'serving-permit-certificate' cannot be rendered from the given parameters: ClientProblem 400")
 			.hasCauseInstanceOf(ClientProblem.class);
 	}
 

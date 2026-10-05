@@ -54,7 +54,7 @@ class AssetServiceTest {
 	private static final String DECISION_ID = "decision-id";
 	private static final String PARTY_ID = "party-id";
 	private static final String ASSET_ID = "asset-id";
-	private static final String CERTIFICATE_TEMPLATE = "permit.serving.certificate";
+	private static final String CERTIFICATE_TEMPLATE = "serving-permit-certificate";
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
