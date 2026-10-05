@@ -1,0 +1,27 @@
+{
+	"name": "decision_api-support-management-get-errands",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands",
+		"queryParameters": {
+			"filter": {
+				"equalTo": "externalTags.key:'inspectionErrandId' and externalTags.value:'8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7'"
+			}
+		},
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"content": [],
+			"totalElements": 0
+		},
+		"status": 200
+	}
+}

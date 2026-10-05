@@ -29,9 +29,11 @@ class TenantAwareSubscriptionsTest {
 			"CancelProcessTask",
 			"CheckDecisionTask",
 			"CompleteProcessTask",
+			"CreateActionErrandTask",
 			"CreateAssetTask",
 			"CreateChangeDraftTask",
 			"CreateDecisionTask",
+			"CreateProtocolTask",
 			"NotifyCustomerTask",
 			"ReconcileProcessesTask",
 			"UpdateAssetTask");

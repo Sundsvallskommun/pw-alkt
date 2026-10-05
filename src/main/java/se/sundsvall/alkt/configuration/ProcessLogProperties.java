@@ -19,12 +19,15 @@ public record ProcessLogProperties(
 	@NotEmpty Map<String, @Valid @NotNull PhaseTexts> phases,
 	@Valid @NotNull ProcessTexts process) {
 
-	/** skipped only for a step the model lets the process go on without. */
+	/**
+	 * skipped only for a step the model lets the process go on without, rejected only for a step that can refuse its work.
+	 */
 	public record StepTexts(
 		@NotBlank String done,
 		@NotBlank String retry,
 		@NotBlank String failed,
-		String skipped) {
+		String skipped,
+		String rejected) {
 	}
 
 	public record PhaseTexts(@NotBlank String entered) {

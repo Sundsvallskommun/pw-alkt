@@ -1,0 +1,25 @@
+{
+	"name": "investigation_api-support-management-get-attachments",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "2d4f6a8b-0c13-4e6a-8c20-1b3d4f5a9c7e",
+				"fileName": "foto-kontrollpunkt.jpg",
+				"mimeType": "image/jpeg"
+			}
+		],
+		"status": 200
+	}
+}

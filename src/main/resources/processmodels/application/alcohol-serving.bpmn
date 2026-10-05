@@ -152,7 +152,7 @@
         <bpmn:documentation>Creates the permit in party-assets from the approved decision, with its permit certificate.</bpmn:documentation>
         <bpmn:extensionElements>
           <camunda:inputOutput>
-            <camunda:inputParameter name="certificateTemplate">permit.serving.certificate</camunda:inputParameter>
+            <camunda:inputParameter name="certificateTemplate">serving-permit-certificate</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_gateway_to_create_asset</bpmn:incoming>

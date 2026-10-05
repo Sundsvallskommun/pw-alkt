@@ -62,7 +62,7 @@ class AssetServiceTest {
 	private static final String DECISION_ID = "decision-id";
 	private static final String PARTY_ID = "party-id";
 	private static final String ASSET_ID = "9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d";
-	private static final String CERTIFICATE_TEMPLATE = "permit.serving.certificate";
+	private static final String CERTIFICATE_TEMPLATE = "serving-permit-certificate";
 	private static final String VERSION = "\"3\"";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
@@ -584,7 +584,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringsyta").values(List.of()))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture()))
-			.thenThrow(new NonRetryableException("Template 'permit.serving.certificate' cannot be rendered from the decision: Missing placeholder 'serveringsyta'"));
+			.thenThrow(new NonRetryableException("Template 'serving-permit-certificate' cannot be rendered from the given parameters: Missing placeholder 'serveringsyta'"));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE))
 			.isInstanceOf(NonRetryableException.class);

@@ -51,7 +51,7 @@ class UpdateAssetWorkerTest {
 	/** A step without the parameter passes no template, and the certificate of the asset is left as it is. */
 	@ParameterizedTest
 	@NullSource
-	@ValueSource(strings = "permit.serving.certificate")
+	@ValueSource(strings = "serving-permit-certificate")
 	void updatesTheAssetWithTheCertificateTemplateOfTheStep(final String certificateTemplate) {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);

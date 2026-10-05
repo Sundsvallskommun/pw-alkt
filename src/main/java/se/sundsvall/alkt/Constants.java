@@ -48,6 +48,7 @@ public final class Constants {
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
 	public static final String ERROR_CODE_TERMINATED = "TERMINATED";
 	public static final String ERROR_CODE_SKIPPED = "SKIPPED";
+	public static final String ERROR_CODE_REJECTED = "REJECTED";
 
 	// The kinds and severities of the entries in the activity log. Support Management refuses a severity it does not know.
 	public static final String ACTIVITY_TYPE_TASK = "TASK";
@@ -119,6 +120,12 @@ public final class Constants {
 	// it.
 	public static final String CONVERSATION_TOPIC_CUSTOMER = "Mina Sidor";
 
+	// An input parameter of the step in the bpmn schema, not a process variable.
+	public static final String PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY = "actionErrandCategory";
+	// Read by the gateway after the step, which sends the process back to the choice when no action errand was created.
+	public static final String PROCESS_VARIABLE_ACTION_ERRAND_CREATED = "actionErrandCreated";
+	// An input parameter of the step in the bpmn schema, not a process variable.
+	public static final String PROCESS_VARIABLE_ACTION_ERRAND_TYPE = "actionErrandType";
 	// An input parameter of the step in the bpmn schema, not a process variable. A step without it creates no certificate.
 	public static final String PROCESS_VARIABLE_CERTIFICATE_TEMPLATE = "certificateTemplate";
 	public static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
@@ -127,7 +134,20 @@ public final class Constants {
 	public static final String PROCESS_VARIABLE_MESSAGE = "message";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
+	// Input parameters of the step in the bpmn schema, not process variables.
+	public static final String PROCESS_VARIABLE_PROTOCOL_FILE_NAME = "protocolFileName";
+	public static final String PROCESS_VARIABLE_PROTOCOL_TEMPLATE = "protocolTemplate";
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";
+
+	// Marks the action errand with the inspection it came from, so a rerun finds it instead of creating a second one.
+	public static final String EXTERNAL_TAG_INSPECTION_ERRAND_ID = "inspectionErrandId";
+
+	// The relation type Support Management gives the action errand towards the inspection, through referredFrom.
+	public static final String RELATION_TYPE_LINK = "LINK";
+
+	// Only an active measure is a deficiency, and only a completed investigation is one a protocol is made from.
+	public static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
+	public static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
 
 	private Constants() {}
 }

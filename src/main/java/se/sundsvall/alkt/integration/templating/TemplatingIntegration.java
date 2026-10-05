@@ -31,7 +31,7 @@ public class TemplatingIntegration {
 			response = templatingClient.renderPdf(municipalityId, new RenderRequest().identifier(templateId).parameters(parameters));
 		} catch (final ClientProblem e) {
 			if (BAD_REQUEST.equals(e.getStatus())) {
-				throw new NonRetryableException("Template '%s' cannot be rendered from the decision: %s".formatted(templateId, describe(e)), e);
+				throw new NonRetryableException("Template '%s' cannot be rendered from the given parameters: %s".formatted(templateId, describe(e)), e);
 			}
 			throw e;
 		}

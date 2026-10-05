@@ -158,7 +158,7 @@
         <bpmn:documentation>Changes the permit the errand names in party-assets from the approved decision, and replaces its permit certificate.</bpmn:documentation>
         <bpmn:extensionElements>
           <camunda:inputOutput>
-            <camunda:inputParameter name="certificateTemplate">permit.serving.certificate</camunda:inputParameter>
+            <camunda:inputParameter name="certificateTemplate">serving-permit-certificate</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_gateway_to_update_asset</bpmn:incoming>

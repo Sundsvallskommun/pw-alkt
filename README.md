@@ -113,9 +113,10 @@ Management appends them in the same call as the state and gives them back throug
 			reruns every hour</td>
 		</tr>
 		<tr>
-			<td><span class="code">TASK</span>, <span class="code">WARN</span> with code <span class="code">RETRY</span> or
-			<span class="code">SKIPPED</span></td>
-			<td>A step failed and will be retried, or a skippable step was skipped</td>
+			<td><span class="code">TASK</span>, <span class="code">WARN</span> with code <span class="code">RETRY</span>,
+			<span class="code">SKIPPED</span> or <span class="code">REJECTED</span></td>
+			<td>A step failed and will be retried, a skippable step was skipped, or a step refused work the case worker has to
+			make possible first, such as an action errand for an inspection without deficiencies</td>
 		</tr>
 		<tr>
 			<td><span class="code">TASK</span>, <span class="code">ERROR</span> with code <span class="code">INCIDENT</span></td>
@@ -155,7 +156,8 @@ Operaton and the alert.</p>
 messages to the customer, and the service does not start without them. The test profiles hold a full set to copy from.
 <span class="code">steps</span> is keyed by the id of the step in the model, and each step
 needs <span class="code">done</span>, <span class="code">retry</span> and <span class="code">failed</span>, plus
-<span class="code">skipped</span> when the model can skip it. <span class="code">phases</span> is keyed by the id of the
+<span class="code">skipped</span> when the model can skip it and <span class="code">rejected</span> when the step can
+refuse its work. <span class="code">phases</span> is keyed by the id of the
 phase and holds <span class="code">entered</span>. <span class="code">process</span> holds
 <span class="code">settled-completed</span> and <span class="code">settled-terminated</span> for the reconciliation. A
 step that lacks one of its required texts stops the start. A step or phase with no texts at all falls back to the name
@@ -278,8 +280,8 @@ the same path.</p>
 
 <h3>Manual gates and awaiting signals</h3>
 
-<p>A phase ends when a case worker says so, except the decision phase of <span class="code">alcohol-serving</span>,
-which is described in the next section. Support Management publishes that as a
+<p>A phase ends when a case worker says so, except the decision phase of <span class="code">alcohol-serving</span> and
+of the inspections, which are described in their own sections below. Support Management publishes that as a
 <span class="code">SIGNAL</span> event, and this service correlates a message of that name against the instance. A
 correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
 between two gates when the change arrived and redelivering would not help.</p>
@@ -501,6 +503,30 @@ carries only the attachments the case worker linked. Support Management locks a 
 included, so the step writes a draft, links the attachments and completes it last. A retry picks up the draft an earlier
 attempt left behind and links only what is missing, and a completed decision is left as it is. Every write carries
 <span class="code">X-Trigger-Process: false</span>, so it does not wake the process that made it.</p>
+
+<h3>The inspections</h3>
+
+<p>No decision is made on an inspection. When the case worker completes the investigation,
+<span class="code">CreateProtocolTask</span> renders the protocol of an external inspection, or the report of an
+internal one, from the parameters of the investigation and attaches it to the errand as a PDF. The template and the file
+name are input parameters of the step in each model. The protocol is made from the one completed investigation of the
+inspection; a draft, active or cancelled one is left out. No completed investigation is retried, since the completion
+may not be saved yet when the phase ends, and then raised as an incident; several raise one at once. A retry finds a PDF
+an earlier attempt uploaded by its file name and by it being uploaded at or after the <span class="code">completedAt</span>
+of the investigation, or its last change when it has none. A file of that name uploaded before then, by the case worker
+or by an earlier process that was cancelled, does not count.</p>
+
+<p>The decision phase then offers two buttons. <span class="code">inspection_approved</span> ends the phase.
+<span class="code">action_errand_requested</span> runs <span class="code">CreateActionErrandTask</span>, which creates an
+action errand from the title, the description, the permit holder and the active measures of the inspection, each one
+being something the permit holder has to remedy. A draft, completed or cancelled measure is left out. The errand gets the classification in the input parameters of the step, the
+external tag <span class="code">inspectionErrandId</span> and, through <span class="code">referredFrom</span>, a
+<span class="code">LINK</span> relation to the inspection. The write carries no <span class="code">X-Trigger-Process</span>,
+since the new errand is not this process's own and the header would keep its process from starting. A retry finds an
+action errand an earlier attempt created by its tag. An inspection without active measures gets no action errand: the step
+leaves a <span class="code">REJECTED</span> entry in the activity log and the process goes back to the two buttons, so
+the case worker can add the measures and choose again. An inspection without a permit holder raises an incident
+instead, since an action errand once created is found by its tag and could not be given the permit holder later.</p>
 
 <h3>Messages to the customer</h3>
 

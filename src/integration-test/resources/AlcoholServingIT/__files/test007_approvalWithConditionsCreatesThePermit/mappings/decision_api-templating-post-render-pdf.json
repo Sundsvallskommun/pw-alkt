@@ -12,7 +12,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.identifier",
-					"equalTo": "permit.serving.certificate"
+					"equalTo": "serving-permit-certificate"
 				}
 			},
 			{

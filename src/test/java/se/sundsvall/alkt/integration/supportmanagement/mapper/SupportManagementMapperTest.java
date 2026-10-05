@@ -7,6 +7,7 @@ import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import generated.se.sundsvall.supportmanagement.ProcessError;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
+import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -14,6 +15,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
@@ -60,7 +63,7 @@ class SupportManagementMapperTest {
 		final var occurredAt = OffsetDateTime.now();
 		final var activity = new ProcessActivity().activityType("INCIDENT").activityId("investigation_phase").severity("ERROR").occurredAt(occurredAt);
 		final var error = new ProcessError().code("INCIDENT").message("Timeout");
-		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), List.of(), Map.of(), null);
+		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), List.of(), Map.of(), null, false);
 
 		final var result = SupportManagementMapper.toErrandProcessReport(target, report);
 
@@ -201,20 +204,55 @@ class SupportManagementMapperTest {
 
 	@Test
 	void toParameterValuesJoinsTheValuesOfEachParameterLeavingOutBlankOnes() {
-		final var decision = new Decision().parameters(List.of(
+		final var parameters = List.of(
 			new Parameter().key("permitHolderName").values(List.of("Runt Hörnet AB")),
 			new Parameter().key("serveringsyta").values(List.of("Matsalen", " ", "Uteserveringen")),
 			new Parameter().key("premisesName").values(List.of(" ")),
-			new Parameter().key("premisesPhone")));
+			new Parameter().key("premisesPhone"));
 
-		assertThat(SupportManagementMapper.toParameterValues(decision)).containsExactly(
+		assertThat(SupportManagementMapper.toParameterValues(parameters)).containsExactly(
 			entry("permitHolderName", "Runt Hörnet AB"),
 			entry("serveringsyta", "Matsalen, Uteserveringen"));
 	}
 
 	@Test
-	void toParameterValuesIsEmptyForADecisionWithoutParameters() {
-		assertThat(SupportManagementMapper.toParameterValues(new Decision().parameters(null))).isEmpty();
+	void toParameterValuesIsEmptyWithoutParameters() {
+		assertThat(SupportManagementMapper.toParameterValues(null)).isEmpty();
+	}
+
+	@Test
+	void toErrandRelationPointsAtTheErrandAndLeavesTheTarget() {
+		assertThat(SupportManagementMapper.toErrandRelation("LINK", "errand-id", "ALKT")).isEqualTo("LINK|errand-id;case;supportmanagement;ALKT|");
+	}
+
+	@Test
+	void toPartyIdTakesTheExternalIdOfThePermitHolder() {
+		final var errand = new Errand().stakeholders(List.of(
+			new Stakeholder().role("APPLICANT").externalId("applicant-id"),
+			new Stakeholder().role("PRIMARY"),
+			new Stakeholder().role("PRIMARY").externalId("holder-id")));
+
+		assertThat(SupportManagementMapper.toPartyId(errand)).contains("holder-id");
+	}
+
+	@Test
+	void toPartyIdIsEmptyWithoutStakeholders() {
+		assertThat(SupportManagementMapper.toPartyId(new Errand().stakeholders(null))).isEmpty();
+	}
+
+	@ParameterizedTest
+	@CsvSource(value = {
+		"PRIMARY, holder-id, true",
+		"PRIMARY, null, false",
+		"APPLICANT, applicant-id, false"
+	}, nullValues = "null")
+	void isPermitHolderTakesThePrimaryStakeholderWithAnExternalId(final String role, final String externalId, final boolean expected) {
+		assertThat(SupportManagementMapper.isPermitHolder(new Stakeholder().role(role).externalId(externalId))).isEqualTo(expected);
+	}
+
+	@Test
+	void toNoPermitHolderMessageNamesTheErrandAndTheRole() {
+		assertThat(SupportManagementMapper.toNoPermitHolderMessage("errand-id")).isEqualTo("Errand 'errand-id' has no stakeholder with role 'PRIMARY'");
 	}
 
 	@Test

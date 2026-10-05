@@ -1,4 +1,4 @@
-package se.sundsvall.alkt.integration.partyassets.model;
+package se.sundsvall.alkt.util;
 
 import java.io.IOException;
 import java.nio.file.Files;
