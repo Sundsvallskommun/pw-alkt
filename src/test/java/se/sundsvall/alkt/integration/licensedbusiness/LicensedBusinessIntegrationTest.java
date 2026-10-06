@@ -1,6 +1,8 @@
 package se.sundsvall.alkt.integration.licensedbusiness;
 
 import generated.se.sundsvall.licensedbusiness.Address;
+import generated.se.sundsvall.licensedbusiness.AddressRestaurantNumber;
+import generated.se.sundsvall.licensedbusiness.Assignment;
 import generated.se.sundsvall.licensedbusiness.AssignmentCreateRequest;
 import generated.se.sundsvall.licensedbusiness.RestaurantNumber;
 import java.time.LocalDate;
@@ -8,7 +10,6 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,8 +34,6 @@ import static org.springframework.http.HttpStatus.CREATED;
 class LicensedBusinessIntegrationTest {
 
 	private static final String MUNICIPALITY_ID = "2281";
-	private static final String ORG_NUMBER = "5566124144";
-	private static final String HOLDER_NAME = "Krogen AB";
 	private static final String STREET_ADDRESS = "Storgatan 1";
 	private static final String POSTAL_CODE = "852 30";
 
@@ -45,22 +44,13 @@ class LicensedBusinessIntegrationTest {
 	private LicensedBusinessIntegration licensedBusinessIntegration;
 
 	@Test
-	void assignsAFreeNumberOnAnAddressThatIsAlreadyKnown() {
+	void findsAnAddressThatIsAlreadyKnown() {
 		final var addressId = randomUUID().toString();
-		final var number = restaurantNumber("1001");
 		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.of(address(addressId)));
-		when(licensedBusinessClientMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, addressId)).thenReturn(List.of(number));
 
-		assertThat(licensedBusinessIntegration.assignRestaurantNumber(MUNICIPALITY_ID, address(null), assignment())).isEqualTo("1001");
+		assertThat(licensedBusinessIntegration.findOrCreateAddress(MUNICIPALITY_ID, address(null))).isEqualTo(addressId);
 
-		final var assignmentCaptor = ArgumentCaptor.forClass(AssignmentCreateRequest.class);
-		verify(licensedBusinessClientMock).createAssignment(eq(MUNICIPALITY_ID), assignmentCaptor.capture());
-		assertThat(assignmentCaptor.getValue().getRestaurantNumberId()).isEqualTo(number.getId());
-		assertThat(assignmentCaptor.getValue().getAddressId()).isEqualTo(addressId);
-		assertThat(assignmentCaptor.getValue().getOrgNumber()).isEqualTo(ORG_NUMBER);
-		assertThat(assignmentCaptor.getValue().getHolderName()).isEqualTo(HOLDER_NAME);
 		verify(licensedBusinessClientMock, never()).createAddress(any(), any());
-		verify(licensedBusinessClientMock, never()).createRestaurantNumber(any(), any());
 	}
 
 	@Test
@@ -68,9 +58,8 @@ class LicensedBusinessIntegrationTest {
 		final var addressId = randomUUID().toString();
 		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.empty());
 		when(licensedBusinessClientMock.createAddress(eq(MUNICIPALITY_ID), any())).thenReturn(created("/2281/addresses/" + addressId));
-		when(licensedBusinessClientMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, addressId)).thenReturn(List.of(restaurantNumber("1001")));
 
-		assertThat(licensedBusinessIntegration.assignRestaurantNumber(MUNICIPALITY_ID, address(null), assignment())).isEqualTo("1001");
+		assertThat(licensedBusinessIntegration.findOrCreateAddress(MUNICIPALITY_ID, address(null))).isEqualTo(addressId);
 	}
 
 	/** Two errands on the same address race: the one that loses reads the address the other just created. */
@@ -80,9 +69,8 @@ class LicensedBusinessIntegrationTest {
 		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE))
 			.thenReturn(Optional.empty(), Optional.of(address(addressId)));
 		when(licensedBusinessClientMock.createAddress(eq(MUNICIPALITY_ID), any())).thenThrow(new ClientProblem(CONFLICT, "Address already exists"));
-		when(licensedBusinessClientMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, addressId)).thenReturn(List.of(restaurantNumber("1001")));
 
-		assertThat(licensedBusinessIntegration.assignRestaurantNumber(MUNICIPALITY_ID, address(null), assignment())).isEqualTo("1001");
+		assertThat(licensedBusinessIntegration.findOrCreateAddress(MUNICIPALITY_ID, address(null))).isEqualTo(addressId);
 	}
 
 	/** The duplicate check and the lookup are meant to share a key, so this pair of answers means they do not. */
@@ -91,7 +79,7 @@ class LicensedBusinessIntegrationTest {
 		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.empty());
 		when(licensedBusinessClientMock.createAddress(eq(MUNICIPALITY_ID), any())).thenThrow(new ClientProblem(CONFLICT, "Address already exists"));
 
-		assertThatThrownBy(() -> licensedBusinessIntegration.assignRestaurantNumber(MUNICIPALITY_ID, address(null), assignment()))
+		assertThatThrownBy(() -> licensedBusinessIntegration.findOrCreateAddress(MUNICIPALITY_ID, address(null)))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("does not know it");
 	}
@@ -101,40 +89,8 @@ class LicensedBusinessIntegrationTest {
 		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.empty());
 		when(licensedBusinessClientMock.createAddress(eq(MUNICIPALITY_ID), any())).thenThrow(new ClientProblem(BAD_GATEWAY, "Licensed business is down"));
 
-		assertThatThrownBy(() -> licensedBusinessIntegration.assignRestaurantNumber(MUNICIPALITY_ID, address(null), assignment()))
+		assertThatThrownBy(() -> licensedBusinessIntegration.findOrCreateAddress(MUNICIPALITY_ID, address(null)))
 			.isInstanceOf(ClientProblem.class);
-	}
-
-	@Test
-	void allocatesANewNumberWhenTheAddressHasNoFreeOne() {
-		final var addressId = randomUUID().toString();
-		final var created = restaurantNumber("1002");
-		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.of(address(addressId)));
-		when(licensedBusinessClientMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, addressId)).thenReturn(List.of());
-		when(licensedBusinessClientMock.createRestaurantNumber(MUNICIPALITY_ID, addressId)).thenReturn(created("/2281/restaurant-numbers/1002"));
-		when(licensedBusinessClientMock.getRestaurantNumber(MUNICIPALITY_ID, "1002")).thenReturn(Optional.of(created));
-
-		assertThat(licensedBusinessIntegration.assignRestaurantNumber(MUNICIPALITY_ID, address(null), assignment())).isEqualTo("1002");
-
-		final var assignmentCaptor = ArgumentCaptor.forClass(AssignmentCreateRequest.class);
-		verify(licensedBusinessClientMock).createAssignment(eq(MUNICIPALITY_ID), assignmentCaptor.capture());
-		assertThat(assignmentCaptor.getValue().getRestaurantNumberId()).isEqualTo(created.getId());
-	}
-
-	/** The assignment takes the id, and Location only carries the number, so the created number has to be read back. */
-	@Test
-	void failsWhenTheNewNumberCannotBeReadBack() {
-		final var addressId = randomUUID().toString();
-		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.of(address(addressId)));
-		when(licensedBusinessClientMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, addressId)).thenReturn(List.of());
-		when(licensedBusinessClientMock.createRestaurantNumber(MUNICIPALITY_ID, addressId)).thenReturn(created("/2281/restaurant-numbers/1002"));
-		when(licensedBusinessClientMock.getRestaurantNumber(MUNICIPALITY_ID, "1002")).thenReturn(Optional.empty());
-
-		assertThatThrownBy(() -> licensedBusinessIntegration.assignRestaurantNumber(MUNICIPALITY_ID, address(null), assignment()))
-			.isInstanceOf(Problem.class)
-			.hasMessageContaining("cannot be read back");
-
-		verify(licensedBusinessClientMock, never()).createAssignment(any(), any());
 	}
 
 	@Test
@@ -142,17 +98,89 @@ class LicensedBusinessIntegrationTest {
 		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.empty());
 		when(licensedBusinessClientMock.createAddress(eq(MUNICIPALITY_ID), any())).thenReturn(ResponseEntity.status(CREATED).build());
 
-		assertThatThrownBy(() -> licensedBusinessIntegration.assignRestaurantNumber(MUNICIPALITY_ID, address(null), assignment()))
+		assertThatThrownBy(() -> licensedBusinessIntegration.findOrCreateAddress(MUNICIPALITY_ID, address(null)))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("without saying which");
 	}
 
-	private static AssignmentCreateRequest assignment() {
-		return new AssignmentCreateRequest()
-			.orgNumber(ORG_NUMBER)
-			.holderName(HOLDER_NAME)
-			.premisesName("Harrys Pub")
-			.validFrom(LocalDate.of(2026, 1, 1));
+	@Test
+	void knowsWhetherANumberIsAtTheAddress() {
+		final var addressId = randomUUID().toString();
+		when(licensedBusinessClientMock.getAddressRestaurantNumbers(MUNICIPALITY_ID, addressId))
+			.thenReturn(List.of(new AddressRestaurantNumber().number("22810001").status(AddressRestaurantNumber.StatusEnum.ACTIVE)));
+
+		assertThat(licensedBusinessIntegration.isRestaurantNumberAtAddress(MUNICIPALITY_ID, addressId, "22810001")).isTrue();
+		assertThat(licensedBusinessIntegration.isRestaurantNumberAtAddress(MUNICIPALITY_ID, addressId, "22810002")).isFalse();
+	}
+
+	@Test
+	void answersWithTheAvailableNumbersInTheirOrder() {
+		final var addressId = randomUUID().toString();
+		when(licensedBusinessClientMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, addressId))
+			.thenReturn(List.of(restaurantNumber("22810001"), restaurantNumber("22810002")));
+
+		assertThat(licensedBusinessIntegration.getAvailableRestaurantNumbers(MUNICIPALITY_ID, addressId)).containsExactly("22810001", "22810002");
+	}
+
+	@Test
+	void createsANumberAndAnswersWithItFromTheLocation() {
+		final var addressId = randomUUID().toString();
+		when(licensedBusinessClientMock.createRestaurantNumber(MUNICIPALITY_ID, addressId)).thenReturn(created("/2281/restaurant-numbers/22810002"));
+
+		assertThat(licensedBusinessIntegration.createRestaurantNumber(MUNICIPALITY_ID, addressId)).isEqualTo("22810002");
+	}
+
+	@Test
+	void readsTheIdOfANumber() {
+		final var number = restaurantNumber("22810001");
+		when(licensedBusinessClientMock.getRestaurantNumber(MUNICIPALITY_ID, "22810001")).thenReturn(Optional.of(number));
+
+		assertThat(licensedBusinessIntegration.getRestaurantNumberId(MUNICIPALITY_ID, "22810001")).isEqualTo(number.getId());
+	}
+
+	@Test
+	void failsWhenTheNumberCannotBeRead() {
+		when(licensedBusinessClientMock.getRestaurantNumber(MUNICIPALITY_ID, "22810001")).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> licensedBusinessIntegration.getRestaurantNumberId(MUNICIPALITY_ID, "22810001"))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("cannot be read");
+	}
+
+	@Test
+	void findsTheIdOfAKnownAddressAndNothingForAnUnknownOne() {
+		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.of(address("address-id")), Optional.empty());
+
+		assertThat(licensedBusinessIntegration.findAddressId(MUNICIPALITY_ID, address(null))).contains("address-id");
+		assertThat(licensedBusinessIntegration.findAddressId(MUNICIPALITY_ID, address(null))).isEmpty();
+	}
+
+	@Test
+	void answersWithTheActiveNumbersAtTheAddress() {
+		final var addressId = randomUUID().toString();
+		when(licensedBusinessClientMock.getAddressRestaurantNumbers(MUNICIPALITY_ID, addressId)).thenReturn(List.of(
+			new AddressRestaurantNumber().number("22810001").status(AddressRestaurantNumber.StatusEnum.ACTIVE),
+			new AddressRestaurantNumber().number("22810002").status(AddressRestaurantNumber.StatusEnum.AVAILABLE),
+			new AddressRestaurantNumber().number("22810003").status(AddressRestaurantNumber.StatusEnum.ACTIVE)));
+
+		assertThat(licensedBusinessIntegration.getActiveRestaurantNumbers(MUNICIPALITY_ID, addressId)).containsExactly("22810001", "22810003");
+	}
+
+	@Test
+	void findsTheLatestAssignment() {
+		final var assignment = new Assignment().id(randomUUID().toString());
+		when(licensedBusinessClientMock.getLatestAssignment(MUNICIPALITY_ID, "22810001")).thenReturn(Optional.of(assignment));
+
+		assertThat(licensedBusinessIntegration.findLatestAssignment(MUNICIPALITY_ID, "22810001")).contains(assignment);
+	}
+
+	@Test
+	void createsTheAssignmentAsGiven() {
+		final var assignment = new AssignmentCreateRequest().orgNumber("5566124144").validFrom(LocalDate.of(2026, 1, 1));
+
+		licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, assignment);
+
+		verify(licensedBusinessClientMock).createAssignment(MUNICIPALITY_ID, assignment);
 	}
 
 	private static Address address(final String id) {

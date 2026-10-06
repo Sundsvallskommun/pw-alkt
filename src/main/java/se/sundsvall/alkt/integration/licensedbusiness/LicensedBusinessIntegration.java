@@ -1,13 +1,17 @@
 package se.sundsvall.alkt.integration.licensedbusiness;
 
 import generated.se.sundsvall.licensedbusiness.Address;
+import generated.se.sundsvall.licensedbusiness.AddressRestaurantNumber;
+import generated.se.sundsvall.licensedbusiness.Assignment;
 import generated.se.sundsvall.licensedbusiness.AssignmentCreateRequest;
 import generated.se.sundsvall.licensedbusiness.RestaurantNumber;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
+import static generated.se.sundsvall.licensedbusiness.AddressRestaurantNumber.StatusEnum.ACTIVE;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
@@ -23,25 +27,51 @@ public class LicensedBusinessIntegration {
 		this.licensedBusinessClient = licensedBusinessClient;
 	}
 
-	/**
-	 * The restaurant number the license holder now has at this address. A free number on the address is reused, and a
-	 * new one is allocated when there is none. The assignment is sent as given, except addressId and restaurantNumberId,
-	 * which are set from the address and the number this call resolved.
-	 */
-	public String assignRestaurantNumber(final String municipalityId, final Address address, final AssignmentCreateRequest assignment) {
-		final var addressId = findOrCreateAddress(municipalityId, address);
-		final var restaurantNumber = availableOrNewRestaurantNumber(municipalityId, addressId);
-
-		licensedBusinessClient.createAssignment(municipalityId, assignment
-			.restaurantNumberId(restaurantNumber.getId())
-			.addressId(addressId));
-
-		return restaurantNumber.getNumber();
+	public String findOrCreateAddress(final String municipalityId, final Address address) {
+		return findAddressId(municipalityId, address)
+			.orElseGet(() -> createAddress(municipalityId, address));
 	}
 
-	private String findOrCreateAddress(final String municipalityId, final Address address) {
-		return lookupAddress(municipalityId, address)
-			.orElseGet(() -> createAddress(municipalityId, address));
+	public Optional<String> findAddressId(final String municipalityId, final Address address) {
+		return licensedBusinessClient.lookupAddress(municipalityId, address.getStreetAddress(), address.getPostalCode())
+			.map(Address::getId);
+	}
+
+	/** Any number at the address counts, whether it is free or held by an active assignment. */
+	public boolean isRestaurantNumberAtAddress(final String municipalityId, final String addressId, final String number) {
+		return licensedBusinessClient.getAddressRestaurantNumbers(municipalityId, addressId).stream()
+			.anyMatch(restaurantNumber -> number.equals(restaurantNumber.getNumber()));
+	}
+
+	public List<String> getActiveRestaurantNumbers(final String municipalityId, final String addressId) {
+		return licensedBusinessClient.getAddressRestaurantNumbers(municipalityId, addressId).stream()
+			.filter(restaurantNumber -> ACTIVE.equals(restaurantNumber.getStatus()))
+			.map(AddressRestaurantNumber::getNumber)
+			.toList();
+	}
+
+	public List<String> getAvailableRestaurantNumbers(final String municipalityId, final String addressId) {
+		return licensedBusinessClient.getAvailableRestaurantNumbers(municipalityId, addressId).stream()
+			.map(RestaurantNumber::getNumber)
+			.toList();
+	}
+
+	public String createRestaurantNumber(final String municipalityId, final String addressId) {
+		return getIdOfCreatedResource(licensedBusinessClient.createRestaurantNumber(municipalityId, addressId), SERVICE);
+	}
+
+	public String getRestaurantNumberId(final String municipalityId, final String number) {
+		return licensedBusinessClient.getRestaurantNumber(municipalityId, number)
+			.map(RestaurantNumber::getId)
+			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Restaurant number '%s' cannot be read from licensed business".formatted(number)));
+	}
+
+	public Optional<Assignment> findLatestAssignment(final String municipalityId, final String number) {
+		return licensedBusinessClient.getLatestAssignment(municipalityId, number);
+	}
+
+	public void createAssignment(final String municipalityId, final AssignmentCreateRequest assignment) {
+		licensedBusinessClient.createAssignment(municipalityId, assignment);
 	}
 
 	// A 409 means someone created the same address between the lookup and the create, so its id is there to be read now.
@@ -52,26 +82,8 @@ public class LicensedBusinessIntegration {
 			if (!CONFLICT.equals(e.getStatus())) {
 				throw e;
 			}
-			return lookupAddress(municipalityId, address)
+			return findAddressId(municipalityId, address)
 				.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Licensed business refused the address as a duplicate but does not know it"));
 		}
-	}
-
-	private Optional<String> lookupAddress(final String municipalityId, final Address address) {
-		return licensedBusinessClient.lookupAddress(municipalityId, address.getStreetAddress(), address.getPostalCode())
-			.map(Address::getId);
-	}
-
-	private RestaurantNumber availableOrNewRestaurantNumber(final String municipalityId, final String addressId) {
-		return licensedBusinessClient.getAvailableRestaurantNumbers(municipalityId, addressId).stream()
-			.findFirst()
-			.orElseGet(() -> createRestaurantNumber(municipalityId, addressId));
-	}
-
-	private RestaurantNumber createRestaurantNumber(final String municipalityId, final String addressId) {
-		final var number = getIdOfCreatedResource(licensedBusinessClient.createRestaurantNumber(municipalityId, addressId), SERVICE);
-
-		return licensedBusinessClient.getRestaurantNumber(municipalityId, number)
-			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Restaurant number '%s' was created but cannot be read back".formatted(number)));
 	}
 }

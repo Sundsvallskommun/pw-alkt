@@ -606,6 +606,52 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problem"
+  /{municipalityId}/addresses/{addressId}/restaurant-numbers:
+    get:
+      tags:
+        - Address Resources
+      summary: Get every restaurant number at an address
+      description: "Each restaurant number carries its status, ACTIVE when it has\
+        \ an active assignment and otherwise AVAILABLE, and the premises name and\
+        \ period of the assignment running today. An ACTIVE number without one shows\
+        \ its active assignment, and an AVAILABLE number shows its previous one."
+      operationId: getAddressRestaurantNumbers
+      parameters:
+        - name: municipalityId
+          in: path
+          description: Municipality ID
+          required: true
+          schema:
+            type: string
+          example: 2281
+        - name: addressId
+          in: path
+          description: Address ID
+          required: true
+          schema:
+            type: string
+          example: 9ce333ec-a473-438b-8406-a71e957dc107
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AddressRestaurantNumber"
+        "404":
+          description: Not Found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
   /{municipalityId}/addresses/search:
     get:
       tags:
@@ -1034,6 +1080,65 @@ components:
           description: Municipality ID
           examples:
             - "2281"
+        created:
+          type: string
+          format: date-time
+          description: Timestamp when the restaurant number was created
+    AddressRestaurantNumber:
+      type: object
+      description: "Restaurant number at an address, with its status and the premises\
+        \ name and period of its current assignment. An ACTIVE number without a current\
+        \ assignment shows its active one, and an AVAILABLE number shows its previous\
+        \ one."
+      properties:
+        id:
+          type: string
+          description: Restaurant number ID
+          examples:
+            - 9ce333ec-a473-438b-8406-a71e957dc107
+        number:
+          type: string
+          description: Restaurant number
+          examples:
+            - "22810001"
+        municipalityId:
+          type: string
+          description: Municipality ID
+          examples:
+            - "2281"
+        reported:
+          type: boolean
+          description: Whether the restaurant number has been reported to the Public
+            Health Agency of Sweden
+          examples:
+            - false
+        status:
+          type: string
+          description: "ACTIVE when the restaurant number has an active assignment,\
+            \ otherwise AVAILABLE"
+          enum:
+            - ACTIVE
+            - AVAILABLE
+          examples:
+            - ACTIVE
+        premisesName:
+          type: string
+          description: "Name of the premises on the shown assignment, empty when the\
+            \ number has never been assigned"
+          examples:
+            - Harrys Pub
+        validFrom:
+          type: string
+          format: date
+          description: First day of the shown assignment
+          examples:
+            - 2026-01-01
+        validTo:
+          type: string
+          format: date
+          description: "Last day of the shown assignment, empty when it is open ended"
+          examples:
+            - 2026-12-31
         created:
           type: string
           format: date-time
