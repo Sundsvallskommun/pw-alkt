@@ -35,9 +35,11 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETERS_OUTSIDE_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
@@ -47,7 +49,6 @@ import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 public final class SupportManagementMapper {
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
-	static final String CHANGE_DRAFT_TITLE = "Ändring av serveringstillstånd";
 	static final String ERRAND_RESOURCE_TYPE = "case";
 	static final String ERRAND_SERVICE = "supportmanagement";
 
@@ -55,6 +56,10 @@ public final class SupportManagementMapper {
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Anmälan om försäljning av folköl",
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, "Anmälan om servering av folköl",
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, "Anmälan om försäljning och servering av folköl");
+
+	private static final Map<String, String> CHANGE_DRAFT_TITLES = Map.of(
+		PROCESS_KEY_ALCOHOL_SERVING_CHANGE, "Ändring av serveringstillstånd",
+		PROCESS_KEY_TOBACCO_SALES_CHANGE, "Ändring av tobakstillstånd");
 
 	private SupportManagementMapper() {}
 
@@ -87,6 +92,13 @@ public final class SupportManagementMapper {
 				.formatted(processKey, DECISION_TITLES.keySet())));
 	}
 
+	public static String toChangeDraftTitle(final String processKey) {
+		return Optional.ofNullable(processKey)
+			.map(CHANGE_DRAFT_TITLES::get)
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a change draft, one of %s was expected"
+				.formatted(processKey, CHANGE_DRAFT_TITLES.keySet())));
+	}
+
 	// Why: an approval of a notification holds until further notice, so it has no last day. Support Management requires
 	// decidedAt already on the draft.
 	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final OffsetDateTime decidedAt) {
@@ -104,7 +116,7 @@ public final class SupportManagementMapper {
 
 	// Why: Support Management lets the process write only an automatic decision, with outcome and decidedAt already on the
 	// draft; the case worker's edit makes it manual. A parameter without a value asks for a removal, so it is kept.
-	public static Decision toChangeDraft(final Errand errand, final OffsetDateTime decidedAt) {
+	public static Decision toChangeDraft(final Errand errand, final String title, final OffsetDateTime decidedAt) {
 		return new Decision()
 			.type(DECISION_TYPE_PERMIT)
 			.status(DECISION_STATUS_DRAFT)
@@ -112,7 +124,7 @@ public final class SupportManagementMapper {
 			.decidedBy(PROCESS_SERVICE)
 			.decidedAt(decidedAt)
 			.outcome(DECISION_OUTCOME_APPROVAL)
-			.title(CHANGE_DRAFT_TITLE)
+			.title(title)
 			.description(errand.getTitle())
 			.parameters(Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
 				.filter(parameter -> !ERRAND_PARAMETERS_OUTSIDE_CHANGE.contains(parameter.getKey()))

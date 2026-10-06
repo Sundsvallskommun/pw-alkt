@@ -16,8 +16,10 @@ import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toAutomaticDecision;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraft;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraftTitle;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionCompletion;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionTitle;
+import static se.sundsvall.alkt.service.AssetService.requirePermitType;
 
 @Service
 public class DecisionService {
@@ -70,7 +72,10 @@ public class DecisionService {
 	 * Drafts the decision of a change errand from the change the customer asks for. An errand has one decision at most, so
 	 * one already there is the draft of an earlier attempt.
 	 */
-	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId, final String permitType) {
+	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId, final String permitType, final String processKey) {
+		requirePermitType(permitType);
+		final var title = toChangeDraftTitle(processKey);
+
 		return supportManagementIntegration.getDecisions(municipalityId, namespace, errandId).stream()
 			.findFirst()
 			.map(Decision::getId)
@@ -78,7 +83,7 @@ public class DecisionService {
 				final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 				// Why: a fault in the permit the customer chose shows now, not once the decision is locked.
 				assetService.getPermitToChange(municipalityId, errand, errandId, permitType);
-				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, OffsetDateTime.now(SWEDISH_TIME)));
+				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, title, OffsetDateTime.now(SWEDISH_TIME)));
 			});
 	}
 

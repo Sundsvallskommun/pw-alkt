@@ -19,6 +19,7 @@ import se.sundsvall.dept44.common.validators.annotation.impl.ValidUuidConstraint
 import se.sundsvall.dept44.problem.Problem;
 
 import static generated.se.sundsvall.partyassets.Status.ACTIVE;
+import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -31,6 +32,7 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_PERMIT_TYPE;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
@@ -118,8 +120,41 @@ public class AssetService {
 		return assetId;
 	}
 
+	/** Checks the permit the errand names before the case worker handles the errand, and answers with its id. */
+	public String checkPermit(final String municipalityId, final String namespace, final String errandId, final String permitType) {
+		requirePermitType(permitType);
+		return getPermitToChange(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, permitType).asset().getId();
+	}
+
+	/** Ends the permit the errand names. The permit certificate stays as it is. */
+	public String closeAsset(final String municipalityId, final String namespace, final String errandId, final String permitType) {
+		requirePermitType(permitType);
+		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
+		final var versioned = getPermitOfTheErrand(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, permitType);
+		final var asset = versioned.asset();
+		final var closure = toAssetClosureRequest(decision);
+
+		// Why: a rerun after the PATCH went through finds the permit already ended, or already set to end.
+		if (!isClosed(asset, closure)) {
+			requireActive(asset);
+			partyAssetsIntegration.updateAsset(municipalityId, asset.getId(), versioned.version(), closure);
+		}
+		return asset.getId();
+	}
+
+	private static boolean isClosed(final Asset asset, final AssetUpdateRequest closure) {
+		return asset.getStatus() == EXPIRED
+			|| (asset.getStatus() == ACTIVE && closure.getStatus() == null && closure.getValidTo().equals(asset.getValidTo()));
+	}
+
 	/** The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. */
 	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId, final String permitType) {
+		final var versioned = getPermitOfTheErrand(municipalityId, errand, errandId, permitType);
+		requireActive(versioned.asset());
+		return versioned;
+	}
+
+	private VersionedAsset getPermitOfTheErrand(final String municipalityId, final Errand errand, final String errandId, final String permitType) {
 		requirePermitType(permitType);
 		final var assetId = toAssetId(errand)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' names no asset to change".formatted(errandId)));
@@ -131,20 +166,23 @@ public class AssetService {
 			.orElseThrow(() -> new NonRetryableException(toNoPermitHolderMessage(errandId)));
 		final var versioned = partyAssetsIntegration.getAsset(municipalityId, assetId);
 		final var asset = versioned.asset();
-		if (asset.getStatus() != ACTIVE) {
-			throw new NonRetryableException("Asset '%s' has status %s, only an active permit can be changed".formatted(assetId, asset.getStatus()));
-		}
 		if (!partyId.equals(asset.getPartyId())) {
 			throw new NonRetryableException("Asset '%s' does not belong to the permit holder of errand '%s'".formatted(assetId, errandId));
 		}
 		if (!permitType.equals(asset.getType())) {
-			throw new NonRetryableException("Asset '%s' is of type '%s', the process changes only type '%s'".formatted(assetId, asset.getType(), permitType));
+			throw new NonRetryableException("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(assetId, asset.getType(), permitType));
 		}
 		return versioned;
 	}
 
+	private static void requireActive(final Asset asset) {
+		if (asset.getStatus() != ACTIVE) {
+			throw new NonRetryableException("Asset '%s' has status %s, only an active permit can be handled".formatted(asset.getId(), asset.getStatus()));
+		}
+	}
+
 	// Why: the type comes from the bpmn schema, so a missing one is a fault in the schema, not something a retry fixes.
-	private static void requirePermitType(final String permitType) {
+	static void requirePermitType(final String permitType) {
 		if (isBlank(permitType)) {
 			throw new NonRetryableException("The step has no permit type, set input parameter '%s' in the bpmn schema".formatted(PROCESS_VARIABLE_PERMIT_TYPE));
 		}

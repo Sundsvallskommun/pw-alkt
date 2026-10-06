@@ -707,7 +707,7 @@ class AssetServiceTest {
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' is of type '%s', the process changes only type '%s'".formatted(ASSET_ID, type, PERMIT_TYPE));
+			.hasMessage("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(ASSET_ID, type, PERMIT_TYPE));
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verifyNoInteractions(templatingIntegrationMock);
@@ -746,7 +746,7 @@ class AssetServiceTest {
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' has status %s, only an active permit can be changed".formatted(ASSET_ID, status));
+			.hasMessage("Asset '%s' has status %s, only an active permit can be handled".formatted(ASSET_ID, status));
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verifyNoInteractions(templatingIntegrationMock);
@@ -801,6 +801,150 @@ class AssetServiceTest {
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("no completed decision");
+
+		verifyNoInteractions(partyAssetsIntegrationMock);
+	}
+
+	@Test
+	void checkPermitAnswersWithThePermitTheErrandNames() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+
+		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	@Test
+	void checkPermitFailsWithoutRetryOnAnAssetOfAnotherType() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type("LowAlcoholBeerSalesPermit")));
+
+		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Asset '%s' is of type 'LowAlcoholBeerSalesPermit', the process handles only type '%s'".formatted(ASSET_ID, PERMIT_TYPE));
+	}
+
+	@ParameterizedTest
+	@NullSource
+	@ValueSource(strings = {
+		"", " "
+	})
+	void checkPermitAndCloseAssetFailWithoutRetryWithoutAPermitType(final String permitType) {
+		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, permitType))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The step has no permit type, set input parameter 'permitType' in the bpmn schema");
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, permitType))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The step has no permit type, set input parameter 'permitType' in the bpmn schema");
+
+		verifyNoInteractions(supportManagementIntegrationMock, partyAssetsIntegrationMock, templatingIntegrationMock);
+	}
+
+	@Test
+	void closeAssetEndsThePermitWhoseLastDayHasCome() {
+		final var today = LocalDate.now(SWEDISH_TIME);
+		givenAnErrandNaming(approval().validTo(today));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(today)));
+
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getStatus()).isEqualTo(Status.EXPIRED);
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(today);
+		assertThat(updateCaptor.getValue().getStatusReason()).isNull();
+		assertThat(updateCaptor.getValue().getAdditionalParameters()).isNull();
+		verifyNoInteractions(templatingIntegrationMock);
+		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
+	}
+
+	@Test
+	void closeAssetSetsTheLastDayOfAPermitThatEndsLater() {
+		final var lastDay = LocalDate.now(SWEDISH_TIME).plusDays(30);
+		givenAnErrandNaming(approval().validTo(lastDay));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getStatus()).isNull();
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(lastDay);
+	}
+
+	/** A rerun after the PATCH went through finds the last day already set. */
+	@Test
+	void closeAssetLeavesAPermitAlreadySetToEnd() {
+		final var lastDay = LocalDate.now(SWEDISH_TIME).plusDays(30);
+		givenAnErrandNaming(approval().validTo(lastDay));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(lastDay)));
+
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+	}
+
+	/** A rerun after the PATCH went through finds the permit already ended. */
+	@Test
+	void closeAssetLeavesAPermitThatHasAlreadyEnded() {
+		givenAnErrandNaming(approval());
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED)));
+
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = Status.class, names = {
+		"ACTIVE", "EXPIRED"
+	}, mode = EXCLUDE)
+	void closeAssetFailsWithoutRetryOnAnAssetThatIsNeitherActiveNorEnded(final Status status) {
+		givenAnErrandNaming(approval());
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
+
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Asset '%s' has status %s, only an active permit can be handled".formatted(ASSET_ID, status));
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+	}
+
+	@Test
+	void closeAssetFailsWithoutRetryOnAnEndedAssetOfAnotherType() {
+		givenAnErrandNaming(approval());
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED).type("LowAlcoholBeerSalesPermit")));
+
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("is of type 'LowAlcoholBeerSalesPermit'");
+	}
+
+	@Test
+	void closeAssetFailsWithoutRetryOnAnAssetOfAnotherParty() {
+		givenAnErrandNaming(approval());
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().partyId("someone-else")));
+
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Asset '%s' does not belong to the permit holder of errand 'errand-id'".formatted(ASSET_ID));
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+	}
+
+	@ParameterizedTest
+	@NullSource
+	@ValueSource(strings = {
+		"REJECTED", "DISMISSED", "INADMISSIBLE"
+	})
+	void closeAssetFailsOnAnOutcomeThatGrantsNoPermit(final String outcome) {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(Optional.of(new Decision().id(DECISION_ID).outcome(outcome)));
+
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE))
+			.isInstanceOf(Problem.class);
 
 		verifyNoInteractions(partyAssetsIntegrationMock);
 	}

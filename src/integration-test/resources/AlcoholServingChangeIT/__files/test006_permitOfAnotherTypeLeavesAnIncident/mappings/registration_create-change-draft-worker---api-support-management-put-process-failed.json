@@ -24,7 +24,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.activities[0].message",
-					"contains": "is of type 'LowAlcoholBeerServingPermit', the process changes only type 'AlcoholServingPermit'"
+					"contains": "is of type 'LowAlcoholBeerServingPermit', the process handles only type 'AlcoholServingPermit'"
 				}
 			}
 		]

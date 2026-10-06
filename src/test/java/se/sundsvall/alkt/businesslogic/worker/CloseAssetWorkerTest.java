@@ -8,7 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
-import se.sundsvall.alkt.service.DecisionService;
+import se.sundsvall.alkt.service.AssetService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
@@ -22,12 +22,12 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_PERMIT_TYPE;
 
 @ExtendWith(MockitoExtension.class)
-class CreateChangeDraftWorkerTest {
+class CloseAssetWorkerTest {
 
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
-	private static final String PERMIT_TYPE = "AlcoholServingPermit";
+	private static final String PERMIT_TYPE = "TobaccoSalesPermit";
 
 	@Mock
 	private ProcessReportService processReportServiceMock;
@@ -36,7 +36,7 @@ class CreateChangeDraftWorkerTest {
 	private FailureHandler failureHandlerMock;
 
 	@Mock
-	private DecisionService decisionServiceMock;
+	private AssetService assetServiceMock;
 
 	@Mock
 	private ExternalTask externalTaskMock;
@@ -45,22 +45,21 @@ class CreateChangeDraftWorkerTest {
 	private ExternalTaskService externalTaskServiceMock;
 
 	@InjectMocks
-	private CreateChangeDraftWorker worker;
+	private CloseAssetWorker worker;
 
 	@Test
-	void createsTheDraftOfTheErrand() {
+	void endsTheAssetOfTheErrand() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_PERMIT_TYPE)).thenReturn(PERMIT_TYPE);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving-change");
-		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_change_draft");
-		when(decisionServiceMock.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE, "alcohol-serving-change")).thenReturn("decision-id");
+		when(externalTaskMock.getActivityId()).thenReturn("external_task_close_asset");
+		when(assetServiceMock.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE)).thenReturn("asset-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_change_draft", null).withLogMessage("Errand has decision 'decision-id'"));
-		verify(decisionServiceMock).createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE, "alcohol-serving-change");
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_close_asset", null).withLogMessage("Asset 'asset-id' closed"));
+		verify(assetServiceMock).closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

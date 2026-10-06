@@ -16,6 +16,7 @@ import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
+import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETERS_OF_THE_PROCESS;
@@ -66,6 +67,26 @@ public final class PartyAssetsMapper {
 			.additionalParameters(parameters);
 	}
 
+	/**
+	 * Ends the permit on the last day the decision gives, else the day it was decided. A last day still to come is left to
+	 * party-assets, which expires the permit once it has passed. No status reason, as party-assets refuses one unless
+	 * reasons are registered for the status.
+	 */
+	public static AssetUpdateRequest toAssetClosureRequest(final Decision decision) {
+		final var validTo = Optional.ofNullable(decision.getValidTo())
+			.or(() -> toDecidedOn(decision))
+			.orElseGet(() -> LocalDate.now(SWEDISH_TIME));
+		final var request = new AssetUpdateRequest().validTo(validTo);
+		if (!validTo.isAfter(LocalDate.now(SWEDISH_TIME))) {
+			request.status(EXPIRED);
+		}
+		return request;
+	}
+
+	private static Optional<LocalDate> toDecidedOn(final Decision decision) {
+		return Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate());
+	}
+
 	public static AssetFile toAssetFile(final ErrandAttachment attachment, final byte[] content) {
 		return new AssetFile(
 			new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, attachment.getFileName(), attachment.getMimeType(), content),
@@ -80,7 +101,7 @@ public final class PartyAssetsMapper {
 
 	private static LocalDate toIssued(final Decision decision) {
 		return Optional.ofNullable(decision.getValidFrom())
-			.or(() -> Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate()))
+			.or(() -> toDecidedOn(decision))
 			.orElse(null);
 	}
 
