@@ -9,7 +9,6 @@ import generated.se.sundsvall.supportmanagement.Parameter;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +55,7 @@ class PartyAssetsMapperTest {
 
 	private static final String ERRAND_ID = randomUUID().toString();
 	private static final String PARTY_ID = randomUUID().toString();
-	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
+	private static final LocalDate TODAY = LocalDate.of(2026, 10, 6);
 
 	@Test
 	void toAssetCreateRequestCarriesTheDecision() {
@@ -182,7 +181,7 @@ class PartyAssetsMapperTest {
 			.validTo(LocalDate.of(2026, 9, 30))
 			.decidedAt(OffsetDateTime.of(2026, 9, 19, 10, 0, 0, 0, ZoneOffset.UTC));
 
-		final var result = toAssetClosureRequest(decision);
+		final var result = toAssetClosureRequest(new Asset(), decision, TODAY);
 
 		assertThat(result.getStatus()).isEqualTo(EXPIRED);
 		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2026, 9, 30));
@@ -191,19 +190,46 @@ class PartyAssetsMapperTest {
 
 	@Test
 	void toAssetClosureRequestLeavesALastDayStillToComeToPartyAssets() {
-		final var lastDay = LocalDate.now(SWEDISH_TIME).plusDays(1);
+		final var lastDay = TODAY.plusDays(1);
 
-		final var result = toAssetClosureRequest(new Decision().validTo(lastDay));
+		final var result = toAssetClosureRequest(new Asset(), new Decision().validTo(lastDay), TODAY);
 
 		assertThat(result.getValidTo()).isEqualTo(lastDay);
 		assertThat(result).hasAllNullFieldsOrPropertiesExcept("validTo");
 	}
 
 	@Test
+	void toAssetClosureRequestKeepsThePermitValidOnItsLastDay() {
+		final var result = toAssetClosureRequest(new Asset(), new Decision().validTo(TODAY), TODAY);
+
+		assertThat(result.getValidTo()).isEqualTo(TODAY);
+		assertThat(result).hasAllNullFieldsOrPropertiesExcept("validTo");
+	}
+
+	@Test
+	void toAssetClosureRequestNeverEndsThePermitLaterThanItAlreadyEnds() {
+		final var current = new Asset().validTo(TODAY.plusDays(30));
+
+		final var result = toAssetClosureRequest(current, new Decision().validTo(TODAY.plusDays(90)), TODAY);
+
+		assertThat(result.getValidTo()).isEqualTo(TODAY.plusDays(30));
+		assertThat(result).hasAllNullFieldsOrPropertiesExcept("validTo");
+	}
+
+	@Test
+	void toAssetClosureRequestEndsThePermitOnTheLastDayOfTheDecisionBeforeTheLastDayOfThePermit() {
+		final var current = new Asset().validTo(TODAY.plusDays(90));
+
+		final var result = toAssetClosureRequest(current, new Decision().validTo(TODAY.plusDays(30)), TODAY);
+
+		assertThat(result.getValidTo()).isEqualTo(TODAY.plusDays(30));
+	}
+
+	@Test
 	void toAssetClosureRequestEndsThePermitOnTheSwedishDayOfTheDecisionWithoutALastDay() {
 		final var decision = new Decision().decidedAt(OffsetDateTime.of(2026, 9, 19, 22, 30, 0, 0, ZoneOffset.UTC));
 
-		final var result = toAssetClosureRequest(decision);
+		final var result = toAssetClosureRequest(new Asset(), decision, TODAY);
 
 		assertThat(result.getStatus()).isEqualTo(EXPIRED);
 		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2026, 9, 20));
@@ -211,10 +237,10 @@ class PartyAssetsMapperTest {
 
 	@Test
 	void toAssetClosureRequestEndsThePermitTodayWithoutAnyDate() {
-		final var result = toAssetClosureRequest(new Decision());
+		final var result = toAssetClosureRequest(new Asset(), new Decision(), TODAY);
 
-		assertThat(result.getStatus()).isEqualTo(EXPIRED);
-		assertThat(result.getValidTo()).isEqualTo(LocalDate.now(SWEDISH_TIME));
+		assertThat(result.getValidTo()).isEqualTo(TODAY);
+		assertThat(result).hasAllNullFieldsOrPropertiesExcept("validTo");
 	}
 
 	@Test

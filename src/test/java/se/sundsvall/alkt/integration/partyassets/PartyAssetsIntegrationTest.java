@@ -62,17 +62,18 @@ class PartyAssetsIntegrationTest {
 	}
 
 	@Test
-	void findAssetIdAnswersWithTheIdOfTheMatchingAsset() {
-		when(partyAssetsClientMock.getAssets(MUNICIPALITY_ID, "party-id", "decision-id")).thenReturn(ResponseEntity.ok(List.of(new Asset().id("asset-id"))));
+	void findAssetAnswersWithTheMatchingAsset() {
+		final var asset = new Asset().id("asset-id");
+		when(partyAssetsClientMock.getAssets(MUNICIPALITY_ID, "party-id", "decision-id")).thenReturn(ResponseEntity.ok(List.of(asset)));
 
-		assertThat(partyAssetsIntegration.findAssetId(MUNICIPALITY_ID, "party-id", "decision-id")).contains("asset-id");
+		assertThat(partyAssetsIntegration.findAsset(MUNICIPALITY_ID, "party-id", "decision-id")).contains(asset);
 	}
 
 	@Test
-	void findAssetIdIsEmptyWithoutABody() {
+	void findAssetIsEmptyWithoutABody() {
 		when(partyAssetsClientMock.getAssets(MUNICIPALITY_ID, "party-id", "decision-id")).thenReturn(ResponseEntity.ok(null));
 
-		assertThat(partyAssetsIntegration.findAssetId(MUNICIPALITY_ID, "party-id", "decision-id")).isEmpty();
+		assertThat(partyAssetsIntegration.findAsset(MUNICIPALITY_ID, "party-id", "decision-id")).isEmpty();
 	}
 
 	@Test

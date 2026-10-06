@@ -8,11 +8,6 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 
-import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.containing;
-import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
-import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
@@ -38,11 +33,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
 
-		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES);
+		// The first four phases hold no catch event in this model, so follow up is the first one to park
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "closure");
 
@@ -51,19 +42,6 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 		// Verify mocked stubs
 		verifyAllStubs();
-		// An e-cigarette permit has no certificate
-		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-templating/.*")));
-
-		// Verify the activity log: the phases the process entered and the steps it took, named for the case worker
-		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
-			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'PHASE' && @.activityId == 'registration_phase')].activityName",
-				containing("Registrering har påbörjats"))));
-		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
-			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_notify_processing_started#done')].activityName",
-				containing("Kunden har fått besked om att handläggningen har börjat"))));
-		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
-			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_asset#done' && @.severity == 'INFO')].message",
-				containing("x-request-id"))));
 
 		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
@@ -71,38 +49,29 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// Registration
+				// Registration - no catch event, so the phase walks straight through
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 
-				// Review
+				// Review - no catch event
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
-				tuple("Review completed", "await_review_completed"),
 				tuple("End review phase", "end_review_phase"),
 
-				// Investigation
+				// Investigation - no catch event
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("Investigation completed", "await_investigation_completed"),
 				tuple("End investigation phase", "end_investigation_phase"),
 
-				// Decision
+				// Decision - no catch event: the decision is made and the permit created without a case worker
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Check decision", "external_task_check_decision"), // No decision yet
-				tuple("Decision outcome", "gateway_decision_outcome"),
-				tuple("Await decision", "gateway_await_decision"),
-				tuple("Decision updated", "await_decision_updated"),
-				tuple("Check decision", "external_task_check_decision"), // Approved
-				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Create decision", "external_task_create_decision"),
 				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
-				// Follow up
+				// Follow up - the first phase this model parks in
 				tuple("Follow up", "follow_up_phase"),
 				tuple("Start follow up phase", "start_follow_up_phase"),
 				tuple("Follow up completed", "await_follow_up_completed"),
@@ -120,7 +89,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 	}
 
 	@Test
-	void test002_stopsInRegistration() throws JacksonException {
+	void test002_approvesTheNotificationAndCreatesThePermitBeforeFollowUp() throws JacksonException {
 		// === Start process ===
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
@@ -132,157 +101,39 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
 
-		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
-		// The WAITING report is asserted by its mapping: the phase, its name and the signal the button carries
+		// The mappings assert every call: the decision written as a draft, linked to the attachment and completed, the permit
+		// created from it and activated, and the WAITING report of follow up with the signal its button carries
 		verifyAllStubs();
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
-				tuple("Start registration phase", "start_registration_phase"));
-	}
 
-	@Test
-	void test003_decisionRejectedBeforeThePhaseCreatesNoAssetAndDoesNotWait() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
-
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "investigation");
-
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
-
-		verifyAllStubs();
-		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
-
-		assertThat(getProcessInstanceRoute(processInstanceId))
-			.extracting(HistoricActivityInstanceDto::getActivityId)
-			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
-			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
-	}
-
-	@Test
-	void test004_cancelledInRegistration() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
-
-		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "registration");
-
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
-
-		// The WAITING report is asserted by its mapping to offer the cancellation alongside the phase gate
-		verifyAllStubs();
-
-		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
+				// No case worker before follow up: three phases pass straight through, the decision phase runs its two steps
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"));
-	}
-
-	@Test
-	void test005_cancelledInInvestigation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
-
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "review");
-		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "investigation");
-
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
-
-		verifyAllStubs();
-
-		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
-				tuple("Review completed", "await_review_completed"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("Investigation completed", "await_investigation_completed"));
-	}
-
-	@Test
-	void test006_cancelledWhileAwaitingTheDecision() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
-
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "investigation");
-
-		// No decision yet, so the phase waits for one, and the cancellation is the only button it offers
-		awaitProcessState(processInstanceId, "await_decision_updated", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
-		awaitReportAt("decision_phase");
-		sendSignal(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES, "process_cancelled");
-
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
-
-		verifyAllStubs();
-
-		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"),
-				tuple("End registration phase", "end_registration_phase"),
-				tuple("Review", "review_phase"),
-				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
-				tuple("Review completed", "await_review_completed"),
-				tuple("End review phase", "end_review_phase"),
-				tuple("Investigation", "investigation_phase"),
-				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("Investigation completed", "await_investigation_completed"),
 				tuple("End investigation phase", "end_investigation_phase"),
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Check decision", "external_task_check_decision"),
-				tuple("Decision outcome", "gateway_decision_outcome"),
-				tuple("Await decision", "gateway_await_decision"));
+				tuple("Create decision", "external_task_create_decision"),
+				tuple("Create asset", "external_task_create_asset"),
+				tuple("End decision phase", "end_decision_phase"),
+
+				// Parked here: the follow up phase has not ended, so neither it nor its catch event is in the route yet
+				tuple("Start follow up phase", "start_follow_up_phase"));
 	}
 
-	/** An approval with conditions grants the permit as well, so the process takes the same path as an approval. */
 	@Test
-	void test007_approvalWithConditionsCreatesThePermit() throws JacksonException {
+	void test003_cancelledInFollowUp() throws JacksonException {
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
 			.withHttpMethod(POST)
@@ -293,47 +144,32 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
 
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES);
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "closure");
+		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
+		// The mappings assert the cancellation offered on the RUNNING report of the decision and next to the gate of follow up,
+		// and the process reported COMPLETED once it is used. The decision and the permit made before it stay as they are.
 		verifyAllStubs();
 
-		assertThat(getProcessInstanceRoute(processInstanceId))
-			.extracting(HistoricActivityInstanceDto::getActivityId)
-			.contains("external_task_check_decision", "gateway_decision_outcome", "external_task_create_asset", "end_decision_phase", "end_process");
-	}
-
-	/** A decision not to try the errand grants no permit, so the phase ends without one and without waiting. */
-	@Test
-	void test008_inadmissibleDecisionCreatesNoPermit() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
-
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "investigation");
-
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
-
-		verifyAllStubs();
-		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
-
-		assertThat(getProcessInstanceRoute(processInstanceId))
-			.extracting(HistoricActivityInstanceDto::getActivityId)
-			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
-			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
+		assertCancelledRoute(processInstanceId,
+				tuple("Start process", "start_process"),
+				tuple("Registration", "registration_phase"),
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("End registration phase", "end_registration_phase"),
+				tuple("Review", "review_phase"),
+				tuple("Start review phase", "start_review_phase"),
+				tuple("End review phase", "end_review_phase"),
+				tuple("Investigation", "investigation_phase"),
+				tuple("Start investigation phase", "start_investigation_phase"),
+				tuple("End investigation phase", "end_investigation_phase"),
+				tuple("Decision", "decision_phase"),
+				tuple("Start decision phase", "start_decision_phase"),
+				tuple("Create decision", "external_task_create_decision"),
+				tuple("Create asset", "external_task_create_asset"),
+				tuple("End decision phase", "end_decision_phase"),
+				tuple("Follow up", "follow_up_phase"),
+				tuple("Start follow up phase", "start_follow_up_phase"),
+				tuple("Follow up completed", "await_follow_up_completed"));
 	}
 }

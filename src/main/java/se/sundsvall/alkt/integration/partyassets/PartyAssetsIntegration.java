@@ -39,8 +39,8 @@ public class PartyAssetsIntegration {
 		this.properties = properties;
 	}
 
-	public Optional<String> findAssetId(final String municipalityId, final String partyId, final String assetId) {
-		return idsOf(partyAssetsClient.getAssets(municipalityId, partyId, assetId).getBody()).findFirst();
+	public Optional<Asset> findAsset(final String municipalityId, final String partyId, final String assetId) {
+		return Optional.ofNullable(partyAssetsClient.getAssets(municipalityId, partyId, assetId).getBody()).orElse(emptyList()).stream().findFirst();
 	}
 
 	/** The id comes from the customer, so one that names no asset is not something a retry fixes. */

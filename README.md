@@ -5,8 +5,9 @@ Support Management owns the errand, this service owns the process behind it.</p>
 
 <p>The service is a skeleton. The API, the engine integration, the reporting and the test harness are in place, but the
 process models are phase structures with almost nothing inside them. Every model has the work step that reports a process
-as completed. The decision phase of the alcohol-serving, tobacco and e-cigarette models also checks the decision and
-creates, changes or ends the permit it concerns. The reconciliation is described at the end.</p>
+as completed. The decision phase of the alcohol-serving and tobacco models also checks the decision and creates, changes
+or ends the permit it concerns. In the folköl and e-cigarette models it makes the decision itself and creates the
+permit. The reconciliation is described at the end.</p>
 
 <h3>The dialogue with Support Management</h3>
 
@@ -263,7 +264,7 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 
 <p>All thirteen errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
 Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The three folköl
-models are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
+models and <span class="code">e-cigarette-sales</span> are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
 first three phases pass straight through and Support Management first hears from them in the decision phase, which
 makes the decision and creates the permit on its own, see the next section. Follow up is the first phase that waits.</p>
 
@@ -378,10 +379,10 @@ interface.</p>
 
 <h3>The decision phase and the permit</h3>
 
-<p>In the three alcohol-serving models, the three tobacco models and <span class="code">e-cigarette-sales</span> the
-decision phase waits for the decision itself, not for a button. <span class="code">catering-occasion</span> still
-waits for <span class="code">decision_completed</span>. The three folköl models make the decision themselves and wait
-for no one.</p>
+<p>In the three alcohol-serving models and the three tobacco models the decision phase waits for the decision itself,
+not for a button. <span class="code">catering-occasion</span> still waits for <span class="code">decision_completed</span>.
+The three folköl models and <span class="code">e-cigarette-sales</span> make the decision themselves and wait for no
+one.</p>
 
 <p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
 an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
@@ -420,9 +421,9 @@ was not waiting for it, since such an event correlates against nothing and is go
 </table>
 
 <p>The outcomes live in two places: <span class="code">Constants</span> says which are known and which create a permit,
-and the gateways of the seven models that read the decision list them in their conditions.
+and the gateways of the six models that read the decision list them in their conditions.
 <span class="code">DecisionOutcomeGatewayTest</span> holds the gateways to <span class="code">Constants</span>. A new
-outcome needs <span class="code">Constants</span> and all seven gateways, and must be registered for the namespace in
+outcome needs <span class="code">Constants</span> and all six gateways, and must be registered for the namespace in
 Support Management as well.</p>
 
 <p>The <span class="code">type</span> of the permit in party-assets follows from the process key, through a map in
@@ -518,8 +519,9 @@ active with that last day already set, writes nothing.</p>
 <p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
 A case worker cannot move the phase on by any other means.</p>
 
-<p>In the three folköl models <span class="code">CreateDecisionTask</span> approves the notification, and
-<span class="code">CreateAssetTask</span> then creates the permit from that decision as above. The decision has the
+<p>In the three folköl models and <span class="code">e-cigarette-sales</span>,
+<span class="code">CreateDecisionTask</span> approves the notification, and <span class="code">CreateAssetTask</span>
+then creates the permit from that decision as above. The decision has the
 type <span class="code">PERMIT</span>, the outcome <span class="code">APPROVAL</span>, the method
 <span class="code">AUTOMATIC</span>, a title per process and the title of the errand as description. It is valid from
 the Swedish date it is made and has no last day. Every attachment of the errand is linked to it, while a manual decision
@@ -557,8 +559,9 @@ instead, since an action errand once created is found by its tag and could not b
 <p><span class="code">NotifyCustomerTask</span> writes a message to the customer in the external conversation of the
 errand in Support Management. The message shows on the errand and in Mina sidor, and Support Management sends the
 customer a notice by SMS or e-mail. The step does not call Messaging itself. The step opens the review phase of every
-model with a manual gate, and tells the customer that the processing has started. The two folköl models are
-notifications that are approved automatically, so they have no such step.</p>
+model with a manual gate, and tells the customer that the processing has started. The folköl models and
+<span class="code">e-cigarette-sales</span> are notifications that are approved automatically, so they have no such
+step.</p>
 
 <p>The text lives in configuration under <span class="code">customer-message.texts</span>, so it can be changed
 without a release; the service picks up a new text when it restarts. The step names the text in its input parameter

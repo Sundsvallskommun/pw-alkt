@@ -1,0 +1,74 @@
+{
+	"name": "decision_api-support-management-post-decision",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "DRAFT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.type",
+					"equalTo": "PERMIT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.method",
+					"equalTo": "AUTOMATIC"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.outcome",
+					"equalTo": "APPROVAL"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"equalTo": "Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.description",
+					"equalTo": "Anmälan om försäljning av elektroniska cigaretter, Kafé Solsidan"
+				}
+			},
+			{
+				"matchesJsonPath": "$.validFrom"
+			},
+			{
+				"matchesJsonPath": "$.decidedAt"
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.decidedBy",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": "$[?(!@.validTo)]"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15/decisions/4a6c8e02-1b3d-4f57-9a8c-0d2e4f6a8b1c"
+		},
+		"status": 201
+	}
+}

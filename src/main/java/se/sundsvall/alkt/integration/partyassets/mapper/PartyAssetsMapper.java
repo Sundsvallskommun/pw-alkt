@@ -104,16 +104,19 @@ public final class PartyAssetsMapper {
 	}
 
 	/**
-	 * Ends the permit on the last day the decision gives, else the day it was decided. A last day still to come is left to
-	 * party-assets, which expires the permit once it has passed. No status reason, as party-assets refuses one unless
-	 * reasons are registered for the status.
+	 * Ends the permit on the last day the decision gives, else the day it was decided, but never later than the permit
+	 * already ends. A last day that has not passed is left to party-assets, which expires the permit the day after. No
+	 * status reason, as party-assets refuses one unless reasons are registered for the status.
 	 */
-	public static AssetUpdateRequest toAssetClosureRequest(final Decision decision) {
-		final var validTo = Optional.ofNullable(decision.getValidTo())
+	public static AssetUpdateRequest toAssetClosureRequest(final Asset current, final Decision decision, final LocalDate today) {
+		final var lastDay = Optional.ofNullable(decision.getValidTo())
 			.or(() -> toDecidedOn(decision))
-			.orElseGet(() -> LocalDate.now(SWEDISH_TIME));
+			.orElse(today);
+		final var validTo = Optional.ofNullable(current.getValidTo())
+			.filter(currentLastDay -> currentLastDay.isBefore(lastDay))
+			.orElse(lastDay);
 		final var request = new AssetUpdateRequest().validTo(validTo);
-		if (!validTo.isAfter(LocalDate.now(SWEDISH_TIME))) {
+		if (validTo.isBefore(today)) {
 			request.status(EXPIRED);
 		}
 		return request;

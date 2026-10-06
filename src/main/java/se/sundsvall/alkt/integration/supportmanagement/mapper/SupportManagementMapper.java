@@ -36,6 +36,7 @@ import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETERS_OUTSIDE_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
@@ -55,7 +56,8 @@ public final class SupportManagementMapper {
 	private static final Map<String, String> DECISION_TITLES = Map.of(
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Anmälan om försäljning av folköl",
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, "Anmälan om servering av folköl",
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, "Anmälan om försäljning och servering av folköl");
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, "Anmälan om försäljning och servering av folköl",
+		PROCESS_KEY_E_CIGARETTE_SALES, "Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
 
 	private static final Map<String, String> CHANGE_DRAFT_TITLES = Map.of(
 		PROCESS_KEY_ALCOHOL_SERVING_CHANGE, "Ändring av serveringstillstånd",

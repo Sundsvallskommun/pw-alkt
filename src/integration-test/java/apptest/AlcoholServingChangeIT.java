@@ -10,16 +10,12 @@ import tools.jackson.core.JacksonException;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/AlcoholServingChangeIT/", classes = Application.class)
@@ -239,15 +235,7 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING_CHANGE);
 
-		await()
-			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, PROCESS_KEY_ALCOHOL_SERVING_CHANGE).stream()
-				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())
-					&& "external_task_create_change_draft".equals(incident.getActivityId())));
-		// The failure report and the alert are sent after the incident is raised, the alert last
-		await()
-			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.untilAsserted(() -> wiremock.verify(postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack"))));
+		awaitIncidentAt(PROCESS_KEY_ALCOHOL_SERVING_CHANGE, processInstanceId, "external_task_create_change_draft");
 
 		verifyAllStubs();
 		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-support-management/.*/decisions")));

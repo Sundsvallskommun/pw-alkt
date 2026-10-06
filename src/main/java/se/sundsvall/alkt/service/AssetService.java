@@ -4,8 +4,8 @@ import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Optional;
 import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
@@ -45,16 +45,18 @@ import static se.sundsvall.alkt.util.FailureDescription.describe;
 public class AssetService {
 
 	private static final ValidUuidConstraintValidator UUID_VALIDATOR = new ValidUuidConstraintValidator();
-	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final PartyAssetsIntegration partyAssetsIntegration;
 	private final TemplatingIntegration templatingIntegration;
+	private final Clock clock;
 
-	AssetService(final SupportManagementIntegration supportManagementIntegration, final PartyAssetsIntegration partyAssetsIntegration, final TemplatingIntegration templatingIntegration) {
+	AssetService(final SupportManagementIntegration supportManagementIntegration, final PartyAssetsIntegration partyAssetsIntegration, final TemplatingIntegration templatingIntegration,
+		final Clock clock) {
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.partyAssetsIntegration = partyAssetsIntegration;
 		this.templatingIntegration = templatingIntegration;
+		this.clock = clock;
 	}
 
 	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId) {
@@ -83,7 +85,11 @@ public class AssetService {
 		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, toNoPermitHolderMessage(errandId)));
 
-		return partyAssetsIntegration.findAssetId(municipalityId, partyId, decision.getId())
+		return partyAssetsIntegration.findAsset(municipalityId, partyId, decision.getId())
+			.map(asset -> {
+				requirePermitType(asset, permitType);
+				return asset.getId();
+			})
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
 				return createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate, permitType);
@@ -127,7 +133,7 @@ public class AssetService {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		final var versioned = getPermitOfTheErrand(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, permitType);
 		final var asset = versioned.asset();
-		final var closure = toAssetClosureRequest(decision);
+		final var closure = toAssetClosureRequest(asset, decision, LocalDate.now(clock));
 
 		// Why: a rerun after the PATCH went through finds the permit already ended, or already set to end.
 		if (!isClosed(asset, closure)) {
@@ -163,10 +169,14 @@ public class AssetService {
 		if (!partyId.equals(asset.getPartyId())) {
 			throw new NonRetryableException("Asset '%s' does not belong to the permit holder of errand '%s'".formatted(assetId, errandId));
 		}
-		if (!permitType.equals(asset.getType())) {
-			throw new NonRetryableException("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(assetId, asset.getType(), permitType));
-		}
+		requirePermitType(asset, permitType);
 		return versioned;
+	}
+
+	private static void requirePermitType(final Asset asset, final String permitType) {
+		if (!permitType.equals(asset.getType())) {
+			throw new NonRetryableException("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(asset.getId(), asset.getType(), permitType));
+		}
 	}
 
 	private static void requireActive(final Asset asset) {
@@ -199,17 +209,17 @@ public class AssetService {
 	}
 
 	// Why: a change may end the permit today at the earliest, never backdate its end.
-	private static void requireNotPassed(final Decision decision, final String errandId) {
+	private void requireNotPassed(final Decision decision, final String errandId) {
 		Optional.ofNullable(decision.getValidTo())
-			.filter(validTo -> validTo.isBefore(LocalDate.now(SWEDISH_TIME)))
+			.filter(validTo -> validTo.isBefore(LocalDate.now(clock)))
 			.ifPresent(validTo -> {
 				throw new NonRetryableException("Decision of errand '%s' is valid to %s, which has passed, so the permit is not changed".formatted(errandId, validTo));
 			});
 	}
 
-	private static void requireNotEnded(final Decision decision, final String errandId) {
+	private void requireNotEnded(final Decision decision, final String errandId) {
 		Optional.ofNullable(decision.getValidTo())
-			.filter(validTo -> !validTo.isAfter(LocalDate.now(SWEDISH_TIME)))
+			.filter(validTo -> !validTo.isAfter(LocalDate.now(clock)))
 			.ifPresent(validTo -> {
 				throw new NonRetryableException("Decision of errand '%s' is valid to %s, which is not after today, so the permit cannot be activated".formatted(errandId, validTo));
 			});

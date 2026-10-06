@@ -11,11 +11,13 @@ import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,7 +27,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.exception.NonRetryableException;
@@ -66,6 +67,7 @@ class AssetServiceTest {
 	private static final String CERTIFICATE_TEMPLATE = "serving-permit-certificate";
 	private static final String VERSION = "\"3\"";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
+	private static final LocalDate TODAY = LocalDate.of(2026, 10, 6);
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
@@ -88,8 +90,14 @@ class AssetServiceTest {
 	@Captor
 	private ArgumentCaptor<Map<String, Object>> templateParametersCaptor;
 
-	@InjectMocks
 	private AssetService assetService;
+
+	// Why: one day for the test and the service alike, as both reading the clock would race midnight.
+	@BeforeEach
+	void setUp() {
+		assetService = new AssetService(supportManagementIntegrationMock, partyAssetsIntegrationMock, templatingIntegrationMock,
+			Clock.fixed(TODAY.atTime(12, 0).atZone(SWEDISH_TIME).toInstant(), SWEDISH_TIME));
+	}
 
 	@ParameterizedTest
 	@ValueSource(strings = {
@@ -249,7 +257,7 @@ class AssetServiceTest {
 	void findOrCreateAssetAnswersWithTheExistingAssetOfTheDecision() {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
-		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of("existing-asset-id"));
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset().id("existing-asset-id")));
 
 		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo("existing-asset-id");
 
@@ -260,16 +268,29 @@ class AssetServiceTest {
 	/** The permit was created when its decision still ended after today, so a rerun does not check it again. */
 	@Test
 	void findOrCreateAssetAnswersWithTheExistingAssetOfADecisionThatHasEnded() {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().validTo(LocalDate.now(SWEDISH_TIME).minusDays(1))));
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().validTo(TODAY.minusDays(1))));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
-		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of("existing-asset-id"));
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset().id("existing-asset-id")));
 
 		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo("existing-asset-id");
 	}
 
 	@Test
+	void findOrCreateAssetFailsWithoutRetryOnAnExistingAssetOfAnotherType() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset().type("PERMIT")));
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Asset '%s' is of type 'PERMIT', the process handles only type '%s'".formatted(ASSET_ID, PERMIT_TYPE_ALCOHOL_SERVING));
+
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
+	}
+
+	@Test
 	void findOrCreateAssetCreatesAPermitThatEndsAfterToday() {
-		givenADraftFor(approval().validTo(LocalDate.now(SWEDISH_TIME).plusDays(2)));
+		givenADraftFor(approval().validTo(TODAY.plusDays(2)));
 
 		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
 
@@ -281,10 +302,10 @@ class AssetServiceTest {
 		0, -1
 	})
 	void findOrCreateAssetFailsWithoutRetryOnADecisionThatDoesNotEndAfterToday(final long daysFromToday) {
-		final var validTo = LocalDate.now(SWEDISH_TIME).plusDays(daysFromToday);
+		final var validTo = TODAY.plusDays(daysFromToday);
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().validTo(validTo)));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
-		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING))
 			.isInstanceOf(NonRetryableException.class)
@@ -528,18 +549,18 @@ class AssetServiceTest {
 
 	@Test
 	void updateAssetEndsThePermitTodayAtTheEarliest() {
-		givenAnErrandNaming(approval().validTo(LocalDate.now(SWEDISH_TIME)));
+		givenAnErrandNaming(approval().validTo(TODAY));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
-		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.now(SWEDISH_TIME));
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(TODAY);
 	}
 
 	@Test
 	void updateAssetFailsWithoutRetryOnAValidToThatHasPassed() {
-		final var validTo = LocalDate.now(SWEDISH_TIME).minusDays(1);
+		final var validTo = TODAY.minusDays(1);
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().validTo(validTo)));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
@@ -788,16 +809,16 @@ class AssetServiceTest {
 	}
 
 	@Test
-	void closeAssetEndsThePermitWhoseLastDayHasCome() {
-		final var today = LocalDate.now(SWEDISH_TIME);
-		givenAnErrandNaming(approval().validTo(today));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(today)));
+	void closeAssetEndsThePermitWhoseLastDayHasPassed() {
+		final var lastDay = TODAY.minusDays(1);
+		givenAnErrandNaming(approval().validTo(lastDay));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(TODAY.plusDays(30))));
 
 		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getStatus()).isEqualTo(Status.EXPIRED);
-		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(today);
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(lastDay);
 		assertThat(updateCaptor.getValue().getStatusReason()).isNull();
 		assertThat(updateCaptor.getValue().getAdditionalParameters()).isNull();
 		verifyNoInteractions(templatingIntegrationMock);
@@ -805,8 +826,30 @@ class AssetServiceTest {
 	}
 
 	@Test
+	void closeAssetKeepsThePermitValidOnItsLastDay() {
+		givenAnErrandNaming(approval().validTo(TODAY));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getStatus()).isNull();
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(TODAY);
+	}
+
+	@Test
+	void closeAssetNeverExtendsThePermit() {
+		givenAnErrandNaming(approval().validTo(TODAY.plusDays(90)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(TODAY.plusDays(30))));
+
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+	}
+
+	@Test
 	void closeAssetSetsTheLastDayOfAPermitThatEndsLater() {
-		final var lastDay = LocalDate.now(SWEDISH_TIME).plusDays(30);
+		final var lastDay = TODAY.plusDays(30);
 		givenAnErrandNaming(approval().validTo(lastDay));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
@@ -820,7 +863,7 @@ class AssetServiceTest {
 	/** A rerun after the PATCH went through finds the last day already set. */
 	@Test
 	void closeAssetLeavesAPermitAlreadySetToEnd() {
-		final var lastDay = LocalDate.now(SWEDISH_TIME).plusDays(30);
+		final var lastDay = TODAY.plusDays(30);
 		givenAnErrandNaming(approval().validTo(lastDay));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(lastDay)));
 
@@ -911,7 +954,7 @@ class AssetServiceTest {
 	private void givenADraftFor(final Decision decision) {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(decision));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
-		when(partyAssetsIntegrationMock.findAssetId(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
 		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
 	}
 

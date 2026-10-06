@@ -1,0 +1,25 @@
+{
+	"name": "decision_api-support-management-get-attachments",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "6e8a0c24-3d5f-4b79-8c0e-2f4a6b8c0d3e",
+				"fileName": "anmalan.pdf",
+				"mimeType": "application/pdf"
+			}
+		],
+		"status": 200
+	}
+}
