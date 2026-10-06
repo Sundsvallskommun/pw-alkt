@@ -46,6 +46,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
+import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.UPDATE;
 
 /**
@@ -61,7 +62,6 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	private static final String TOKEN_PATH = "/api-gateway/token";
 	// The external task client's client registration carries no scope, unlike the token requests of the Feign clients
 	private static final String EXTERNAL_TASK_CLIENT_TOKEN_REQUEST = "grant_type=client_credentials";
-	protected static final String TENANT_ID_ALKT = "ALKT";
 	// The errand processes plus process-reconciliation, which is deployed on its own and has no key in PROCESS_KEYS
 	private static final int EXPECTED_DEPLOYMENTS = PROCESS_KEYS.size() + 1;
 	private static final JsonMapper JSON_MAPPER = JsonMapper.builder().findAndAddModules().build();

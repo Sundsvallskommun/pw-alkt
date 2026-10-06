@@ -9,9 +9,6 @@ import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InOrder;
@@ -32,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
@@ -43,7 +41,6 @@ class DecisionServiceTest {
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
 	private static final String DECISION_ID = "decision-id";
-	private static final String PERMIT_TYPE = "AlcoholServingPermit";
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
@@ -172,10 +169,10 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(supportManagementIntegrationMock.createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), decisionCaptor.capture())).thenReturn(DECISION_ID);
 
-		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE, PROCESS_KEY_ALCOHOL_SERVING_CHANGE)).isEqualTo(DECISION_ID);
+		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING, PROCESS_KEY_ALCOHOL_SERVING_CHANGE)).isEqualTo(DECISION_ID);
 
 		final InOrder inOrder = inOrder(assetServiceMock, supportManagementIntegrationMock);
-		inOrder.verify(assetServiceMock).getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, PERMIT_TYPE);
+		inOrder.verify(assetServiceMock).getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING);
 		inOrder.verify(supportManagementIntegrationMock).createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
 		assertThat(decisionCaptor.getValue().getStatus()).isEqualTo("DRAFT");
 		assertThat(decisionCaptor.getValue().getTitle()).isEqualTo("Ändring av serveringstillstånd");
@@ -184,22 +181,9 @@ class DecisionServiceTest {
 
 	@Test
 	void createChangeDraftFailsForAProcessWithoutAChangeDraft() {
-		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE, PROCESS_KEY_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING, PROCESS_KEY_ALCOHOL_SERVING))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING);
-
-		verifyNoInteractions(supportManagementIntegrationMock, assetServiceMock);
-	}
-
-	@ParameterizedTest
-	@NullSource
-	@ValueSource(strings = {
-		"", " "
-	})
-	void createChangeDraftFailsWithoutAPermitTypeEvenWithADraftOnTheErrand(final String permitType) {
-		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, permitType, PROCESS_KEY_ALCOHOL_SERVING_CHANGE))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("The step has no permit type, set input parameter 'permitType' in the bpmn schema");
 
 		verifyNoInteractions(supportManagementIntegrationMock, assetServiceMock);
 	}
@@ -209,7 +193,7 @@ class DecisionServiceTest {
 	void createChangeDraftAnswersWithTheDecisionAlreadyOnTheErrand() {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Decision().id(DECISION_ID).status("DRAFT")));
 
-		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE, PROCESS_KEY_ALCOHOL_SERVING_CHANGE)).isEqualTo(DECISION_ID);
+		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING, PROCESS_KEY_ALCOHOL_SERVING_CHANGE)).isEqualTo(DECISION_ID);
 
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
 		verifyNoInteractions(assetServiceMock);
@@ -220,9 +204,9 @@ class DecisionServiceTest {
 		final var errand = new Errand();
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
-		when(assetServiceMock.getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, PERMIT_TYPE)).thenThrow(new NonRetryableException("Errand 'errand-id' names no asset to change"));
+		when(assetServiceMock.getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).thenThrow(new NonRetryableException("Errand 'errand-id' names no asset to change"));
 
-		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE, PROCESS_KEY_ALCOHOL_SERVING_CHANGE))
+		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING, PROCESS_KEY_ALCOHOL_SERVING_CHANGE))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' names no asset to change");
 

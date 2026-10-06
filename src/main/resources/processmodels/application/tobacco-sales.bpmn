@@ -153,7 +153,6 @@
         <bpmn:extensionElements>
           <camunda:inputOutput>
             <camunda:inputParameter name="certificateTemplate">tobacco-permit-certificate</camunda:inputParameter>
-            <camunda:inputParameter name="permitType">TobaccoSalesPermit</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_gateway_to_create_asset</bpmn:incoming>

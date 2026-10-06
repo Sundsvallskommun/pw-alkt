@@ -38,6 +38,15 @@ public final class Constants {
 	// Outside PROCESS_KEYS on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
 
+	// The type in party-assets of the permits a process creates and changes, which keeps a change errand from changing
+	// another kind of permit.
+	public static final String PERMIT_TYPE_ALCOHOL_SERVING = "AlcoholServingPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES = "LowAlcoholBeerSalesPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING = "LowAlcoholBeerServingPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingPermit";
+	public static final String PERMIT_TYPE_TOBACCO_SALES = "TobaccoSalesPermit";
+	public static final String PERMIT_TYPE_E_CIGARETTE_SALES = "ECigaretteSalesPermit";
+
 	// Checked against the process consumer configured for the namespace; a report from anyone else is rejected.
 	public static final String PROCESS_SERVICE = "pw-alkt";
 
@@ -134,9 +143,6 @@ public final class Constants {
 	public static final String PROCESS_VARIABLE_MESSAGE = "message";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
-	// An input parameter of the step in the bpmn schema, not a process variable. The type in party-assets of the permits
-	// the process creates and changes, which keeps a change errand from changing another kind of permit.
-	public static final String PROCESS_VARIABLE_PERMIT_TYPE = "permitType";
 	// Input parameters of the step in the bpmn schema, not process variables.
 	public static final String PROCESS_VARIABLE_PROTOCOL_FILE_NAME = "protocolFileName";
 	public static final String PROCESS_VARIABLE_PROTOCOL_TEMPLATE = "protocolTemplate";

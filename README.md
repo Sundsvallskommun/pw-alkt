@@ -425,13 +425,14 @@ and the gateways of the seven models that read the decision list them in their c
 outcome needs <span class="code">Constants</span> and all seven gateways, and must be registered for the namespace in
 Support Management as well.</p>
 
-<p>Each step that creates, changes or ends a permit has the input parameter <span class="code">permitType</span>, which
-is the <span class="code">type</span> of the permit in party-assets: <span class="code">AlcoholServingPermit</span>,
-<span class="code">TobaccoSalesPermit</span>, <span class="code">ECigaretteSalesPermit</span> or one of the three folköl
-types. A new permit gets it as its type, and a step that changes or ends a permit refuses one of another type with an
-incident, so a change errand cannot reach another kind of permit of the same holder. The comparison is exact, so the
-models that share a kind of permit must spell it the same way. A step without the parameter raises an incident before
-it calls anything.</p>
+<p>The <span class="code">type</span> of the permit in party-assets follows from the process key, through a map in
+<span class="code">PartyAssetsMapper</span>: <span class="code">AlcoholServingPermit</span> for the three
+alcohol-serving models, <span class="code">TobaccoSalesPermit</span> for the three tobacco models,
+<span class="code">ECigaretteSalesPermit</span> for <span class="code">e-cigarette-sales</span>, and a type of its own
+for each folköl model. A new permit gets it as its type, and a step that changes or ends a permit refuses one of another
+type with an incident, so a change errand cannot reach another kind of permit of the same holder. A process with a
+permit step and no type in the map raises an incident at that step; <span class="code">PermitTypeModelTest</span>
+catches it at build time.</p>
 
 <p><span class="code">CreateAssetTask</span> builds the permit in party-assets from a decision that grants it. The id of
 the decision is the <span class="code">assetId</span> of the permit, and the party is the stakeholder with the role
@@ -455,6 +456,7 @@ template; the template is strict, and Templating answers 400 with the name of a 
 the decision, so the draft is removed and the step raises an incident at once instead of retrying.</p>
 
 <p>In <span class="code">alcohol-serving-addition</span> the addition becomes a separate permit next to the main one.
+It has the same type as the main permit, and <span class="code">alcohol-serving-change</span> changes it the same way.
 A permanent permit has no <span class="code">validTo</span>. party-assets refuses to activate a permit whose
 <span class="code">validTo</span> is not after today, so the step checks a decision that has one before it creates the
 draft, and raises an incident at once if it has already ended. A 400 on activation is not retried either.</p>

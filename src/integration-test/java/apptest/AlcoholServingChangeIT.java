@@ -19,6 +19,7 @@ import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/AlcoholServingChangeIT/", classes = Application.class)
