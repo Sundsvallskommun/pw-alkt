@@ -24,6 +24,7 @@ import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
@@ -63,7 +64,8 @@ public final class PartyAssetsMapper {
 				.formatted(processKey, PERMIT_TYPES.keySet())));
 	}
 
-	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final String permitType) {
+	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final String permitType,
+		final String restaurantNumber) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
 			.status(DRAFT)
@@ -74,7 +76,7 @@ public final class PartyAssetsMapper {
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())
 			.description(decision.getDescription())
-			.additionalParameters(toAdditionalParameters(decision, errandId));
+			.additionalParameters(toAdditionalParameters(decision, errandId, restaurantNumber));
 	}
 
 	/**
@@ -110,10 +112,12 @@ public final class PartyAssetsMapper {
 			.orElse(null);
 	}
 
-	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId) {
+	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId, final String restaurantNumber) {
 		final var parameters = new LinkedHashMap<String, String>();
 		parameters.put(PERMIT_PARAMETER_ERRAND_ID, errandId);
 		parameters.putAll(toDecisionParameters(decision));
+		// Why: after the decision's parameters, so the number licensed business holds wins over one written in the decision.
+		Optional.ofNullable(restaurantNumber).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_RESTAURANT_NUMBER, value));
 		return parameters;
 	}
 

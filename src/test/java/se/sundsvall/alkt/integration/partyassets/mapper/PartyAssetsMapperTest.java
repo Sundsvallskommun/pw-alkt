@@ -13,6 +13,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
@@ -24,6 +27,7 @@ import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
@@ -65,7 +69,7 @@ class PartyAssetsMapperTest {
 				new Parameter().key("serveringsyta").values(List.of("Servering får ske i matsalen."))))
 			.terms(List.of(new DecisionTerm().category("villkor").text("Ordningsvakt ska finnas efter 23.00.")));
 
-		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING);
+		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null);
 
 		assertThat(result.getAssetId()).isEqualTo(decision.getId());
 		assertThat(result.getOrigin()).isEqualTo(ORIGIN);
@@ -89,7 +93,7 @@ class PartyAssetsMapperTest {
 	void toAssetCreateRequestLeavesOutAParameterWithoutValue() {
 		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringstid"), new Parameter().key("serveringsyta").values(List.of(" "))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
@@ -98,7 +102,7 @@ class PartyAssetsMapperTest {
 			.legalBasis("8 kap. 12 § alkohollagen")
 			.parameters(List.of(new Parameter().key(PERMIT_PARAMETER_LEGAL_BASIS).values(List.of("Angiven av handläggaren."))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getAdditionalParameters()).containsExactly(
 			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),
 			entry(PERMIT_PARAMETER_LEGAL_BASIS, "Angiven av handläggaren."));
 	}
@@ -107,7 +111,24 @@ class PartyAssetsMapperTest {
 	void toAssetCreateRequestKeepsTheErrandIdOverAParameterOfTheSameKey() {
 		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_ERRAND_ID).values(List.of("another-errand"))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+	}
+
+	@Test
+	void toAssetCreateRequestCarriesTheRestaurantNumberOverAParameterOfTheSameKey() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_RESTAURANT_NUMBER).values(List.of("from-a-parameter"))));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, "22810001").getAdditionalParameters()).containsExactly(
+			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),
+			entry(PERMIT_PARAMETER_RESTAURANT_NUMBER, "22810001"));
+	}
+
+	@ParameterizedTest
+	@NullAndEmptySource
+	@ValueSource(strings = " ")
+	void toAssetCreateRequestLeavesOutARestaurantNumberThatIsNotThere(final String restaurantNumber) {
+		assertThat(toAssetCreateRequest(new Decision(), ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, restaurantNumber).getAdditionalParameters())
+			.containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
@@ -116,7 +137,7 @@ class PartyAssetsMapperTest {
 			.parameters(List.of(new Parameter().key(PERMIT_PARAMETER_CONDITIONS).values(List.of("Från en parameter."))))
 			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getAdditionalParameters()).containsExactly(
 			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),
 			entry(PERMIT_PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
 	}
@@ -125,21 +146,21 @@ class PartyAssetsMapperTest {
 	void toAssetCreateRequestLeavesOutConditionsWithoutText() {
 		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(1).text(" ")));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
 	void toAssetCreateRequestJoinsTheValuesOfAParameterLeavingOutBlankOnes() {
 		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringsyta").values(List.of("Matsalen", " ", "Uteserveringen"))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsEntry("serveringsyta", "Matsalen, Uteserveringen");
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getAdditionalParameters()).containsEntry("serveringsyta", "Matsalen, Uteserveringen");
 	}
 
 	@Test
 	void toAssetCreateRequestIssuesOnTheDayOfTheDecisionWithoutValidFrom() {
 		final var decision = new Decision().decidedAt(OffsetDateTime.of(2026, 9, 20, 23, 30, 0, 0, ZoneOffset.ofHours(2)));
 
-		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING);
+		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null);
 
 		assertThat(result.getIssued()).isEqualTo(LocalDate.of(2026, 9, 20));
 		assertThat(result.getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
@@ -149,7 +170,7 @@ class PartyAssetsMapperTest {
 	void toAssetCreateRequestIssuesOnTheSwedishDayOfADecisionMadeJustAfterMidnight() {
 		final var decision = new Decision().decidedAt(OffsetDateTime.of(2026, 9, 19, 22, 30, 0, 0, ZoneOffset.UTC));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getIssued()).isEqualTo(LocalDate.of(2026, 9, 20));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getIssued()).isEqualTo(LocalDate.of(2026, 9, 20));
 	}
 
 	@Test
@@ -157,13 +178,13 @@ class PartyAssetsMapperTest {
 		final var justBeforeMidnight = new Decision().decidedAt(OffsetDateTime.of(2026, 1, 14, 22, 30, 0, 0, ZoneOffset.UTC));
 		final var justAfterMidnight = new Decision().decidedAt(OffsetDateTime.of(2026, 1, 14, 23, 30, 0, 0, ZoneOffset.UTC));
 
-		assertThat(toAssetCreateRequest(justBeforeMidnight, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getIssued()).isEqualTo(LocalDate.of(2026, 1, 14));
-		assertThat(toAssetCreateRequest(justAfterMidnight, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getIssued()).isEqualTo(LocalDate.of(2026, 1, 15));
+		assertThat(toAssetCreateRequest(justBeforeMidnight, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getIssued()).isEqualTo(LocalDate.of(2026, 1, 14));
+		assertThat(toAssetCreateRequest(justAfterMidnight, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getIssued()).isEqualTo(LocalDate.of(2026, 1, 15));
 	}
 
 	@Test
 	void toAssetCreateRequestLeavesIssuedOutWithoutAnyDate() {
-		assertThat(toAssetCreateRequest(new Decision(), ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getIssued()).isNull();
+		assertThat(toAssetCreateRequest(new Decision(), ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getIssued()).isNull();
 	}
 
 	@Test
@@ -216,6 +237,14 @@ class PartyAssetsMapperTest {
 			entry(PERMIT_PARAMETER_LEGAL_BASIS, "8 kap. 2 § alkohollagen"),
 			entry("serveringstid", "11.00–01.00"),
 			entry(PERMIT_PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00."));
+	}
+
+	@Test
+	void toAssetUpdateRequestKeepsTheRestaurantNumberOfThePermit() {
+		final var current = new Asset().additionalParameters(Map.of(PERMIT_PARAMETER_ERRAND_ID, "granting-errand-id", PERMIT_PARAMETER_RESTAURANT_NUMBER, "22810001"));
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_RESTAURANT_NUMBER).values(List.of())));
+
+		assertThat(toAssetUpdateRequest(current, decision).getAdditionalParameters()).containsEntry(PERMIT_PARAMETER_RESTAURANT_NUMBER, "22810001");
 	}
 
 	/**

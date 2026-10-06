@@ -69,22 +69,23 @@ public class AssetService {
 	}
 
 	/**
-	 * Without a certificate template the asset gets no certificate. A decision with a validTo must end after today, as
-	 * party-assets refuses to activate the permit otherwise.
+	 * Without a certificate template the asset gets no certificate, and without a restaurant number it carries none. A
+	 * decision with a validTo must end after today, as party-assets refuses to activate the permit otherwise.
 	 */
-	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final String permitType) {
+	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final String permitType,
+		final String restaurantNumber) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		if (isBlank(decision.getId())) {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
 		}
 
 		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
-			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, toNoPermitHolderMessage(errandId)));
+			.orElseThrow(() -> new NonRetryableException(toNoPermitHolderMessage(errandId)));
 
 		return partyAssetsIntegration.findAssetId(municipalityId, partyId, decision.getId())
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate, permitType);
+				return createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate, permitType, restaurantNumber);
 			});
 	}
 
@@ -181,16 +182,18 @@ public class AssetService {
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
 	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final String partyId,
-		final String certificateTemplate, final String permitType) {
-		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, toAssetCreateRequest(decision, errandId, partyId, permitType));
+		final String certificateTemplate, final String permitType, final String restaurantNumber) {
+		final var request = toAssetCreateRequest(decision, errandId, partyId, permitType, restaurantNumber);
+		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, request);
 
 		try {
 			Optional.ofNullable(decision.getAttachments()).orElse(emptyList())
 				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
+			// Why: rendered from the parameters the permit gets, as on a change, so the certificate shows the restaurant number.
 			if (isNotBlank(certificateTemplate)) {
 				partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
-					toCertificateFile(templatingIntegration.renderPdf(municipalityId, certificateTemplate, toTemplateParameters(decision))));
+					toCertificateFile(templatingIntegration.renderPdf(municipalityId, certificateTemplate, toTemplateParameters(decision, request.getAdditionalParameters()))));
 			}
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);
 		} catch (final NonRetryableException e) {

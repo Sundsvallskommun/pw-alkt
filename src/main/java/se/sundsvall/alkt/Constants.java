@@ -117,11 +117,13 @@ public final class Constants {
 	public static final String PERMIT_PARAMETER_LEGAL_BASIS = "legalBasis";
 	public static final String PERMIT_PARAMETER_DELEGATION_REFERENCE = "delegationReference";
 	public static final String PERMIT_PARAMETER_CONDITIONS = "conditions";
+	// Named as the placeholder of the permit certificate, which is rendered from the parameters of the permit.
+	public static final String PERMIT_PARAMETER_RESTAURANT_NUMBER = "premisesRestaurantNumber";
 	public static final Set<String> PERMIT_PARAMETERS_OF_THE_PROCESS = Set.of(PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
-		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS);
+		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, PERMIT_PARAMETER_RESTAURANT_NUMBER);
 	// The parameters of a change errand that are not part of the change the customer asks for. Every other one is.
 	public static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
-		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS);
+		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, PERMIT_PARAMETER_RESTAURANT_NUMBER);
 
 	// The topic Mina sidor gives the external conversation it creates, so the conversation looks the same whoever starts
 	// it.
@@ -145,6 +147,9 @@ public final class Constants {
 	public static final String PROCESS_VARIABLE_PROTOCOL_FILE_NAME = "protocolFileName";
 	public static final String PROCESS_VARIABLE_PROTOCOL_TEMPLATE = "protocolTemplate";
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";
+	// Set when the number is chosen, before the permit is created, so the permit and its certificate carry it. Missing in
+	// every process that assigns no restaurant number.
+	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER = "restaurantNumber";
 
 	// Marks the action errand with the inspection it came from, so a rerun finds it instead of creating a second one.
 	public static final String EXTERNAL_TAG_INSPECTION_ERRAND_ID = "inspectionErrandId";
