@@ -98,6 +98,16 @@ class LicensedBusinessMapperTest {
 	}
 
 	@Test
+	void isActiveForMatchesAnActiveAssignmentOfTheHolderOnly() {
+		final var active = new Assignment().licenseHolder(new LicenseHolder().orgNumber("556612-4144")).status("ACTIVE");
+		final var ended = new Assignment().licenseHolder(new LicenseHolder().orgNumber("556612-4144")).status("ENDED");
+
+		assertThat(LicensedBusinessMapper.isActiveFor(active, "5566124144")).isTrue();
+		assertThat(LicensedBusinessMapper.isActiveFor(active, "5590001111")).isFalse();
+		assertThat(LicensedBusinessMapper.isActiveFor(ended, "5566124144")).isFalse();
+	}
+
+	@Test
 	void isAssignedToDoesNotMatchAnotherHolderAnotherDayOrNoHolder() {
 		final var assignment = new Assignment().licenseHolder(new LicenseHolder().orgNumber("5566124144")).validFrom(LocalDate.of(2026, 3, 1));
 

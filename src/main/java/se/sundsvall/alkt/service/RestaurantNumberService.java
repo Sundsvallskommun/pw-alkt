@@ -18,6 +18,7 @@ import static java.lang.Boolean.parseBoolean;
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.isActiveFor;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.isAssignedTo;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAddress;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAssignmentCreateRequest;
@@ -57,6 +58,23 @@ public class RestaurantNumberService {
 	}
 
 	/**
+	 * The number the permit holder already holds at the premises, for a permit that runs beside the holder's permanent one.
+	 * The case worker's choice must be one of them. Nothing is written to licensed business, as an assignment would end
+	 * the one of the permanent permit.
+	 */
+	public String findRestaurantNumberOfHolder(final String municipalityId, final String namespace, final String errandId) {
+		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+		final var parameters = toParameterValues(errand.getParameters());
+		final var orgNumber = partyIntegration.getLegalId(municipalityId, getPermitHolder(errand, errandId).getExternalId());
+		final var addressId = licensedBusinessIntegration.findAddressId(municipalityId, toAddress(parameters, errandId))
+			.orElseThrow(() -> new NonRetryableException("The premises address of errand '%s' is unknown to licensed business, so it has no restaurant number".formatted(errandId)));
+
+		return Optional.ofNullable(parameters.get(ERRAND_PARAMETER_RESTAURANT_NUMBER))
+			.map(number -> requireHeldBy(municipalityId, addressId, number, orgNumber, errandId))
+			.orElseGet(() -> findTheOnlyNumberHeldBy(municipalityId, addressId, orgNumber, errandId));
+	}
+
+	/**
 	 * Assigns the number to the permit holder from the day the permit is issued. Licensed business ends an active one on
 	 * the number, which is how an owner change at the premises works. Answers false when it was already assigned.
 	 */
@@ -87,6 +105,33 @@ public class RestaurantNumberService {
 		final var permitHolder = getPermitHolder(errand, errandId);
 		getHolderName(permitHolder, errandId);
 		partyIntegration.getLegalId(municipalityId, permitHolder.getExternalId());
+	}
+
+	private String requireHeldBy(final String municipalityId, final String addressId, final String number, final String orgNumber, final String errandId) {
+		if (!licensedBusinessIntegration.isRestaurantNumberAtAddress(municipalityId, addressId, number) || !isHeldNow(municipalityId, number, orgNumber)) {
+			throw new NonRetryableException("Restaurant number '%s' chosen in errand '%s' is not held by the permit holder at the premises".formatted(number, errandId));
+		}
+		return number;
+	}
+
+	private String findTheOnlyNumberHeldBy(final String municipalityId, final String addressId, final String orgNumber, final String errandId) {
+		final var numbers = licensedBusinessIntegration.getActiveRestaurantNumbers(municipalityId, addressId).stream()
+			.filter(number -> isHeldNow(municipalityId, number, orgNumber))
+			.toList();
+		if (numbers.isEmpty()) {
+			throw new NonRetryableException("The permit holder of errand '%s' holds no restaurant number at the premises".formatted(errandId));
+		}
+		if (numbers.size() > 1) {
+			throw new NonRetryableException("The permit holder of errand '%s' holds %d restaurant numbers at the premises, one was expected. Choose one with the parameter '%s'"
+				.formatted(errandId, numbers.size(), ERRAND_PARAMETER_RESTAURANT_NUMBER));
+		}
+		return numbers.getFirst();
+	}
+
+	private boolean isHeldNow(final String municipalityId, final String number, final String orgNumber) {
+		return licensedBusinessIntegration.findLatestAssignment(municipalityId, number)
+			.filter(assignment -> isActiveFor(assignment, orgNumber))
+			.isPresent();
 	}
 
 	private String requireAtAddress(final String municipalityId, final String addressId, final String number, final String errandId) {

@@ -21,6 +21,7 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRE
 public final class LicensedBusinessMapper {
 
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
+	private static final String ASSIGNMENT_STATUS_ACTIVE = "ACTIVE";
 	private static final List<String> ADDRESS_PARAMETERS = List.of(ERRAND_PARAMETER_PREMISES_STREET_ADDRESS, ERRAND_PARAMETER_PREMISES_POSTAL_CODE,
 		ERRAND_PARAMETER_PREMISES_POSTAL_AREA);
 
@@ -62,6 +63,10 @@ public final class LicensedBusinessMapper {
 
 	public static boolean isAssignedTo(final Assignment assignment, final String orgNumber, final LocalDate validFrom) {
 		return isHeldBy(assignment, orgNumber) && Objects.equals(assignment.getValidFrom(), validFrom);
+	}
+
+	public static boolean isActiveFor(final Assignment assignment, final String orgNumber) {
+		return isHeldBy(assignment, orgNumber) && ASSIGNMENT_STATUS_ACTIVE.equals(assignment.getStatus());
 	}
 
 	// Why: an organisation number is written with or without its hyphen, and both name the same holder.

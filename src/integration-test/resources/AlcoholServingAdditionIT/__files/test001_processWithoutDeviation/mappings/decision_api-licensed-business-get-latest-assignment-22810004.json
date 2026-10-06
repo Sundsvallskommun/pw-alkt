@@ -1,0 +1,25 @@
+{
+	"name": "decision_api-licensed-business-get-latest-assignment-22810004",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-licensed-business/2281/restaurant-numbers/22810004/assignment"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"restaurantNumber": {
+				"number": "22810004"
+			},
+			"licenseHolder": {
+				"orgNumber": "5590001111",
+				"name": "Källaren i Sundsvall AB"
+			},
+			"holderName": "Källaren i Sundsvall AB",
+			"validFrom": "2024-03-01",
+			"status": "ACTIVE"
+		},
+		"status": 200
+	}
+}

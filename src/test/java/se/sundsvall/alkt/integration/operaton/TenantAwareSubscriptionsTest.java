@@ -35,6 +35,7 @@ class TenantAwareSubscriptionsTest {
 			"CreateChangeDraftTask",
 			"CreateDecisionTask",
 			"CreateProtocolTask",
+			"FindRestaurantNumberTask",
 			"NotifyCustomerTask",
 			"ReconcileProcessesTask",
 			"ResolveRestaurantNumberTask",

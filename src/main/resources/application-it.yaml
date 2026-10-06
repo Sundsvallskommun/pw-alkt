@@ -36,6 +36,10 @@ process-log:
       done: Lokalens restaurangnummer har valts
       retry: Restaurangnumret kunde inte väljas just nu, ett nytt försök görs automatiskt
       failed: Restaurangnumret kunde inte väljas. Processen har stannat och felet behöver åtgärdas
+    "[external_task_find_restaurant_number]":
+      done: Tillståndshavarens restaurangnummer på lokalen har hittats
+      retry: Restaurangnumret kunde inte hämtas just nu, ett nytt försök görs automatiskt
+      failed: Restaurangnumret kunde inte hämtas. Processen har stannat och felet behöver åtgärdas
     "[external_task_assign_restaurant_number]":
       done: Restaurangnumret har tilldelats tillståndshavaren
       retry: Restaurangnumret kunde inte tilldelas just nu, ett nytt försök görs automatiskt

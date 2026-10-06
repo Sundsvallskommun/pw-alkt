@@ -406,7 +406,8 @@ was not waiting for it, since such an event correlates against nothing and is go
 			<td><span class="code">APPROVAL</span>, <span class="code">APPROVAL_WITH_CONDITIONS</span></td>
 			<td>Creates the permit, then ends. In <span class="code">alcohol-serving-change</span> it changes the permit
 			the errand names instead. In <span class="code">alcohol-serving</span> it also chooses and assigns the
-			restaurant number, see below</td>
+			restaurant number, and in <span class="code">alcohol-serving-addition</span> it finds the holder's number,
+			see below</td>
 		</tr>
 		<tr>
 			<td><span class="code">REJECTED</span>, <span class="code">DISMISSED</span>, <span class="code">INADMISSIBLE</span></td>
@@ -577,6 +578,17 @@ writes that variable at once rather than on completion. If the step fails after 
 number that is not in the list and takes it. Without a choice a rerun finds the new number free anyway.
 <span class="code">AssignRestaurantNumberTask</span> does nothing when the latest assignment of the number already has
 the same organization number and the same first day.</p>
+
+<p>An addition is a temporary permit that runs beside the holder's permanent one at the same premises, so it gets the
+number the holder already has there. <span class="code">alcohol-serving-addition</span> has
+<span class="code">FindRestaurantNumberTask</span> before <span class="code">CreateAssetTask</span> and no assign step.
+It writes nothing to licensed business, since a new assignment on the number would end the one of the permanent permit.
+A chosen <span class="code">restaurantNumber</span> must be at the address with the holder's organization number on its
+latest, active assignment. Without one the step takes the only number at the address that the holder holds. An address
+licensed business does not know, or no such number, raises an incident. More than one raises an incident as well, and
+the case worker then chooses the number. The step reads only the latest assignment of each number, so an owner change
+already registered on the number stops an addition for the earlier holder. <span class="code">newRestaurantNumber</span>
+means nothing here.</p>
 
 <h3>The inspections</h3>
 

@@ -218,6 +218,109 @@ class RestaurantNumberServiceTest {
 	}
 
 	@Test
+	void findTakesTheChosenNumberTheHolderHoldsAtThePremises() {
+		givenAKnownPremisesOf(errand(parameter("restaurantNumber", NUMBER)));
+		when(licensedBusinessIntegrationMock.isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER)).thenReturn(true);
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER)).thenReturn(Optional.of(activeAssignmentOf("556612-4144")));
+
+		assertThat(restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(NUMBER);
+
+		verifyFindRead();
+		verify(licensedBusinessIntegrationMock).isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, NUMBER);
+	}
+
+	@Test
+	void findFailsOnAChosenNumberThatIsNotAtThePremises() {
+		givenAKnownPremisesOf(errand(parameter("restaurantNumber", NUMBER)));
+		when(licensedBusinessIntegrationMock.isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER)).thenReturn(false);
+
+		assertThatThrownBy(() -> restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Restaurant number '22810001' chosen in errand 'errand-id' is not held by the permit holder at the premises");
+
+		verifyFindRead();
+		verify(licensedBusinessIntegrationMock).isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER);
+	}
+
+	@Test
+	void findFailsOnAChosenNumberAnotherHolderHolds() {
+		givenAKnownPremisesOf(errand(parameter("restaurantNumber", NUMBER)));
+		when(licensedBusinessIntegrationMock.isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER)).thenReturn(true);
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER)).thenReturn(Optional.of(activeAssignmentOf("5590001111")));
+
+		assertThatThrownBy(() -> restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("is not held by the permit holder");
+
+		verifyFindRead();
+		verify(licensedBusinessIntegrationMock).isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, NUMBER);
+	}
+
+	/** The other active number at the premises belongs to another holder, and an ended assignment holds nothing. */
+	@Test
+	void findTakesTheOnlyNumberTheHolderHoldsAtThePremises() {
+		givenAKnownPremisesOf(errand());
+		when(licensedBusinessIntegrationMock.getActiveRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of("22810002", NUMBER, "22810003"));
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, "22810002")).thenReturn(Optional.of(activeAssignmentOf("5590001111")));
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER)).thenReturn(Optional.of(activeAssignmentOf(ORG_NUMBER)));
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, "22810003"))
+			.thenReturn(Optional.of(new Assignment().licenseHolder(new LicenseHolder().orgNumber(ORG_NUMBER)).status("ENDED")));
+
+		assertThat(restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(NUMBER);
+
+		verifyFindRead();
+		verify(licensedBusinessIntegrationMock).getActiveRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, "22810002");
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, NUMBER);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, "22810003");
+	}
+
+	@Test
+	void findFailsWhenTheHolderHoldsSeveralNumbersAtThePremises() {
+		givenAKnownPremisesOf(errand());
+		when(licensedBusinessIntegrationMock.getActiveRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of(NUMBER, "22810002"));
+		when(licensedBusinessIntegrationMock.findLatestAssignment(eq(MUNICIPALITY_ID), any())).thenReturn(Optional.of(activeAssignmentOf(ORG_NUMBER)));
+
+		assertThatThrownBy(() -> restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The permit holder of errand 'errand-id' holds 2 restaurant numbers at the premises, one was expected. Choose one with the parameter 'restaurantNumber'");
+
+		verifyFindRead();
+		verify(licensedBusinessIntegrationMock).getActiveRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, NUMBER);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, "22810002");
+	}
+
+	@Test
+	void findFailsWhenTheHolderHoldsNoNumberAtThePremises() {
+		givenAKnownPremisesOf(errand());
+		when(licensedBusinessIntegrationMock.getActiveRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of());
+
+		assertThatThrownBy(() -> restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The permit holder of errand 'errand-id' holds no restaurant number at the premises");
+
+		verifyFindRead();
+		verify(licensedBusinessIntegrationMock).getActiveRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID);
+	}
+
+	/** An address licensed business does not know is not created, since the step writes nothing there. */
+	@Test
+	void findFailsWhenLicensedBusinessDoesNotKnowThePremises() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand());
+		when(partyIntegrationMock.getLegalId(MUNICIPALITY_ID, PARTY_ID)).thenReturn(ORG_NUMBER);
+		when(licensedBusinessIntegrationMock.findAddressId(eq(MUNICIPALITY_ID), any())).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The premises address of errand 'errand-id' is unknown to licensed business, so it has no restaurant number");
+
+		verifyFindRead();
+	}
+
+	@Test
 	void assignAssignsTheNumberToThePermitHolderAtThePremises() {
 		givenErrand(errand());
 		givenDecisionAndHolder();
@@ -316,6 +419,22 @@ class RestaurantNumberServiceTest {
 	private void givenDecisionAndHolder() {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(new Decision().validFrom(VALID_FROM)));
 		when(partyIntegrationMock.getLegalId(MUNICIPALITY_ID, PARTY_ID)).thenReturn(ORG_NUMBER);
+	}
+
+	private void givenAKnownPremisesOf(final Errand errand) {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
+		when(partyIntegrationMock.getLegalId(MUNICIPALITY_ID, PARTY_ID)).thenReturn(ORG_NUMBER);
+		when(licensedBusinessIntegrationMock.findAddressId(eq(MUNICIPALITY_ID), any())).thenReturn(Optional.of(ADDRESS_ID));
+	}
+
+	private void verifyFindRead() {
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(partyIntegrationMock).getLegalId(MUNICIPALITY_ID, PARTY_ID);
+		verify(licensedBusinessIntegrationMock).findAddressId(eq(MUNICIPALITY_ID), any());
+	}
+
+	private static Assignment activeAssignmentOf(final String orgNumber) {
+		return new Assignment().licenseHolder(new LicenseHolder().orgNumber(orgNumber)).status("ACTIVE");
 	}
 
 	private void givenResolvable(final Errand errand) {
