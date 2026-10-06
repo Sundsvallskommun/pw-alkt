@@ -30,7 +30,6 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_PERMIT_TYPE;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
@@ -74,7 +73,6 @@ public class AssetService {
 	 * party-assets refuses to activate the permit otherwise.
 	 */
 	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final String permitType) {
-		requirePermitType(permitType);
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		if (isBlank(decision.getId())) {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
@@ -95,7 +93,6 @@ public class AssetService {
 	 * template the certificate is left as it is.
 	 */
 	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final String permitType) {
-		requirePermitType(permitType);
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
 		// Why: checked again at the decision, as the permit may have been deactivated while the errand was handled.
@@ -120,7 +117,6 @@ public class AssetService {
 
 	/** The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. */
 	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId, final String permitType) {
-		requirePermitType(permitType);
 		final var assetId = toAssetId(errand)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' names no asset to change".formatted(errandId)));
 		// Why: party-assets answers an id that is not a UUID with 400, which would be retried in vain.
@@ -141,13 +137,6 @@ public class AssetService {
 			throw new NonRetryableException("Asset '%s' is of type '%s', the process changes only type '%s'".formatted(assetId, asset.getType(), permitType));
 		}
 		return versioned;
-	}
-
-	// Why: the type comes from the bpmn schema, so a missing one is a fault in the schema, not something a retry fixes.
-	private static void requirePermitType(final String permitType) {
-		if (isBlank(permitType)) {
-			throw new NonRetryableException("The step has no permit type, set input parameter '%s' in the bpmn schema".formatted(PROCESS_VARIABLE_PERMIT_TYPE));
-		}
 	}
 
 	private Decision getApprovingDecision(final String municipalityId, final String namespace, final String errandId) {

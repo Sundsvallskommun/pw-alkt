@@ -26,11 +26,6 @@
       <bpmn:sequenceFlow id="flow_registration_start_to_create_change_draft" sourceRef="start_registration_phase" targetRef="external_task_create_change_draft" />
       <bpmn:serviceTask id="external_task_create_change_draft" name="Create change draft" camunda:type="external" camunda:topic="CreateChangeDraftTask">
         <bpmn:documentation>Checks the permit the errand names and drafts the decision in Support Management from the change the customer asks for, so the case worker sees it from the review on. The case worker completes the draft.</bpmn:documentation>
-        <bpmn:extensionElements>
-          <camunda:inputOutput>
-            <camunda:inputParameter name="permitType">AlcoholServingPermit</camunda:inputParameter>
-          </camunda:inputOutput>
-        </bpmn:extensionElements>
         <bpmn:incoming>flow_registration_start_to_create_change_draft</bpmn:incoming>
         <bpmn:outgoing>flow_registration_create_change_draft_to_await</bpmn:outgoing>
       </bpmn:serviceTask>
@@ -164,7 +159,6 @@
         <bpmn:extensionElements>
           <camunda:inputOutput>
             <camunda:inputParameter name="certificateTemplate">serving-permit-certificate</camunda:inputParameter>
-            <camunda:inputParameter name="permitType">AlcoholServingPermit</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_gateway_to_update_asset</bpmn:incoming>

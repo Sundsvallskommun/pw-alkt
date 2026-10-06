@@ -434,6 +434,13 @@ If any of that fails the draft is removed again. A permit assembled as a draft g
 carries <span class="code">X-Sent-By: pw-alkt; type=processEngine</span>, so the history of the permit shows that the
 process created it.</p>
 
+<p>The <span class="code">type</span> of the permit in party-assets follows from the process key, through a map in
+<span class="code">PartyAssetsMapper</span>: <span class="code">AlcoholServingPermit</span> for the three
+alcohol-serving models, and a type of its own for each folköl model. A new permit gets it as its type, and a step that
+changes a permit refuses one of another type with an incident, so a change errand cannot reach another kind of permit
+of the same holder. A process with a permit step and no type in the map raises an incident at that step;
+<span class="code">PermitTypeModelTest</span> catches it at build time.</p>
+
 <p>A step with the input parameter <span class="code">certificateTemplate</span> also adds a permit certificate to the
 draft before it is activated, today in the three alcohol-serving models. Templating renders the named template as a PDF, and it is
 added as <span class="code">tillstandsbevis.pdf</span> in the category Tillståndsbevis. Every term of the decision is a
@@ -444,6 +451,7 @@ template; the template is strict, and Templating answers 400 with the name of a 
 the decision, so the draft is removed and the step raises an incident at once instead of retrying.</p>
 
 <p>In <span class="code">alcohol-serving-addition</span> the addition becomes a separate permit next to the main one.
+It has the same type as the main permit, and <span class="code">alcohol-serving-change</span> changes it the same way.
 A permanent permit has no <span class="code">validTo</span>. party-assets refuses to activate a permit whose
 <span class="code">validTo</span> is not after today, so the step checks a decision that has one before it creates the
 draft, and raises an incident at once if it has already ended. A 400 on activation is not retried either.</p>
@@ -452,7 +460,7 @@ draft, and raises an incident at once if it has already ended. A 400 on activati
 the errand is a change the customer asks for, keyed as on the permit. A parameter without a value asks for the key to
 be removed. When the process starts, <span class="code">CreateChangeDraftTask</span> checks the permit and drafts the
 decision in Support Management with those changes, so the case worker sees them from the review on. A missing
-<span class="code">assetId</span>, one that is not a UUID, a permit that is not active, a permit of another party or an
+<span class="code">assetId</span>, one that is not a UUID, a permit that is not active, a permit of another party or type, or an
 errand without a <span class="code">PRIMARY</span> stakeholder raise an incident there, before anyone decides. An
 errand has one decision at most, so a rerun that finds one leaves it as it is. The parameters pw-alkt sets on the permit
 itself, <span class="code">errandId</span>, <span class="code">legalBasis</span>,
