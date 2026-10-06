@@ -5,8 +5,8 @@ Support Management owns the errand, this service owns the process behind it.</p>
 
 <p>The service is a skeleton. The API, the engine integration, the reporting and the test harness are in place, but the
 process models are phase structures with almost nothing inside them. Every model has the work step that reports a process
-as completed. The decision phase of <span class="code">alcohol-serving</span> also checks the decision and creates the
-permit it grants. The reconciliation is described at the end.</p>
+as completed. The decision phase of the alcohol-serving, tobacco and e-cigarette models also checks the decision and
+creates, changes or ends the permit it concerns. The reconciliation is described at the end.</p>
 
 <h3>The dialogue with Support Management</h3>
 
@@ -168,8 +168,8 @@ found.</p>
 <h3>Process definitions</h3>
 
 <p>The models in <span class="code">src/main/resources/processmodels</span> are sorted by kind of errand:
-<span class="code">application</span> for applications (alcohol serving), <span class="code">notification</span> for
-notifications (low-alcohol beer, tobacco, e-cigarettes and catering occasions), and <span class="code">inspection</span> for the
+<span class="code">application</span> for applications (alcohol serving and tobacco sales),
+<span class="code">notification</span> for notifications (low-alcohol beer, e-cigarettes and catering occasions), and <span class="code">inspection</span> for the
 inspections. Each folder has an entry of its own under <span class="code">process-engine.deployment.processes</span>,
 and every model in them is deployed to the tenant <span class="code">ALKT</span> at startup, so a new schema is picked
 up by adding the file to the folder of its kind. A model placed directly in <span class="code">processmodels</span> is
@@ -280,8 +280,8 @@ the same path.</p>
 
 <h3>Manual gates and awaiting signals</h3>
 
-<p>A phase ends when a case worker says so, except the decision phase of <span class="code">alcohol-serving</span> and
-of the inspections, which are described in their own sections below. Support Management publishes that as a
+<p>A phase ends when a case worker says so, except the decision phase of the models that read the decision and of the
+inspections, which are described in their own sections below. Support Management publishes that as a
 <span class="code">SIGNAL</span> event, and this service correlates a message of that name against the instance. A
 correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
 between two gates when the change arrived and redelivering would not help.</p>
@@ -378,10 +378,10 @@ interface.</p>
 
 <h3>The decision phase and the permit</h3>
 
-<p>In <span class="code">alcohol-serving</span>, <span class="code">alcohol-serving-addition</span> and
-<span class="code">alcohol-serving-change</span> the decision phase waits for the decision itself, not for a button.
-Seven of the other models still wait for <span class="code">decision_completed</span> and move over once these have
-proved themselves. The three folköl models make the decision themselves and wait for no one.</p>
+<p>In the three alcohol-serving models, the three tobacco models and <span class="code">e-cigarette-sales</span> the
+decision phase waits for the decision itself, not for a button. <span class="code">catering-occasion</span> still
+waits for <span class="code">decision_completed</span>. The three folköl models make the decision themselves and wait
+for no one.</p>
 
 <p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
 an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
@@ -404,8 +404,8 @@ was not waiting for it, since such an event correlates against nothing and is go
 		</tr>
 		<tr>
 			<td><span class="code">APPROVAL</span>, <span class="code">APPROVAL_WITH_CONDITIONS</span></td>
-			<td>Creates the permit, then ends. In <span class="code">alcohol-serving-change</span> it changes the permit
-			the errand names instead</td>
+			<td>Creates the permit, then ends. In the change models it changes the permit the errand names instead, and
+			in <span class="code">tobacco-sales-closure</span> it ends it</td>
 		</tr>
 		<tr>
 			<td><span class="code">REJECTED</span>, <span class="code">DISMISSED</span>, <span class="code">INADMISSIBLE</span></td>
@@ -420,10 +420,18 @@ was not waiting for it, since such an event correlates against nothing and is go
 </table>
 
 <p>The outcomes live in two places: <span class="code">Constants</span> says which are known and which create a permit,
-and the gateways of <span class="code">alcohol-serving.bpmn</span>, <span class="code">alcohol-serving-addition.bpmn</span>
-and <span class="code">alcohol-serving-change.bpmn</span> list them in their conditions. A new outcome needs
-<span class="code">Constants</span> and all three gateways, and must be registered for the namespace in Support
-Management as well.</p>
+and the gateways of the seven models that read the decision list them in their conditions.
+<span class="code">DecisionOutcomeGatewayTest</span> holds the gateways to <span class="code">Constants</span>. A new
+outcome needs <span class="code">Constants</span> and all seven gateways, and must be registered for the namespace in
+Support Management as well.</p>
+
+<p>Each step that creates, changes or ends a permit has the input parameter <span class="code">permitType</span>, which
+is the <span class="code">type</span> of the permit in party-assets: <span class="code">AlcoholServingPermit</span>,
+<span class="code">TobaccoSalesPermit</span>, <span class="code">ECigaretteSalesPermit</span> or one of the three folköl
+types. A new permit gets it as its type, and a step that changes or ends a permit refuses one of another type with an
+incident, so a change errand cannot reach another kind of permit of the same holder. The comparison is exact, so the
+models that share a kind of permit must spell it the same way. A step without the parameter raises an incident before
+it calls anything.</p>
 
 <p><span class="code">CreateAssetTask</span> builds the permit in party-assets from a decision that grants it. The id of
 the decision is the <span class="code">assetId</span> of the permit, and the party is the stakeholder with the role
@@ -435,7 +443,10 @@ carries <span class="code">X-Sent-By: pw-alkt; type=processEngine</span>, so the
 process created it.</p>
 
 <p>A step with the input parameter <span class="code">certificateTemplate</span> also adds a permit certificate to the
-draft before it is activated, today in the three alcohol-serving models. Templating renders the named template as a PDF, and it is
+draft before it is activated: <span class="code">serving-permit-certificate</span> in the three alcohol-serving models
+and <span class="code">tobacco-permit-certificate</span> in <span class="code">tobacco-sales</span> and
+<span class="code">tobacco-sales-change</span>. <span class="code">e-cigarette-sales</span> and the folköl models create
+no certificate. Templating renders the named template as a PDF, and it is
 added as <span class="code">tillstandsbevis.pdf</span> in the category Tillståndsbevis. Every term of the decision is a
 placeholder named by its category as it is, so the term <span class="code">permitHolderName</span> is
 <span class="code">{{ permitHolderName }}</span> in the template. A term without text is left out, as if it were
@@ -451,8 +462,9 @@ draft, and raises an incident at once if it has already ended. A 400 on activati
 <p>A change errand names the permit in its parameter <span class="code">assetId</span>, and every other parameter of
 the errand is a change the customer asks for, keyed as on the permit. A parameter without a value asks for the key to
 be removed. When the process starts, <span class="code">CreateChangeDraftTask</span> checks the permit and drafts the
-decision in Support Management with those changes, so the case worker sees them from the review on. A missing
-<span class="code">assetId</span>, one that is not a UUID, a permit that is not active, a permit of another party or an
+decision in Support Management with those changes, so the case worker sees them from the review on. The title of the
+draft is set per process, "Ändring av serveringstillstånd" or "Ändring av tobakstillstånd". A missing
+<span class="code">assetId</span>, one that is not a UUID, a permit that is not active, a permit of another party or type, or an
 errand without a <span class="code">PRIMARY</span> stakeholder raise an incident there, before anyone decides. An
 errand has one decision at most, so a rerun that finds one leaves it as it is. The parameters pw-alkt sets on the permit
 itself, <span class="code">errandId</span>, <span class="code">legalBasis</span>,
@@ -490,6 +502,16 @@ revision per attempt.</p>
 <p>party-assets replaces any parameter container it is sent, and an empty one clears what the permit has. The models of
 party-assets are therefore generated with <span class="code">containerDefaultToNull</span>, so a request that does not
 set <span class="code">additionalParameters</span> or <span class="code">jsonParameters</span> leaves them out.</p>
+
+<p>A closure errand names the permit in <span class="code">assetId</span> as well. When the process starts,
+<span class="code">CheckPermitTask</span> checks the permit as above but drafts nothing; the case worker makes the
+decision. Once it is completed, <span class="code">CloseAssetTask</span> checks the permit again and sets its
+<span class="code">validTo</span> to the <span class="code">validTo</span> of the decision, or the day the decision was
+made if it has none. A last day that has come or passed also sets the status <span class="code">EXPIRED</span>; a last
+day still to come is left to party-assets, which expires the permit once the day has passed. The PATCH carries
+<span class="code">If-Match</span> and no <span class="code">statusReason</span>, since party-assets refuses one unless
+reasons are registered for the status. The certificate stays as it is. A rerun that finds the permit expired, or
+active with that last day already set, writes nothing.</p>
 
 <p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
 A case worker cannot move the phase on by any other means.</p>

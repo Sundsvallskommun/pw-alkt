@@ -28,7 +28,7 @@ import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 
 /**
@@ -85,7 +85,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	@Test
 	void test002_instanceThatVanishedIsSettled() throws JacksonException {
 		// === Start process ===
-		final var processInstanceId = startProcess(ERRAND_ID_VANISHED, PROCESS_KEY_TOBACCO_SALES);
+		final var processInstanceId = startProcess(ERRAND_ID_VANISHED, PROCESS_KEY_CATERING_OCCASION);
 
 		// Someone cancels the instance from outside, and nothing reports it
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -100,7 +100,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	@Test
 	void test003_instanceThatEndedWhileSupportManagementWasDownIsSettled() throws JacksonException {
 		// === Start process === every report it sends on the way is answered with 500 and swallowed
-		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN, PROCESS_KEY_TOBACCO_SALES);
+		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN, PROCESS_KEY_CATERING_OCCASION);
 
 		completeEveryPhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId);
 
@@ -149,12 +149,12 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	}
 
 	private void completeEveryPhase(final String errandId, final String processInstanceId) {
-		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "registration");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "review");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "investigation");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "decision");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "follow_up");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_TOBACCO_SALES, "closure");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "registration");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "review");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "investigation");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "decision");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "follow_up");
+		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "closure");
 	}
 
 	/** A sweep runs as its own process instance, so the test waits it out before looking at what it sent. */

@@ -1,0 +1,23 @@
+{
+	"name": "registration_check-permit-worker---api-messaging-post-slack",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/slack",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.message",
+					"contains": "[2281][ALKT][tobacco-sales-closure] Incident in external_task_check_permit for errand 2c84f70a-6e95-4b31-8d6f-1a7b3c9e50d4"
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 201
+	}
+}

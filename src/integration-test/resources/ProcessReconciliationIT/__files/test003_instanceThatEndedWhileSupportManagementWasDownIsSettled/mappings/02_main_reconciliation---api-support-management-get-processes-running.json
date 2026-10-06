@@ -19,7 +19,7 @@
 		"jsonBody": {
 			"processes": [
 				{
-					"processKey": "tobacco-sales",
+					"processKey": "catering-occasion",
 					"processStatus": "RUNNING"
 				}
 			]

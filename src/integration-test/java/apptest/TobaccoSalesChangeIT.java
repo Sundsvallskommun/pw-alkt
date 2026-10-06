@@ -8,8 +8,14 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
@@ -33,11 +39,11 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_TOBACCO_SALES_CHANGE);
 
-		// Wait for the process to park in each phase, then signal that phase completed
+		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "registration");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "review");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "investigation");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "decision");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE);
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "closure");
 
@@ -56,6 +62,7 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 				// Registration
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create change draft", "external_task_create_change_draft"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 
@@ -75,7 +82,13 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 				// Decision
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Decision completed", "await_decision_completed"),
+				tuple("Check decision", "external_task_check_decision"), // No decision yet
+				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Await decision", "gateway_await_decision"),
+				tuple("Decision updated", "await_decision_updated"),
+				tuple("Check decision", "external_task_check_decision"), // Approved
+				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Update asset", "external_task_update_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -117,7 +130,8 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
-				tuple("Start registration phase", "start_registration_phase"));
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create change draft", "external_task_create_change_draft"));
 	}
 
 	@Test
@@ -143,6 +157,7 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 				tuple("Start process", "start_process"),
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create change draft", "external_task_create_change_draft"),
 				tuple("Registration completed", "await_registration_completed"));
 	}
 
@@ -170,6 +185,7 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 				tuple("Start process", "start_process"),
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create change draft", "external_task_create_change_draft"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
@@ -180,5 +196,59 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
 				tuple("Investigation completed", "await_investigation_completed"));
+	}
+
+	@Test
+	void test005_decisionRejectedBeforeThePhaseChangesNoAssetAndDoesNotWait() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_TOBACCO_SALES_CHANGE);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CHANGE, "investigation");
+
+		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+
+		assertThat(getProcessInstanceRoute(processInstanceId))
+			.extracting(HistoricActivityInstanceDto::getActivityId)
+			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_update_asset");
+	}
+
+	@Test
+	void test006_permitOfAnotherTypeLeavesAnIncident() throws JacksonException {
+		// === Start process === the errand names a low-alcohol beer permit of the same holder
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_TOBACCO_SALES_CHANGE);
+
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, PROCESS_KEY_TOBACCO_SALES_CHANGE).stream()
+				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())
+					&& "external_task_create_change_draft".equals(incident.getActivityId())));
+		// The failure report and the alert are sent after the incident is raised, the alert last
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.untilAsserted(() -> wiremock.verify(postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack"))));
+
+		verifyAllStubs();
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-support-management/.*/decisions")));
 	}
 }

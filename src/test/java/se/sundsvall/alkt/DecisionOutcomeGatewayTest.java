@@ -32,7 +32,11 @@ class DecisionOutcomeGatewayTest {
 		return Stream.of(
 			Arguments.of("processmodels/application/alcohol-serving.bpmn", "flow_decision_gateway_to_create_asset"),
 			Arguments.of("processmodels/application/alcohol-serving-addition.bpmn", "flow_decision_gateway_to_create_asset"),
-			Arguments.of("processmodels/application/alcohol-serving-change.bpmn", "flow_decision_gateway_to_update_asset"));
+			Arguments.of("processmodels/application/alcohol-serving-change.bpmn", "flow_decision_gateway_to_update_asset"),
+			Arguments.of("processmodels/application/tobacco-sales.bpmn", "flow_decision_gateway_to_create_asset"),
+			Arguments.of("processmodels/application/tobacco-sales-change.bpmn", "flow_decision_gateway_to_update_asset"),
+			Arguments.of("processmodels/application/tobacco-sales-closure.bpmn", "flow_decision_gateway_to_close_asset"),
+			Arguments.of("processmodels/notification/e-cigarette-sales.bpmn", "flow_decision_gateway_to_create_asset"));
 	}
 
 	private static Stream<String> modelPaths() {

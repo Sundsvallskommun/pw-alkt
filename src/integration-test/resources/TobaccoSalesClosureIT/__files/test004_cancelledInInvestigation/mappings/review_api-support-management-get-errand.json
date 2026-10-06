@@ -21,6 +21,20 @@
 					"externalIdType": "PRIVATE",
 					"externalId": "8f2a4c6e-1b3d-4e5f-9a7b-0c1d2e3f4a5b"
 				}
+			],
+			"parameters": [
+				{
+					"key": "assetId",
+					"values": [
+						"9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d"
+					]
+				},
+				{
+					"key": "forsaljningstid",
+					"values": [
+						"Försäljning får ske mellan 11.00 och 02.00."
+					]
+				}
 			]
 		},
 		"status": 200

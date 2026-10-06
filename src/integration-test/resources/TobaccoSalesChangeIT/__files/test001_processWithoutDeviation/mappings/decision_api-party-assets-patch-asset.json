@@ -1,0 +1,80 @@
+{
+	"name": "decision_api-party-assets-patch-asset",
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-party-assets/2281/assets/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"If-Match": {
+				"equalTo": "\"3\""
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.forsaljningstid",
+					"equalTo": "Försäljning får ske mellan 11.00 och 02.00."
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.permitHolderName",
+					"equalTo": "Runt Hörnet AB"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.errandId",
+					"equalTo": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.conditions",
+					"equalTo": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.validTo",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.indefinitely",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.forsaljningsstalle",
+					"absent": true
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 204
+	}
+}
