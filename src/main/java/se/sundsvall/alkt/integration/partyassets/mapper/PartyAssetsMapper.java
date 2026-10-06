@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 
@@ -23,6 +24,16 @@ import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toRemovedParameterKeys;
@@ -35,15 +46,30 @@ public final class PartyAssetsMapper {
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 
+	private static final Map<String, String> PERMIT_TYPES = Map.of(
+		PROCESS_KEY_ALCOHOL_SERVING, PERMIT_TYPE_ALCOHOL_SERVING,
+		PROCESS_KEY_ALCOHOL_SERVING_CHANGE, PERMIT_TYPE_ALCOHOL_SERVING,
+		PROCESS_KEY_ALCOHOL_SERVING_ADDITION, PERMIT_TYPE_ALCOHOL_SERVING,
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES,
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING,
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
+
 	private PartyAssetsMapper() {}
 
-	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId) {
+	public static String toPermitType(final String processKey) {
+		return Optional.ofNullable(processKey)
+			.map(PERMIT_TYPES::get)
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no permit type, one of %s was expected"
+				.formatted(processKey, PERMIT_TYPES.keySet())));
+	}
+
+	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final String permitType) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
 			.status(DRAFT)
 			.origin(ORIGIN)
 			.partyId(partyId)
-			.type(decision.getType())
+			.type(permitType)
 			.issued(toIssued(decision))
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())

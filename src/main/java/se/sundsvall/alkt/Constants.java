@@ -38,6 +38,13 @@ public final class Constants {
 	// Outside PROCESS_KEYS on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
 
+	// The type in party-assets of the permits a process creates and changes, which keeps a change errand from changing
+	// another kind of permit.
+	public static final String PERMIT_TYPE_ALCOHOL_SERVING = "AlcoholServingPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES = "LowAlcoholBeerSalesPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING = "LowAlcoholBeerServingPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingPermit";
+
 	// Checked against the process consumer configured for the namespace; a report from anyone else is rejected.
 	public static final String PROCESS_SERVICE = "pw-alkt";
 

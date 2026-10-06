@@ -9,6 +9,7 @@ import se.sundsvall.alkt.service.DecisionService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitType;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -27,7 +28,8 @@ public class CreateChangeDraftWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var decisionId = decisionService.createChangeDraft(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
+		final var decisionId = decisionService.createChangeDraft(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
+			toPermitType(externalTask.getProcessDefinitionKey()));
 
 		logInfo("Errand {} has decision draft {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(decisionId));
 

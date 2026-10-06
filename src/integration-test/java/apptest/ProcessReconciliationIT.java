@@ -30,6 +30,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
+import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 
 /**
  * What the reconciliation settles, and what it leaves alone. Every sweep is started by hand; max.retries=0 makes the
@@ -44,7 +45,6 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";
-	private static final String TENANT_ID_ALKT = "ALKT";
 	private static final String ERRAND_ID_INCIDENT = "a3690d5e-8f14-42b7-95ca-6d81e0b4f273";
 	private static final String SCENARIO_INCIDENT = "incident-is-reported-once";
 	private static final String PROCESSES_PATH_INCIDENT = "/api-support-management/2281/ALKT/errands/%s/processes".formatted(ERRAND_ID_INCIDENT);

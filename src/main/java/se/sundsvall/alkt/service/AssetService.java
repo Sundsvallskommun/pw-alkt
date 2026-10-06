@@ -72,7 +72,7 @@ public class AssetService {
 	 * Without a certificate template the asset gets no certificate. A decision with a validTo must end after today, as
 	 * party-assets refuses to activate the permit otherwise.
 	 */
-	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate) {
+	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final String permitType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		if (isBlank(decision.getId())) {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
@@ -84,7 +84,7 @@ public class AssetService {
 		return partyAssetsIntegration.findAssetId(municipalityId, partyId, decision.getId())
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate);
+				return createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate, permitType);
 			});
 	}
 
@@ -92,11 +92,11 @@ public class AssetService {
 	 * Changes the permit the errand names. party-assets keeps the earlier content as a revision. Without a certificate
 	 * template the certificate is left as it is.
 	 */
-	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate) {
+	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final String permitType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
 		// Why: checked again at the decision, as the permit may have been deactivated while the errand was handled.
-		final var versioned = getPermitToChange(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId);
+		final var versioned = getPermitToChange(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, permitType);
 		final var asset = versioned.asset();
 		final var assetId = asset.getId();
 
@@ -116,7 +116,7 @@ public class AssetService {
 	}
 
 	/** The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. */
-	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId) {
+	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId, final String permitType) {
 		final var assetId = toAssetId(errand)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' names no asset to change".formatted(errandId)));
 		// Why: party-assets answers an id that is not a UUID with 400, which would be retried in vain.
@@ -132,6 +132,9 @@ public class AssetService {
 		}
 		if (!partyId.equals(asset.getPartyId())) {
 			throw new NonRetryableException("Asset '%s' does not belong to the permit holder of errand '%s'".formatted(assetId, errandId));
+		}
+		if (!permitType.equals(asset.getType())) {
+			throw new NonRetryableException("Asset '%s' is of type '%s', the process changes only type '%s'".formatted(assetId, asset.getType(), permitType));
 		}
 		return versioned;
 	}
@@ -178,8 +181,8 @@ public class AssetService {
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
 	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final String partyId,
-		final String certificateTemplate) {
-		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, toAssetCreateRequest(decision, errandId, partyId));
+		final String certificateTemplate, final String permitType) {
+		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, toAssetCreateRequest(decision, errandId, partyId, permitType));
 
 		try {
 			Optional.ofNullable(decision.getAttachments()).orElse(emptyList())

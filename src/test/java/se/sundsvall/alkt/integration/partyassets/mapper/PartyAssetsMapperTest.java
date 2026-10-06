@@ -13,21 +13,35 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ATTACHMENT_PART_NAME;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ORIGIN;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitType;
 
 class PartyAssetsMapperTest {
 
@@ -51,12 +65,12 @@ class PartyAssetsMapperTest {
 				new Parameter().key("serveringsyta").values(List.of("Servering får ske i matsalen."))))
 			.terms(List.of(new DecisionTerm().category("villkor").text("Ordningsvakt ska finnas efter 23.00.")));
 
-		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID);
+		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING);
 
 		assertThat(result.getAssetId()).isEqualTo(decision.getId());
 		assertThat(result.getOrigin()).isEqualTo(ORIGIN);
 		assertThat(result.getPartyId()).isEqualTo(PARTY_ID);
-		assertThat(result.getType()).isEqualTo("PERMIT");
+		assertThat(result.getType()).isEqualTo(PERMIT_TYPE_ALCOHOL_SERVING);
 		assertThat(result.getIssued()).isEqualTo(LocalDate.of(2026, 10, 1));
 		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
 		assertThat(result.getTitle()).isEqualTo("Beslut om serveringstillstånd");
@@ -75,7 +89,7 @@ class PartyAssetsMapperTest {
 	void toAssetCreateRequestLeavesOutAParameterWithoutValue() {
 		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringstid"), new Parameter().key("serveringsyta").values(List.of(" "))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
@@ -84,7 +98,7 @@ class PartyAssetsMapperTest {
 			.legalBasis("8 kap. 12 § alkohollagen")
 			.parameters(List.of(new Parameter().key(PERMIT_PARAMETER_LEGAL_BASIS).values(List.of("Angiven av handläggaren."))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(
 			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),
 			entry(PERMIT_PARAMETER_LEGAL_BASIS, "Angiven av handläggaren."));
 	}
@@ -93,7 +107,7 @@ class PartyAssetsMapperTest {
 	void toAssetCreateRequestKeepsTheErrandIdOverAParameterOfTheSameKey() {
 		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_ERRAND_ID).values(List.of("another-errand"))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
@@ -102,7 +116,7 @@ class PartyAssetsMapperTest {
 			.parameters(List.of(new Parameter().key(PERMIT_PARAMETER_CONDITIONS).values(List.of("Från en parameter."))))
 			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(
 			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),
 			entry(PERMIT_PARAMETER_CONDITIONS, "Serveringsområdet ska vara avgränsat."));
 	}
@@ -111,21 +125,21 @@ class PartyAssetsMapperTest {
 	void toAssetCreateRequestLeavesOutConditionsWithoutText() {
 		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(1).text(" ")));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
 	@Test
 	void toAssetCreateRequestJoinsTheValuesOfAParameterLeavingOutBlankOnes() {
 		final var decision = new Decision().parameters(List.of(new Parameter().key("serveringsyta").values(List.of("Matsalen", " ", "Uteserveringen"))));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getAdditionalParameters()).containsEntry("serveringsyta", "Matsalen, Uteserveringen");
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getAdditionalParameters()).containsEntry("serveringsyta", "Matsalen, Uteserveringen");
 	}
 
 	@Test
 	void toAssetCreateRequestIssuesOnTheDayOfTheDecisionWithoutValidFrom() {
 		final var decision = new Decision().decidedAt(OffsetDateTime.of(2026, 9, 20, 23, 30, 0, 0, ZoneOffset.ofHours(2)));
 
-		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID);
+		final var result = toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING);
 
 		assertThat(result.getIssued()).isEqualTo(LocalDate.of(2026, 9, 20));
 		assertThat(result.getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
@@ -135,7 +149,7 @@ class PartyAssetsMapperTest {
 	void toAssetCreateRequestIssuesOnTheSwedishDayOfADecisionMadeJustAfterMidnight() {
 		final var decision = new Decision().decidedAt(OffsetDateTime.of(2026, 9, 19, 22, 30, 0, 0, ZoneOffset.UTC));
 
-		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID).getIssued()).isEqualTo(LocalDate.of(2026, 9, 20));
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getIssued()).isEqualTo(LocalDate.of(2026, 9, 20));
 	}
 
 	@Test
@@ -143,13 +157,13 @@ class PartyAssetsMapperTest {
 		final var justBeforeMidnight = new Decision().decidedAt(OffsetDateTime.of(2026, 1, 14, 22, 30, 0, 0, ZoneOffset.UTC));
 		final var justAfterMidnight = new Decision().decidedAt(OffsetDateTime.of(2026, 1, 14, 23, 30, 0, 0, ZoneOffset.UTC));
 
-		assertThat(toAssetCreateRequest(justBeforeMidnight, ERRAND_ID, PARTY_ID).getIssued()).isEqualTo(LocalDate.of(2026, 1, 14));
-		assertThat(toAssetCreateRequest(justAfterMidnight, ERRAND_ID, PARTY_ID).getIssued()).isEqualTo(LocalDate.of(2026, 1, 15));
+		assertThat(toAssetCreateRequest(justBeforeMidnight, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getIssued()).isEqualTo(LocalDate.of(2026, 1, 14));
+		assertThat(toAssetCreateRequest(justAfterMidnight, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getIssued()).isEqualTo(LocalDate.of(2026, 1, 15));
 	}
 
 	@Test
 	void toAssetCreateRequestLeavesIssuedOutWithoutAnyDate() {
-		assertThat(toAssetCreateRequest(new Decision(), ERRAND_ID, PARTY_ID).getIssued()).isNull();
+		assertThat(toAssetCreateRequest(new Decision(), ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING).getIssued()).isNull();
 	}
 
 	@Test
@@ -250,5 +264,30 @@ class PartyAssetsMapperTest {
 		assertThat(result.file().getContentType()).isEqualTo("application/pdf");
 		assertThat(result.file().getBytes()).isEqualTo(content);
 		assertThat(result.category()).isEqualTo("Tillståndsbevis");
+	}
+
+	/** An addition is a serving permit of its own, which alcohol-serving-change can change like the main one. */
+	@Test
+	void toPermitTypeGivesTheServingProcessesOneType() {
+		assertThat(toPermitType(PROCESS_KEY_ALCOHOL_SERVING)).isEqualTo(PERMIT_TYPE_ALCOHOL_SERVING);
+		assertThat(toPermitType(PROCESS_KEY_ALCOHOL_SERVING_CHANGE)).isEqualTo(PERMIT_TYPE_ALCOHOL_SERVING);
+		assertThat(toPermitType(PROCESS_KEY_ALCOHOL_SERVING_ADDITION)).isEqualTo(PERMIT_TYPE_ALCOHOL_SERVING);
+	}
+
+	@Test
+	void toPermitTypeGivesEachLowAlcoholBeerProcessATypeOfItsOwn() {
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES);
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING);
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
+	}
+
+	@Test
+	void toPermitTypeRefusesAProcessWithoutAPermit() {
+		assertThatThrownBy(() -> toPermitType(PROCESS_KEY_CATERING_OCCASION))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining(PROCESS_KEY_CATERING_OCCASION)
+			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING);
+		assertThatThrownBy(() -> toPermitType(null))
+			.isInstanceOf(NonRetryableException.class);
 	}
 }

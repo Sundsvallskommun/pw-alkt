@@ -70,14 +70,14 @@ public class DecisionService {
 	 * Drafts the decision of a change errand from the change the customer asks for. An errand has one decision at most, so
 	 * one already there is the draft of an earlier attempt.
 	 */
-	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId) {
+	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId, final String permitType) {
 		return supportManagementIntegration.getDecisions(municipalityId, namespace, errandId).stream()
 			.findFirst()
 			.map(Decision::getId)
 			.orElseGet(() -> {
 				final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 				// Why: a fault in the permit the customer chose shows now, not once the decision is locked.
-				assetService.getPermitToChange(municipalityId, errand, errandId);
+				assetService.getPermitToChange(municipalityId, errand, errandId, permitType);
 				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, OffsetDateTime.now(SWEDISH_TIME)));
 			});
 	}
