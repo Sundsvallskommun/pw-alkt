@@ -32,6 +32,14 @@ process-log:
       done: Tillståndet har registrerats hos tillståndshavaren
       retry: Tillståndet kunde inte registreras just nu, ett nytt försök görs automatiskt
       failed: Tillståndet kunde inte registreras. Processen har stannat och felet behöver åtgärdas
+    "[external_task_resolve_restaurant_number]":
+      done: Lokalens restaurangnummer har valts
+      retry: Restaurangnumret kunde inte väljas just nu, ett nytt försök görs automatiskt
+      failed: Restaurangnumret kunde inte väljas. Processen har stannat och felet behöver åtgärdas
+    "[external_task_assign_restaurant_number]":
+      done: Restaurangnumret har tilldelats tillståndshavaren
+      retry: Restaurangnumret kunde inte tilldelas just nu, ett nytt försök görs automatiskt
+      failed: Restaurangnumret kunde inte tilldelas. Processen har stannat och felet behöver åtgärdas
     "[external_task_create_protocol]":
       done: Tillsynens PDF har skapats och lagts till i ärendet
       retry: Tillsynens PDF kunde inte skapas just nu, ett nytt försök görs automatiskt

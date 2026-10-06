@@ -1,0 +1,24 @@
+{
+	"name": "decision_api-licensed-business-get-address-restaurant-numbers",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-licensed-business/2281/addresses/8be2e4a1-3d4f-4b2e-9c18-2f6d5a7b1c33/restaurant-numbers"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "4d5e6f70-8192-4a3b-9c4d-5e6f708192a3",
+				"number": "22810005",
+				"municipalityId": "2281",
+				"reported": true,
+				"status": "ACTIVE",
+				"premisesName": "Hörnan",
+				"validFrom": "2019-05-01"
+			}
+		],
+		"status": 200
+	}
+}

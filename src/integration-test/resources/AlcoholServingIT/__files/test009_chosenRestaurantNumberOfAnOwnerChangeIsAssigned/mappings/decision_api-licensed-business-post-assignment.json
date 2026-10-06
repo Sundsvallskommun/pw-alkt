@@ -1,0 +1,27 @@
+{
+	"name": "decision_api-licensed-business-post-assignment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-licensed-business/2281/assignments",
+		"bodyPatterns": [
+			{
+				"equalToJson": {
+					"restaurantNumberId": "4d5e6f70-8192-4a3b-9c4d-5e6f708192a3",
+					"addressId": "8be2e4a1-3d4f-4b2e-9c18-2f6d5a7b1c33",
+					"orgNumber": "5566124144",
+					"holderName": "Runt Hörnet AB",
+					"premisesName": "Runt Hörnet",
+					"validFrom": "2026-10-01"
+				},
+				"ignoreExtraElements": true,
+				"ignoreArrayOrder": true
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/assignments/5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d"
+		},
+		"status": 201
+	}
+}

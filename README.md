@@ -5,8 +5,8 @@ Support Management owns the errand, this service owns the process behind it.</p>
 
 <p>The service is a skeleton. The API, the engine integration, the reporting and the test harness are in place, but the
 process models are phase structures with almost nothing inside them. Every model has the work step that reports a process
-as completed. The decision phase of <span class="code">alcohol-serving</span> also checks the decision and creates the
-permit it grants. The reconciliation is described at the end.</p>
+as completed. The decision phase of <span class="code">alcohol-serving</span> also checks the decision, creates the
+permit it grants and assigns the premises' restaurant number. The reconciliation is described at the end.</p>
 
 <h3>The dialogue with Support Management</h3>
 
@@ -405,7 +405,8 @@ was not waiting for it, since such an event correlates against nothing and is go
 		<tr>
 			<td><span class="code">APPROVAL</span>, <span class="code">APPROVAL_WITH_CONDITIONS</span></td>
 			<td>Creates the permit, then ends. In <span class="code">alcohol-serving-change</span> it changes the permit
-			the errand names instead</td>
+			the errand names instead. In <span class="code">alcohol-serving</span> it also chooses and assigns the
+			restaurant number, see below</td>
 		</tr>
 		<tr>
 			<td><span class="code">REJECTED</span>, <span class="code">DISMISSED</span>, <span class="code">INADMISSIBLE</span></td>
@@ -464,8 +465,8 @@ decision in Support Management with those changes, so the case worker sees them 
 errand without a <span class="code">PRIMARY</span> stakeholder raise an incident there, before anyone decides. An
 errand has one decision at most, so a rerun that finds one leaves it as it is. The parameters pw-alkt sets on the permit
 itself, <span class="code">errandId</span>, <span class="code">legalBasis</span>,
-<span class="code">delegationReference</span> and <span class="code">conditions</span>, never come from the errand, and a
-decision cannot remove them.</p>
+<span class="code">delegationReference</span>, <span class="code">conditions</span> and
+<span class="code">premisesRestaurantNumber</span>, never come from the errand, and a decision cannot remove them.</p>
 
 <p>Support Management lets the process write only an automatic decision, and wants an outcome on it from the start, so
 the draft is <span class="code">AUTOMATIC</span>, decided by pw-alkt, with the outcome
@@ -511,6 +512,71 @@ carries only the attachments the case worker linked. Support Management locks a 
 included, so the step writes a draft, links the attachments and completes it last. A retry picks up the draft an earlier
 attempt left behind and links only what is missing, and a completed decision is left as it is. Every write carries
 <span class="code">X-Trigger-Process: false</span>, so it does not wake the process that made it.</p>
+
+<h3>The restaurant number</h3>
+
+<p>Licensed business keeps the restaurant numbers. A number belongs to the premises, which is an address, and stays
+there when the business changes hands. An assignment gives the number to a permit holder for a period. Only
+<span class="code">alcohol-serving</span> assigns numbers, in two steps around <span class="code">CreateAssetTask</span>.
+<span class="code">ResolveRestaurantNumberTask</span> runs first and chooses the number, so the permit and its
+certificate carry it. <span class="code">AssignRestaurantNumberTask</span> runs once the permit exists and creates the
+assignment, so a permit that ends in an incident leaves no assignment behind.</p>
+
+<p>Both steps read the errand's parameters. The e-service sets the premises when it registers the errand, and the case
+worker's interface sets the choice. The choice has to be on the errand when the decision is completed, since
+<span class="code">ResolveRestaurantNumberTask</span> runs at once after that. Any phase before that will do.</p>
+
+<table class="settings">
+	<thead>
+		<tr>
+			<th>Parameter</th>
+			<th>Holds</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td><span class="code">premisesStreetAddress</span>, <span class="code">premisesPostalCode</span>,
+			<span class="code">premisesPostalArea</span></td>
+			<td>The visiting address of the premises. Required, a missing part raises an incident</td>
+		</tr>
+		<tr>
+			<td><span class="code">premisesName</span></td>
+			<td>The name of the premises on the assignment. Optional</td>
+		</tr>
+		<tr>
+			<td><span class="code">restaurantNumber</span></td>
+			<td>A number the case worker chose at the address</td>
+		</tr>
+		<tr>
+			<td><span class="code">newRestaurantNumber</span></td>
+			<td><span class="code">true</span> when the case worker asked for a new number</td>
+		</tr>
+	</tbody>
+</table>
+
+<p>A chosen <span class="code">restaurantNumber</span> wins. It may be any number at the address, free or held, and a
+number the address does not have raises an incident. Choosing a held number is how an owner change works. Licensed
+business ends the earlier holder's assignment the day before the new one starts. Without a chosen number,
+<span class="code">newRestaurantNumber</span> creates a new number even when the address has a free one. Without either,
+the step takes the first free number at the address and creates one when there is none. Licensed business picks the
+new number itself.</p>
+
+<p>The holder is the stakeholder with the role <span class="code">PRIMARY</span>. Its organization name becomes the
+holder name on the assignment, and Party turns its <span class="code">externalId</span> into the organization number.
+<span class="code">ResolveRestaurantNumberTask</span> checks both before it chooses a number, so a holder the number cannot be
+assigned to stops the process before there is a permit. The assignment starts on the <span class="code">validFrom</span>
+of the decision, or on the day it was decided, and ends on its <span class="code">validTo</span> if it has one. The
+permit gets the number as the parameter <span class="code">premisesRestaurantNumber</span>, which is also the
+placeholder for it in <span class="code">serving-permit-certificate</span>, the certificate being rendered from the
+permit's parameters. A decision cannot remove it, so a change keeps it. A change errand ignores the premises and choice parameters, since none
+of them is a change to the permit.</p>
+
+<p>A rerun creates nothing twice. Before <span class="code">ResolveRestaurantNumberTask</span> creates a number it saves
+the free numbers at the address in the process variable <span class="code">restaurantNumbersBeforeCreate</span>, and it
+writes that variable at once rather than on completion. If the step fails after the create, the rerun finds a free
+number that is not in the list and takes it. Without a choice a rerun finds the new number free anyway.
+<span class="code">AssignRestaurantNumberTask</span> does nothing when the latest assignment of the number already has
+the same organization number and the same first day.</p>
 
 <h3>The inspections</h3>
 

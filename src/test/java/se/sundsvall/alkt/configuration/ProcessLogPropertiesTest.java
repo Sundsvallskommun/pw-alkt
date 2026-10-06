@@ -41,6 +41,8 @@ class ProcessLogPropertiesTest {
 			"external_task_check_decision",
 			"external_task_create_decision",
 			"external_task_create_asset",
+			"external_task_resolve_restaurant_number",
+			"external_task_assign_restaurant_number",
 			"external_task_create_protocol",
 			"external_task_create_action_errand",
 			"external_task_create_change_draft",

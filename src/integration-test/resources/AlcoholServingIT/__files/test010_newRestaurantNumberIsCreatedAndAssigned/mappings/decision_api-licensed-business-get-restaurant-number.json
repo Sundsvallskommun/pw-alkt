@@ -1,0 +1,18 @@
+{
+	"name": "decision_api-licensed-business-get-restaurant-number",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-licensed-business/2281/restaurant-numbers/22810002"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d",
+			"number": "22810002",
+			"municipalityId": "2281"
+		},
+		"status": 200
+	}
+}

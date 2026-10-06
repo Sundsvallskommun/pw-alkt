@@ -26,6 +26,7 @@ class TenantAwareSubscriptionsTest {
 		final var subscriptions = ((ExternalTaskClientImpl) client).getTopicSubscriptionManager().getSubscriptions();
 
 		assertThat(subscriptions).extracting(TopicSubscription::getTopicName).containsExactlyInAnyOrder(
+			"AssignRestaurantNumberTask",
 			"CancelProcessTask",
 			"CheckDecisionTask",
 			"CompleteProcessTask",
@@ -36,6 +37,7 @@ class TenantAwareSubscriptionsTest {
 			"CreateProtocolTask",
 			"NotifyCustomerTask",
 			"ReconcileProcessesTask",
+			"ResolveRestaurantNumberTask",
 			"UpdateAssetTask");
 		assertThat(subscriptions).allSatisfy(subscription -> assertThat(subscription.getTenantIdIn())
 			.as("tenant filter for topic '%s'", subscription.getTopicName())

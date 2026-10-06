@@ -155,6 +155,22 @@ class SupportManagementMapperTest {
 		assertThat(result.getParameters()).extracting(Parameter::getKey).containsExactly("serveringstid", "uteservering");
 	}
 
+	/** The premises and the case worker's choice of restaurant number belong to the errand, not to the permit. */
+	@Test
+	void toChangeDraftLeavesOutThePremisesAndTheRestaurantNumberChoice() {
+		final var errand = new Errand().parameters(List.of(
+			new Parameter().key("premisesName").values(List.of("Runt Hörnet")),
+			new Parameter().key("premisesStreetAddress").values(List.of("Storgatan 33")),
+			new Parameter().key("premisesPostalCode").values(List.of("852 30")),
+			new Parameter().key("premisesPostalArea").values(List.of("Sundsvall")),
+			new Parameter().key("restaurantNumber").values(List.of("22810001")),
+			new Parameter().key("newRestaurantNumber").values(List.of("true")),
+			new Parameter().key("premisesRestaurantNumber").values(List.of("22810009")),
+			new Parameter().key("serveringstid").values(List.of("11.00–02.00"))));
+
+		assertThat(SupportManagementMapper.toChangeDraft(errand, OffsetDateTime.now()).getParameters()).extracting(Parameter::getKey).containsExactly("serveringstid");
+	}
+
 	@Test
 	void toChangeDraftOfAnErrandWithoutParametersHasNone() {
 		assertThat(SupportManagementMapper.toChangeDraft(new Errand().parameters(null), OffsetDateTime.now()).getParameters()).isEmpty();

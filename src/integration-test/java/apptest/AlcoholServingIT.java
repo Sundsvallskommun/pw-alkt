@@ -11,6 +11,7 @@ import tools.jackson.core.JacksonException;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -97,7 +98,9 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				tuple("Decision updated", "await_decision_updated"),
 				tuple("Check decision", "external_task_check_decision"), // Approved
 				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Resolve restaurant number", "external_task_resolve_restaurant_number"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Assign restaurant number", "external_task_assign_restaurant_number"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -162,6 +165,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/.*")));
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
@@ -328,10 +332,58 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/.*")));
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
 			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
+	}
+
+	/** An owner change: the case worker picks the number the premises already has, and it is assigned to the new holder. */
+	@Test
+	void test009_chosenRestaurantNumberOfAnOwnerChangeIsAssigned() throws JacksonException {
+		runThroughAnApproval();
+
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers/available")));
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers")));
+	}
+
+	/** A new number is created at the premises although one there is free, since the case worker asked for a new one. */
+	@Test
+	void test010_newRestaurantNumberIsCreatedAndAssigned() throws JacksonException {
+		runThroughAnApproval();
+
+		wiremock.verify(1, postRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers")));
+	}
+
+	private void runThroughAnApproval() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING);
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "closure");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+
+		// The route is ordered by end time, and the phase can end in the same millisecond as its last step, so only the steps
+		// are held to their order.
+		assertThat(getProcessInstanceRoute(processInstanceId))
+			.extracting(HistoricActivityInstanceDto::getActivityId)
+			.containsSubsequence("external_task_resolve_restaurant_number", "external_task_create_asset", "external_task_assign_restaurant_number")
+			.contains("end_decision_phase");
 	}
 }

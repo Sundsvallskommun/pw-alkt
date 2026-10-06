@@ -112,6 +112,16 @@ public final class Constants {
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
 	// The id in party-assets of the permit an errand changes, chosen by the customer when the errand is created.
 	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
+	// The premises the permit is for, set by the e-service when the errand is registered. The address is the visiting
+	// address of the premises, where licensed business keeps its restaurant numbers.
+	public static final String ERRAND_PARAMETER_PREMISES_NAME = "premisesName";
+	public static final String ERRAND_PARAMETER_PREMISES_STREET_ADDRESS = "premisesStreetAddress";
+	public static final String ERRAND_PARAMETER_PREMISES_POSTAL_CODE = "premisesPostalCode";
+	public static final String ERRAND_PARAMETER_PREMISES_POSTAL_AREA = "premisesPostalArea";
+	// The case worker's choice: a number at the premises, or "true" for a new one. Without either the premises' first free
+	// number is used.
+	public static final String ERRAND_PARAMETER_RESTAURANT_NUMBER = "restaurantNumber";
+	public static final String ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER = "newRestaurantNumber";
 	// Parameters of a permit that pw-alkt sets from the errand and the decision, so a decision cannot remove them.
 	public static final String PERMIT_PARAMETER_ERRAND_ID = "errandId";
 	public static final String PERMIT_PARAMETER_LEGAL_BASIS = "legalBasis";
@@ -123,7 +133,9 @@ public final class Constants {
 		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, PERMIT_PARAMETER_RESTAURANT_NUMBER);
 	// The parameters of a change errand that are not part of the change the customer asks for. Every other one is.
 	public static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
-		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, PERMIT_PARAMETER_RESTAURANT_NUMBER);
+		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, ERRAND_PARAMETER_PREMISES_NAME, ERRAND_PARAMETER_PREMISES_STREET_ADDRESS,
+		ERRAND_PARAMETER_PREMISES_POSTAL_CODE, ERRAND_PARAMETER_PREMISES_POSTAL_AREA, ERRAND_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER,
+		PERMIT_PARAMETER_RESTAURANT_NUMBER);
 
 	// The topic Mina sidor gives the external conversation it creates, so the conversation looks the same whoever starts
 	// it.
@@ -150,6 +162,9 @@ public final class Constants {
 	// Set when the number is chosen, before the permit is created, so the permit and its certificate carry it. Missing in
 	// every process that assigns no restaurant number.
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER = "restaurantNumber";
+	// The free numbers at the premises, comma separated, saved before a number is created and kept even if the step then
+	// fails, so its rerun can tell the number it created from those that were free before.
+	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE = "restaurantNumbersBeforeCreate";
 
 	// Marks the action errand with the inspection it came from, so a rerun finds it instead of creating a second one.
 	public static final String EXTERNAL_TAG_INSPECTION_ERRAND_ID = "inspectionErrandId";

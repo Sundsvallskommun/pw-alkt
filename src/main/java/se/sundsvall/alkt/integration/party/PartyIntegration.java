@@ -1,9 +1,7 @@
 package se.sundsvall.alkt.integration.party;
 
 import org.springframework.stereotype.Component;
-import se.sundsvall.dept44.problem.Problem;
-
-import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
+import se.sundsvall.alkt.exception.NonRetryableException;
 
 @Component
 public class PartyIntegration {
@@ -14,8 +12,9 @@ public class PartyIntegration {
 		this.partyClient = partyClient;
 	}
 
+	// Why: a party the register does not know stays unknown, so a retry would only delay the incident.
 	public String getLegalId(final String municipalityId, final String partyId) {
 		return partyClient.getLegalId(municipalityId, partyId)
-			.orElseThrow(() -> Problem.valueOf(UNPROCESSABLE_CONTENT, "Party '%s' has no legal id".formatted(partyId)));
+			.orElseThrow(() -> new NonRetryableException("Party '%s' has no legal id".formatted(partyId)));
 	}
 }
