@@ -17,6 +17,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -27,6 +28,7 @@ import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.licensedbusiness.LicensedBusinessIntegration;
 import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.service.model.ResolvedRestaurantNumber;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +50,7 @@ class RestaurantNumberServiceTest {
 	private static final String ORG_NUMBER = "5566124144";
 	private static final String NUMBER = "22810001";
 	private static final String NUMBER_ID = "number-id";
+	private static final String ASSIGNMENT_ID = "assignment-id";
 	private static final LocalDate VALID_FROM = LocalDate.of(2026, 3, 1);
 
 	@Mock
@@ -76,17 +79,21 @@ class RestaurantNumberServiceTest {
 		verifyNoMoreInteractions(supportManagementIntegrationMock, partyIntegrationMock, licensedBusinessIntegrationMock, saveAvailableBeforeCreateMock);
 	}
 
+	/** The number is held, as in an owner change, so its assignment is noted for the assign step to compare with. */
 	@Test
 	void resolveTakesTheNumberTheCaseWorkerChoseAtThePremises() {
 		givenResolvable(errand(parameter("restaurantNumber", NUMBER)));
 		when(licensedBusinessIntegrationMock.isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER)).thenReturn(true);
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER)).thenReturn(Optional.of(new Assignment().id(ASSIGNMENT_ID)));
 
-		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo(NUMBER);
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock))
+			.isEqualTo(new ResolvedRestaurantNumber(NUMBER, ASSIGNMENT_ID));
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(partyIntegrationMock).getLegalId(MUNICIPALITY_ID, PARTY_ID);
 		verify(licensedBusinessIntegrationMock).findOrCreateAddress(eq(MUNICIPALITY_ID), addressCaptor.capture());
 		verify(licensedBusinessIntegrationMock).isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, NUMBER);
 		assertThat(addressCaptor.getValue().getStreetAddress()).isEqualTo("Storgatan 33");
 		assertThat(addressCaptor.getValue().getPostalCode()).isEqualTo("852 30");
 		assertThat(addressCaptor.getValue().getPostalArea()).isEqualTo("Sundsvall");
@@ -117,9 +124,9 @@ class RestaurantNumberServiceTest {
 		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of(NUMBER));
 		when(licensedBusinessIntegrationMock.createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn("22810002");
 
-		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo("22810002");
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo(new ResolvedRestaurantNumber("22810002", ""));
 
-		verifyResolveRead();
+		verifyResolveRead("22810002");
 		verify(saveAvailableBeforeCreateMock).accept(List.of(NUMBER));
 		verify(licensedBusinessIntegrationMock).createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID);
 	}
@@ -131,9 +138,9 @@ class RestaurantNumberServiceTest {
 		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of(NUMBER, "22810002"));
 
 		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, List.of(NUMBER), saveAvailableBeforeCreateMock))
-			.isEqualTo("22810002");
+			.isEqualTo(new ResolvedRestaurantNumber("22810002", ""));
 
-		verifyResolveRead();
+		verifyResolveRead("22810002");
 		verifyNoInteractions(saveAvailableBeforeCreateMock);
 	}
 
@@ -145,9 +152,9 @@ class RestaurantNumberServiceTest {
 		when(licensedBusinessIntegrationMock.createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn("22810002");
 
 		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, List.of(NUMBER), saveAvailableBeforeCreateMock))
-			.isEqualTo("22810002");
+			.isEqualTo(new ResolvedRestaurantNumber("22810002", ""));
 
-		verifyResolveRead();
+		verifyResolveRead("22810002");
 		verify(saveAvailableBeforeCreateMock).accept(List.of(NUMBER));
 		verify(licensedBusinessIntegrationMock).createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID);
 	}
@@ -160,9 +167,9 @@ class RestaurantNumberServiceTest {
 		givenResolvable(errand(parameter("newRestaurantNumber", value)));
 		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of(NUMBER, "22810002"));
 
-		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo(NUMBER);
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo(new ResolvedRestaurantNumber(NUMBER, ""));
 
-		verifyResolveRead();
+		verifyResolveRead(NUMBER);
 		verifyNoInteractions(saveAvailableBeforeCreateMock);
 	}
 
@@ -172,9 +179,9 @@ class RestaurantNumberServiceTest {
 		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of());
 		when(licensedBusinessIntegrationMock.createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn("22810002");
 
-		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo("22810002");
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo(new ResolvedRestaurantNumber("22810002", ""));
 
-		verifyResolveRead();
+		verifyResolveRead("22810002");
 		verify(saveAvailableBeforeCreateMock).accept(List.of());
 		verify(licensedBusinessIntegrationMock).createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID);
 	}
@@ -320,14 +327,19 @@ class RestaurantNumberServiceTest {
 		verifyFindRead();
 	}
 
-	@Test
-	void assignAssignsTheNumberToThePermitHolderAtThePremises() {
+	/**
+	 * The number was free when it was chosen and still is. A process without the noted assignment counts as having seen
+	 * none.
+	 */
+	@ParameterizedTest
+	@NullAndEmptySource
+	void assignAssignsTheNumberToThePermitHolderAtThePremises(final String latestAssignmentIdSeen) {
 		givenErrand(errand());
 		givenDecisionAndHolder();
 		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER)).thenReturn(Optional.empty());
 		when(licensedBusinessIntegrationMock.getRestaurantNumberId(MUNICIPALITY_ID, NUMBER)).thenReturn(NUMBER_ID);
 
-		assertThat(restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER)).isTrue();
+		assertThat(restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER, latestAssignmentIdSeen)).isTrue();
 
 		verifyAssignmentRead();
 		verify(licensedBusinessIntegrationMock).findOrCreateAddress(eq(MUNICIPALITY_ID), any());
@@ -341,21 +353,40 @@ class RestaurantNumberServiceTest {
 		assertThat(assignmentCaptor.getValue().getValidFrom()).isEqualTo(VALID_FROM);
 	}
 
-	/** An owner change: the number is held by the earlier owner, and licensed business ends that assignment. */
+	/**
+	 * An owner change: the number was held by the earlier owner when it was chosen, and licensed business ends that
+	 * assignment.
+	 */
 	@Test
 	void assignAssignsANumberAnotherHolderHasNow() {
 		givenErrand(errand());
 		givenDecisionAndHolder();
-		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER))
-			.thenReturn(Optional.of(new Assignment().licenseHolder(new LicenseHolder().orgNumber("5590001111")).validFrom(LocalDate.of(2020, 1, 1))));
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER)).thenReturn(Optional.of(assignmentOfAnotherHolder(ASSIGNMENT_ID)));
 		when(licensedBusinessIntegrationMock.getRestaurantNumberId(MUNICIPALITY_ID, NUMBER)).thenReturn(NUMBER_ID);
 
-		assertThat(restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER)).isTrue();
+		assertThat(restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER, ASSIGNMENT_ID)).isTrue();
 
 		verifyAssignmentRead();
 		verify(licensedBusinessIntegrationMock).findOrCreateAddress(eq(MUNICIPALITY_ID), any());
 		verify(licensedBusinessIntegrationMock).getRestaurantNumberId(MUNICIPALITY_ID, NUMBER);
 		verify(licensedBusinessIntegrationMock).createAssignment(eq(MUNICIPALITY_ID), any());
+	}
+
+	/** Another errand chose the number in the meantime and assigned it first, whether it was free or held when chosen. */
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"", ASSIGNMENT_ID
+	})
+	void assignFailsWhenAnotherErrandAssignedTheNumberFirst(final String latestAssignmentIdSeen) {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand());
+		givenDecisionAndHolder();
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER)).thenReturn(Optional.of(assignmentOfAnotherHolder("other-assignment-id")));
+
+		assertThatThrownBy(() -> restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER, latestAssignmentIdSeen))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Restaurant number '22810001' was assigned by another errand after errand 'errand-id' chose it, so two errands chose the same number");
+
+		verifyAssignmentRead();
 	}
 
 	@Test
@@ -365,7 +396,7 @@ class RestaurantNumberServiceTest {
 		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER))
 			.thenReturn(Optional.of(new Assignment().licenseHolder(new LicenseHolder().orgNumber("556612-4144")).validFrom(VALID_FROM)));
 
-		assertThat(restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER)).isFalse();
+		assertThat(restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER, "")).isFalse();
 
 		verifyAssignmentRead();
 	}
@@ -375,7 +406,7 @@ class RestaurantNumberServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand());
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER))
+		assertThatThrownBy(() -> restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER, ""))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has no completed decision to assign restaurant number '22810001' by");
 
@@ -388,7 +419,7 @@ class RestaurantNumberServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(new Decision().validFrom(VALID_FROM)));
 
-		assertThatThrownBy(() -> restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER))
+		assertThatThrownBy(() -> restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER, ""))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining("has no stakeholder with role 'PRIMARY'");
 
@@ -403,7 +434,7 @@ class RestaurantNumberServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(new Decision().validFrom(VALID_FROM)));
 
-		assertThatThrownBy(() -> restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER))
+		assertThatThrownBy(() -> restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER, ""))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("The permit holder of errand 'errand-id' has no organization name");
 
@@ -433,6 +464,10 @@ class RestaurantNumberServiceTest {
 		verify(licensedBusinessIntegrationMock).findAddressId(eq(MUNICIPALITY_ID), any());
 	}
 
+	private static Assignment assignmentOfAnotherHolder(final String id) {
+		return new Assignment().id(id).licenseHolder(new LicenseHolder().orgNumber("5590001111")).validFrom(LocalDate.of(2020, 1, 1));
+	}
+
 	private static Assignment activeAssignmentOf(final String orgNumber) {
 		return new Assignment().licenseHolder(new LicenseHolder().orgNumber(orgNumber)).status("ACTIVE");
 	}
@@ -442,11 +477,12 @@ class RestaurantNumberServiceTest {
 		when(partyIntegrationMock.getLegalId(MUNICIPALITY_ID, PARTY_ID)).thenReturn(ORG_NUMBER);
 	}
 
-	private void verifyResolveRead() {
+	private void verifyResolveRead(final String number) {
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(partyIntegrationMock).getLegalId(MUNICIPALITY_ID, PARTY_ID);
 		verify(licensedBusinessIntegrationMock).findOrCreateAddress(eq(MUNICIPALITY_ID), any());
 		verify(licensedBusinessIntegrationMock).getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, number);
 	}
 
 	private void verifyAssignmentRead() {

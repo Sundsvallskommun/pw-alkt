@@ -579,6 +579,24 @@ number that is not in the list and takes it. Without a choice a rerun finds the 
 <span class="code">AssignRestaurantNumberTask</span> does nothing when the latest assignment of the number already has
 the same organization number and the same first day.</p>
 
+<p>Licensed business cannot reserve a number, so two errands at the same address can choose the same free number
+before either of them has assigned it. A number one errand has just created counts as free as well, until that errand
+assigns it. Without a check, the errand that assigns last would end the other holder's assignment without anyone
+noticing. <span class="code">ResolveRestaurantNumberTask</span> therefore saves the id of the number's latest assignment
+in the process variable <span class="code">restaurantNumberLatestAssignment</span>, or an empty value when the number
+has none. <span class="code">AssignRestaurantNumberTask</span> reads the latest assignment again. If it is the same one,
+it assigns the number, which is how an owner change goes through. If it is a different one and not the errand's own,
+another errand got there first. The step then assigns nothing and raises an incident. The check holds because licensed
+business counts the assignment with the latest <span class="code">validFrom</span> as the latest one, and an assignment
+that overlaps an active one has to start later. Two assign steps that run in the same instant can both see the
+number as free. That window is milliseconds and is accepted.</p>
+
+<p>The incident is resolved by hand. Choose another number for the errand together with the case worker, correct
+<span class="code">premisesRestaurantNumber</span> on the permit in party-assets and replace its certificate, then set
+the process variable <span class="code">restaurantNumber</span> to the new number and
+<span class="code">restaurantNumberLatestAssignment</span> to the id of its latest assignment in licensed business, or an
+empty value when it has none, in Operaton cockpit and retry the step.</p>
+
 <p>An addition is a temporary permit that runs beside the holder's permanent one at the same premises, so it gets the
 number the holder already has there. <span class="code">alcohol-serving-addition</span> has
 <span class="code">FindRestaurantNumberTask</span> before <span class="code">CreateAssetTask</span> and no assign step.

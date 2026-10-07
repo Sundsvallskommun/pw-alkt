@@ -10,6 +10,7 @@ import se.sundsvall.alkt.service.RestaurantNumberService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -26,9 +27,10 @@ public class AssignRestaurantNumberWorker extends AbstractTaskWorker {
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final String restaurantNumber = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER);
+		final String latestAssignmentIdSeen = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT);
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null);
 
-		if (!restaurantNumberService.assignRestaurantNumber(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), restaurantNumber)) {
+		if (!restaurantNumberService.assignRestaurantNumber(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), restaurantNumber, latestAssignmentIdSeen)) {
 			return report.withLogMessage("Restaurant number '%s' was already assigned".formatted(restaurantNumber));
 		}
 

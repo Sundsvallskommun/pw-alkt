@@ -162,6 +162,7 @@ public final class Constants {
 	// Set when the number is chosen, before the permit is created, so the permit and its certificate carry it. Missing in
 	// every process that assigns no restaurant number.
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER = "restaurantNumber";
+	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT = "restaurantNumberLatestAssignment";
 	// The free numbers at the premises, comma separated, saved before a number is created and kept even if the step then
 	// fails, so its rerun can tell the number it created from those that were free before.
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE = "restaurantNumbersBeforeCreate";

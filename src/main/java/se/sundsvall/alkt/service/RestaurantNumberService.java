@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.licensedbusiness.Assignment;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.util.List;
@@ -13,6 +14,7 @@ import se.sundsvall.alkt.integration.licensedbusiness.LicensedBusinessIntegratio
 import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper;
+import se.sundsvall.alkt.service.model.ResolvedRestaurantNumber;
 
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Collections.emptyList;
@@ -45,16 +47,19 @@ public class RestaurantNumberService {
 	 * free number or a new one when there is none. Nothing is assigned yet. Before a number is created the free numbers
 	 * are handed to saveAvailableBeforeCreate, and a rerun gets them back as availableBeforeCreate, null on a first run.
 	 */
-	public String resolveRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final List<String> availableBeforeCreate,
+	public ResolvedRestaurantNumber resolveRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final List<String> availableBeforeCreate,
 		final Consumer<List<String>> saveAvailableBeforeCreate) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		requireAssignableHolder(municipalityId, errand, errandId);
 		final var parameters = toParameterValues(errand.getParameters());
 		final var addressId = licensedBusinessIntegration.findOrCreateAddress(municipalityId, toAddress(parameters, errandId));
 
-		return Optional.ofNullable(parameters.get(ERRAND_PARAMETER_RESTAURANT_NUMBER))
-			.map(number -> requireAtAddress(municipalityId, addressId, number, errandId))
+		final var number = Optional.ofNullable(parameters.get(ERRAND_PARAMETER_RESTAURANT_NUMBER))
+			.map(chosen -> requireAtAddress(municipalityId, addressId, chosen, errandId))
 			.orElseGet(() -> newOrAvailableRestaurantNumber(municipalityId, addressId, parameters, availableBeforeCreate, saveAvailableBeforeCreate));
+
+		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(municipalityId, number);
+		return new ResolvedRestaurantNumber(number, toAssignmentId(latestAssignment));
 	}
 
 	/**
@@ -76,9 +81,10 @@ public class RestaurantNumberService {
 
 	/**
 	 * Assigns the number to the permit holder from the day the permit is issued. Licensed business ends an active one on
-	 * the number, which is how an owner change at the premises works. Answers false when it was already assigned.
+	 * the number, which is how an owner change at the premises works. Answers false when it was already assigned, and
+	 * throws when another errand assigned the number after this one chose it.
 	 */
-	public boolean assignRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final String restaurantNumber) {
+	public boolean assignRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final String restaurantNumber, final String latestAssignmentIdSeen) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var decision = supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no completed decision to assign restaurant number '%s' by".formatted(errandId, restaurantNumber)));
@@ -87,15 +93,24 @@ public class RestaurantNumberService {
 		final var orgNumber = partyIntegration.getLegalId(municipalityId, permitHolder.getExternalId());
 		final var validFrom = toValidFrom(decision);
 
-		// Why: a rerun after the assignment was created finds it here, and a second create would end the first.
-		if (licensedBusinessIntegration.findLatestAssignment(municipalityId, restaurantNumber).filter(assignment -> isAssignedTo(assignment, orgNumber, validFrom)).isPresent()) {
+		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(municipalityId, restaurantNumber);
+		// Why: a step that failed after creating the assignment finds it on its rerun as the number's latest assignment.
+		// Creating it again would end the one already made, since licensed business ends the active one on a new assignment.
+		if (latestAssignment.filter(assignment -> isAssignedTo(assignment, orgNumber, validFrom)).isPresent()) {
 			return false;
+		}
+		// Why: licensed business cannot reserve a number, so another errand may have assigned the same number after this one
+		// chose it. Assigning it now would end that errand's assignment.
+		if (!toAssignmentId(latestAssignment).equals(Optional.ofNullable(latestAssignmentIdSeen).orElse(""))) {
+			throw new NonRetryableException("Restaurant number '%s' was assigned by another errand after errand '%s' chose it, so two errands chose the same number"
+				.formatted(restaurantNumber, errandId));
 		}
 
 		final var parameters = toParameterValues(errand.getParameters());
 		final var addressId = licensedBusinessIntegration.findOrCreateAddress(municipalityId, toAddress(parameters, errandId));
-		licensedBusinessIntegration.createAssignment(municipalityId, toAssignmentCreateRequest(licensedBusinessIntegration.getRestaurantNumberId(municipalityId, restaurantNumber),
-			addressId, orgNumber, holderName, parameters, decision));
+		final var restaurantNumberId = licensedBusinessIntegration.getRestaurantNumberId(municipalityId, restaurantNumber);
+		final var request = toAssignmentCreateRequest(restaurantNumberId, addressId, orgNumber, holderName, parameters, decision);
+		licensedBusinessIntegration.createAssignment(municipalityId, request);
 		return true;
 	}
 
@@ -162,6 +177,10 @@ public class RestaurantNumberService {
 			.flatMap(before -> available.stream()
 				.filter(number -> !before.contains(number))
 				.findFirst());
+	}
+
+	private static String toAssignmentId(final Optional<Assignment> assignment) {
+		return assignment.map(Assignment::getId).orElse("");
 	}
 
 	private static Stakeholder getPermitHolder(final Errand errand, final String errandId) {

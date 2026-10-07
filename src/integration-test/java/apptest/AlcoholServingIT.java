@@ -13,12 +13,16 @@ import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/AlcoholServingIT/", classes = Application.class)
@@ -355,6 +359,41 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		runThroughAnApproval();
 
 		wiremock.verify(1, postRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers")));
+	}
+
+	/**
+	 * The number was free when it was chosen, but another errand assigned it before this one could, so the process stops
+	 * instead of ending the other holder's assignment.
+	 */
+	@Test
+	void test011_anotherErrandAssignedTheNumberFirstLeavesAnIncident() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING);
+
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, PROCESS_KEY_ALCOHOL_SERVING).stream()
+				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())
+					&& "external_task_assign_restaurant_number".equals(incident.getActivityId())));
+		// The failure report and the alert are sent after the incident is raised, the alert last
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.untilAsserted(() -> wiremock.verify(postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack"))));
+
+		verifyAllStubs();
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/2281/assignments")));
 	}
 
 	private void runThroughAnApproval() throws JacksonException {

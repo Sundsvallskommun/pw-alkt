@@ -20,6 +20,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT;
 
 @ExtendWith(MockitoExtension.class)
 class AssignRestaurantNumberWorkerTest {
@@ -56,8 +57,9 @@ class AssignRestaurantNumberWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER)).thenReturn("22810001");
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT)).thenReturn("assignment-id");
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_assign_restaurant_number");
-		when(restaurantNumberServiceMock.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "22810001")).thenReturn(assigned);
+		when(restaurantNumberServiceMock.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "22810001", "assignment-id")).thenReturn(assigned);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 

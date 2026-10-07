@@ -149,7 +149,7 @@
         <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decisionOutcome == 'REJECTED' || decisionOutcome == 'DISMISSED' || decisionOutcome == 'INADMISSIBLE'}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
       <bpmn:serviceTask id="external_task_resolve_restaurant_number" name="Resolve restaurant number" camunda:type="external" camunda:topic="ResolveRestaurantNumberTask">
-        <bpmn:documentation>Chooses the restaurant number of the premises in licensed business and sets restaurantNumber, so the permit and its certificate carry it. Assigns nothing yet.</bpmn:documentation>
+        <bpmn:documentation>Chooses the restaurant number of the premises in licensed business and sets restaurantNumber, so the permit and its certificate carry it. Also sets restaurantNumberLatestAssignment, the id of the number's latest assignment at the time, so the assign step can tell whether another errand assigned the number since. Assigns nothing yet.</bpmn:documentation>
         <bpmn:incoming>flow_decision_gateway_to_resolve_restaurant_number</bpmn:incoming>
         <bpmn:outgoing>flow_decision_resolve_restaurant_number_to_create_asset</bpmn:outgoing>
       </bpmn:serviceTask>
@@ -166,7 +166,7 @@
       </bpmn:serviceTask>
       <bpmn:sequenceFlow id="flow_decision_create_asset_to_assign_restaurant_number" sourceRef="external_task_create_asset" targetRef="external_task_assign_restaurant_number" />
       <bpmn:serviceTask id="external_task_assign_restaurant_number" name="Assign restaurant number" camunda:type="external" camunda:topic="AssignRestaurantNumberTask">
-        <bpmn:documentation>Assigns the restaurant number to the permit holder in licensed business. After the permit, so no number is assigned to a permit that was never created.</bpmn:documentation>
+        <bpmn:documentation>Assigns the restaurant number to the permit holder in licensed business. After the permit, so no number is assigned to a permit that was never created. Raises an incident instead of assigning when another errand assigned the number after it was chosen.</bpmn:documentation>
         <bpmn:incoming>flow_decision_create_asset_to_assign_restaurant_number</bpmn:incoming>
         <bpmn:outgoing>flow_decision_assign_restaurant_number_to_end</bpmn:outgoing>
       </bpmn:serviceTask>

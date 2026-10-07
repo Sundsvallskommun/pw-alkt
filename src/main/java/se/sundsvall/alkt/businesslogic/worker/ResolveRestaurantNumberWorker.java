@@ -16,6 +16,7 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -32,16 +33,16 @@ public class ResolveRestaurantNumberWorker extends AbstractTaskWorker {
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final String availableBeforeCreate = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE);
-		final var restaurantNumber = restaurantNumberService.resolveRestaurantNumber(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
+		final var resolved = restaurantNumberService.resolveRestaurantNumber(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
 			Optional.ofNullable(availableBeforeCreate).map(ResolveRestaurantNumberWorker::toNumbers).orElse(null),
 			// Why: written at once rather than on completion, so it outlives a run that fails after the create.
 			numbers -> externalTaskService.setVariables(externalTask, Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE, String.join(",", numbers))));
 
-		logInfo("Errand {} gets restaurant number {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(restaurantNumber));
+		logInfo("Errand {} gets restaurant number {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(resolved.number()));
 
 		return ProcessStateReport.running(externalTask.getActivityId(), null)
-			.withVariables(Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBER, restaurantNumber))
-			.withLogMessage("Restaurant number '%s' resolved".formatted(restaurantNumber));
+			.withVariables(Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBER, resolved.number(), PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT, resolved.latestAssignmentId()))
+			.withLogMessage("Restaurant number '%s' resolved".formatted(resolved.number()));
 	}
 
 	private static List<String> toNumbers(final String commaSeparated) {
