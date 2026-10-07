@@ -655,10 +655,11 @@ boundary event on the step catches the error and takes the process to the review
 Slack. The customer then gets no notice unless someone sends it by hand.</p>
 
 <p>A retry must not send the message twice, and a process variable cannot remember that it was sent. The step reads
-the messages of the conversation first, and sends nothing if pw-alkt has already written the same text there. If the
-text changes between two attempts, the customer gets both texts. Message Exchange stores pw-alkt as the sender with
-the type <span class="code">processEngine</span>, which the spec of Support Management does not list, so the models
-generated from it accept unknown enum values. The text of a message is never logged.</p>
+the messages of the conversation first, and sends nothing if pw-alkt has already written the same text there. The step
+is locked long enough to cover every call timing out, so another pod cannot read the conversation before this run has
+written to it. If the text changes between two attempts, the customer gets both texts. Message Exchange stores pw-alkt
+as the sender with the type <span class="code">processEngine</span>, which the spec of Support Management does not
+list, so the models generated from it accept unknown enum values. The text of a message is never logged.</p>
 
 <p>Outside pw-alkt the message needs a <span class="code">CONVERSATION</span> entry with
 a <span class="code">supportText</span> for the namespace in messaging-settings, or the notice is empty. Mina sidor

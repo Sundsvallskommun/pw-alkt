@@ -27,6 +27,11 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 
+	// Guards against double writes by a step that creates or changes something outside the process. It covers every call of
+	// a run timing out, since a lock that expires mid-run lets another pod write a second time. Steps that only read or
+	// report keep the client's default.
+	protected static final long LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS = 15 * 60 * 1000L;
+
 	private final Logger logger;
 
 	protected final ProcessReportService processReportService;

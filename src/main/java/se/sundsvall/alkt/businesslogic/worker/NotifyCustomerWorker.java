@@ -16,12 +16,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MESSAGE;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
-@ExternalTaskSubscription(topicName = "NotifyCustomerTask", lockDuration = NotifyCustomerWorker.LOCK_DURATION_IN_MILLISECONDS)
+@ExternalTaskSubscription(topicName = "NotifyCustomerTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class NotifyCustomerWorker extends AbstractTaskWorker {
-
-	// Covers every call of a run timing out. A lock that expires mid-run lets another pod read the conversation before
-	// this run has written to it, and the customer gets the message twice.
-	static final long LOCK_DURATION_IN_MILLISECONDS = 5 * 60 * 1000L;
 
 	private final CustomerMessageService customerMessageService;
 

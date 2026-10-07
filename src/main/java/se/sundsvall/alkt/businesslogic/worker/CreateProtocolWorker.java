@@ -14,11 +14,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_PROTOCOL_TEMPLATE;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
-@ExternalTaskSubscription(topicName = "CreateProtocolTask", lockDuration = CreateProtocolWorker.LOCK_DURATION_IN_MILLISECONDS)
+@ExternalTaskSubscription(topicName = "CreateProtocolTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class CreateProtocolWorker extends AbstractTaskWorker {
-
-	// Covers every call of a run timing out. A lock that expires mid-run lets another pod upload a second protocol.
-	static final long LOCK_DURATION_IN_MILLISECONDS = 15 * 60 * 1000L;
 
 	private final InspectionProtocolService inspectionProtocolService;
 

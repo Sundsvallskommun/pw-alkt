@@ -20,7 +20,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LAT
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
-@ExternalTaskSubscription("ResolveRestaurantNumberTask")
+@ExternalTaskSubscription(topicName = "ResolveRestaurantNumberTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class ResolveRestaurantNumberWorker extends AbstractTaskWorker {
 
 	private final RestaurantNumberService restaurantNumberService;

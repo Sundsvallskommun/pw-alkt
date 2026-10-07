@@ -16,11 +16,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ACTION_ERRAND_TYPE;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
-@ExternalTaskSubscription(topicName = "CreateActionErrandTask", lockDuration = CreateActionErrandWorker.LOCK_DURATION_IN_MILLISECONDS)
+@ExternalTaskSubscription(topicName = "CreateActionErrandTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class CreateActionErrandWorker extends AbstractTaskWorker {
-
-	// Covers every call of a run timing out. A lock that expires mid-run lets another pod create a second action errand.
-	static final long LOCK_DURATION_IN_MILLISECONDS = 15 * 60 * 1000L;
 
 	private final ActionErrandService actionErrandService;
 
