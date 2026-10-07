@@ -110,6 +110,7 @@ public final class Constants {
 	public static final String DECISION_STATUS_DRAFT = "DRAFT";
 	public static final String DECISION_METHOD_AUTOMATIC = "AUTOMATIC";
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
+	public static final String NO_PERMIT_HOLDER_MESSAGE = "Errand '%s' has no stakeholder with role '" + STAKEHOLDER_ROLE_PERMIT_HOLDER + "'";
 	// The id in party-assets of the permit an errand changes, chosen by the customer when the errand is created.
 	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
 	// The premises the permit is for, set by the e-service when the errand is registered. The address is the visiting

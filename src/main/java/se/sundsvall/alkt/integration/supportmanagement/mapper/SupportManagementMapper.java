@@ -76,10 +76,6 @@ public final class SupportManagementMapper {
 			.findFirst();
 	}
 
-	public static String toNoPermitHolderMessage(final String errandId) {
-		return "Errand '%s' has no stakeholder with role '%s'".formatted(errandId, STAKEHOLDER_ROLE_PERMIT_HOLDER);
-	}
-
 	public static String toDecisionTitle(final String processKey) {
 		return Optional.ofNullable(processKey)
 			.map(DECISION_TITLES::get)

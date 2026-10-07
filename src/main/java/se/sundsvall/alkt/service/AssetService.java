@@ -30,11 +30,11 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
+import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toNoPermitHolderMessage;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
@@ -80,7 +80,7 @@ public class AssetService {
 		}
 
 		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
-			.orElseThrow(() -> new NonRetryableException(toNoPermitHolderMessage(errandId)));
+			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
 
 		return partyAssetsIntegration.findAssetId(municipalityId, partyId, decision.getId())
 			.orElseGet(() -> {
@@ -125,7 +125,7 @@ public class AssetService {
 			throw new NonRetryableException("Errand '%s' names asset '%s', which is not an asset id".formatted(errandId, assetId));
 		}
 		final var partyId = toPartyId(errand)
-			.orElseThrow(() -> new NonRetryableException(toNoPermitHolderMessage(errandId)));
+			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
 		final var versioned = partyAssetsIntegration.getAsset(municipalityId, assetId);
 		final var asset = versioned.asset();
 		if (asset.getStatus() != ACTIVE) {

@@ -20,12 +20,12 @@ import static java.lang.Boolean.parseBoolean;
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.isActiveFor;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.isAssignedTo;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAddress;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAssignmentCreateRequest;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toValidFrom;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toNoPermitHolderMessage;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 
 @Service
@@ -187,7 +187,7 @@ public class RestaurantNumberService {
 		return Optional.ofNullable(errand.getStakeholders()).orElse(emptyList()).stream()
 			.filter(SupportManagementMapper::isPermitHolder)
 			.findFirst()
-			.orElseThrow(() -> new NonRetryableException(toNoPermitHolderMessage(errandId)));
+			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
 	}
 
 	private static String getHolderName(final Stakeholder permitHolder, final String errandId) {

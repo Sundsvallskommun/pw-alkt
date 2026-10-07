@@ -19,8 +19,8 @@ import static java.lang.Boolean.FALSE;
 import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.Constants.CONVERSATION_TOPIC_CUSTOMER;
+import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toNoPermitHolderMessage;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
 
 @Service
@@ -56,7 +56,7 @@ public class CustomerMessageService {
 	// part in is used.
 	private String findOrCreateConversation(final String municipalityId, final String namespace, final String errandId) {
 		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
-			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, toNoPermitHolderMessage(errandId)));
+			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
 
 		return supportManagementIntegration.getConversations(municipalityId, namespace, errandId).stream()
 			.filter(conversation -> EXTERNAL == conversation.getType() && hasParticipant(conversation, partyId))

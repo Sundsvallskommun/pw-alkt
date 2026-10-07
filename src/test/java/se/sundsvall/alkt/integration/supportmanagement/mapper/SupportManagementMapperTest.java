@@ -267,11 +267,6 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
-	void toNoPermitHolderMessageNamesTheErrandAndTheRole() {
-		assertThat(SupportManagementMapper.toNoPermitHolderMessage("errand-id")).isEqualTo("Errand 'errand-id' has no stakeholder with role 'PRIMARY'");
-	}
-
-	@Test
 	void toConditionsPutsTheTermsOnePerLineInTheirOrderLeavingOutBlankOnes() {
 		final var decision = new Decision().terms(List.of(
 			new DecisionTerm().text("Ordningsvakt ska finnas efter 23.00."),
