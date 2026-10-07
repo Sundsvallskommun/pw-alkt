@@ -123,9 +123,16 @@ public class AssetService {
 		return assetId;
 	}
 
-	/** Checks the permit the errand names before the case worker handles the errand, and answers with its id. */
+	/**
+	 * Checks the permit the errand names before the case worker handles the errand, and answers with its id. A permit that
+	 * has already ended passes, as the closure then has nothing to do.
+	 */
 	public String checkPermit(final String municipalityId, final String namespace, final String errandId, final String permitType) {
-		return getPermitToChange(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, permitType).asset().getId();
+		final var asset = getPermitOfTheErrand(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, permitType).asset();
+		if (asset.getStatus() != EXPIRED) {
+			requireActive(asset);
+		}
+		return asset.getId();
 	}
 
 	/** Ends the permit the errand names. The permit certificate stays as it is. */
@@ -138,6 +145,7 @@ public class AssetService {
 		// Why: a rerun after the PATCH went through finds the permit already ended, or already set to end.
 		if (!isClosed(asset, closure)) {
 			requireActive(asset);
+			requireNotBeforeIssued(asset, closure, errandId);
 			partyAssetsIntegration.updateAsset(municipalityId, asset.getId(), versioned.version(), closure);
 		}
 		return asset.getId();
@@ -146,6 +154,14 @@ public class AssetService {
 	private static boolean isClosed(final Asset asset, final AssetUpdateRequest closure) {
 		return asset.getStatus() == EXPIRED
 			|| (asset.getStatus() == ACTIVE && closure.getStatus() == null && closure.getValidTo().equals(asset.getValidTo()));
+	}
+
+	private static void requireNotBeforeIssued(final Asset asset, final AssetUpdateRequest closure, final String errandId) {
+		Optional.ofNullable(asset.getIssued())
+			.filter(issued -> closure.getValidTo().isBefore(issued))
+			.ifPresent(issued -> {
+				throw new NonRetryableException("Decision of errand '%s' ends asset '%s' on %s, before it was issued on %s".formatted(errandId, asset.getId(), closure.getValidTo(), issued));
+			});
 	}
 
 	/** The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. */

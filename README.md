@@ -498,7 +498,7 @@ and the permit stays as it was.</p>
 <p>The step renders the new certificate from the merged parameters before it writes anything, so a decision that does
 not fill the template leaves the permit as it was. The PATCH carries the version it read as
 <span class="code">If-Match</span>, and a permit changed in between answers 412, so the step reruns on a fresh read.
-party-assets keeps the earlier content as a revision. The step then replaces the certificate. A rerun that finds the
+A 400 is a change party-assets refuses, and raises an incident at once. party-assets keeps the earlier content as a revision. The step then replaces the certificate. A rerun that finds the
 change already on the permit skips the PATCH and only replaces the certificate, so a failed certificate does not add a
 revision per attempt.</p>
 
@@ -507,11 +507,13 @@ party-assets are therefore generated with <span class="code">containerDefaultToN
 set <span class="code">additionalParameters</span> or <span class="code">jsonParameters</span> leaves them out.</p>
 
 <p>A closure errand names the permit in <span class="code">assetId</span> as well. When the process starts,
-<span class="code">CheckPermitTask</span> checks the permit as above but drafts nothing; the case worker makes the
+<span class="code">CheckPermitTask</span> checks the permit as above but drafts nothing, and also lets a permit that
+has already expired through, since the closure then has nothing to do; the case worker makes the
 decision. Once it is completed, <span class="code">CloseAssetTask</span> checks the permit again and sets its
 <span class="code">validTo</span> to the <span class="code">validTo</span> of the decision, or the day the decision was
-made if it has none. A last day that has come or passed also sets the status <span class="code">EXPIRED</span>; a last
-day still to come is left to party-assets, which expires the permit once the day has passed. The PATCH carries
+made if it has none. A last day that has passed also sets the status <span class="code">EXPIRED</span>; a last day of
+today or later is left to party-assets, which expires the permit once the day has passed. A last day before the permit
+was issued raises an incident without a PATCH, and so does a 400 from party-assets. The PATCH carries
 <span class="code">If-Match</span> and no <span class="code">statusReason</span>, since party-assets refuses one unless
 reasons are registered for the status. The certificate stays as it is. A rerun that finds the permit expired, or
 active with that last day already set, writes nothing.</p>

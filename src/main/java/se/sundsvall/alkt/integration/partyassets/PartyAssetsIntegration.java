@@ -59,9 +59,19 @@ public class PartyAssetsIntegration {
 		return new VersionedAsset(asset, response.getHeaders().getETag());
 	}
 
-	/** A version that no longer matches is answered with 412, and the step reruns on a fresh read. */
+	/**
+	 * A version that no longer matches is answered with 412, and the step reruns on a fresh read. A 400 is a change
+	 * party-assets refuses, which a retry does not change.
+	 */
 	public void updateAsset(final String municipalityId, final String id, final String version, final AssetUpdateRequest asset) {
-		partyAssetsClient.updateAsset(municipalityId, id, version, asset);
+		try {
+			partyAssetsClient.updateAsset(municipalityId, id, version, asset);
+		} catch (final ClientProblem e) {
+			if (BAD_REQUEST.equals(e.getStatus())) {
+				throw new NonRetryableException("Asset '%s' cannot be updated: %s".formatted(id, describe(e)), e);
+			}
+			throw e;
+		}
 	}
 
 	/**

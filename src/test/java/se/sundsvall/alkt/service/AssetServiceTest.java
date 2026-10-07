@@ -798,6 +798,29 @@ class AssetServiceTest {
 	}
 
 	@Test
+	void checkPermitPassesAPermitThatHasAlreadyEnded() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED)));
+
+		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = Status.class, names = {
+		"ACTIVE", "EXPIRED"
+	}, mode = EXCLUDE)
+	void checkPermitFailsWithoutRetryOnAPermitThatIsNeitherActiveNorEnded(final Status status) {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
+
+		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Asset '%s' has status %s, only an active permit can be handled".formatted(ASSET_ID, status));
+	}
+
+	@Test
 	void checkPermitFailsWithoutRetryOnAnAssetOfAnotherType() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
@@ -896,6 +919,29 @@ class AssetServiceTest {
 			.hasMessage("Asset '%s' has status %s, only an active permit can be handled".formatted(ASSET_ID, status));
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+	}
+
+	@Test
+	void closeAssetFailsWithoutRetryOnALastDayBeforeThePermitWasIssued() {
+		givenAnErrandNaming(approval().validTo(TODAY.minusDays(10)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().issued(TODAY.minusDays(5))));
+
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Decision of errand 'errand-id' ends asset '%s' on %s, before it was issued on %s".formatted(ASSET_ID, TODAY.minusDays(10), TODAY.minusDays(5)));
+
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+	}
+
+	@Test
+	void closeAssetEndsAPermitOnTheDayItWasIssued() {
+		givenAnErrandNaming(approval().validTo(TODAY.minusDays(5)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().issued(TODAY.minusDays(5))));
+
+		assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(TODAY.minusDays(5));
 	}
 
 	@Test
