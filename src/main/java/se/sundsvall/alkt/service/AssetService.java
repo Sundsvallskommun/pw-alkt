@@ -83,7 +83,7 @@ public class AssetService {
 		}
 
 		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
-			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, toNoPermitHolderMessage(errandId)));
+			.orElseThrow(() -> new NonRetryableException(toNoPermitHolderMessage(errandId)));
 
 		return partyAssetsIntegration.findAsset(municipalityId, partyId, decision.getId())
 			.map(asset -> {

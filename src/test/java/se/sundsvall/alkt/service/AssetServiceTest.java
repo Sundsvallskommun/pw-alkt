@@ -442,7 +442,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING))
-			.isInstanceOf(Problem.class)
+			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(STAKEHOLDER_ROLE_PERMIT_HOLDER);
 
 		verifyNoInteractions(partyAssetsIntegrationMock);

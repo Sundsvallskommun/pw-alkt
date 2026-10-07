@@ -527,7 +527,9 @@ type <span class="code">PERMIT</span>, the outcome <span class="code">APPROVAL</
 the Swedish date it is made and has no last day. Every attachment of the errand is linked to it, while a manual decision
 carries only the attachments the case worker linked. Support Management locks a completed decision, attachments
 included, so the step writes a draft, links the attachments and completes it last. A retry picks up the draft an earlier
-attempt left behind and links only what is missing, and a completed decision is left as it is. Every write carries
+attempt left behind and links only what is missing, and a completed decision is left as it is. An errand without a
+<span class="code">PRIMARY</span> stakeholder raises an incident before the decision is completed, since the permit
+would have no holder and the decision could no longer be changed. Every write carries
 <span class="code">X-Trigger-Process: false</span>, so it does not wake the process that made it.</p>
 
 <h3>The inspections</h3>

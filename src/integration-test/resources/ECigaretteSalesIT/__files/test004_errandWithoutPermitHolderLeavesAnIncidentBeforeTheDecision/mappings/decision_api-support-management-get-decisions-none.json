@@ -1,0 +1,19 @@
+{
+	"name": "decision_api-support-management-get-decisions-none",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [],
+		"status": 200
+	}
+}

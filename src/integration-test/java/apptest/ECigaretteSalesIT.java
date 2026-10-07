@@ -8,6 +8,9 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
@@ -171,5 +174,26 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 				tuple("Follow up", "follow_up_phase"),
 				tuple("Start follow up phase", "start_follow_up_phase"),
 				tuple("Follow up completed", "await_follow_up_completed"));
+	}
+
+	@Test
+	void test004_errandWithoutPermitHolderLeavesAnIncidentBeforeTheDecision() throws JacksonException {
+		// === Start process === the errand has no stakeholder with role PRIMARY
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
+
+		awaitIncidentAt(PROCESS_KEY_E_CIGARETTE_SALES, processInstanceId, "external_task_create_decision");
+
+		// No decision is written, so nothing is locked before the case worker has added the permit holder
+		verifyAllStubs();
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-support-management/.*/decisions")));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
 	}
 }
