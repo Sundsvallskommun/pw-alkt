@@ -43,7 +43,8 @@ public class ActionErrandService {
 			.map(actionErrand -> supportManagementIntegration.createErrand(municipalityId, namespace, toErrandRelation(RELATION_TYPE_LINK, errandId, namespace), actionErrand));
 	}
 
-	// Why: a created action errand is found by its tag on every later run, so one without a permit holder cannot be redone.
+	// Why: a rerun finds a created action errand by its tag and creates no new one, so an action errand created without a
+	// permit holder would stay without one.
 	private static Errand requirePermitHolder(final Errand actionErrand, final String errandId) {
 		if (actionErrand.getStakeholders().isEmpty()) {
 			throw new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId));

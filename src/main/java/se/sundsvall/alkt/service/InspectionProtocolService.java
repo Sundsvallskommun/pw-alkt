@@ -60,8 +60,8 @@ public class InspectionProtocolService {
 	}
 
 	// Why: the step runs once the case worker has completed the investigation, so that is the one the protocol is of. A
-	// draft, active or cancelled one is not, and with several completed there is no telling which one it is. None is
-	// retried, since the completion may not be saved yet when the phase ends.
+	// draft, active or cancelled one is not, and with several completed there is no telling which one it is.
+	// Without a completed one the step is retried, since the completion may not be saved yet when the phase ends.
 	private Investigation getInvestigation(final String municipalityId, final String namespace, final String errandId) {
 		final var investigations = supportManagementIntegration.getInvestigations(municipalityId, namespace, errandId).stream()
 			.filter(investigation -> INVESTIGATION_STATUS_COMPLETED.equals(investigation.getStatus()))

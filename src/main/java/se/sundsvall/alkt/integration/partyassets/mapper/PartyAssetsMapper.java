@@ -125,8 +125,8 @@ public final class PartyAssetsMapper {
 		final var parameters = new LinkedHashMap<String, String>();
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_LEGAL_BASIS, value));
 		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_DELEGATION_REFERENCE, value));
-		// Why: the decision's parameters go in after our own keys, so they win over them, except the conditions, which the
-		// terms carry as on the certificate.
+		// Why: the decision's parameters go in after legalBasis and delegationReference, so they win over them. The
+		// conditions come from the decision's terms instead, as on the certificate, and win over a conditions parameter.
 		parameters.putAll(toParameterValues(decision.getParameters()));
 		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_CONDITIONS, value));
 		// Why: errandId links the asset to the errand that granted it, which no decision parameter may change.

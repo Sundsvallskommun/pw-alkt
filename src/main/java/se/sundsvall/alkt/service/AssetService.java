@@ -101,8 +101,8 @@ public class AssetService {
 		final var asset = versioned.asset();
 		final var assetId = asset.getId();
 
-		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was,
-		// and from the parameters the asset gets, since the certificate shows the whole permit.
+		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was.
+		// Rendered from the parameters the asset gets, since the certificate shows the whole permit.
 		final var update = toAssetUpdateRequest(asset, decision);
 		final var certificate = Optional.ofNullable(certificateTemplate)
 			.filter(StringUtils::isNotBlank)

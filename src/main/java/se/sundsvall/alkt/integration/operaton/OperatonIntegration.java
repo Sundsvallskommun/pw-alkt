@@ -78,8 +78,8 @@ public class OperatonIntegration {
 		});
 	}
 
-	// Why: 400 keeps its status for the correlation only. On a call Support Management waits for it is a fault of the
-	// engine, and a 400 passed on would tell Support Management its own request was wrong.
+	// Why: Support Management waits for these calls, and a 400 from the engine here is the engine's fault. Passed on, it
+	// would tell Support Management that its own request was wrong. correlateMessage passes a 400 on on purpose.
 	private static <T> T asGatewayFault(final Supplier<T> call) {
 		try {
 			return call.get();

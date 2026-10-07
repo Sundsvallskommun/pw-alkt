@@ -35,7 +35,8 @@ public class ResolveRestaurantNumberWorker extends AbstractTaskWorker {
 		final String availableBeforeCreate = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE);
 		final var resolved = restaurantNumberService.resolveRestaurantNumber(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
 			Optional.ofNullable(availableBeforeCreate).map(ResolveRestaurantNumberWorker::toNumbers).orElse(null),
-			// Why: written at once rather than on completion, so it outlives a run that fails after the create.
+			// Why: saved to the process at once rather than when the task completes, so a run that creates a number and then
+			// fails still leaves its rerun the numbers that were free before the create.
 			numbers -> externalTaskService.setVariables(externalTask, Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE, String.join(",", numbers))));
 
 		logInfo("Errand {} gets restaurant number {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(resolved.number()));
