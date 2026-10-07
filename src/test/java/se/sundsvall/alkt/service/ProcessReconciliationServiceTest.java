@@ -7,6 +7,7 @@ import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ProcessError;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -86,9 +87,9 @@ class ProcessReconciliationServiceTest {
 		final var processLog = new ProcessLog(new ProcessLogProperties(
 			Map.of("external_task_complete_process", new StepTexts("Processen är avslutad", "Nytt försök görs", "Processen kunde inte avslutas", null, null)),
 			Map.of("registration_phase", new PhaseTexts("Registrering har påbörjats")),
-			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock);
+			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock, Clock.systemUTC());
 		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2)),
-			processLog);
+			processLog, Clock.systemUTC());
 	}
 
 	// Incidents

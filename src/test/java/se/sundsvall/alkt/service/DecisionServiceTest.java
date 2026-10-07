@@ -5,15 +5,17 @@ import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.exception.NonRetryableException;
@@ -42,6 +44,8 @@ class DecisionServiceTest {
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
 	private static final String DECISION_ID = "decision-id";
+	// Half past midnight in Sweden, still the day before in UTC
+	private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-03-28T23:30:00Z"), ZoneId.of("Europe/Stockholm"));
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
@@ -52,8 +56,12 @@ class DecisionServiceTest {
 	@Captor
 	private ArgumentCaptor<Decision> decisionCaptor;
 
-	@InjectMocks
 	private DecisionService decisionService;
+
+	@BeforeEach
+	void setUp() {
+		decisionService = new DecisionService(supportManagementIntegrationMock, assetServiceMock, CLOCK);
+	}
 
 	@Test
 	void approveAutomaticallyWritesADraftLinksEveryAttachmentAndThenCompletesIt() {
@@ -76,9 +84,9 @@ class DecisionServiceTest {
 		assertThat(draft.getTitle()).isEqualTo("Anmälan om försäljning av folköl");
 		assertThat(draft.getDescription()).isEqualTo("Anmälan om försäljning av folköl, Kafé Solsidan");
 		assertThat(draft.getOutcome()).isEqualTo("APPROVAL");
-		assertThat(draft.getValidFrom()).isEqualTo(LocalDate.now(ZoneId.of("Europe/Stockholm")));
+		assertThat(draft.getValidFrom()).isEqualTo(LocalDate.of(2026, 3, 29));
 		assertThat(draft.getValidTo()).isNull();
-		assertThat(draft.getDecidedAt()).isNotNull();
+		assertThat(draft.getDecidedAt().toInstant()).isEqualTo(CLOCK.instant());
 
 		final var completion = decisionCaptor.getAllValues().getLast();
 		assertThat(completion).isEqualTo(new Decision().status("COMPLETED").decidedAt(draft.getDecidedAt()).completedAt(draft.getDecidedAt()).parameters(null));

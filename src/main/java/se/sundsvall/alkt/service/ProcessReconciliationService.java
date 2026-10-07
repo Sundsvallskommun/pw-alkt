@@ -4,6 +4,7 @@ import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -54,14 +55,16 @@ public class ProcessReconciliationService {
 	private final ProcessReportService processReportService;
 	private final ReconciliationProperties properties;
 	private final ProcessLog processLog;
+	private final Clock clock;
 
 	ProcessReconciliationService(final OperatonClient operatonClient, final SupportManagementIntegration supportManagementIntegration, final ProcessReportService processReportService,
-		final ReconciliationProperties properties, final ProcessLog processLog) {
+		final ReconciliationProperties properties, final ProcessLog processLog, final Clock clock) {
 		this.operatonClient = operatonClient;
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.processReportService = processReportService;
 		this.properties = properties;
 		this.processLog = processLog;
+		this.clock = clock;
 	}
 
 	public void reconcile() {
@@ -100,7 +103,7 @@ public class ProcessReconciliationService {
 
 	/** An instance that ended without a final report leaves the errand on RUNNING for good. */
 	private void settleEndedInstances() {
-		final var finishedAfter = toOperatonTimestamp(OffsetDateTime.now(UTC).minus(properties.lookback()));
+		final var finishedAfter = toOperatonTimestamp(OffsetDateTime.now(clock.withZone(UTC)).minus(properties.lookback()));
 		final var instances = operatonClient.findHistoricProcessInstances(TENANT_ID_ALKT, toProcessDefinitionKeyIn(PROCESS_KEYS), true, finishedAfter);
 		if (!instances.isEmpty()) {
 			LOG.info("Found {} instances in tenant {} that ended after {}", instances.size(), TENANT_ID_ALKT, finishedAfter);

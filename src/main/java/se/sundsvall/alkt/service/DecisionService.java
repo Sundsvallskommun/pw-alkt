@@ -2,13 +2,11 @@ package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
-
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
@@ -26,14 +24,14 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 @Service
 public class DecisionService {
 
-	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
-
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final AssetService assetService;
+	private final Clock clock;
 
-	DecisionService(final SupportManagementIntegration supportManagementIntegration, final AssetService assetService) {
+	DecisionService(final SupportManagementIntegration supportManagementIntegration, final AssetService assetService, final Clock clock) {
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.assetService = assetService;
+		this.clock = clock;
 	}
 
 	/**
@@ -50,7 +48,7 @@ public class DecisionService {
 			return completed.get().getId();
 		}
 
-		final var decidedAt = OffsetDateTime.now(SWEDISH_TIME);
+		final var decidedAt = OffsetDateTime.now(clock);
 		final var draft = decisions.stream().filter(DecisionService::isOwnDraft).findFirst();
 		if (draft.isEmpty() && !decisions.isEmpty()) {
 			throw new NonRetryableException("Errand %s already has a decision pw-alkt did not make, so it is left to the case worker".formatted(errandId));
@@ -65,7 +63,7 @@ public class DecisionService {
 
 		final var decisionId = draft.map(Decision::getId)
 			.orElseGet(() -> supportManagementIntegration.createDecision(municipalityId, namespace, errandId,
-				toAutomaticDecision(title, errand, LocalDate.now(SWEDISH_TIME), decidedAt)));
+				toAutomaticDecision(title, errand, decidedAt.toLocalDate(), decidedAt)));
 
 		final var linked = draft.map(Decision::getAttachments).orElse(emptyList()).stream()
 			.map(ErrandAttachment::getId)
@@ -93,7 +91,7 @@ public class DecisionService {
 				final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 				// Why: a fault in the permit the customer chose shows now, not once the decision is locked.
 				assetService.getPermitToChange(municipalityId, errand, errandId, permitType);
-				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, title, OffsetDateTime.now(SWEDISH_TIME)));
+				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, title, OffsetDateTime.now(clock)));
 			});
 	}
 
