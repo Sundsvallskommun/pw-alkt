@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.partyassets.Asset;
+import generated.se.sundsvall.partyassets.AssetCreateRequest;
 import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
@@ -93,7 +94,7 @@ public class AssetService {
 			})
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return createAsset(municipalityId, namespace, errandId, decision, partyId, certificateTemplate, permitType, restaurantNumber);
+				return createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, permitType, restaurantNumber), certificateTemplate);
 			});
 	}
 
@@ -243,9 +244,8 @@ public class AssetService {
 	}
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
-	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final String partyId,
-		final String certificateTemplate, final String permitType, final String restaurantNumber) {
-		final var request = toAssetCreateRequest(decision, errandId, partyId, permitType, restaurantNumber);
+	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
+		final String certificateTemplate) {
 		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, request);
 
 		try {
