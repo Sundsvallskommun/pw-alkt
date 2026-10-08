@@ -30,8 +30,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT;
+import static se.sundsvall.alkt.businesslogic.worker.ResolveRestaurantNumberWorker.PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE;
 
 @ExtendWith(MockitoExtension.class)
 class ResolveRestaurantNumberWorkerTest {

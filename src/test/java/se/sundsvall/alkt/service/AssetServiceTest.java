@@ -52,8 +52,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
 
 @ExtendWith(MockitoExtension.class)
 class AssetServiceTest {

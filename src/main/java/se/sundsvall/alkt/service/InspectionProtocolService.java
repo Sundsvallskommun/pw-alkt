@@ -12,11 +12,12 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.INVESTIGATION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 
 @Service
 public class InspectionProtocolService {
+
+	private static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final TemplatingIntegration templatingIntegration;

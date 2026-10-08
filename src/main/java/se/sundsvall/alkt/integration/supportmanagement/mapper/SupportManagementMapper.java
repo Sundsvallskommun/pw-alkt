@@ -34,7 +34,18 @@ import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
-import static se.sundsvall.alkt.Constants.ERRAND_PARAMETERS_OUTSIDE_CHANGE;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_NAME;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_AREA;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_CODE;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRESS;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
@@ -48,6 +59,12 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class SupportManagementMapper {
+
+	// The parameters of a change errand that are not part of the change the customer asks for. Every other one is.
+	private static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
+		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, ERRAND_PARAMETER_PREMISES_NAME, ERRAND_PARAMETER_PREMISES_STREET_ADDRESS,
+		ERRAND_PARAMETER_PREMISES_POSTAL_CODE, ERRAND_PARAMETER_PREMISES_POSTAL_AREA, ERRAND_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER,
+		PERMIT_PARAMETER_RESTAURANT_NUMBER);
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
 	static final String ERRAND_RESOURCE_TYPE = "case";

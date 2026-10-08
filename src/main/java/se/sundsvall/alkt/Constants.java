@@ -43,48 +43,21 @@ public final class Constants {
 	// Outside PROCESS_KEYS on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
 
-	public static final String PROCESS_VARIABLE_ACTION_ERRAND_CREATED = "actionErrandCreated";
-	public static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
 	public static final String PROCESS_VARIABLE_NAMESPACE = "namespace";
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER = "restaurantNumber";
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT = "restaurantNumberLatestAssignment";
-	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE = "restaurantNumbersBeforeCreate";
-	// Input parameters of a step in the bpmn schema, not process variables.
-	public static final String PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY = "actionErrandCategory";
-	public static final String PROCESS_VARIABLE_ACTION_ERRAND_TYPE = "actionErrandType";
 	public static final String PROCESS_VARIABLE_CERTIFICATE_TEMPLATE = "certificateTemplate";
-	public static final String PROCESS_VARIABLE_MESSAGE = "message";
-	public static final String PROCESS_VARIABLE_PROTOCOL_FILE_NAME = "protocolFileName";
-	public static final String PROCESS_VARIABLE_PROTOCOL_TEMPLATE = "protocolTemplate";
 
 	public static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
 	public static final String MESSAGE_DECISION_UPDATED = "decision_updated";
 	public static final String MESSAGE_PROCESS_CANCELLED = "process_cancelled";
 
-	// Must match the errorCode of the bpmn:error that the boundary event of a skippable step catches.
-	public static final String BPMN_ERROR_STEP_SKIPPED = "step_skipped";
-
-	// Must match the id of the cancellation step in every bpmn schema.
-	public static final String ACTIVITY_CANCEL_PROCESS = "external_task_cancel_process";
-
 	public static final String ERROR_CODE_RETRY = "RETRY";
 	public static final String ERROR_CODE_INCIDENT = "INCIDENT";
 	public static final String ERROR_CODE_TERMINATED = "TERMINATED";
-	public static final String ERROR_CODE_SKIPPED = "SKIPPED";
-	public static final String ERROR_CODE_REJECTED = "REJECTED";
-
-	public static final String ACTIVITY_TYPE_TASK = "TASK";
-	public static final String ACTIVITY_TYPE_PHASE = "PHASE";
-	public static final String ACTIVITY_TYPE_INCIDENT = "INCIDENT";
-	public static final String ACTIVITY_TYPE_RECONCILIATION = "RECONCILIATION";
-
-	// Support Management refuses a severity it does not know.
-	public static final String SEVERITY_INFO = "INFO";
-	public static final String SEVERITY_WARN = "WARN";
-	public static final String SEVERITY_ERROR = "ERROR";
 
 	public static final String LOG_TASK_GONE = "Task {} of process instance {} is gone (cancelled, deleted or completed elsewhere)";
 
@@ -113,22 +86,12 @@ public final class Constants {
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
 	public static final String NO_PERMIT_HOLDER_MESSAGE = "Errand '%s' has no stakeholder with role '" + STAKEHOLDER_ROLE_PERMIT_HOLDER + "'";
 
-	public static final String PERMIT_TYPE_ALCOHOL_SERVING = "AlcoholServingPermit";
-	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES = "LowAlcoholBeerSalesPermit";
-	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING = "LowAlcoholBeerServingPermit";
-	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingPermit";
-	public static final String PERMIT_TYPE_TOBACCO_SALES = "TobaccoSalesPermit";
-	public static final String PERMIT_TYPE_E_CIGARETTE_SALES = "ECigaretteSalesPermit";
-
 	public static final String PERMIT_PARAMETER_ERRAND_ID = "errandId";
 	public static final String PERMIT_PARAMETER_LEGAL_BASIS = "legalBasis";
 	public static final String PERMIT_PARAMETER_DELEGATION_REFERENCE = "delegationReference";
 	public static final String PERMIT_PARAMETER_CONDITIONS = "conditions";
 	// Named as the placeholder of the permit certificate, which is rendered from the parameters of the permit.
 	public static final String PERMIT_PARAMETER_RESTAURANT_NUMBER = "premisesRestaurantNumber";
-	// Set by pw-alkt from the errand and the decision, so a decision cannot remove them.
-	public static final Set<String> PERMIT_PARAMETERS_OF_THE_PROCESS = Set.of(PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
-		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, PERMIT_PARAMETER_RESTAURANT_NUMBER);
 
 	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
 	public static final String ERRAND_PARAMETER_PREMISES_NAME = "premisesName";
@@ -139,18 +102,8 @@ public final class Constants {
 	// used.
 	public static final String ERRAND_PARAMETER_RESTAURANT_NUMBER = "restaurantNumber";
 	public static final String ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER = "newRestaurantNumber";
-	// The parameters of a change errand that are not part of the change the customer asks for. Every other one is.
-	public static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
-		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, ERRAND_PARAMETER_PREMISES_NAME, ERRAND_PARAMETER_PREMISES_STREET_ADDRESS,
-		ERRAND_PARAMETER_PREMISES_POSTAL_CODE, ERRAND_PARAMETER_PREMISES_POSTAL_AREA, ERRAND_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER,
-		PERMIT_PARAMETER_RESTAURANT_NUMBER);
 
-	// Must match the topic Mina sidor gives the external conversation it creates.
-	public static final String CONVERSATION_TOPIC_CUSTOMER = "Mina Sidor";
 	public static final String EXTERNAL_TAG_INSPECTION_ERRAND_ID = "inspectionErrandId";
-	public static final String RELATION_TYPE_LINK = "LINK";
-	public static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
-	public static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
 
 	private Constants() {}
 }

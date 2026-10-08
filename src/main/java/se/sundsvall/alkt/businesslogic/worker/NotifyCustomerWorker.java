@@ -12,12 +12,14 @@ import se.sundsvall.alkt.service.CustomerMessageService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MESSAGE;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
 @ExternalTaskSubscription(topicName = "NotifyCustomerTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class NotifyCustomerWorker extends AbstractTaskWorker {
+
+	// An input parameter of the step in the bpmn schema, not a process variable.
+	static final String PROCESS_VARIABLE_MESSAGE = "message";
 
 	private final CustomerMessageService customerMessageService;
 

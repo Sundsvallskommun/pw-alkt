@@ -11,6 +11,7 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
@@ -20,18 +21,11 @@ import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETERS_OF_THE_PROCESS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
@@ -47,6 +41,17 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toRemovedParameterKeys;
 
 public final class PartyAssetsMapper {
+
+	public static final String PERMIT_TYPE_ALCOHOL_SERVING = "AlcoholServingPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES = "LowAlcoholBeerSalesPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING = "LowAlcoholBeerServingPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingPermit";
+	public static final String PERMIT_TYPE_TOBACCO_SALES = "TobaccoSalesPermit";
+	public static final String PERMIT_TYPE_E_CIGARETTE_SALES = "ECigaretteSalesPermit";
+
+	// Set by pw-alkt from the errand and the decision, so a decision cannot remove them.
+	private static final Set<String> PERMIT_PARAMETERS_OF_THE_PROCESS = Set.of(PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
+		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, PERMIT_PARAMETER_RESTAURANT_NUMBER);
 
 	static final String ATTACHMENT_PART_NAME = "attachment";
 	static final String CERTIFICATE_FILE_NAME = "tillstandsbevis.pdf";

@@ -9,12 +9,13 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
-import static se.sundsvall.alkt.Constants.RELATION_TYPE_LINK;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ActionErrandMapper.toActionErrand;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandRelation;
 
 @Service
 public class ActionErrandService {
+
+	private static final String RELATION_TYPE_LINK = "LINK";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 

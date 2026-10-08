@@ -15,13 +15,14 @@ import se.sundsvall.alkt.service.RestaurantNumberService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
 @ExternalTaskSubscription(topicName = "ResolveRestaurantNumberTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class ResolveRestaurantNumberWorker extends AbstractTaskWorker {
+
+	static final String PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE = "restaurantNumbersBeforeCreate";
 
 	private final RestaurantNumberService restaurantNumberService;
 

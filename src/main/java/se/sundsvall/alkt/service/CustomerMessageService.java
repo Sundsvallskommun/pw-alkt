@@ -18,13 +18,15 @@ import static generated.se.sundsvall.supportmanagement.Identifier.TypeEnum.PARTY
 import static java.lang.Boolean.FALSE;
 import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.CONVERSATION_TOPIC_CUSTOMER;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
 
 @Service
 public class CustomerMessageService {
+
+	// Must match the topic Mina sidor gives the external conversation it creates.
+	static final String CONVERSATION_TOPIC_CUSTOMER = "Mina Sidor";
 
 	static final int MESSAGE_PAGE_SIZE = 100;
 
