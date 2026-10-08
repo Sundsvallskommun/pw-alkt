@@ -1,0 +1,28 @@
+{
+	"name": "registration_api-party-assets-get-asset",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-party-assets/2281/assets/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"ETag": "\"3\""
+		},
+		"jsonBody": {
+			"id": "9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d",
+			"partyId": "8f2a4c6e-1b3d-4e5f-9a7b-0c1d2e3f4a5b",
+			"type": "TobaccoSalesPermit",
+			"status": "ACTIVE",
+			"additionalParameters": {
+				"forsaljningstid": "Försäljning får ske mellan 11.00 och 01.00."
+			}
+		},
+		"status": 200
+	}
+}

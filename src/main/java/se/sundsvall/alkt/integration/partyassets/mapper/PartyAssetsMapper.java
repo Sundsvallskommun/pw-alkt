@@ -17,6 +17,7 @@ import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
+import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETERS_OF_THE_PROCESS;
@@ -25,15 +26,21 @@ import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toRemovedParameterKeys;
@@ -52,7 +59,11 @@ public final class PartyAssetsMapper {
 		PROCESS_KEY_ALCOHOL_SERVING_ADDITION, PERMIT_TYPE_ALCOHOL_SERVING,
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES,
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING,
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
+		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING,
+		PROCESS_KEY_TOBACCO_SALES, PERMIT_TYPE_TOBACCO_SALES,
+		PROCESS_KEY_TOBACCO_SALES_CHANGE, PERMIT_TYPE_TOBACCO_SALES,
+		PROCESS_KEY_TOBACCO_SALES_CLOSURE, PERMIT_TYPE_TOBACCO_SALES,
+		PROCESS_KEY_E_CIGARETTE_SALES, PERMIT_TYPE_E_CIGARETTE_SALES);
 
 	private PartyAssetsMapper() {}
 
@@ -92,6 +103,29 @@ public final class PartyAssetsMapper {
 			.additionalParameters(parameters);
 	}
 
+	/**
+	 * Ends the permit on the last day the decision gives, else the day it was decided, but never later than the permit
+	 * already ends. A last day that has not passed is left to party-assets, which expires the permit the day after. No
+	 * status reason, as party-assets refuses one unless reasons are registered for the status.
+	 */
+	public static AssetUpdateRequest toAssetClosureRequest(final Asset current, final Decision decision, final LocalDate today) {
+		final var lastDay = Optional.ofNullable(decision.getValidTo())
+			.or(() -> toDecidedOn(decision))
+			.orElse(today);
+		final var validTo = Optional.ofNullable(current.getValidTo())
+			.filter(currentLastDay -> currentLastDay.isBefore(lastDay))
+			.orElse(lastDay);
+		final var request = new AssetUpdateRequest().validTo(validTo);
+		if (validTo.isBefore(today)) {
+			request.status(EXPIRED);
+		}
+		return request;
+	}
+
+	private static Optional<LocalDate> toDecidedOn(final Decision decision) {
+		return Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate());
+	}
+
 	public static AssetFile toAssetFile(final ErrandAttachment attachment, final byte[] content) {
 		return new AssetFile(
 			new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, attachment.getFileName(), attachment.getMimeType(), content),
@@ -106,7 +140,7 @@ public final class PartyAssetsMapper {
 
 	private static LocalDate toIssued(final Decision decision) {
 		return Optional.ofNullable(decision.getValidFrom())
-			.or(() -> Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate()))
+			.or(() -> toDecidedOn(decision))
 			.orElse(null);
 	}
 

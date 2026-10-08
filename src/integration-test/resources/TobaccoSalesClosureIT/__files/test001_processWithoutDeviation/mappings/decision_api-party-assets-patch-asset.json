@@ -1,0 +1,56 @@
+{
+	"name": "decision_api-party-assets-patch-asset",
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-party-assets/2281/assets/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"If-Match": {
+				"equalTo": "\"3\""
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "EXPIRED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.validTo",
+					"equalTo": "2026-09-30"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.statusReason",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters",
+					"absent": true
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 204
+	}
+}

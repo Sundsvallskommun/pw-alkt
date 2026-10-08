@@ -29,9 +29,12 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -111,10 +114,11 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
-	void toDecisionTitleNamesThePermitOfEachLowAlcoholBeerProcess() {
+	void toDecisionTitleNamesThePermitOfEachNotificationProcess() {
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo("Anmälan om försäljning av folköl");
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo("Anmälan om servering av folköl");
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo("Anmälan om försäljning och servering av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_E_CIGARETTE_SALES)).isEqualTo("Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
 	}
 
 	@Test
@@ -126,6 +130,23 @@ class SupportManagementMapperTest {
 			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)
 			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
 		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(null))
+			.isInstanceOf(NonRetryableException.class);
+	}
+
+	@Test
+	void toChangeDraftTitleNamesThePermitOfEachChangeProcess() {
+		assertThat(SupportManagementMapper.toChangeDraftTitle(PROCESS_KEY_ALCOHOL_SERVING_CHANGE)).isEqualTo("Ändring av serveringstillstånd");
+		assertThat(SupportManagementMapper.toChangeDraftTitle(PROCESS_KEY_TOBACCO_SALES_CHANGE)).isEqualTo("Ändring av tobakstillstånd");
+	}
+
+	@Test
+	void toChangeDraftTitleRefusesAProcessWithoutAChangeDraft() {
+		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(PROCESS_KEY_ALCOHOL_SERVING))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING)
+			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING_CHANGE)
+			.hasMessageContaining(PROCESS_KEY_TOBACCO_SALES_CHANGE);
+		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(null))
 			.isInstanceOf(NonRetryableException.class);
 	}
 
@@ -142,7 +163,7 @@ class SupportManagementMapperTest {
 				new Parameter().key("serveringstid").values(List.of("11.00–02.00")),
 				new Parameter().key("uteservering").values(List.of())));
 
-		final var result = SupportManagementMapper.toChangeDraft(errand, decidedAt);
+		final var result = SupportManagementMapper.toChangeDraft(errand, "Ändring av serveringstillstånd", decidedAt);
 
 		assertThat(result.getType()).isEqualTo("PERMIT");
 		assertThat(result.getStatus()).isEqualTo("DRAFT");
@@ -157,7 +178,7 @@ class SupportManagementMapperTest {
 
 	@Test
 	void toChangeDraftOfAnErrandWithoutParametersHasNone() {
-		assertThat(SupportManagementMapper.toChangeDraft(new Errand().parameters(null), OffsetDateTime.now()).getParameters()).isEmpty();
+		assertThat(SupportManagementMapper.toChangeDraft(new Errand().parameters(null), "Ändring av serveringstillstånd", OffsetDateTime.now()).getParameters()).isEmpty();
 	}
 
 	@Test

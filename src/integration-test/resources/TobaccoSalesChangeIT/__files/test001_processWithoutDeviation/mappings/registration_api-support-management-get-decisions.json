@@ -1,0 +1,22 @@
+{
+	"name": "registration_api-support-management-get-decisions",
+	"scenarioName": "decision",
+	"requiredScenarioState": "Started",
+	"newScenarioState": "drafted",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [],
+		"status": 200
+	}
+}

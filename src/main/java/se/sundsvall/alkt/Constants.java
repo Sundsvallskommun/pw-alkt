@@ -44,6 +44,8 @@ public final class Constants {
 	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES = "LowAlcoholBeerSalesPermit";
 	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING = "LowAlcoholBeerServingPermit";
 	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingPermit";
+	public static final String PERMIT_TYPE_TOBACCO_SALES = "TobaccoSalesPermit";
+	public static final String PERMIT_TYPE_E_CIGARETTE_SALES = "ECigaretteSalesPermit";
 
 	// Checked against the process consumer configured for the namespace; a report from anyone else is rejected.
 	public static final String PROCESS_SERVICE = "pw-alkt";

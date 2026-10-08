@@ -1,0 +1,45 @@
+{
+	"name": "decision_api-support-management-get-decisions-pending",
+	"scenarioName": "decision",
+	"requiredScenarioState": "drafted",
+	"newScenarioState": "decided",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b",
+				"type": "PERMIT",
+				"status": "DRAFT",
+				"title": "Ändring av tobakstillstånd",
+				"outcome": "APPROVAL",
+				"method": "AUTOMATIC",
+				"decidedBy": "pw-alkt",
+				"decidedAt": "2026-09-01T09:00:00+02:00",
+				"parameters": [
+					{
+						"key": "forsaljningstid",
+						"values": [
+							"Försäljning får ske mellan 11.00 och 02.00."
+						]
+					},
+					{
+						"key": "forsaljningsstalle",
+						"values": []
+					}
+				]
+			}
+		],
+		"status": 200
+	}
+}

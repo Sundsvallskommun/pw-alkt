@@ -1,0 +1,39 @@
+{
+	"name": "decision_create-decision-worker---api-support-management-put-process-failed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "FAILED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].errorCode",
+					"equalTo": "INCIDENT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].message",
+					"contains": "has no stakeholder with role 'PRIMARY'"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

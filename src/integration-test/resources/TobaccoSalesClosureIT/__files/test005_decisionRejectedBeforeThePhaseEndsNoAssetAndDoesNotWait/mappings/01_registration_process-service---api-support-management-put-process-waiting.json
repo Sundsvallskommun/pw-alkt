@@ -1,0 +1,60 @@
+{
+	"name": "01_registration_process-service---api-support-management-put-process-waiting",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/2c84f70a-6e95-4b31-8d6f-1a7b3c9e50d4/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "WAITING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "tobacco-sales-closure"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "registration_phase"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityName",
+					"equalTo": "Registration"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].name",
+					"equalTo": "registration_completed"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].label",
+					"equalTo": "Registration completed"
+				}
+			}
+		]
+	},
+	"newScenarioState": "registration_process-service---api-support-management-put-process-waiting",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "tobacco-sales-closure-happy-case"
+}

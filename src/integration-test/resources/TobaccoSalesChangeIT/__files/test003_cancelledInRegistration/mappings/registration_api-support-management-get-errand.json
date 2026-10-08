@@ -1,0 +1,42 @@
+{
+	"name": "registration_api-support-management-get-errand",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3",
+			"parameters": [
+				{
+					"key": "assetId",
+					"values": [
+						"9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d"
+					]
+				},
+				{
+					"key": "forsaljningstid",
+					"values": [
+						"Försäljning får ske mellan 11.00 och 02.00."
+					]
+				}
+			],
+			"stakeholders": [
+				{
+					"role": "PRIMARY",
+					"externalIdType": "ENTERPRISE",
+					"externalId": "d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f"
+				}
+			]
+		},
+		"status": 200
+	}
+}

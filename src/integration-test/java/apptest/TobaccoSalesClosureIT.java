@@ -8,6 +8,8 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 
+import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
@@ -33,11 +35,11 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_TOBACCO_SALES_CLOSURE);
 
-		// Wait for the process to park in each phase, then signal that phase completed
+		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "registration");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "review");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "investigation");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "decision");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE);
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "closure");
 
@@ -56,6 +58,7 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 				// Registration
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Check permit", "external_task_check_permit"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 
@@ -75,7 +78,13 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 				// Decision
 				tuple("Decision", "decision_phase"),
 				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Decision completed", "await_decision_completed"),
+				tuple("Check decision", "external_task_check_decision"), // No decision yet
+				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Await decision", "gateway_await_decision"),
+				tuple("Decision updated", "await_decision_updated"),
+				tuple("Check decision", "external_task_check_decision"), // Approved
+				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Close asset", "external_task_close_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -117,7 +126,8 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
-				tuple("Start registration phase", "start_registration_phase"));
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Check permit", "external_task_check_permit"));
 	}
 
 	@Test
@@ -143,6 +153,7 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 				tuple("Start process", "start_process"),
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Check permit", "external_task_check_permit"),
 				tuple("Registration completed", "await_registration_completed"));
 	}
 
@@ -170,6 +181,7 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 				tuple("Start process", "start_process"),
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Check permit", "external_task_check_permit"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
@@ -180,5 +192,51 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
 				tuple("Investigation completed", "await_investigation_completed"));
+	}
+
+	@Test
+	void test005_decisionRejectedBeforeThePhaseEndsNoAssetAndDoesNotWait() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_TOBACCO_SALES_CLOSURE);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_TOBACCO_SALES_CLOSURE, "investigation");
+
+		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+		wiremock.verify(0, patchRequestedFor(urlPathMatching("/api-party-assets/.*")));
+
+		assertThat(getProcessInstanceRoute(processInstanceId))
+			.extracting(HistoricActivityInstanceDto::getActivityId)
+			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_close_asset");
+	}
+
+	@Test
+	void test006_permitOfAnotherTypeLeavesAnIncident() throws JacksonException {
+		// === Start process === the errand names a low-alcohol beer permit of the same holder
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_TOBACCO_SALES_CLOSURE);
+
+		awaitIncidentAt(PROCESS_KEY_TOBACCO_SALES_CLOSURE, processInstanceId, "external_task_check_permit");
+
+		verifyAllStubs();
+		wiremock.verify(0, patchRequestedFor(urlPathMatching("/api-party-assets/.*")));
 	}
 }

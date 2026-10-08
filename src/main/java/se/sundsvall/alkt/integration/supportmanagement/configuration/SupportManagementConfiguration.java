@@ -21,6 +21,7 @@ import static se.sundsvall.alkt.Constants.SENT_BY;
 public class SupportManagementConfiguration {
 
 	public static final String CLIENT_ID = "support-management";
+	public static final String TRIGGER_PROCESS_HEADER = "X-Trigger-Process";
 
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, SupportManagementProperties properties) {

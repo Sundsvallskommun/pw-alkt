@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
+import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,18 +26,25 @@ import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PERMIT_TYPE_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ATTACHMENT_PART_NAME;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ORIGIN;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
@@ -47,6 +55,7 @@ class PartyAssetsMapperTest {
 
 	private static final String ERRAND_ID = randomUUID().toString();
 	private static final String PARTY_ID = randomUUID().toString();
+	private static final LocalDate TODAY = LocalDate.of(2026, 10, 6);
 
 	@Test
 	void toAssetCreateRequestCarriesTheDecision() {
@@ -167,6 +176,74 @@ class PartyAssetsMapperTest {
 	}
 
 	@Test
+	void toAssetClosureRequestEndsThePermitOnALastDayThatHasPassed() {
+		final var decision = new Decision()
+			.validTo(LocalDate.of(2026, 9, 30))
+			.decidedAt(OffsetDateTime.of(2026, 9, 19, 10, 0, 0, 0, ZoneOffset.UTC));
+
+		final var result = toAssetClosureRequest(new Asset(), decision, TODAY);
+
+		assertThat(result.getStatus()).isEqualTo(EXPIRED);
+		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2026, 9, 30));
+		assertThat(result).hasAllNullFieldsOrPropertiesExcept("status", "validTo");
+	}
+
+	@Test
+	void toAssetClosureRequestLeavesALastDayStillToComeToPartyAssets() {
+		final var lastDay = TODAY.plusDays(1);
+
+		final var result = toAssetClosureRequest(new Asset(), new Decision().validTo(lastDay), TODAY);
+
+		assertThat(result.getValidTo()).isEqualTo(lastDay);
+		assertThat(result).hasAllNullFieldsOrPropertiesExcept("validTo");
+	}
+
+	@Test
+	void toAssetClosureRequestKeepsThePermitValidOnItsLastDay() {
+		final var result = toAssetClosureRequest(new Asset(), new Decision().validTo(TODAY), TODAY);
+
+		assertThat(result.getValidTo()).isEqualTo(TODAY);
+		assertThat(result).hasAllNullFieldsOrPropertiesExcept("validTo");
+	}
+
+	@Test
+	void toAssetClosureRequestNeverEndsThePermitLaterThanItAlreadyEnds() {
+		final var current = new Asset().validTo(TODAY.plusDays(30));
+
+		final var result = toAssetClosureRequest(current, new Decision().validTo(TODAY.plusDays(90)), TODAY);
+
+		assertThat(result.getValidTo()).isEqualTo(TODAY.plusDays(30));
+		assertThat(result).hasAllNullFieldsOrPropertiesExcept("validTo");
+	}
+
+	@Test
+	void toAssetClosureRequestEndsThePermitOnTheLastDayOfTheDecisionBeforeTheLastDayOfThePermit() {
+		final var current = new Asset().validTo(TODAY.plusDays(90));
+
+		final var result = toAssetClosureRequest(current, new Decision().validTo(TODAY.plusDays(30)), TODAY);
+
+		assertThat(result.getValidTo()).isEqualTo(TODAY.plusDays(30));
+	}
+
+	@Test
+	void toAssetClosureRequestEndsThePermitOnTheSwedishDayOfTheDecisionWithoutALastDay() {
+		final var decision = new Decision().decidedAt(OffsetDateTime.of(2026, 9, 19, 22, 30, 0, 0, ZoneOffset.UTC));
+
+		final var result = toAssetClosureRequest(new Asset(), decision, TODAY);
+
+		assertThat(result.getStatus()).isEqualTo(EXPIRED);
+		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2026, 9, 20));
+	}
+
+	@Test
+	void toAssetClosureRequestEndsThePermitTodayWithoutAnyDate() {
+		final var result = toAssetClosureRequest(new Asset(), new Decision(), TODAY);
+
+		assertThat(result.getValidTo()).isEqualTo(TODAY);
+		assertThat(result).hasAllNullFieldsOrPropertiesExcept("validTo");
+	}
+
+	@Test
 	void toAssetUpdateRequestPutsTheDecisionOnTopOfTheParametersOfTheAsset() {
 		final var current = new Asset().additionalParameters(Map.of(
 			PERMIT_PARAMETER_ERRAND_ID, "granting-errand-id",
@@ -279,6 +356,14 @@ class PartyAssetsMapperTest {
 		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES);
 		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING);
 		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
+	}
+
+	@Test
+	void toPermitTypeGivesTheTobaccoProcessesOneTypeAndECigarettesAnother() {
+		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
+		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES_CHANGE)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
+		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES_CLOSURE)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
+		assertThat(toPermitType(PROCESS_KEY_E_CIGARETTE_SALES)).isEqualTo(PERMIT_TYPE_E_CIGARETTE_SALES);
 	}
 
 	@Test

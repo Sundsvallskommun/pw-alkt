@@ -29,7 +29,7 @@ public class CreateChangeDraftWorker extends AbstractTaskWorker {
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final var decisionId = decisionService.createChangeDraft(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
-			toPermitType(externalTask.getProcessDefinitionKey()));
+			toPermitType(externalTask.getProcessDefinitionKey()), externalTask.getProcessDefinitionKey());
 
 		logInfo("Errand {} has decision draft {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(decisionId));
 

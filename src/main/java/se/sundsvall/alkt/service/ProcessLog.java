@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.camunda.bpm.client.task.ExternalTask;
@@ -50,10 +51,12 @@ public class ProcessLog {
 
 	private final ProcessLogProperties properties;
 	private final OperatonIntegration operatonIntegration;
+	private final Clock clock;
 
-	ProcessLog(final ProcessLogProperties properties, final OperatonIntegration operatonIntegration) {
+	ProcessLog(final ProcessLogProperties properties, final OperatonIntegration operatonIntegration, final Clock clock) {
 		this.properties = properties;
 		this.operatonIntegration = operatonIntegration;
+		this.clock = clock;
 	}
 
 	/**
@@ -145,12 +148,12 @@ public class ProcessLog {
 			.occurredAt(occurredAt);
 	}
 
-	private static OffsetDateTime now() {
-		return OffsetDateTime.now(UTC);
+	private OffsetDateTime now() {
+		return OffsetDateTime.now(clock.withZone(UTC));
 	}
 
 	/** Support Management requires occurredAt, but the engine fields it is read from are nullable. */
-	private static OffsetDateTime orNow(final OffsetDateTime occurredAt) {
-		return Optional.ofNullable(occurredAt).orElseGet(ProcessLog::now);
+	private OffsetDateTime orNow(final OffsetDateTime occurredAt) {
+		return Optional.ofNullable(occurredAt).orElseGet(this::now);
 	}
 }

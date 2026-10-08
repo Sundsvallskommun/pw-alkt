@@ -1,0 +1,45 @@
+{
+	"name": "decision_api-support-management-get-decisions-pending",
+	"scenarioName": "decision",
+	"requiredScenarioState": "Started",
+	"newScenarioState": "decided",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/2c84f70a-6e95-4b31-8d6f-1a7b3c9e50d4/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b",
+				"type": "PERMIT",
+				"status": "DRAFT",
+				"title": "Avslut av tobakstillstånd",
+				"outcome": "APPROVAL",
+				"method": "AUTOMATIC",
+				"decidedBy": "pw-alkt",
+				"decidedAt": "2026-09-01T09:00:00+02:00",
+				"parameters": [
+					{
+						"key": "forsaljningstid",
+						"values": [
+							"Försäljning får ske mellan 11.00 och 02.00."
+						]
+					},
+					{
+						"key": "forsaljningsstalle",
+						"values": []
+					}
+				]
+			}
+		],
+		"status": 200
+	}
+}

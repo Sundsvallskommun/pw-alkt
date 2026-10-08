@@ -1,0 +1,23 @@
+{
+	"name": "decision_create-decision-worker---api-messaging-post-slack",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/slack",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.message",
+					"contains": "[2281][ALKT][e-cigarette-sales] Incident in external_task_create_decision for errand 6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15"
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 201
+	}
+}

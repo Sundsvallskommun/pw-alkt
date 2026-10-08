@@ -32,8 +32,10 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static java.util.stream.Stream.concat;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -217,6 +219,17 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 			.until(() -> operatonClient.findProcessInstances(errandId, processKey, TENANT_ID_ALKT).size(), equalTo(1));
 
 		return operatonClient.findProcessInstances(errandId, processKey, TENANT_ID_ALKT).getFirst().getId();
+	}
+
+	/** The failure report and the alert are sent after the incident is raised, the alert last. */
+	protected void awaitIncidentAt(String processKey, String processInstanceId, String activityId) {
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, processKey).stream()
+				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId()) && activityId.equals(incident.getActivityId())));
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.untilAsserted(() -> wiremock.verify(postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack"))));
 	}
 
 	protected void completePhase(String errandId, String processInstanceId, String processKey, String phase) {
