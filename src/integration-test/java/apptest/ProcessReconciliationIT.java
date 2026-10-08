@@ -1,9 +1,12 @@
 package apptest;
 
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.web.client.RestClient;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
@@ -27,6 +30,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
@@ -50,6 +54,27 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	private static final String PROCESSES_PATH_INCIDENT = "/api-support-management/2281/ALKT/errands/%s/processes".formatted(ERRAND_ID_INCIDENT);
 	private static final String ERRAND_ID_VANISHED = "b7e4c210-58f3-4d96-a1c7-0e9d5f28a3b6";
 	private static final String ERRAND_ID_ENDED_WHILE_DOWN = "e1c47b93-6a25-4f80-b3d6-9c052f7ae184";
+
+	@Value("${integration.operaton.url}")
+	private String operatonUrl;
+
+	/**
+	 * The timer fires on the clock every fifth minute, and a sweep of its own while a test runs reads the rows once more
+	 * than the test counts. Suspended for the shared engine, then what it may already have started is removed.
+	 */
+	@BeforeEach
+	void suspendTheTimer() {
+		RestClient.create().put()
+			.uri(operatonUrl + "/job-definition/suspended")
+			.contentType(APPLICATION_JSON)
+			.body("""
+				{"processDefinitionKey":"%s","processDefinitionTenantId":"%s","suspended":true,"includeJobs":true}""".formatted(PROCESS_KEY_RECONCILIATION, TENANT_ID_ALKT))
+			.retrieve()
+			.toBodilessEntity();
+
+		operatonClient.findProcessInstances(null, PROCESS_KEY_RECONCILIATION, TENANT_ID_ALKT)
+			.forEach(instance -> operatonClient.deleteProcessInstance(instance.getId(), false));
+	}
 
 	@Test
 	void test001_incidentIsReportedOnce() throws JacksonException {
