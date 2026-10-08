@@ -1,0 +1,23 @@
+{
+	"name": "registration_create-change-draft-worker---api-messaging-post-slack",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/slack",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.message",
+					"contains": "[2281][ALKT][tobacco-sales-change] Incident in external_task_create_change_draft for errand 9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3"
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 201
+	}
+}

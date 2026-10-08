@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -47,7 +48,7 @@ class ProcessLogTest {
 		processLog = new ProcessLog(new ProcessLogProperties(
 			Map.of(ACTIVITY_ID, new StepTexts("Tillståndet har registrerats", "Nytt försök görs", "Processen har stannat", "Hoppades över", "Avvisades")),
 			Map.of("review_phase", new PhaseTexts("Granskning har påbörjats")),
-			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock);
+			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock, Clock.systemUTC());
 	}
 
 	@AfterEach
@@ -166,7 +167,7 @@ class ProcessLogTest {
 		processLog = new ProcessLog(new ProcessLogProperties(
 			Map.of(ACTIVITY_ID, new StepTexts("Klart", "Nytt försök", "Stannat", null, null)),
 			Map.of(),
-			new ProcessTexts("Avslutad", "Avbruten")), operatonIntegrationMock);
+			new ProcessTexts("Avslutad", "Avbruten")), operatonIntegrationMock, Clock.systemUTC());
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 		when(externalTaskMock.getProcessDefinitionId()).thenReturn(DEFINITION_ID);
 		when(operatonIntegrationMock.labelOf(DEFINITION_ID, ACTIVITY_ID)).thenReturn("Create asset");

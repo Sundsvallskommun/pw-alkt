@@ -25,7 +25,7 @@ class PermitTypeModelTest {
 
 	private static final String BPMN_NAMESPACE = "http://www.omg.org/spec/BPMN/20100524/MODEL";
 	private static final String CAMUNDA_NAMESPACE = "http://camunda.org/schema/1.0/bpmn";
-	private static final Set<String> PERMIT_TOPICS = Set.of("CreateAssetTask", "UpdateAssetTask", "CreateChangeDraftTask");
+	private static final Set<String> PERMIT_TOPICS = Set.of("CreateAssetTask", "UpdateAssetTask", "CreateChangeDraftTask", "CheckPermitTask", "CloseAssetTask");
 
 	private static Stream<Path> models() throws Exception {
 		final var root = Path.of(PermitTypeModelTest.class.getClassLoader().getResource("processmodels").toURI());

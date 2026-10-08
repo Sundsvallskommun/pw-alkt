@@ -1,0 +1,53 @@
+{
+	"name": "decision_api-templating-post-render-pdf",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-templating/2281/render/pdf",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.identifier",
+					"equalTo": "tobacco-permit-certificate"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.forsaljningstid",
+					"equalTo": "Försäljning får ske mellan 11.00 och 02.00."
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.permitHolderName",
+					"equalTo": "Runt Hörnet AB"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.conditions",
+					"equalTo": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.forsaljningsstalle",
+					"absent": true
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"output": "JVBERi0xLjcgdGlsbHN0YW5kc2Jldmlz"
+		},
+		"status": 200
+	}
+}

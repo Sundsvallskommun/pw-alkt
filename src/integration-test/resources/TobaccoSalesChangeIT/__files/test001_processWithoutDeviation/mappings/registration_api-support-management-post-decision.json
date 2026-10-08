@@ -1,0 +1,71 @@
+{
+	"name": "registration_api-support-management-post-decision",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"equalTo": "Ändring av tobakstillstånd"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "DRAFT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.method",
+					"equalTo": "AUTOMATIC"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.decidedBy",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.outcome",
+					"equalTo": "APPROVAL"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.type",
+					"equalTo": "PERMIT"
+				}
+			},
+			{
+				"matchesJsonPath": "$.parameters[?(@.key == 'forsaljningstid' && @.values[0] == 'Försäljning får ske mellan 11.00 och 02.00.')]"
+			},
+			{
+				"matchesJsonPath": "$.parameters[?(@.key == 'forsaljningsstalle')]"
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters[?(@.key == 'assetId')]",
+					"absent": true
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3/decisions/3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b"
+		},
+		"status": 201
+	}
+}

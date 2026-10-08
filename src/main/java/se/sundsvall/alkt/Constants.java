@@ -117,6 +117,8 @@ public final class Constants {
 	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES = "LowAlcoholBeerSalesPermit";
 	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING = "LowAlcoholBeerServingPermit";
 	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingPermit";
+	public static final String PERMIT_TYPE_TOBACCO_SALES = "TobaccoSalesPermit";
+	public static final String PERMIT_TYPE_E_CIGARETTE_SALES = "ECigaretteSalesPermit";
 
 	public static final String PERMIT_PARAMETER_ERRAND_ID = "errandId";
 	public static final String PERMIT_PARAMETER_LEGAL_BASIS = "legalBasis";

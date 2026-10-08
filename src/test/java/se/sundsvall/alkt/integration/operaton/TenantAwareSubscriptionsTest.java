@@ -29,6 +29,8 @@ class TenantAwareSubscriptionsTest {
 			"AssignRestaurantNumberTask",
 			"CancelProcessTask",
 			"CheckDecisionTask",
+			"CheckPermitTask",
+			"CloseAssetTask",
 			"CompleteProcessTask",
 			"CreateActionErrandTask",
 			"CreateAssetTask",

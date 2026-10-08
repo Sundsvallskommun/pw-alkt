@@ -1,0 +1,604 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_tobacco_sales" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+  <!-- One message per phase exit, correlated on the business key of the instance, i.e. the errand id. The user interface sends the completed messages; decision_updated comes from the decision event of Support Management. -->
+  <bpmn:message id="message_registration_completed" name="registration_completed" />
+  <bpmn:message id="message_review_completed" name="review_completed" />
+  <bpmn:message id="message_investigation_completed" name="investigation_completed" />
+  <bpmn:message id="message_decision_updated" name="decision_updated" />
+  <bpmn:message id="message_follow_up_completed" name="follow_up_completed" />
+  <bpmn:message id="message_closure_completed" name="closure_completed" />
+  <bpmn:message id="message_process_cancelled" name="process_cancelled" />
+  <bpmn:error id="error_step_skipped" name="Step skipped" errorCode="step_skipped" />
+  <bpmn:process id="tobacco-sales" name="PROCESS Sale of tobacco products" isExecutable="true" camunda:historyTimeToLive="P30D">
+    <bpmn:documentation>The phases run in sequence. Each one waits for a case worker to move the errand on through the user interface, except the decision phase, which waits for the decision itself. The activities within a phase are added as the business logic is implemented.</bpmn:documentation>
+    <bpmn:startEvent id="start_process" name="Start process">
+      <bpmn:documentation>The start of the process execution</bpmn:documentation>
+      <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="flow_start_process_to_registration" sourceRef="start_process" targetRef="registration_phase" />
+    <bpmn:subProcess id="registration_phase" name="Registration">
+      <bpmn:documentation>Registers the errand and the material it arrived with.</bpmn:documentation>
+      <bpmn:incoming>flow_start_process_to_registration</bpmn:incoming>
+      <bpmn:outgoing>flow_registration_to_review</bpmn:outgoing>
+      <bpmn:startEvent id="start_registration_phase" name="Start registration phase">
+        <bpmn:outgoing>flow_registration_start_to_await</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_registration_start_to_await" sourceRef="start_registration_phase" targetRef="await_registration_completed" />
+      <bpmn:intermediateCatchEvent id="await_registration_completed" name="Registration completed">
+        <bpmn:documentation>Waits until a case worker marks the registration as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
+        <bpmn:incoming>flow_registration_start_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_registration_await_to_end</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_registration_completed" messageRef="message_registration_completed" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_registration_await_to_end" sourceRef="await_registration_completed" targetRef="end_registration_phase" />
+      <bpmn:endEvent id="end_registration_phase" name="End registration phase">
+        <bpmn:incoming>flow_registration_await_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_registration_to_review" sourceRef="registration_phase" targetRef="review_phase" />
+    <bpmn:subProcess id="review_phase" name="Review">
+      <bpmn:documentation>Checks that the errand is complete enough to be investigated.</bpmn:documentation>
+      <bpmn:incoming>flow_registration_to_review</bpmn:incoming>
+      <bpmn:outgoing>flow_review_to_investigation</bpmn:outgoing>
+      <bpmn:startEvent id="start_review_phase" name="Start review phase">
+        <bpmn:outgoing>flow_review_start_to_notify</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_review_start_to_notify" sourceRef="start_review_phase" targetRef="external_task_notify_processing_started" />
+      <bpmn:serviceTask id="external_task_notify_processing_started" name="Notify customer processing started" camunda:type="external" camunda:topic="NotifyCustomerTask">
+        <bpmn:documentation>Tells the customer, in the external conversation of the errand, that the processing has started. The text is the one configured under customer-message.texts with the name in the input parameter. Kept out of any loop so the message is sent once.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="message">processing-started</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_review_start_to_notify</bpmn:incoming>
+        <bpmn:outgoing>flow_review_notify_to_await</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_review_notify_to_await" sourceRef="external_task_notify_processing_started" targetRef="await_review_completed" />
+      <bpmn:boundaryEvent id="boundary_notify_processing_started_skipped" name="Notice skipped" attachedToRef="external_task_notify_processing_started">
+        <bpmn:documentation>Takes the process past the notice once its retries are spent, so a failing notice never holds the errand. The failure is alerted instead of raised as an incident.</bpmn:documentation>
+        <bpmn:outgoing>flow_review_notify_skipped_to_await</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="errordef_notify_processing_started_skipped" errorRef="error_step_skipped" />
+      </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="flow_review_notify_skipped_to_await" sourceRef="boundary_notify_processing_started_skipped" targetRef="await_review_completed" />
+      <bpmn:intermediateCatchEvent id="await_review_completed" name="Review completed">
+        <bpmn:documentation>Waits until a case worker marks the review as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
+        <bpmn:incoming>flow_review_notify_to_await</bpmn:incoming>
+        <bpmn:incoming>flow_review_notify_skipped_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_review_await_to_end</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_review_completed" messageRef="message_review_completed" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_review_await_to_end" sourceRef="await_review_completed" targetRef="end_review_phase" />
+      <bpmn:endEvent id="end_review_phase" name="End review phase">
+        <bpmn:incoming>flow_review_await_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_review_to_investigation" sourceRef="review_phase" targetRef="investigation_phase" />
+    <bpmn:subProcess id="investigation_phase" name="Investigation">
+      <bpmn:documentation>Gathers the referrals and the information the decision needs.</bpmn:documentation>
+      <bpmn:incoming>flow_review_to_investigation</bpmn:incoming>
+      <bpmn:outgoing>flow_investigation_to_decision</bpmn:outgoing>
+      <bpmn:startEvent id="start_investigation_phase" name="Start investigation phase">
+        <bpmn:outgoing>flow_investigation_start_to_await</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_investigation_start_to_await" sourceRef="start_investigation_phase" targetRef="await_investigation_completed" />
+      <bpmn:intermediateCatchEvent id="await_investigation_completed" name="Investigation completed">
+        <bpmn:documentation>Waits until a case worker marks the investigation as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
+        <bpmn:incoming>flow_investigation_start_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_investigation_await_to_end</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_investigation_completed" messageRef="message_investigation_completed" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_investigation_await_to_end" sourceRef="await_investigation_completed" targetRef="end_investigation_phase" />
+      <bpmn:endEvent id="end_investigation_phase" name="End investigation phase">
+        <bpmn:incoming>flow_investigation_await_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_investigation_to_decision" sourceRef="investigation_phase" targetRef="decision_phase" />
+    <bpmn:subProcess id="decision_phase" name="Decision">
+      <bpmn:documentation>Waits for the decision in Support Management and creates the permit in party-assets when it is approved. The decision is read on entry, after every decision event and every hour.</bpmn:documentation>
+      <bpmn:incoming>flow_investigation_to_decision</bpmn:incoming>
+      <bpmn:outgoing>flow_decision_to_follow_up</bpmn:outgoing>
+      <bpmn:startEvent id="start_decision_phase" name="Start decision phase">
+        <bpmn:outgoing>flow_decision_start_to_check</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_decision_start_to_check" sourceRef="start_decision_phase" targetRef="external_task_check_decision" />
+      <bpmn:eventBasedGateway id="gateway_await_decision" name="Await decision">
+        <bpmn:incoming>flow_decision_gateway_to_wait</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_wait_to_await</bpmn:outgoing>
+        <bpmn:outgoing>flow_decision_wait_to_timer</bpmn:outgoing>
+      </bpmn:eventBasedGateway>
+      <bpmn:sequenceFlow id="flow_decision_wait_to_await" sourceRef="gateway_await_decision" targetRef="await_decision_updated" />
+      <bpmn:intermediateCatchEvent id="await_decision_updated" name="Decision updated">
+        <bpmn:documentation>Waits until the decision of the errand changes in Support Management. No case worker answers this wait state; the decision does.</bpmn:documentation>
+        <bpmn:incoming>flow_decision_wait_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_await_to_check</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_decision_updated" messageRef="message_decision_updated" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_decision_wait_to_timer" sourceRef="gateway_await_decision" targetRef="timer_recheck_decision" />
+      <bpmn:intermediateCatchEvent id="timer_recheck_decision" name="Every hour">
+        <bpmn:documentation>Rechecks the decision in case its event arrived while the process was not waiting for it.</bpmn:documentation>
+        <bpmn:incoming>flow_decision_wait_to_timer</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_timer_to_check</bpmn:outgoing>
+        <bpmn:timerEventDefinition id="timerdef_recheck_decision">
+          <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1H</bpmn:timeDuration>
+        </bpmn:timerEventDefinition>
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_decision_await_to_check" sourceRef="await_decision_updated" targetRef="external_task_check_decision" />
+      <bpmn:sequenceFlow id="flow_decision_timer_to_check" sourceRef="timer_recheck_decision" targetRef="external_task_check_decision" />
+      <bpmn:serviceTask id="external_task_check_decision" name="Check decision" camunda:type="external" camunda:topic="CheckDecisionTask">
+        <bpmn:documentation>Reads the decision back from Support Management and sets decisionOutcome, NONE while there is no completed decision.</bpmn:documentation>
+        <bpmn:incoming>flow_decision_start_to_check</bpmn:incoming>
+        <bpmn:incoming>flow_decision_await_to_check</bpmn:incoming>
+        <bpmn:incoming>flow_decision_timer_to_check</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_check_to_gateway</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_decision_check_to_gateway" sourceRef="external_task_check_decision" targetRef="gateway_decision_outcome" />
+      <bpmn:exclusiveGateway id="gateway_decision_outcome" name="Decision outcome">
+        <bpmn:incoming>flow_decision_check_to_gateway</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_gateway_to_wait</bpmn:outgoing>
+        <bpmn:outgoing>flow_decision_gateway_to_create_asset</bpmn:outgoing>
+        <bpmn:outgoing>flow_decision_gateway_to_no_permit</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:sequenceFlow id="flow_decision_gateway_to_wait" name="Not completed" sourceRef="gateway_decision_outcome" targetRef="gateway_await_decision">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decisionOutcome == 'NONE'}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="flow_decision_gateway_to_create_asset" name="Permit granted" sourceRef="gateway_decision_outcome" targetRef="external_task_create_asset">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decisionOutcome == 'APPROVAL' || decisionOutcome == 'APPROVAL_WITH_CONDITIONS'}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="flow_decision_gateway_to_no_permit" name="No permit" sourceRef="gateway_decision_outcome" targetRef="end_decision_phase">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${decisionOutcome == 'REJECTED' || decisionOutcome == 'DISMISSED' || decisionOutcome == 'INADMISSIBLE'}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:serviceTask id="external_task_create_asset" name="Create asset" camunda:type="external" camunda:topic="CreateAssetTask">
+        <bpmn:documentation>Creates the permit in party-assets from the approved decision, with its permit certificate.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="certificateTemplate">tobacco-permit-certificate</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_decision_gateway_to_create_asset</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_create_asset_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_decision_create_asset_to_end" sourceRef="external_task_create_asset" targetRef="end_decision_phase" />
+      <bpmn:endEvent id="end_decision_phase" name="End decision phase">
+        <bpmn:incoming>flow_decision_gateway_to_no_permit</bpmn:incoming>
+        <bpmn:incoming>flow_decision_create_asset_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_decision_to_follow_up" sourceRef="decision_phase" targetRef="follow_up_phase" />
+    <bpmn:subProcess id="follow_up_phase" name="Follow up">
+      <bpmn:documentation>Follows up the decision and the conditions it carries.</bpmn:documentation>
+      <bpmn:incoming>flow_decision_to_follow_up</bpmn:incoming>
+      <bpmn:outgoing>flow_follow_up_to_closure</bpmn:outgoing>
+      <bpmn:startEvent id="start_follow_up_phase" name="Start follow up phase">
+        <bpmn:outgoing>flow_follow_up_start_to_await</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_follow_up_start_to_await" sourceRef="start_follow_up_phase" targetRef="await_follow_up_completed" />
+      <bpmn:intermediateCatchEvent id="await_follow_up_completed" name="Follow up completed">
+        <bpmn:documentation>Waits until a case worker marks the follow up as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
+        <bpmn:incoming>flow_follow_up_start_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_follow_up_await_to_end</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_follow_up_completed" messageRef="message_follow_up_completed" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_follow_up_await_to_end" sourceRef="await_follow_up_completed" targetRef="end_follow_up_phase" />
+      <bpmn:endEvent id="end_follow_up_phase" name="End follow up phase">
+        <bpmn:incoming>flow_follow_up_await_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_follow_up_to_closure" sourceRef="follow_up_phase" targetRef="closure_phase" />
+    <bpmn:subProcess id="closure_phase" name="Closure">
+      <bpmn:documentation>Closes the errand.</bpmn:documentation>
+      <bpmn:incoming>flow_follow_up_to_closure</bpmn:incoming>
+      <bpmn:outgoing>flow_closure_to_complete_process</bpmn:outgoing>
+      <bpmn:startEvent id="start_closure_phase" name="Start closure phase">
+        <bpmn:outgoing>flow_closure_start_to_await</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_closure_start_to_await" sourceRef="start_closure_phase" targetRef="await_closure_completed" />
+      <bpmn:intermediateCatchEvent id="await_closure_completed" name="Closure completed">
+        <bpmn:documentation>Waits until a case worker marks the errand as closed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
+        <bpmn:incoming>flow_closure_start_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_closure_await_to_end</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_closure_completed" messageRef="message_closure_completed" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_closure_await_to_end" sourceRef="await_closure_completed" targetRef="end_closure_phase" />
+      <bpmn:endEvent id="end_closure_phase" name="End closure phase">
+        <bpmn:incoming>flow_closure_await_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+    <bpmn:sequenceFlow id="flow_closure_to_complete_process" sourceRef="closure_phase" targetRef="external_task_complete_process" />
+    <bpmn:serviceTask id="external_task_complete_process" name="Complete process" camunda:type="external" camunda:topic="CompleteProcessTask">
+      <bpmn:documentation>Reports the process as completed to Support Management. A branch that ends without this step leaves the errand on a row saying RUNNING for good.</bpmn:documentation>
+      <bpmn:incoming>flow_closure_to_complete_process</bpmn:incoming>
+      <bpmn:outgoing>flow_complete_process_to_end_process</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="flow_complete_process_to_end_process" sourceRef="external_task_complete_process" targetRef="end_process" />
+    <bpmn:endEvent id="end_process" name="End process">
+      <bpmn:documentation>The end of the process execution</bpmn:documentation>
+      <bpmn:incoming>flow_complete_process_to_end_process</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="cancel_process_subprocess" name="Cancellation" triggeredByEvent="true">
+      <bpmn:documentation>Cancels the process in whatever phase it stands, e.g. when the applicant withdraws the errand. The phase or work step that runs is interrupted.</bpmn:documentation>
+      <bpmn:startEvent id="cancel_process" name="Process cancelled">
+        <bpmn:outgoing>flow_cancel_process_to_cancel_task</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_cancel_process" messageRef="message_process_cancelled" />
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="flow_cancel_process_to_cancel_task" sourceRef="cancel_process" targetRef="external_task_cancel_process" />
+      <bpmn:serviceTask id="external_task_cancel_process" name="Cancel process" camunda:type="external" camunda:topic="CancelProcessTask">
+        <bpmn:documentation>Reports the process as completed to Support Management, which closes the process life of the errand: no new process is started for it.</bpmn:documentation>
+        <bpmn:incoming>flow_cancel_process_to_cancel_task</bpmn:incoming>
+        <bpmn:outgoing>flow_cancel_task_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_cancel_task_to_end" sourceRef="external_task_cancel_process" targetRef="end_process_cancelled" />
+      <bpmn:endEvent id="end_process_cancelled" name="End cancelled process">
+        <bpmn:incoming>flow_cancel_task_to_end</bpmn:incoming>
+      </bpmn:endEvent>
+    </bpmn:subProcess>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_tobacco_sales">
+    <bpmndi:BPMNPlane id="BPMNPlane_tobacco_sales" bpmnElement="tobacco-sales">
+      <bpmndi:BPMNShape id="BPMNShape_start_process" bpmnElement="start_process">
+        <dc:Bounds x="152" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="141" y="142" width="61" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_registration_phase" bpmnElement="registration_phase" isExpanded="false">
+        <dc:Bounds x="240" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_review_phase" bpmnElement="review_phase" isExpanded="false">
+        <dc:Bounds x="390" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_investigation_phase" bpmnElement="investigation_phase" isExpanded="false">
+        <dc:Bounds x="540" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_decision_phase" bpmnElement="decision_phase" isExpanded="false">
+        <dc:Bounds x="690" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_follow_up_phase" bpmnElement="follow_up_phase" isExpanded="false">
+        <dc:Bounds x="840" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_closure_phase" bpmnElement="closure_phase" isExpanded="false">
+        <dc:Bounds x="990" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_process" bpmnElement="end_process">
+        <dc:Bounds x="1292" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1283" y="142" width="55" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_start_process_to_registration" bpmnElement="flow_start_process_to_registration">
+        <di:waypoint x="188" y="117" />
+        <di:waypoint x="240" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_to_review" bpmnElement="flow_registration_to_review">
+        <di:waypoint x="340" y="117" />
+        <di:waypoint x="390" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_to_investigation" bpmnElement="flow_review_to_investigation">
+        <di:waypoint x="490" y="117" />
+        <di:waypoint x="540" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_to_decision" bpmnElement="flow_investigation_to_decision">
+        <di:waypoint x="640" y="117" />
+        <di:waypoint x="690" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_to_follow_up" bpmnElement="flow_decision_to_follow_up">
+        <di:waypoint x="790" y="117" />
+        <di:waypoint x="840" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_follow_up_to_closure" bpmnElement="flow_follow_up_to_closure">
+        <di:waypoint x="940" y="117" />
+        <di:waypoint x="990" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_complete_process" bpmnElement="external_task_complete_process">
+        <dc:Bounds x="1140" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_closure_to_complete_process" bpmnElement="flow_closure_to_complete_process">
+        <di:waypoint x="1090" y="117" />
+        <di:waypoint x="1140" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_complete_process_to_end_process" bpmnElement="flow_complete_process_to_end_process">
+        <di:waypoint x="1240" y="117" />
+        <di:waypoint x="1292" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_cancel_process_subprocess" bpmnElement="cancel_process_subprocess" isExpanded="false">
+        <dc:Bounds x="690" y="220" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_decision_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_decision_phase" bpmnElement="decision_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_decision_phase" bpmnElement="start_decision_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="160" y="225" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_check_decision" bpmnElement="external_task_check_decision">
+        <dc:Bounds x="270" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_decision_outcome" bpmnElement="gateway_decision_outcome" isMarkerVisible="true">
+        <dc:Bounds x="430" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="486" y="230" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_create_asset" bpmnElement="external_task_create_asset">
+        <dc:Bounds x="540" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_decision_phase" bpmnElement="end_decision_phase">
+        <dc:Bounds x="702" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="684" y="225" width="72" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_await_decision" bpmnElement="gateway_await_decision">
+        <dc:Bounds x="430" y="305" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="486" y="340" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_decision_updated" bpmnElement="await_decision_updated">
+        <dc:Bounds x="352" y="312" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="360" y="355" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_timer_recheck_decision" bpmnElement="timer_recheck_decision">
+        <dc:Bounds x="352" y="392" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="342" y="435" width="56" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_start_to_check" bpmnElement="flow_decision_start_to_check">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="270" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_check_to_gateway" bpmnElement="flow_decision_check_to_gateway">
+        <di:waypoint x="370" y="200" />
+        <di:waypoint x="430" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_gateway_to_create_asset" bpmnElement="flow_decision_gateway_to_create_asset">
+        <di:waypoint x="480" y="200" />
+        <di:waypoint x="540" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="488" y="182" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_create_asset_to_end" bpmnElement="flow_decision_create_asset_to_end">
+        <di:waypoint x="640" y="200" />
+        <di:waypoint x="702" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_gateway_to_no_permit" bpmnElement="flow_decision_gateway_to_no_permit">
+        <di:waypoint x="455" y="175" />
+        <di:waypoint x="455" y="100" />
+        <di:waypoint x="720" y="100" />
+        <di:waypoint x="720" y="182" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="563" y="82" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_gateway_to_wait" bpmnElement="flow_decision_gateway_to_wait">
+        <di:waypoint x="455" y="225" />
+        <di:waypoint x="455" y="305" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="462" y="258" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_wait_to_await" bpmnElement="flow_decision_wait_to_await">
+        <di:waypoint x="430" y="330" />
+        <di:waypoint x="388" y="330" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_wait_to_timer" bpmnElement="flow_decision_wait_to_timer">
+        <di:waypoint x="455" y="355" />
+        <di:waypoint x="455" y="410" />
+        <di:waypoint x="388" y="410" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_await_to_check" bpmnElement="flow_decision_await_to_check">
+        <di:waypoint x="352" y="330" />
+        <di:waypoint x="340" y="330" />
+        <di:waypoint x="340" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_timer_to_check" bpmnElement="flow_decision_timer_to_check">
+        <di:waypoint x="352" y="410" />
+        <di:waypoint x="300" y="410" />
+        <di:waypoint x="300" y="240" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_registration_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_registration_phase" bpmnElement="registration_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_registration_phase" bpmnElement="start_registration_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_registration_completed" bpmnElement="await_registration_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_registration_phase" bpmnElement="end_registration_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_start_to_await" bpmnElement="flow_registration_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_await_to_end" bpmnElement="flow_registration_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_review_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_review_phase" bpmnElement="review_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_review_phase" bpmnElement="start_review_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_notify_processing_started" bpmnElement="external_task_notify_processing_started">
+        <dc:Bounds x="266" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_review_completed" bpmnElement="await_review_completed">
+        <dc:Bounds x="422" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="397" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
+        <dc:Bounds x="522" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="497" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_notify" bpmnElement="flow_review_start_to_notify">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="266" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_notify_to_await" bpmnElement="flow_review_notify_to_await">
+        <di:waypoint x="366" y="200" />
+        <di:waypoint x="422" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="BPMNShape_boundary_notify_processing_started_skipped" bpmnElement="boundary_notify_processing_started_skipped">
+        <dc:Bounds x="298" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="344" y="258" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_notify_skipped_to_await" bpmnElement="flow_review_notify_skipped_to_await">
+        <di:waypoint x="316" y="258" />
+        <di:waypoint x="316" y="290" />
+        <di:waypoint x="440" y="290" />
+        <di:waypoint x="440" y="218" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_await_to_end" bpmnElement="flow_review_await_to_end">
+        <di:waypoint x="458" y="200" />
+        <di:waypoint x="522" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_investigation_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_investigation_phase" bpmnElement="investigation_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_investigation_phase" bpmnElement="start_investigation_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_investigation_completed" bpmnElement="await_investigation_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_investigation_phase" bpmnElement="end_investigation_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_start_to_await" bpmnElement="flow_investigation_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_investigation_await_to_end" bpmnElement="flow_investigation_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_follow_up_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_follow_up_phase" bpmnElement="follow_up_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_follow_up_phase" bpmnElement="start_follow_up_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_follow_up_completed" bpmnElement="await_follow_up_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_follow_up_phase" bpmnElement="end_follow_up_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_follow_up_start_to_await" bpmnElement="flow_follow_up_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_follow_up_await_to_end" bpmnElement="flow_follow_up_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_closure_phase">
+    <bpmndi:BPMNPlane id="BPMNPlane_closure_phase" bpmnElement="closure_phase">
+      <bpmndi:BPMNShape id="BPMNShape_start_closure_phase" bpmnElement="start_closure_phase">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_await_closure_completed" bpmnElement="await_closure_completed">
+        <dc:Bounds x="272" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="247" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_closure_phase" bpmnElement="end_closure_phase">
+        <dc:Bounds x="372" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_closure_start_to_await" bpmnElement="flow_closure_start_to_await">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="272" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_closure_await_to_end" bpmnElement="flow_closure_await_to_end">
+        <di:waypoint x="308" y="200" />
+        <di:waypoint x="372" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_cancel_process_subprocess">
+    <bpmndi:BPMNPlane id="BPMNPlane_cancel_process_subprocess" bpmnElement="cancel_process_subprocess">
+      <bpmndi:BPMNShape id="BPMNShape_cancel_process" bpmnElement="cancel_process">
+        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_cancel_process" bpmnElement="external_task_cancel_process">
+        <dc:Bounds x="270" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_process_cancelled" bpmnElement="end_process_cancelled">
+        <dc:Bounds x="422" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="397" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_cancel_process_to_cancel_task" bpmnElement="flow_cancel_process_to_cancel_task">
+        <di:waypoint x="216" y="200" />
+        <di:waypoint x="270" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_cancel_task_to_end" bpmnElement="flow_cancel_task_to_end">
+        <di:waypoint x="370" y="200" />
+        <di:waypoint x="422" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -5,6 +5,7 @@ import generated.se.sundsvall.partyassets.AssetAttachment;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
 import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.partyassets.DraftAssetUpdateRequest;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,7 @@ import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
 
 @ExtendWith(MockitoExtension.class)
 class PartyAssetsIntegrationTest {
@@ -62,17 +64,18 @@ class PartyAssetsIntegrationTest {
 	}
 
 	@Test
-	void findAssetIdAnswersWithTheIdOfTheMatchingAsset() {
-		when(partyAssetsClientMock.getAssets(MUNICIPALITY_ID, "party-id", "decision-id")).thenReturn(ResponseEntity.ok(List.of(new Asset().id("asset-id"))));
+	void findAssetAnswersWithTheMatchingAsset() {
+		final var asset = new Asset().id("asset-id");
+		when(partyAssetsClientMock.getAssets(MUNICIPALITY_ID, "party-id", "decision-id")).thenReturn(ResponseEntity.ok(List.of(asset)));
 
-		assertThat(partyAssetsIntegration.findAssetId(MUNICIPALITY_ID, "party-id", "decision-id")).contains("asset-id");
+		assertThat(partyAssetsIntegration.findAsset(MUNICIPALITY_ID, "party-id", "decision-id")).contains(asset);
 	}
 
 	@Test
-	void findAssetIdIsEmptyWithoutABody() {
+	void findAssetIsEmptyWithoutABody() {
 		when(partyAssetsClientMock.getAssets(MUNICIPALITY_ID, "party-id", "decision-id")).thenReturn(ResponseEntity.ok(null));
 
-		assertThat(partyAssetsIntegration.findAssetId(MUNICIPALITY_ID, "party-id", "decision-id")).isEmpty();
+		assertThat(partyAssetsIntegration.findAsset(MUNICIPALITY_ID, "party-id", "decision-id")).isEmpty();
 	}
 
 	@Test
@@ -222,6 +225,28 @@ class PartyAssetsIntegrationTest {
 
 		verify(partyAssetsClientMock).updateAsset(MUNICIPALITY_ID, "asset-id", "\"3\"", request);
 		verifyNoMoreInteractions(partyAssetsClientMock);
+	}
+
+	@Test
+	void updateAssetFailsWithoutRetryWhenPartyAssetsRefusesIt() {
+		final var request = new AssetUpdateRequest().validTo(LocalDate.of(2026, 1, 31));
+		final var problem = new ClientProblem(BAD_REQUEST, "validTo must not be before issued");
+		when(partyAssetsClientMock.updateAsset(MUNICIPALITY_ID, "asset-id", "\"3\"", request)).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.updateAsset(MUNICIPALITY_ID, "asset-id", "\"3\"", request))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageStartingWith("Asset 'asset-id' cannot be updated")
+			.hasCause(problem);
+	}
+
+	/** A version that no longer matches is retried on a fresh read. */
+	@Test
+	void updateAssetLeavesAnyOtherFailureToBeRetried() {
+		final var request = new AssetUpdateRequest().validTo(LocalDate.of(2026, 1, 31));
+		final var problem = new ClientProblem(PRECONDITION_FAILED, "Precondition Failed");
+		when(partyAssetsClientMock.updateAsset(MUNICIPALITY_ID, "asset-id", "\"3\"", request)).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.updateAsset(MUNICIPALITY_ID, "asset-id", "\"3\"", request)).isSameAs(problem);
 	}
 
 	@Test

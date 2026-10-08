@@ -32,6 +32,7 @@ import static org.springframework.http.MediaType.ALL_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 import static se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration.CLIENT_ID;
+import static se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration.TRIGGER_PROCESS_HEADER;
 
 @FeignClient(name = CLIENT_ID, url = "${integration.support-management.url}", configuration = SupportManagementConfiguration.class)
 @CircuitBreaker(name = CLIENT_ID)
@@ -49,7 +50,7 @@ public interface SupportManagementClient {
 		@PathVariable String namespace,
 		@PathVariable String errandId,
 		@RequestHeader("If-Match") String ifMatch,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
 		@RequestBody Errand errand);
 
 	/** 201 the first time, 200 after that. No X-Trigger-Process, a report is not an errand write. */
@@ -92,7 +93,7 @@ public interface SupportManagementClient {
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@PathVariable String errandId,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
 		@RequestBody Decision decision);
 
 	@PatchMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions/{decisionId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
@@ -101,7 +102,7 @@ public interface SupportManagementClient {
 		@PathVariable String namespace,
 		@PathVariable String errandId,
 		@PathVariable String decisionId,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
 		@RequestBody Decision decision);
 
 	/** Links an attachment already on the errand, nothing is uploaded. */
@@ -112,7 +113,7 @@ public interface SupportManagementClient {
 		@PathVariable String errandId,
 		@PathVariable String decisionId,
 		@PathVariable String attachmentId,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess);
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<List<Conversation>> getConversations(
@@ -125,7 +126,7 @@ public interface SupportManagementClient {
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@PathVariable String errandId,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
 		@RequestBody ConversationRequest conversation);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/communication/conversations/{conversationId}/messages", produces = APPLICATION_JSON_VALUE)
@@ -144,7 +145,7 @@ public interface SupportManagementClient {
 		@PathVariable String namespace,
 		@PathVariable String errandId,
 		@PathVariable String conversationId,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
 		@RequestPart("message") MessageRequest message);
 
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/attachments", consumes = MULTIPART_FORM_DATA_VALUE, produces = ALL_VALUE)
@@ -152,7 +153,7 @@ public interface SupportManagementClient {
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@PathVariable String errandId,
-		@RequestHeader(value = "X-Trigger-Process", required = false) Boolean triggerProcess,
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
 		@RequestPart("errandAttachment") MultipartFile errandAttachment);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/investigations", produces = APPLICATION_JSON_VALUE)

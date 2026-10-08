@@ -57,6 +57,14 @@ process-log:
       done: Tillståndet har ändrats
       retry: Tillståndet kunde inte ändras just nu, ett nytt försök görs automatiskt
       failed: Tillståndet kunde inte ändras. Processen har stannat och felet behöver åtgärdas
+    "[external_task_check_permit]":
+      done: Tillståndet som ärendet gäller har kontrollerats
+      retry: Tillståndet kunde inte kontrolleras just nu, ett nytt försök görs automatiskt
+      failed: Tillståndet kunde inte kontrolleras. Processen har stannat och felet behöver åtgärdas
+    "[external_task_close_asset]":
+      done: Tillståndet har avslutats
+      retry: Tillståndet kunde inte avslutas just nu, ett nytt försök görs automatiskt
+      failed: Tillståndet kunde inte avslutas. Processen har stannat och felet behöver åtgärdas
     "[external_task_complete_process]":
       done: Processen är avslutad
       retry: Processen kunde inte avslutas just nu, ett nytt försök görs automatiskt

@@ -1,0 +1,8 @@
+{
+	"eventId": "5b2e9c71-0d48-4a3f-8e16-c4a7f93d2b05",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15",
+	"processKey": "e-cigarette-sales",
+	"startAllowed": true
+}
