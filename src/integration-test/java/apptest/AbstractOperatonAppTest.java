@@ -133,10 +133,13 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	/**
 	 * Starts the external task client, which the test properties keep from polling on its own. Its token request is
 	 * answered with a token that outlives the test class, so the client asks for a token once, here, after WireMock has
-	 * been reset for the test case, and never while WireMock is reset between test cases. Starting a running client does
-	 * nothing.
+	 * been reset for the test case, and never while WireMock is reset between test cases. A running client keeps its
+	 * token, so the stub is only added when the client starts: a stub no request reaches fails the stub verification.
 	 */
 	private void startExternalTaskClient() {
+		if (externalTaskClient.isActive()) {
+			return;
+		}
 		wiremock.stubFor(post(urlEqualTo(TOKEN_PATH))
 			.atPriority(1)
 			.withRequestBody(WireMock.equalTo(EXTERNAL_TASK_CLIENT_TOKEN_REQUEST))
