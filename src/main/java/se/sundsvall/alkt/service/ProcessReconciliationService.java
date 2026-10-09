@@ -27,7 +27,6 @@ import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.ACTIVITY_CANCEL_PROCESS;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_TERMINATED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
@@ -44,6 +43,9 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 /** Tells Support Management what the work steps could not: an incident stands, or an instance is gone. */
 @Service
 public class ProcessReconciliationService {
+
+	// Must match the id of the cancellation step in every bpmn schema.
+	private static final String ACTIVITY_CANCEL_PROCESS = "external_task_cancel_process";
 
 	private static final Logger LOG = LoggerFactory.getLogger(ProcessReconciliationService.class);
 

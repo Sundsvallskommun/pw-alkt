@@ -13,18 +13,9 @@ import se.sundsvall.dept44.requestid.RequestId;
 
 import static java.time.ZoneOffset.UTC;
 import static org.apache.commons.lang3.StringUtils.abbreviate;
-import static se.sundsvall.alkt.Constants.ACTIVITY_TYPE_INCIDENT;
-import static se.sundsvall.alkt.Constants.ACTIVITY_TYPE_PHASE;
-import static se.sundsvall.alkt.Constants.ACTIVITY_TYPE_RECONCILIATION;
-import static se.sundsvall.alkt.Constants.ACTIVITY_TYPE_TASK;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
-import static se.sundsvall.alkt.Constants.ERROR_CODE_REJECTED;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
-import static se.sundsvall.alkt.Constants.ERROR_CODE_SKIPPED;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_TERMINATED;
-import static se.sundsvall.alkt.Constants.SEVERITY_ERROR;
-import static se.sundsvall.alkt.Constants.SEVERITY_INFO;
-import static se.sundsvall.alkt.Constants.SEVERITY_WARN;
 
 /**
  * Writes the entries of the activity log: activityName is what the case worker reads, message is for whoever debugs.
@@ -32,6 +23,17 @@ import static se.sundsvall.alkt.Constants.SEVERITY_WARN;
  */
 @Component
 public class ProcessLog {
+
+	private static final String ACTIVITY_TYPE_TASK = "TASK";
+	private static final String ACTIVITY_TYPE_PHASE = "PHASE";
+	private static final String ACTIVITY_TYPE_INCIDENT = "INCIDENT";
+	private static final String ACTIVITY_TYPE_RECONCILIATION = "RECONCILIATION";
+	private static final String ERROR_CODE_SKIPPED = "SKIPPED";
+	private static final String ERROR_CODE_REJECTED = "REJECTED";
+	// Support Management refuses a severity it does not know.
+	private static final String SEVERITY_INFO = "INFO";
+	private static final String SEVERITY_WARN = "WARN";
+	private static final String SEVERITY_ERROR = "ERROR";
 
 	public enum Outcome {
 		DONE,

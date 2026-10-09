@@ -7,10 +7,10 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
@@ -20,17 +20,11 @@ import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETERS_OF_THE_PROCESS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_TOBACCO_SALES;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
@@ -42,15 +36,27 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecidedOn;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toFirstDay;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toRemovedParameterKeys;
 
 public final class PartyAssetsMapper {
 
+	public static final String PERMIT_TYPE_ALCOHOL_SERVING = "AlcoholServingPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES = "LowAlcoholBeerSalesPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING = "LowAlcoholBeerServingPermit";
+	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingPermit";
+	public static final String PERMIT_TYPE_TOBACCO_SALES = "TobaccoSalesPermit";
+	public static final String PERMIT_TYPE_E_CIGARETTE_SALES = "ECigaretteSalesPermit";
+
+	// Set by pw-alkt from the errand and the decision, so a decision cannot remove them.
+	private static final Set<String> PERMIT_PARAMETERS_OF_THE_PROCESS = Set.of(PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
+		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, PERMIT_PARAMETER_RESTAURANT_NUMBER);
+
 	static final String ATTACHMENT_PART_NAME = "attachment";
 	static final String CERTIFICATE_FILE_NAME = "tillstandsbevis.pdf";
 	static final String CERTIFICATE_CATEGORY = "Tillståndsbevis";
-	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 
 	private static final Map<String, String> PERMIT_TYPES = Map.of(
@@ -74,23 +80,25 @@ public final class PartyAssetsMapper {
 				.formatted(processKey, PERMIT_TYPES.keySet())));
 	}
 
-	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final String permitType) {
+	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final String permitType,
+		final String restaurantNumber) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
 			.status(DRAFT)
 			.origin(ORIGIN)
 			.partyId(partyId)
 			.type(permitType)
-			.issued(toIssued(decision))
+			.issued(toFirstDay(decision).orElse(null))
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())
 			.description(decision.getDescription())
-			.additionalParameters(toAdditionalParameters(decision, errandId));
+			.additionalParameters(toAdditionalParameters(decision, errandId, restaurantNumber));
 	}
 
 	/**
 	 * The decision's parameters go on top of the asset's, and one without a value removes the key. validTo and conditions
-	 * stay unless the decision gives new ones, and errandId keeps naming the granting errand.
+	 * stay unless the decision gives new ones, errandId keeps naming the granting errand and premisesRestaurantNumber keeps
+	 * the number licensed business holds.
 	 */
 	public static AssetUpdateRequest toAssetUpdateRequest(final Asset current, final Decision decision) {
 		final var parameters = new LinkedHashMap<>(Optional.ofNullable(current.getAdditionalParameters()).orElse(emptyMap()));
@@ -122,10 +130,6 @@ public final class PartyAssetsMapper {
 		return request;
 	}
 
-	private static Optional<LocalDate> toDecidedOn(final Decision decision) {
-		return Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate());
-	}
-
 	public static AssetFile toAssetFile(final ErrandAttachment attachment, final byte[] content) {
 		return new AssetFile(
 			new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, attachment.getFileName(), attachment.getMimeType(), content),
@@ -138,16 +142,11 @@ public final class PartyAssetsMapper {
 		return new AssetFile(new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, CERTIFICATE_FILE_NAME, APPLICATION_PDF_VALUE, content), CERTIFICATE_CATEGORY);
 	}
 
-	private static LocalDate toIssued(final Decision decision) {
-		return Optional.ofNullable(decision.getValidFrom())
-			.or(() -> toDecidedOn(decision))
-			.orElse(null);
-	}
-
-	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId) {
+	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId, final String restaurantNumber) {
 		final var parameters = new LinkedHashMap<String, String>();
 		parameters.put(PERMIT_PARAMETER_ERRAND_ID, errandId);
 		parameters.putAll(toDecisionParameters(decision));
+		Optional.ofNullable(restaurantNumber).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_RESTAURANT_NUMBER, value));
 		return parameters;
 	}
 
@@ -155,12 +154,14 @@ public final class PartyAssetsMapper {
 		final var parameters = new LinkedHashMap<String, String>();
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_LEGAL_BASIS, value));
 		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_DELEGATION_REFERENCE, value));
-		// Why: the decision's parameters go in after our own keys, so they win over them, except the conditions, which the
-		// terms carry as on the certificate.
+		// Why: the decision's parameters go in after legalBasis and delegationReference, so they win over them. The
+		// conditions come from the decision's terms only.
 		parameters.putAll(toParameterValues(decision.getParameters()));
+		parameters.remove(PERMIT_PARAMETER_CONDITIONS);
 		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_CONDITIONS, value));
-		// Why: errandId links the asset to the errand that granted it, which no decision parameter may change.
+		// Why: set by the process, so a decision cannot change them.
 		parameters.remove(PERMIT_PARAMETER_ERRAND_ID);
+		parameters.remove(PERMIT_PARAMETER_RESTAURANT_NUMBER);
 		return parameters;
 	}
 }

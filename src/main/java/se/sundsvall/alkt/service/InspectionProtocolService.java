@@ -12,11 +12,12 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.INVESTIGATION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 
 @Service
 public class InspectionProtocolService {
+
+	private static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final TemplatingIntegration templatingIntegration;
@@ -60,8 +61,8 @@ public class InspectionProtocolService {
 	}
 
 	// Why: the step runs once the case worker has completed the investigation, so that is the one the protocol is of. A
-	// draft, active or cancelled one is not, and with several completed there is no telling which one it is. None is
-	// retried, since the completion may not be saved yet when the phase ends.
+	// draft, active or cancelled one is not, and with several completed there is no telling which one it is.
+	// Without a completed one the step is retried, since the completion may not be saved yet when the phase ends.
 	private Investigation getInvestigation(final String municipalityId, final String namespace, final String errandId) {
 		final var investigations = supportManagementIntegration.getInvestigations(municipalityId, namespace, errandId).stream()
 			.filter(investigation -> INVESTIGATION_STATUS_COMPLETED.equals(investigation.getStatus()))

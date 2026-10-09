@@ -11,13 +11,18 @@ import tools.jackson.core.JacksonException;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/AlcoholServingIT/", classes = Application.class)
@@ -97,7 +102,9 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				tuple("Decision updated", "await_decision_updated"),
 				tuple("Check decision", "external_task_check_decision"), // Approved
 				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Resolve restaurant number", "external_task_resolve_restaurant_number"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Assign restaurant number", "external_task_assign_restaurant_number"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -162,6 +169,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/.*")));
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
@@ -328,10 +336,93 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/.*")));
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
 			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
+	}
+
+	/** An owner change: the case worker picks the number the premises already has, and it is assigned to the new holder. */
+	@Test
+	void test009_chosenRestaurantNumberOfAnOwnerChangeIsAssigned() throws JacksonException {
+		runThroughAnApproval();
+
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers/available")));
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers")));
+	}
+
+	/** A new number is created at the premises although one there is free, since the case worker asked for a new one. */
+	@Test
+	void test010_newRestaurantNumberIsCreatedAndAssigned() throws JacksonException {
+		runThroughAnApproval();
+
+		wiremock.verify(1, postRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers")));
+	}
+
+	/**
+	 * The number was free when it was chosen, but another errand assigned it before this one could, so the process stops
+	 * instead of ending the other holder's assignment.
+	 */
+	@Test
+	void test011_anotherErrandAssignedTheNumberFirstLeavesAnIncident() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING);
+
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, PROCESS_KEY_ALCOHOL_SERVING).stream()
+				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())
+					&& "external_task_assign_restaurant_number".equals(incident.getActivityId())));
+		// The failure report and the alert are sent after the incident is raised, the alert last
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.untilAsserted(() -> wiremock.verify(postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack"))));
+
+		verifyAllStubs();
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/2281/assignments")));
+	}
+
+	private void runThroughAnApproval() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ALCOHOL_SERVING);
+
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "registration");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "review");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING);
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ALCOHOL_SERVING, "closure");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		verifyAllStubs();
+
+		// The route is ordered by end time, and the phase can end in the same millisecond as its last step, so only the steps
+		// are held to their order.
+		assertThat(getProcessInstanceRoute(processInstanceId))
+			.extracting(HistoricActivityInstanceDto::getActivityId)
+			.containsSubsequence("external_task_resolve_restaurant_number", "external_task_create_asset", "external_task_assign_restaurant_number")
+			.contains("end_decision_phase");
 	}
 }
