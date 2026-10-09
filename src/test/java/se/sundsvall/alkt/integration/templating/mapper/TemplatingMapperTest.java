@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.entry;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 
 class TemplatingMapperTest {
@@ -134,6 +135,15 @@ class TemplatingMapperTest {
 			entry("caseNumber", "IAN-2026-00209"),
 			entry("permitHolderName", "Runt Hörnet AB"),
 			entry(PERMIT_PARAMETER_CONDITIONS, ""));
+	}
+
+	/** A permit from before restaurant numbers has none, and the decision cannot give it one on the certificate either. */
+	@Test
+	void toTemplateParametersOfAChangeLeavesOutARestaurantNumberTheDecisionGives() {
+		final var decision = new Decision().parameters(List.of(parameter(PERMIT_PARAMETER_RESTAURANT_NUMBER, "22819999")));
+
+		assertThat(toTemplateParameters(decision, Map.of("serveringstid", "11.00–02.00"))).doesNotContainKey(PERMIT_PARAMETER_RESTAURANT_NUMBER);
+		assertThat(toTemplateParameters(decision, Map.of(PERMIT_PARAMETER_RESTAURANT_NUMBER, "22810001"))).containsEntry(PERMIT_PARAMETER_RESTAURANT_NUMBER, "22810001");
 	}
 
 	@Test

@@ -97,7 +97,8 @@ public final class PartyAssetsMapper {
 
 	/**
 	 * The decision's parameters go on top of the asset's, and one without a value removes the key. validTo and conditions
-	 * stay unless the decision gives new ones, and errandId keeps naming the granting errand.
+	 * stay unless the decision gives new ones, errandId keeps naming the granting errand and premisesRestaurantNumber keeps
+	 * the number licensed business holds.
 	 */
 	public static AssetUpdateRequest toAssetUpdateRequest(final Asset current, final Decision decision) {
 		final var parameters = new LinkedHashMap<>(Optional.ofNullable(current.getAdditionalParameters()).orElse(emptyMap()));
@@ -155,7 +156,6 @@ public final class PartyAssetsMapper {
 		final var parameters = new LinkedHashMap<String, String>();
 		parameters.put(PERMIT_PARAMETER_ERRAND_ID, errandId);
 		parameters.putAll(toDecisionParameters(decision));
-		// Why: after the decision's parameters, so the number licensed business holds wins over one written in the decision.
 		Optional.ofNullable(restaurantNumber).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_RESTAURANT_NUMBER, value));
 		return parameters;
 	}
@@ -168,8 +168,9 @@ public final class PartyAssetsMapper {
 		// conditions come from the decision's terms instead, as on the certificate, and win over a conditions parameter.
 		parameters.putAll(toParameterValues(decision.getParameters()));
 		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_CONDITIONS, value));
-		// Why: errandId links the asset to the errand that granted it, which no decision parameter may change.
+		// Why: set by the process, so a decision cannot change them.
 		parameters.remove(PERMIT_PARAMETER_ERRAND_ID);
+		parameters.remove(PERMIT_PARAMETER_RESTAURANT_NUMBER);
 		return parameters;
 	}
 }

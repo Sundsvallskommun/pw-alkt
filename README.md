@@ -475,7 +475,8 @@ errand without a <span class="code">PRIMARY</span> stakeholder raise an incident
 errand has one decision at most, so a rerun that finds one leaves it as it is. The parameters pw-alkt sets on the permit
 itself, <span class="code">errandId</span>, <span class="code">legalBasis</span>,
 <span class="code">delegationReference</span>, <span class="code">conditions</span> and
-<span class="code">premisesRestaurantNumber</span>, never come from the errand, and a decision cannot remove them.</p>
+<span class="code">premisesRestaurantNumber</span>, never come from the errand, and a decision cannot remove them. Nor
+can it change <span class="code">errandId</span> or <span class="code">premisesRestaurantNumber</span>.</p>
 
 <p>Support Management lets the process write only an automatic decision, and wants an outcome on it from the start, so
 the draft is <span class="code">AUTOMATIC</span>, decided by pw-alkt, with the outcome
@@ -488,9 +489,10 @@ removed, and every other key stays. Fields the customer changes on their own, su
 serving, are never part of a change errand, so they come along from the fresh read with their latest value. The step
 checks the permit again, as it may have been deactivated while the errand was handled. The conditions of the permit
 stay unless the decision has terms of its own, also for <span class="code">APPROVAL_WITH_CONDITIONS</span>; a change
-cannot remove them yet. <span class="code">errandId</span> keeps naming the errand that granted the permit, and the
-permit keeps its <span class="code">validTo</span> unless the decision gives one. The change applies as soon as the
-decision is completed; the step does not wait for the <span class="code">validFrom</span> of the decision. A change
+cannot remove them yet. <span class="code">errandId</span> keeps naming the errand that granted the permit,
+<span class="code">premisesRestaurantNumber</span> keeps the number licensed business holds, and the permit keeps its
+<span class="code">validTo</span> unless the decision gives one. The change applies as soon as the decision is
+completed; the step does not wait for the <span class="code">validFrom</span> of the decision. A change
 can end the permit today at the earliest: a <span class="code">validTo</span> that has passed raises an incident before
 anything is written.</p>
 
@@ -596,10 +598,10 @@ assigned to stops the process before there is a permit. The assignment starts on
 of the decision, or on the day it was decided, and ends on its <span class="code">validTo</span> if it has one. The
 permit gets the number as the parameter <span class="code">premisesRestaurantNumber</span>, which is also the
 placeholder for it in <span class="code">serving-permit-certificate</span>, the certificate being rendered from the
-permit's parameters. A decision cannot remove it, so a change keeps it. A change errand ignores the premises address
-and the choice parameters, since they are for licensed business and the choice of a number, not for the permit. A new
-<span class="code">premisesName</span> is a change and goes into the draft, but the assignment in licensed business
-keeps the name it was given.</p>
+permit's parameters. A decision can neither change nor remove it, so a change keeps it. A change errand ignores the
+premises address and the choice parameters, since they are for licensed business and the choice of a number, not for
+the permit. A new <span class="code">premisesName</span> is a change and goes into the draft, but the assignment in
+licensed business keeps the name it was given.</p>
 
 <p>A rerun creates nothing twice. Before <span class="code">ResolveRestaurantNumberTask</span> creates a number it saves
 the free numbers at the address in the process variable <span class="code">restaurantNumbersBeforeCreate</span>, and it

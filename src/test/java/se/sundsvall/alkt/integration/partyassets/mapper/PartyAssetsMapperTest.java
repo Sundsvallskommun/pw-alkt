@@ -140,6 +140,15 @@ class PartyAssetsMapperTest {
 			.containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
 	}
 
+	/** A permit without a restaurant number, such as a tobacco permit, does not get one from its decision. */
+	@Test
+	void toAssetCreateRequestLeavesOutARestaurantNumberTheDecisionGives() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_RESTAURANT_NUMBER).values(List.of("22819999"))));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_TOBACCO_SALES, null).getAdditionalParameters())
+			.containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+	}
+
 	@Test
 	void toAssetCreateRequestLetsTheTermsWinOverAParameterNamedConditions() {
 		final var decision = new Decision()
@@ -322,6 +331,24 @@ class PartyAssetsMapperTest {
 		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_RESTAURANT_NUMBER).values(List.of())));
 
 		assertThat(toAssetUpdateRequest(current, decision).getAdditionalParameters()).containsEntry(PERMIT_PARAMETER_RESTAURANT_NUMBER, "22810001");
+	}
+
+	/** The number is the one licensed business holds, so a decision written with another one does not replace it. */
+	@Test
+	void toAssetUpdateRequestKeepsTheRestaurantNumberOfThePermitOverAParameterOfTheSameKey() {
+		final var current = new Asset().additionalParameters(Map.of(PERMIT_PARAMETER_RESTAURANT_NUMBER, "22810001"));
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_RESTAURANT_NUMBER).values(List.of("22819999"))));
+
+		assertThat(toAssetUpdateRequest(current, decision).getAdditionalParameters()).containsEntry(PERMIT_PARAMETER_RESTAURANT_NUMBER, "22810001");
+	}
+
+	/** A permit from before restaurant numbers does not get one from a change either. */
+	@Test
+	void toAssetUpdateRequestGivesNoRestaurantNumberToAPermitWithoutOne() {
+		final var current = new Asset().additionalParameters(Map.of("serveringstid", "11.00–01.00"));
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_RESTAURANT_NUMBER).values(List.of("22819999"))));
+
+		assertThat(toAssetUpdateRequest(current, decision).getAdditionalParameters()).containsOnly(entry("serveringstid", "11.00–01.00"));
 	}
 
 	/**
