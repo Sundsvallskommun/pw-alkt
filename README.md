@@ -149,8 +149,10 @@ holds for every model today; a gate outside a phase would be logged as one.</p>
 
 <p>The technical account never holds the text of another service's answer, since there is no telling what it holds.
 A failure is described by its kind, its status and the service that answered, for example
-<span class="code">ServerProblem 502 from party-assets (remote 503 Service Unavailable). Attempt 2 of 4</span>. Our own
-messages carry ids only and are kept in full. The same description goes into the error of the row, the incident in
+<span class="code">ServerProblem 502 from party-assets (remote 503 Service Unavailable). Attempt 2 of 4</span>. Two
+exceptions name more: a token that could not be obtained names the client registration it was for, and a template
+parameter that templating missed is named when the name is a plain identifier, since a decision that leaves one empty
+is for the case worker to fix. Our own messages carry ids only and are kept in full. The same description goes into the error of the row, the incident in
 Operaton and the alert.</p>
 
 <p>The texts live in configuration under <span class="code">process-log</span>, set per environment like the
