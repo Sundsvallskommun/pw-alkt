@@ -6,6 +6,9 @@ import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.client.ClientAuthorizationException;
+import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.exception.ServerProblem;
@@ -13,6 +16,7 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
 
@@ -46,6 +50,37 @@ class FailureDescriptionTest {
 		assertThat(FailureDescription.describe(Problem.valueOf(NOT_FOUND, "Errand 'errand-id' has no stakeholder with role 'PRIMARY'")))
 			.isEqualTo("ThrowableProblem 404: Errand 'errand-id' has no stakeholder with role 'PRIMARY'");
 		assertThat(FailureDescription.describe(Problem.valueOf(NOT_FOUND))).isEqualTo("ThrowableProblem 404");
+	}
+
+	@Test
+	void namesTheTemplateParameterADecisionLeftEmpty() {
+		final var problem = new ClientProblem(BAD_REQUEST,
+			"templating error: {detail=Missing template parameter 'servingHours' (line 174), status=400 Bad Request, title=Bad Request}");
+
+		assertThat(FailureDescription.describe(problem))
+			.isEqualTo("ClientProblem 400 from templating (remote 400 Bad Request), missing template parameter 'servingHours'");
+	}
+
+	/** Only an identifier is kept, and only from templating, so no other text of the answer comes along. */
+	@Test
+	void keepsNoOtherTextOfAMissingTemplateParameter() {
+		final var notAnIdentifier = new ClientProblem(BAD_REQUEST,
+			"templating error: {detail=Missing template parameter 'Party 199001012385' (line 1), status=400 Bad Request, title=Bad Request}");
+		final var fromAnotherService = new ClientProblem(BAD_REQUEST,
+			"party-assets error: {detail=Missing template parameter 'servingHours', status=400 Bad Request, title=Bad Request}");
+
+		assertThat(FailureDescription.describe(notAnIdentifier)).isEqualTo("ClientProblem 400 from templating (remote 400 Bad Request)");
+		assertThat(FailureDescription.describe(fromAnotherService)).isEqualTo("ClientProblem 400 from party-assets (remote 400 Bad Request)");
+	}
+
+	@Test
+	void namesTheServiceATokenCouldNotBeObtainedFor() {
+		final var error = new OAuth2Error("invalid_client", "Client 199001012385 is unknown", null);
+		final var exception = new ClientAuthorizationException(error, "party-assets", new OAuth2AuthorizationException(error));
+
+		assertThat(FailureDescription.describe(exception))
+			.isEqualTo("ClientAuthorizationException caused by OAuth2AuthorizationException for party-assets")
+			.doesNotContain("199001012385");
 	}
 
 	/** A status outside 4xx and 5xx comes back from the decoder as a plain problem, with the remote text in its detail. */
