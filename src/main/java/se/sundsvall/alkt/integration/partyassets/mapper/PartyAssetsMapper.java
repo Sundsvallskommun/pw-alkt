@@ -165,8 +165,9 @@ public final class PartyAssetsMapper {
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_LEGAL_BASIS, value));
 		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_DELEGATION_REFERENCE, value));
 		// Why: the decision's parameters go in after legalBasis and delegationReference, so they win over them. The
-		// conditions come from the decision's terms instead, as on the certificate, and win over a conditions parameter.
+		// conditions come from the decision's terms only.
 		parameters.putAll(toParameterValues(decision.getParameters()));
+		parameters.remove(PERMIT_PARAMETER_CONDITIONS);
 		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_CONDITIONS, value));
 		// Why: set by the process, so a decision cannot change them.
 		parameters.remove(PERMIT_PARAMETER_ERRAND_ID);

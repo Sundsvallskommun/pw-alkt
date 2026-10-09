@@ -202,16 +202,19 @@ class AssetServiceTest {
 		assertThat(templateParametersCaptor.getValue()).containsEntry("premisesRestaurantNumber", "22810001");
 	}
 
-	/** The certificate shows the conditions the permit gets, which a parameter gives when the decision has no terms. */
+	/** The conditions come from the terms only, so a parameter named conditions does not make up for missing terms. */
 	@Test
-	void findOrCreateAssetRendersTheConditionsOfAParameterWhenTheDecisionHasNoTerms() {
+	void findOrCreateAssetRemovesTheDraftOfAnApprovalWithConditionsThatHasAConditionsParameterButNoTerms() {
 		givenADraftFor(approval().outcome("APPROVAL_WITH_CONDITIONS")
 			.parameters(List.of(new Parameter().key("conditions").values(List.of("Ordningsvakt efter 23.00.")))));
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo(ASSET_ID);
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("approval with conditions but has no conditions");
 
-		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
+		verifyNoInteractions(templatingIntegrationMock);
+		verify(partyAssetsIntegrationMock, never()).activateAsset(any(), any());
+		verify(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
 	}
 
 	@Test

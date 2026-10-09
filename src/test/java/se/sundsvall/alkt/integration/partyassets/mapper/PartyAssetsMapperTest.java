@@ -161,6 +161,21 @@ class PartyAssetsMapperTest {
 	}
 
 	@Test
+	void toAssetCreateRequestLeavesOutAParameterNamedConditionsWithoutTerms() {
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_CONDITIONS).values(List.of("Från en parameter."))));
+
+		assertThat(toAssetCreateRequest(decision, ERRAND_ID, PARTY_ID, PERMIT_TYPE_ALCOHOL_SERVING, null).getAdditionalParameters()).containsExactly(entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID));
+	}
+
+	@Test
+	void toAssetUpdateRequestKeepsTheConditionsOfThePermitOverAParameterNamedConditions() {
+		final var current = new Asset().additionalParameters(Map.of(PERMIT_PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00."));
+		final var decision = new Decision().parameters(List.of(new Parameter().key(PERMIT_PARAMETER_CONDITIONS).values(List.of("Från en parameter."))));
+
+		assertThat(toAssetUpdateRequest(current, decision).getAdditionalParameters()).containsOnly(entry(PERMIT_PARAMETER_CONDITIONS, "Ordningsvakt efter 23.00."));
+	}
+
+	@Test
 	void toAssetCreateRequestLeavesOutConditionsWithoutText() {
 		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(1).text(" ")));
 
