@@ -49,6 +49,7 @@ public final class Constants {
 	public static final String PROCESS_VARIABLE_REQUEST_ID = "requestId";
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER = "restaurantNumber";
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT = "restaurantNumberLatestAssignment";
+	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID = "restaurantNumberAddressId";
 	public static final String PROCESS_VARIABLE_CERTIFICATE_TEMPLATE = "certificateTemplate";
 
 	public static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";

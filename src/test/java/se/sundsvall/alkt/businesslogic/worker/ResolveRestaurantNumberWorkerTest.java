@@ -30,6 +30,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT;
 import static se.sundsvall.alkt.businesslogic.worker.ResolveRestaurantNumberWorker.PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE;
 
@@ -72,12 +73,12 @@ class ResolveRestaurantNumberWorkerTest {
 	@Test
 	void handsTheNumberToTheEngine() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn(null);
-		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), any())).thenReturn(new ResolvedRestaurantNumber("22810001", "assignment-id"));
+		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), any())).thenReturn(new ResolvedRestaurantNumber("22810001", "address-id", "assignment-id"));
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_resolve_restaurant_number", null)
-			.withVariables(Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBER, "22810001", PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT, "assignment-id"))
+			.withVariables(Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBER, "22810001", PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID, "address-id", PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT, "assignment-id"))
 			.withLogMessage("Restaurant number '22810001' resolved"));
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
@@ -85,7 +86,7 @@ class ResolveRestaurantNumberWorkerTest {
 	@Test
 	void savesTheFreeNumbersInTheEngineAtOnce() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn(null);
-		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), saveCaptor.capture())).thenReturn(new ResolvedRestaurantNumber("22810003", "assignment-id"));
+		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), saveCaptor.capture())).thenReturn(new ResolvedRestaurantNumber("22810003", "address-id", "assignment-id"));
 
 		worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 		saveCaptor.getValue().accept(List.of("22810001", "22810002"));
@@ -97,7 +98,7 @@ class ResolveRestaurantNumberWorkerTest {
 	@Test
 	void handsTheFreeNumbersAnEarlierRunSavedToTheService() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn("");
-		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(List.of()), any())).thenReturn(new ResolvedRestaurantNumber("22810001", "assignment-id"));
+		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(List.of()), any())).thenReturn(new ResolvedRestaurantNumber("22810001", "address-id", "assignment-id"));
 
 		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock).variables()).containsEntry(PROCESS_VARIABLE_RESTAURANT_NUMBER, "22810001");
 	}
@@ -106,7 +107,7 @@ class ResolveRestaurantNumberWorkerTest {
 	void splitsTheSavedNumbers() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn("22810001,22810002");
 		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(List.of("22810001", "22810002")), any()))
-			.thenReturn(new ResolvedRestaurantNumber("22810003", ""));
+			.thenReturn(new ResolvedRestaurantNumber("22810003", "address-id", ""));
 
 		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock).variables()).containsEntry(PROCESS_VARIABLE_RESTAURANT_NUMBER, "22810003");
 	}

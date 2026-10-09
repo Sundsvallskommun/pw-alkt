@@ -548,7 +548,11 @@ assignment, so a permit that ends in an incident leaves no assignment behind.</p
 
 <p>Both steps read the errand's parameters. The e-service sets the premises when it registers the errand, and the case
 worker's interface sets the choice. The choice has to be on the errand when the decision is completed, since
-<span class="code">ResolveRestaurantNumberTask</span> runs at once after that. Any phase before that will do.</p>
+<span class="code">ResolveRestaurantNumberTask</span> runs at once after that. Any phase before that will do.
+<span class="code">ResolveRestaurantNumberTask</span> saves the id of the address in licensed business in the process variable
+<span class="code">restaurantNumberAddressId</span>, and <span class="code">AssignRestaurantNumberTask</span> assigns the
+number there. Licensed business refuses an assignment at any other address than the number's own, so a premises address
+corrected on the errand after the number was chosen does not reach the assignment.</p>
 
 <table class="settings">
 	<thead>
@@ -620,7 +624,8 @@ number as free. That window is milliseconds and is accepted.</p>
 <span class="code">premisesRestaurantNumber</span> on the permit in party-assets and replace its certificate, then set
 the process variable <span class="code">restaurantNumber</span> to the new number and
 <span class="code">restaurantNumberLatestAssignment</span> to the id of its latest assignment in licensed business, or an
-empty value when it has none, in Operaton cockpit and retry the step.</p>
+empty value when it has none, in Operaton cockpit and retry the step. The new number must be at the same address, since
+<span class="code">restaurantNumberAddressId</span> stays as it is.</p>
 
 <p>An addition is a temporary permit that runs beside the holder's permanent one at the same premises, so it gets the
 number the holder already has there. <span class="code">alcohol-serving-addition</span> has

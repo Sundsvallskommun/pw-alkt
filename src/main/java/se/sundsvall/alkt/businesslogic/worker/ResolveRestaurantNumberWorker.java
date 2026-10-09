@@ -15,6 +15,7 @@ import se.sundsvall.alkt.service.RestaurantNumberService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
@@ -43,7 +44,8 @@ public class ResolveRestaurantNumberWorker extends AbstractTaskWorker {
 		logInfo("Errand {} gets restaurant number {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(resolved.number()));
 
 		return ProcessStateReport.running(externalTask.getActivityId(), null)
-			.withVariables(Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBER, resolved.number(), PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT, resolved.latestAssignmentId()))
+			.withVariables(Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBER, resolved.number(), PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID, resolved.addressId(),
+				PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT, resolved.latestAssignmentId()))
 			.withLogMessage("Restaurant number '%s' resolved".formatted(resolved.number()));
 	}
 

@@ -59,7 +59,7 @@ public class RestaurantNumberService {
 			.orElseGet(() -> newOrAvailableRestaurantNumber(municipalityId, addressId, parameters, availableBeforeCreate, saveAvailableBeforeCreate));
 
 		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(municipalityId, number);
-		return new ResolvedRestaurantNumber(number, toAssignmentId(latestAssignment));
+		return new ResolvedRestaurantNumber(number, addressId, toAssignmentId(latestAssignment));
 	}
 
 	/**
@@ -80,11 +80,12 @@ public class RestaurantNumberService {
 	}
 
 	/**
-	 * Assigns the number to the permit holder from the day the permit is issued. Licensed business ends an active one on
-	 * the number, which is how an owner change at the premises works. Answers false when it was already assigned, and
-	 * throws when another errand assigned the number after this one chose it.
+	 * Assigns the number to the permit holder from the day the permit is issued, at the address it was chosen at. Licensed
+	 * business ends an active one on the number, which is how an owner change at the premises works. Answers false when it
+	 * was already assigned, and throws when another errand assigned the number after this one chose it.
 	 */
-	public boolean assignRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final String restaurantNumber, final String latestAssignmentIdSeen) {
+	public boolean assignRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final String restaurantNumber, final String addressId,
+		final String latestAssignmentIdSeen) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var decision = supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no completed decision to assign restaurant number '%s' by".formatted(errandId, restaurantNumber)));
@@ -107,7 +108,6 @@ public class RestaurantNumberService {
 		}
 
 		final var parameters = toParameterValues(errand.getParameters());
-		final var addressId = licensedBusinessIntegration.findOrCreateAddress(municipalityId, toAddress(parameters, errandId));
 		final var restaurantNumberId = licensedBusinessIntegration.getRestaurantNumberId(municipalityId, restaurantNumber);
 		final var request = toAssignmentCreateRequest(restaurantNumberId, addressId, orgNumber, holderName, parameters, decision);
 		licensedBusinessIntegration.createAssignment(municipalityId, request);
