@@ -6,7 +6,6 @@ import generated.se.sundsvall.licensedbusiness.AssignmentCreateRequest;
 import generated.se.sundsvall.licensedbusiness.LicenseHolder;
 import generated.se.sundsvall.supportmanagement.Decision;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,10 +17,10 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_NAME;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_AREA;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_CODE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRESS;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toFirstDay;
 
 public final class LicensedBusinessMapper {
 
-	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	private static final String ASSIGNMENT_STATUS_ACTIVE = "ACTIVE";
 	private static final List<String> ADDRESS_PARAMETERS = List.of(ERRAND_PARAMETER_PREMISES_STREET_ADDRESS, ERRAND_PARAMETER_PREMISES_POSTAL_CODE,
 		ERRAND_PARAMETER_PREMISES_POSTAL_AREA);
@@ -57,8 +56,7 @@ public final class LicensedBusinessMapper {
 
 	/** The assignment starts the day the permit is issued: its first valid day, or else the day it was decided. */
 	public static LocalDate toValidFrom(final Decision decision) {
-		return Optional.ofNullable(decision.getValidFrom())
-			.or(() -> Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate()))
+		return toFirstDay(decision)
 			.orElseThrow(() -> new NonRetryableException("Decision %s has neither validFrom nor decidedAt to start the assignment by".formatted(decision.getId())));
 	}
 

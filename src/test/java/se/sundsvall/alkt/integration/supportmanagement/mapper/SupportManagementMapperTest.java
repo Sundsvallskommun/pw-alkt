@@ -198,6 +198,26 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
+	void toFirstDayIsTheValidFromOfTheDecision() {
+		final var decision = new Decision().validFrom(LocalDate.of(2026, 3, 1)).decidedAt(OffsetDateTime.parse("2026-02-20T10:00:00Z"));
+
+		assertThat(SupportManagementMapper.toFirstDay(decision)).contains(LocalDate.of(2026, 3, 1));
+	}
+
+	/** Decided at 23.30 UTC, which is already the next day in Sweden. */
+	@Test
+	void toFirstDayFallsBackOnTheSwedishDayTheDecisionWasMade() {
+		final var decision = new Decision().decidedAt(OffsetDateTime.parse("2026-02-28T23:30:00Z"));
+
+		assertThat(SupportManagementMapper.toFirstDay(decision)).contains(LocalDate.of(2026, 3, 1));
+	}
+
+	@Test
+	void toFirstDayIsEmptyWithoutAnyDate() {
+		assertThat(SupportManagementMapper.toFirstDay(new Decision())).isEmpty();
+	}
+
+	@Test
 	void toRemovedParameterKeysAreThoseWithoutAValue() {
 		final var decision = new Decision().parameters(List.of(
 			new Parameter().key("serveringstid").values(List.of("11.00–02.00")),

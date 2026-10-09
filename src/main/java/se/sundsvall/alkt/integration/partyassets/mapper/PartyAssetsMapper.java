@@ -7,7 +7,6 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -37,6 +36,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecidedOn;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toFirstDay;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toRemovedParameterKeys;
 
@@ -56,7 +57,6 @@ public final class PartyAssetsMapper {
 	static final String ATTACHMENT_PART_NAME = "attachment";
 	static final String CERTIFICATE_FILE_NAME = "tillstandsbevis.pdf";
 	static final String CERTIFICATE_CATEGORY = "Tillståndsbevis";
-	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 
 	private static final Map<String, String> PERMIT_TYPES = Map.of(
@@ -88,7 +88,7 @@ public final class PartyAssetsMapper {
 			.origin(ORIGIN)
 			.partyId(partyId)
 			.type(permitType)
-			.issued(toIssued(decision))
+			.issued(toFirstDay(decision).orElse(null))
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())
 			.description(decision.getDescription())
@@ -130,10 +130,6 @@ public final class PartyAssetsMapper {
 		return request;
 	}
 
-	private static Optional<LocalDate> toDecidedOn(final Decision decision) {
-		return Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate());
-	}
-
 	public static AssetFile toAssetFile(final ErrandAttachment attachment, final byte[] content) {
 		return new AssetFile(
 			new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, attachment.getFileName(), attachment.getMimeType(), content),
@@ -144,12 +140,6 @@ public final class PartyAssetsMapper {
 
 	public static AssetFile toCertificateFile(final byte[] content) {
 		return new AssetFile(new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, CERTIFICATE_FILE_NAME, APPLICATION_PDF_VALUE, content), CERTIFICATE_CATEGORY);
-	}
-
-	private static LocalDate toIssued(final Decision decision) {
-		return Optional.ofNullable(decision.getValidFrom())
-			.or(() -> toDecidedOn(decision))
-			.orElse(null);
 	}
 
 	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId, final String restaurantNumber) {
