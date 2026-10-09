@@ -7,6 +7,7 @@ import generated.se.sundsvall.licensedbusiness.AssignmentCreateRequest;
 import generated.se.sundsvall.licensedbusiness.RestaurantNumber;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
@@ -57,7 +58,8 @@ public class LicensedBusinessIntegration {
 	}
 
 	public String createRestaurantNumber(final String municipalityId, final String addressId) {
-		return getIdOfCreatedResource(licensedBusinessClient.createRestaurantNumber(municipalityId, addressId), SERVICE);
+		final var response = requireSuccess(licensedBusinessClient.createRestaurantNumber(municipalityId, addressId));
+		return getIdOfCreatedResource(response, SERVICE);
 	}
 
 	public String getRestaurantNumberId(final String municipalityId, final String number) {
@@ -71,13 +73,14 @@ public class LicensedBusinessIntegration {
 	}
 
 	public void createAssignment(final String municipalityId, final AssignmentCreateRequest assignment) {
-		licensedBusinessClient.createAssignment(municipalityId, assignment);
+		requireSuccess(licensedBusinessClient.createAssignment(municipalityId, assignment));
 	}
 
 	// A 409 means someone created the same address between the lookup and the create, so its id is there to be read now.
 	private String createAddress(final String municipalityId, final Address address) {
 		try {
-			return getIdOfCreatedResource(licensedBusinessClient.createAddress(municipalityId, address), SERVICE);
+			final var response = requireSuccess(licensedBusinessClient.createAddress(municipalityId, address));
+			return getIdOfCreatedResource(response, SERVICE);
 		} catch (final ClientProblem e) {
 			if (!CONFLICT.equals(e.getStatus())) {
 				throw e;
@@ -85,5 +88,12 @@ public class LicensedBusinessIntegration {
 			return findAddressId(municipalityId, address)
 				.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Licensed business refused the address as a duplicate but does not know it"));
 		}
+	}
+
+	// dismiss404 also turns a 404 on a create into a response, and only the Optional reads want that.
+	private static ResponseEntity<Void> requireSuccess(final ResponseEntity<Void> response) {
+		return Optional.of(response)
+			.filter(created -> created.getStatusCode().is2xxSuccessful())
+			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "%s answered %s to a create".formatted(SERVICE, response.getStatusCode().value())));
 	}
 }

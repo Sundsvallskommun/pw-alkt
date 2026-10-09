@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @ExtendWith(MockitoExtension.class)
 class LicensedBusinessIntegrationTest {
@@ -177,10 +178,45 @@ class LicensedBusinessIntegrationTest {
 	@Test
 	void createsTheAssignmentAsGiven() {
 		final var assignment = new AssignmentCreateRequest().orgNumber("5566124144").validFrom(LocalDate.of(2026, 1, 1));
+		when(licensedBusinessClientMock.createAssignment(MUNICIPALITY_ID, assignment)).thenReturn(ResponseEntity.status(CREATED).build());
 
 		licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, assignment);
 
 		verify(licensedBusinessClientMock).createAssignment(MUNICIPALITY_ID, assignment);
+	}
+
+	/** dismiss404 hands a 404 on a create back as a response instead of throwing it. */
+	@Test
+	void failsWhenTheAssignmentCreateAnswersNotFound() {
+		final var assignment = new AssignmentCreateRequest().orgNumber("5566124144").validFrom(LocalDate.of(2026, 1, 1));
+		when(licensedBusinessClientMock.createAssignment(MUNICIPALITY_ID, assignment)).thenReturn(ResponseEntity.status(NOT_FOUND).build());
+
+		assertThatThrownBy(() -> licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, assignment))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("answered 404 to a create")
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
+	}
+
+	@Test
+	void failsWhenTheNumberCreateAnswersNotFound() {
+		final var addressId = randomUUID().toString();
+		when(licensedBusinessClientMock.createRestaurantNumber(MUNICIPALITY_ID, addressId)).thenReturn(ResponseEntity.status(NOT_FOUND).build());
+
+		assertThatThrownBy(() -> licensedBusinessIntegration.createRestaurantNumber(MUNICIPALITY_ID, addressId))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("answered 404 to a create")
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
+	}
+
+	@Test
+	void failsWhenTheAddressCreateAnswersNotFound() {
+		when(licensedBusinessClientMock.lookupAddress(MUNICIPALITY_ID, STREET_ADDRESS, POSTAL_CODE)).thenReturn(Optional.empty());
+		when(licensedBusinessClientMock.createAddress(eq(MUNICIPALITY_ID), any())).thenReturn(ResponseEntity.status(NOT_FOUND).build());
+
+		assertThatThrownBy(() -> licensedBusinessIntegration.findOrCreateAddress(MUNICIPALITY_ID, address(null)))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("answered 404 to a create")
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
 	}
 
 	private static Address address(final String id) {
