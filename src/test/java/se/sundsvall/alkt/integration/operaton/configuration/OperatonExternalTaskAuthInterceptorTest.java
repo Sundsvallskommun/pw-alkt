@@ -11,11 +11,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -28,6 +30,9 @@ class OperatonExternalTaskAuthInterceptorTest {
 
 	@Mock
 	private OAuth2AuthorizedClientManager authorizedClientManagerMock;
+
+	@Mock
+	private OAuth2AuthorizedClientService authorizedClientServiceMock;
 
 	@Mock
 	private ClientRequestContext requestContextMock;
@@ -49,7 +54,7 @@ class OperatonExternalTaskAuthInterceptorTest {
 		final var authorizedClient = authorizedClientWithToken("the-token");
 		when(authorizedClientManagerMock.authorize(any(OAuth2AuthorizeRequest.class))).thenReturn(authorizedClient);
 
-		new OperatonExternalTaskAuthInterceptor(authorizedClientManagerMock).intercept(requestContextMock);
+		new OperatonExternalTaskAuthInterceptor(authorizedClientManagerMock, authorizedClientServiceMock).intercept(requestContextMock);
 
 		verify(requestContextMock).addHeader("Authorization", "Bearer the-token");
 		verify(authorizedClientManagerMock).authorize(authorizeRequestCaptor.capture());
@@ -57,21 +62,20 @@ class OperatonExternalTaskAuthInterceptorTest {
 		assertThat(authorizeRequestCaptor.getValue().getPrincipal().getName()).isEqualTo(OperatonExternalTaskAuthInterceptor.PRINCIPAL);
 	}
 
-	/**
-	 * The cached token is reused across requests - the manager renews it on expiry. Evicting per request would mean one
-	 * WSO2 token round trip per external task poll.
-	 */
 	@Test
-	void reusesTheCachedTokenAcrossRequests() {
+	void evictsTheCachedTokenBeforeEveryAuthorize() {
 		final var authorizedClient = authorizedClientWithToken("the-token");
 		when(authorizedClientManagerMock.authorize(any(OAuth2AuthorizeRequest.class))).thenReturn(authorizedClient);
 
-		final var interceptor = new OperatonExternalTaskAuthInterceptor(authorizedClientManagerMock);
+		final var interceptor = new OperatonExternalTaskAuthInterceptor(authorizedClientManagerMock, authorizedClientServiceMock);
 		interceptor.intercept(requestContextMock);
 		interceptor.intercept(requestContextMock);
 
-		// Two requests, two authorize calls - and no eviction in between, so the manager is free to hand back its cache
-		verify(authorizedClientManagerMock, times(2)).authorize(any(OAuth2AuthorizeRequest.class));
+		final var inOrder = inOrder(authorizedClientServiceMock, authorizedClientManagerMock);
+		inOrder.verify(authorizedClientServiceMock).removeAuthorizedClient(CLIENT_ID, OperatonExternalTaskAuthInterceptor.PRINCIPAL);
+		inOrder.verify(authorizedClientManagerMock).authorize(any(OAuth2AuthorizeRequest.class));
+		inOrder.verify(authorizedClientServiceMock).removeAuthorizedClient(CLIENT_ID, OperatonExternalTaskAuthInterceptor.PRINCIPAL);
+		inOrder.verify(authorizedClientManagerMock).authorize(any(OAuth2AuthorizeRequest.class));
 		verify(requestContextMock, times(2)).addHeader("Authorization", "Bearer the-token");
 	}
 
@@ -79,7 +83,7 @@ class OperatonExternalTaskAuthInterceptorTest {
 	void throwsWhenNoTokenCanBeObtained() {
 		when(authorizedClientManagerMock.authorize(any(OAuth2AuthorizeRequest.class))).thenReturn(null);
 
-		final var interceptor = new OperatonExternalTaskAuthInterceptor(authorizedClientManagerMock);
+		final var interceptor = new OperatonExternalTaskAuthInterceptor(authorizedClientManagerMock, authorizedClientServiceMock);
 
 		assertThatThrownBy(() -> interceptor.intercept(requestContextMock))
 			.isInstanceOf(IllegalStateException.class)
