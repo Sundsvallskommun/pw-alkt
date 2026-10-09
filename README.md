@@ -592,8 +592,10 @@ assigned to stops the process before there is a permit. The assignment starts on
 of the decision, or on the day it was decided, and ends on its <span class="code">validTo</span> if it has one. The
 permit gets the number as the parameter <span class="code">premisesRestaurantNumber</span>, which is also the
 placeholder for it in <span class="code">serving-permit-certificate</span>, the certificate being rendered from the
-permit's parameters. A decision cannot remove it, so a change keeps it. A change errand ignores the premises and choice parameters, since none
-of them is a change to the permit.</p>
+permit's parameters. A decision cannot remove it, so a change keeps it. A change errand ignores the premises address
+and the choice parameters, since they are for licensed business and the choice of a number, not for the permit. A new
+<span class="code">premisesName</span> is a change and goes into the draft, but the assignment in licensed business
+keeps the name it was given.</p>
 
 <p>A rerun creates nothing twice. Before <span class="code">ResolveRestaurantNumberTask</span> creates a number it saves
 the free numbers at the address in the process variable <span class="code">restaurantNumbersBeforeCreate</span>, and it
