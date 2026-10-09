@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_NAME;
@@ -69,16 +70,17 @@ public final class LicensedBusinessMapper {
 		return isHeldBy(assignment, orgNumber) && ASSIGNMENT_STATUS_ACTIVE.equals(assignment.getStatus());
 	}
 
-	// Why: an organisation number is written with or without its hyphen, and both name the same holder.
+	// Why: Party gives a personal identity number with its century, licensed business may keep it without, and an
+	// organisation number may carry the prefix 16. The last ten digits name the same holder in every form.
 	private static boolean isHeldBy(final Assignment assignment, final String orgNumber) {
 		return Optional.ofNullable(assignment.getLicenseHolder())
 			.map(LicenseHolder::getOrgNumber)
-			.map(LicensedBusinessMapper::toDigits)
-			.filter(toDigits(orgNumber)::equals)
+			.map(LicensedBusinessMapper::toTenDigits)
+			.filter(toTenDigits(orgNumber)::equals)
 			.isPresent();
 	}
 
-	private static String toDigits(final String orgNumber) {
-		return orgNumber.replaceAll("\\D", "");
+	private static String toTenDigits(final String orgNumber) {
+		return StringUtils.right(orgNumber.replaceAll("\\D", ""), 10);
 	}
 }

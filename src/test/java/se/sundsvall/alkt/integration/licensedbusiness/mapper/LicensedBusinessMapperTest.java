@@ -107,6 +107,24 @@ class LicensedBusinessMapperTest {
 		assertThat(LicensedBusinessMapper.isActiveFor(ended, "5566124144")).isFalse();
 	}
 
+	/** Party gives a sole trader's personal identity number with its century, the import kept it without. */
+	@Test
+	void isActiveForMatchesAPersonalIdentityNumberWithOrWithoutItsCentury() {
+		final var imported = new Assignment().licenseHolder(new LicenseHolder().orgNumber("800101-1234")).status("ACTIVE");
+		final var created = new Assignment().licenseHolder(new LicenseHolder().orgNumber("198001011234")).status("ACTIVE");
+
+		assertThat(LicensedBusinessMapper.isActiveFor(imported, "198001011234")).isTrue();
+		assertThat(LicensedBusinessMapper.isActiveFor(created, "198001011234")).isTrue();
+		assertThat(LicensedBusinessMapper.isActiveFor(imported, "198001011235")).isFalse();
+	}
+
+	@Test
+	void isAssignedToMatchesAnOrganisationNumberWithThePrefix16() {
+		final var assignment = new Assignment().licenseHolder(new LicenseHolder().orgNumber("556612-4144")).validFrom(LocalDate.of(2026, 3, 1));
+
+		assertThat(LicensedBusinessMapper.isAssignedTo(assignment, "165566124144", LocalDate.of(2026, 3, 1))).isTrue();
+	}
+
 	@Test
 	void isAssignedToDoesNotMatchAnotherHolderAnotherDayOrNoHolder() {
 		final var assignment = new Assignment().licenseHolder(new LicenseHolder().orgNumber("5566124144")).validFrom(LocalDate.of(2026, 3, 1));
