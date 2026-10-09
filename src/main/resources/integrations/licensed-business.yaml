@@ -889,9 +889,11 @@ components:
           minLength: 1
         orgNumber:
           type: string
-          description: Organization number of the license holder
+          description: Organization number of the license holder. A personal identity
+            number with century (12 digits) is accepted and stored with 10 digits
           examples:
             - 556612-4144
+          maxLength: 13
           minLength: 1
         holderName:
           type: string
@@ -904,6 +906,7 @@ components:
           description: Name of the premises
           examples:
             - Harrys Pub
+          pattern: .*\S.*
         validFrom:
           type: string
           format: date
@@ -981,6 +984,7 @@ components:
           description: Name of the premises
           examples:
             - Harrys Pub
+          pattern: .*\S.*
         holderName:
           type: string
           description: "Name of the license holder as registered for this assignment,\
