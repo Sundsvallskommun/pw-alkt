@@ -11,12 +11,13 @@ import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_DECISION_OUTCOME;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
 @ExternalTaskSubscription("CheckDecisionTask")
 public class CheckDecisionWorker extends AbstractTaskWorker {
+
+	static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 
 	private final AssetService assetService;
 

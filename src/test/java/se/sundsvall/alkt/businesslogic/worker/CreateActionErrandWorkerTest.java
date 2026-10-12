@@ -18,12 +18,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ACTION_ERRAND_CREATED;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ACTION_ERRAND_TYPE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
+import static se.sundsvall.alkt.businesslogic.worker.CreateActionErrandWorker.PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY;
+import static se.sundsvall.alkt.businesslogic.worker.CreateActionErrandWorker.PROCESS_VARIABLE_ACTION_ERRAND_CREATED;
+import static se.sundsvall.alkt.businesslogic.worker.CreateActionErrandWorker.PROCESS_VARIABLE_ACTION_ERRAND_TYPE;
 
 @ExtendWith(MockitoExtension.class)
 class CreateActionErrandWorkerTest {

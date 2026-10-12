@@ -1,0 +1,18 @@
+{
+	"name": "decision_api-licensed-business-post-restaurant-number",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-licensed-business/2281/restaurant-numbers",
+		"queryParameters": {
+			"addressId": {
+				"equalTo": "8be2e4a1-3d4f-4b2e-9c18-2f6d5a7b1c33"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/restaurant-numbers/22810002"
+		},
+		"status": 201
+	}
+}

@@ -16,7 +16,6 @@ import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.requestid.RequestId;
 
-import static se.sundsvall.alkt.Constants.BPMN_ERROR_STEP_SKIPPED;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_RETRY;
 import static se.sundsvall.alkt.Constants.LOG_TASK_GONE;
@@ -32,6 +31,9 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
  */
 @Component
 public class FailureHandler {
+
+	// Must match the errorCode of the bpmn:error that the boundary event of a skippable step catches.
+	static final String BPMN_ERROR_STEP_SKIPPED = "step_skipped";
 
 	private static final Logger LOG = LoggerFactory.getLogger(FailureHandler.class);
 

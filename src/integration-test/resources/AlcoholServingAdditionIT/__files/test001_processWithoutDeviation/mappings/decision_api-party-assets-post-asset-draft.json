@@ -67,6 +67,12 @@
 					"expression": "$.additionalParameters.conditions",
 					"equalTo": "Ordningsvakt ska finnas efter 23.00."
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters.premisesRestaurantNumber",
+					"equalTo": "22810001"
+				}
 			}
 		]
 	},

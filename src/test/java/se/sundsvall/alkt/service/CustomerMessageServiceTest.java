@@ -33,8 +33,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.CONVERSATION_TOPIC_CUSTOMER;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
+import static se.sundsvall.alkt.service.CustomerMessageService.CONVERSATION_TOPIC_CUSTOMER;
 import static se.sundsvall.alkt.service.CustomerMessageService.MESSAGE_PAGE_SIZE;
 
 @ExtendWith(MockitoExtension.class)

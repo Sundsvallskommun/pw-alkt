@@ -30,8 +30,8 @@ class DecisionOutcomeGatewayTest {
 
 	private static Stream<Arguments> models() {
 		return Stream.of(
-			Arguments.of("processmodels/application/alcohol-serving.bpmn", "flow_decision_gateway_to_create_asset"),
-			Arguments.of("processmodels/application/alcohol-serving-addition.bpmn", "flow_decision_gateway_to_create_asset"),
+			Arguments.of("processmodels/application/alcohol-serving.bpmn", "flow_decision_gateway_to_resolve_restaurant_number"),
+			Arguments.of("processmodels/application/alcohol-serving-addition.bpmn", "flow_decision_gateway_to_find_restaurant_number"),
 			Arguments.of("processmodels/application/alcohol-serving-change.bpmn", "flow_decision_gateway_to_update_asset"),
 			Arguments.of("processmodels/application/tobacco-sales.bpmn", "flow_decision_gateway_to_create_asset"),
 			Arguments.of("processmodels/application/tobacco-sales-change.bpmn", "flow_decision_gateway_to_update_asset"),

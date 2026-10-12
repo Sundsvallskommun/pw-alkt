@@ -1,0 +1,25 @@
+{
+	"name": "decision_api-licensed-business-get-available-restaurant-numbers",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-licensed-business/2281/restaurant-numbers/available",
+		"queryParameters": {
+			"addressId": {
+				"equalTo": "8be2e4a1-3d4f-4b2e-9c18-2f6d5a7b1c33"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "9ce333ec-a473-438b-8406-a71e957dc107",
+				"number": "22810001",
+				"municipalityId": "2281"
+			}
+		],
+		"status": 200
+	}
+}

@@ -19,8 +19,8 @@ import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_PROTOCOL_FILE_NAME;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_PROTOCOL_TEMPLATE;
+import static se.sundsvall.alkt.businesslogic.worker.CreateProtocolWorker.PROCESS_VARIABLE_PROTOCOL_FILE_NAME;
+import static se.sundsvall.alkt.businesslogic.worker.CreateProtocolWorker.PROCESS_VARIABLE_PROTOCOL_TEMPLATE;
 
 @ExtendWith(MockitoExtension.class)
 class CreateProtocolWorkerTest {

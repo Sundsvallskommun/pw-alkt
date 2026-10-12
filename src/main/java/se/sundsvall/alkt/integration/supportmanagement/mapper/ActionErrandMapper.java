@@ -9,9 +9,10 @@ import java.util.Set;
 
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
-import static se.sundsvall.alkt.Constants.MEASURE_STATUS_ACTIVE;
 
 public final class ActionErrandMapper {
+
+	private static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
 
 	private ActionErrandMapper() {}
 

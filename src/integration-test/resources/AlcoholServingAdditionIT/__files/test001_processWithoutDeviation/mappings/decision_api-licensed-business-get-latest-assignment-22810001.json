@@ -1,0 +1,25 @@
+{
+	"name": "decision_api-licensed-business-get-latest-assignment-22810001",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-licensed-business/2281/restaurant-numbers/22810001/assignment"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"restaurantNumber": {
+				"number": "22810001"
+			},
+			"licenseHolder": {
+				"orgNumber": "5566124144",
+				"name": "Runt Hörnet AB"
+			},
+			"holderName": "Runt Hörnet AB",
+			"validFrom": "2026-01-01",
+			"status": "ACTIVE"
+		},
+		"status": 200
+	}
+}

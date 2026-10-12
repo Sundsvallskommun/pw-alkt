@@ -10,6 +10,7 @@ import se.sundsvall.alkt.exception.NonRetryableException;
 import static java.util.Collections.emptyMap;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
+import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 
@@ -38,6 +39,8 @@ public final class TemplatingMapper {
 		}
 
 		final var templateParameters = new LinkedHashMap<String, Object>(toParameterValues(decision.getParameters()));
+		// Why: set by the process, so only the number the permit carries is rendered.
+		templateParameters.remove(PERMIT_PARAMETER_RESTAURANT_NUMBER);
 		templateParameters.putAll(permitParameters);
 		templateParameters.put(PERMIT_PARAMETER_CONDITIONS, conditions);
 		return templateParameters;

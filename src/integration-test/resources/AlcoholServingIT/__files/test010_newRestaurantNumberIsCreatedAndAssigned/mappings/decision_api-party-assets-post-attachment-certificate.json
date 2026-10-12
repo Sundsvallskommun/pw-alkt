@@ -1,0 +1,43 @@
+{
+	"name": "decision_api-party-assets-post-attachment-certificate",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-party-assets/2281/assets/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ANY",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "filename=\"tillstandsbevis.pdf\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalTo": "%PDF-1.7 tillstandsbevis"
+					}
+				]
+			},
+			{
+				"matchingType": "ANY",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "name=\"category\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalTo": "Tillståndsbevis"
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"status": 201
+	}
+}

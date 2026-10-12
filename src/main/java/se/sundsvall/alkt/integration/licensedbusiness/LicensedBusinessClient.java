@@ -1,6 +1,8 @@
 package se.sundsvall.alkt.integration.licensedbusiness;
 
 import generated.se.sundsvall.licensedbusiness.Address;
+import generated.se.sundsvall.licensedbusiness.AddressRestaurantNumber;
+import generated.se.sundsvall.licensedbusiness.Assignment;
 import generated.se.sundsvall.licensedbusiness.AssignmentCreateRequest;
 import generated.se.sundsvall.licensedbusiness.RestaurantNumber;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -38,6 +40,11 @@ public interface LicensedBusinessClient {
 		@PathVariable String municipalityId,
 		@RequestBody Address address);
 
+	@GetMapping(path = "/{municipalityId}/addresses/{addressId}/restaurant-numbers", produces = APPLICATION_JSON_VALUE)
+	List<AddressRestaurantNumber> getAddressRestaurantNumbers(
+		@PathVariable String municipalityId,
+		@PathVariable String addressId);
+
 	@GetMapping(path = "/{municipalityId}/restaurant-numbers/available", produces = APPLICATION_JSON_VALUE)
 	List<RestaurantNumber> getAvailableRestaurantNumbers(
 		@PathVariable String municipalityId,
@@ -50,6 +57,11 @@ public interface LicensedBusinessClient {
 
 	@GetMapping(path = "/{municipalityId}/restaurant-numbers/{restaurantNumber}", produces = APPLICATION_JSON_VALUE)
 	Optional<RestaurantNumber> getRestaurantNumber(
+		@PathVariable String municipalityId,
+		@PathVariable String restaurantNumber);
+
+	@GetMapping(path = "/{municipalityId}/restaurant-numbers/{restaurantNumber}/assignment", produces = APPLICATION_JSON_VALUE)
+	Optional<Assignment> getLatestAssignment(
 		@PathVariable String municipalityId,
 		@PathVariable String restaurantNumber);
 

@@ -1,0 +1,29 @@
+{
+	"name": "decision_api-licensed-business-get-latest-assignment-by-another-errand",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-licensed-business/2281/restaurant-numbers/22810001/assignment"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "6a7b8c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d",
+			"restaurantNumber": {
+				"id": "4d5e6f70-8192-4a3b-9c4d-5e6f708192a1",
+				"number": "22810001"
+			},
+			"licenseHolder": {
+				"orgNumber": "5590002222",
+				"name": "Pizzerian AB"
+			},
+			"holderName": "Pizzerian AB",
+			"validFrom": "2026-03-01",
+			"status": "ACTIVE"
+		},
+		"status": 200
+	},
+	"scenarioName": "restaurant-number-taken",
+	"requiredScenarioState": "assigned-by-another-errand"
+}

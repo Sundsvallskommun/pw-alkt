@@ -176,9 +176,45 @@ class SupportManagementMapperTest {
 		assertThat(result.getParameters()).extracting(Parameter::getKey).containsExactly("serveringstid", "uteservering");
 	}
 
+	/** The premises address and the case worker's choice of restaurant number are not on the permit, its name is. */
+	@Test
+	void toChangeDraftLeavesOutThePremisesAddressAndTheRestaurantNumberChoice() {
+		final var errand = new Errand().parameters(List.of(
+			new Parameter().key("premisesName").values(List.of("Runt Hörnet")),
+			new Parameter().key("premisesStreetAddress").values(List.of("Storgatan 33")),
+			new Parameter().key("premisesPostalCode").values(List.of("852 30")),
+			new Parameter().key("premisesPostalArea").values(List.of("Sundsvall")),
+			new Parameter().key("restaurantNumber").values(List.of("22810001")),
+			new Parameter().key("newRestaurantNumber").values(List.of("true")),
+			new Parameter().key("premisesRestaurantNumber").values(List.of("22810009")),
+			new Parameter().key("serveringstid").values(List.of("11.00–02.00"))));
+
+		assertThat(SupportManagementMapper.toChangeDraft(errand, "Ändring av serveringstillstånd", OffsetDateTime.now()).getParameters()).extracting(Parameter::getKey).containsExactly("premisesName", "serveringstid");
+	}
+
 	@Test
 	void toChangeDraftOfAnErrandWithoutParametersHasNone() {
 		assertThat(SupportManagementMapper.toChangeDraft(new Errand().parameters(null), "Ändring av serveringstillstånd", OffsetDateTime.now()).getParameters()).isEmpty();
+	}
+
+	@Test
+	void toFirstDayIsTheValidFromOfTheDecision() {
+		final var decision = new Decision().validFrom(LocalDate.of(2026, 3, 1)).decidedAt(OffsetDateTime.parse("2026-02-20T10:00:00Z"));
+
+		assertThat(SupportManagementMapper.toFirstDay(decision)).contains(LocalDate.of(2026, 3, 1));
+	}
+
+	/** Decided at 23.30 UTC, which is already the next day in Sweden. */
+	@Test
+	void toFirstDayFallsBackOnTheSwedishDayTheDecisionWasMade() {
+		final var decision = new Decision().decidedAt(OffsetDateTime.parse("2026-02-28T23:30:00Z"));
+
+		assertThat(SupportManagementMapper.toFirstDay(decision)).contains(LocalDate.of(2026, 3, 1));
+	}
+
+	@Test
+	void toFirstDayIsEmptyWithoutAnyDate() {
+		assertThat(SupportManagementMapper.toFirstDay(new Decision())).isEmpty();
 	}
 
 	@Test
@@ -269,11 +305,6 @@ class SupportManagementMapperTest {
 	}, nullValues = "null")
 	void isPermitHolderTakesThePrimaryStakeholderWithAnExternalId(final String role, final String externalId, final boolean expected) {
 		assertThat(SupportManagementMapper.isPermitHolder(new Stakeholder().role(role).externalId(externalId))).isEqualTo(expected);
-	}
-
-	@Test
-	void toNoPermitHolderMessageNamesTheErrandAndTheRole() {
-		assertThat(SupportManagementMapper.toNoPermitHolderMessage("errand-id")).isEqualTo("Errand 'errand-id' has no stakeholder with role 'PRIMARY'");
 	}
 
 	@Test

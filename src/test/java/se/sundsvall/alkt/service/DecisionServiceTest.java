@@ -32,10 +32,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PERMIT_TYPE_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
 
 @ExtendWith(MockitoExtension.class)
 class DecisionServiceTest {
