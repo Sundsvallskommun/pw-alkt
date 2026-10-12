@@ -7,7 +7,9 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -28,11 +30,13 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
+import static se.sundsvall.alkt.Constants.ACTION_ERRAND_DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ACTION_ERRAND;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
@@ -46,6 +50,7 @@ import static se.sundsvall.alkt.util.FailureDescription.describe;
 public class AssetService {
 
 	private static final ValidUuidConstraintValidator UUID_VALIDATOR = new ValidUuidConstraintValidator();
+	private static final Map<String, Set<String>> DECISION_OUTCOMES_OF_PROCESS = Map.of(PROCESS_KEY_ACTION_ERRAND, ACTION_ERRAND_DECISION_OUTCOMES);
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final PartyAssetsIntegration partyAssetsIntegration;
@@ -60,17 +65,21 @@ public class AssetService {
 		this.clock = clock;
 	}
 
-	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId) {
+	/** The outcomes a process knows are those of its gateway, so another process's outcome raises an incident. */
+	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId, final String processKey) {
+		final var outcomes = Optional.ofNullable(processKey)
+			.map(DECISION_OUTCOMES_OF_PROCESS::get)
+			.orElse(DECISION_OUTCOMES);
 		return supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
-			.map(decision -> toKnownOutcome(decision, errandId))
+			.map(decision -> toKnownOutcome(decision, errandId, outcomes))
 			.orElse(DECISION_OUTCOME_NONE);
 	}
 
-	private static String toKnownOutcome(final Decision decision, final String errandId) {
+	private static String toKnownOutcome(final Decision decision, final String errandId, final Set<String> outcomes) {
 		return Optional.ofNullable(decision.getOutcome())
-			.filter(DECISION_OUTCOMES::contains)
+			.filter(outcomes::contains)
 			.orElseThrow(() -> Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has outcome '%s', expected one of %s"
-				.formatted(errandId, decision.getOutcome(), new TreeSet<>(DECISION_OUTCOMES))));
+				.formatted(errandId, decision.getOutcome(), new TreeSet<>(outcomes))));
 	}
 
 	/**

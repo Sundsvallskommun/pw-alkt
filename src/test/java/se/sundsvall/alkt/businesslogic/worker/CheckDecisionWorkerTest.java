@@ -53,7 +53,8 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
-		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving");
+		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "alcohol-serving")).thenReturn("APPROVAL");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
@@ -70,7 +71,8 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
-		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("NONE");
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("action-errand");
+		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "action-errand")).thenReturn("NONE");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 

@@ -2,6 +2,7 @@ package se.sundsvall.alkt.integration.supportmanagement.mapper;
 
 import generated.se.sundsvall.supportmanagement.Classification;
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.ErrandLabel;
 import generated.se.sundsvall.supportmanagement.ExternalTag;
 import generated.se.sundsvall.supportmanagement.Measure;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
@@ -18,10 +19,13 @@ class ActionErrandMapperTest {
 	void toActionErrandCarriesTheInspectionOver() {
 		final var dueAt = OffsetDateTime.parse("2026-10-15T00:00:00+02:00");
 		final var permitHolder = new Stakeholder().role("PRIMARY").externalId("party-id");
+		final var classification = new Classification().category("AOT").type("AOT.UNCATEGORIZED");
 		final var inspection = new Errand()
 			.id("inspection-id")
 			.title("Brister vid tillsyn")
 			.description("Följande brister ska åtgärdas")
+			.classification(classification)
+			.labels(List.of(new ErrandLabel().id("inspection-label-id")))
 			.stakeholders(List.of(permitHolder, new Stakeholder().role("CONTACT").externalId("contact-id"), new Stakeholder().role("PRIMARY")))
 			.measures(List.of(new Measure().id("measure-id").type("DEFICIENCY").title("Matsedel saknas").description("Matsedel ska finnas").goal("Matsedel finns").dueAt(dueAt)
 				.addedByUser("handlaggare").addedByRole("CASE_WORKER").created(dueAt).status("ACTIVE"),
@@ -30,12 +34,13 @@ class ActionErrandMapperTest {
 				new Measure().type("DEFICIENCY").title("Makulerad").status("CANCELLED"),
 				new Measure().type("DEFICIENCY").title("Utan status")));
 
-		final var result = toActionErrand(inspection, "errand-id", "INSPECTION", "ACTION_ERRAND");
+		final var result = toActionErrand(inspection, "errand-id", "label-id");
 
 		assertThat(result.getId()).isNull();
 		assertThat(result.getTitle()).isEqualTo("Brister vid tillsyn");
 		assertThat(result.getDescription()).isEqualTo("Följande brister ska åtgärdas");
-		assertThat(result.getClassification()).isEqualTo(new Classification().category("INSPECTION").type("ACTION_ERRAND"));
+		assertThat(result.getClassification()).isEqualTo(classification);
+		assertThat(result.getLabels()).containsExactly(new ErrandLabel().id("label-id"));
 		assertThat(result.getStakeholders()).containsExactly(permitHolder);
 		assertThat(result.getMeasures()).containsExactly(new Measure().type("DEFICIENCY").title("Matsedel saknas").description("Matsedel ska finnas").goal("Matsedel finns").dueAt(dueAt)
 			.addedByUser("handlaggare").addedByRole("CASE_WORKER"));
@@ -44,7 +49,7 @@ class ActionErrandMapperTest {
 
 	@Test
 	void toActionErrandOfAnInspectionWithoutStakeholdersOrMeasures() {
-		final var result = toActionErrand(new Errand().id("inspection-id"), "inspection-id", "INSPECTION", "ACTION_ERRAND");
+		final var result = toActionErrand(new Errand().id("inspection-id"), "inspection-id", "label-id");
 
 		assertThat(result.getStakeholders()).isEmpty();
 		assertThat(result.getMeasures()).isEmpty();

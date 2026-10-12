@@ -255,6 +255,11 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 			<td>Inre tillsyn, dvs. prövning av tillståndshavarens lämplighet</td>
 		</tr>
 		<tr>
+			<td class="code">action-errand.bpmn</td>
+			<td class="code">action-errand</td>
+			<td>Åtgärdsärende, dvs. uppföljning av de brister en tillsyn har funnit</td>
+		</tr>
+		<tr>
 			<td class="code">reconciliation/process-reconciliation.bpmn</td>
 			<td class="code">process-reconciliation</td>
 			<td>The scheduler of the service, see below. Belongs to no errand, is not in <span class="code">PROCESS_KEYS</span>
@@ -263,11 +268,13 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 	</tbody>
 </table>
 
-<p>All thirteen errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
+<p>All fourteen errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
 Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The three folköl
 models and <span class="code">e-cigarette-sales</span> are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
 first three phases pass straight through and Support Management first hears from them in the decision phase, which
-makes the decision and creates the permit on its own, see the next section. Follow up is the first phase that waits.</p>
+makes the decision and creates the permit on its own, see the next section. Follow up is the first phase that waits.
+<span class="code">action-errand</span> passes only its registration straight through, since the inspection that
+created the errand has already registered it.</p>
 
 <p>Which process an errand gets, and whether it starts by itself, is metadata on the label in Support Management
 (<span class="code">processKey</span> and <span class="code">processStartMode</span>), set per environment through its
@@ -288,7 +295,7 @@ inspections, which are described in their own sections below. Support Management
 correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
 between two gates when the change arrived and redelivering would not help.</p>
 
-<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All thirteen models
+<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All fourteen models
 share their message names, and every correlation is made on the errand id, so two live processes on one errand
 make every signal match two executions at once. Operaton answers that with <span class="code">400</span> and the
 signal is lost. The cancellation is the exception: it is correlated to every process of the errand, so it ends them
@@ -383,7 +390,8 @@ interface.</p>
 <p>In the three alcohol-serving models and the three tobacco models the decision phase waits for the decision itself,
 not for a button. <span class="code">catering-occasion</span> still waits for <span class="code">decision_completed</span>.
 The three folköl models and <span class="code">e-cigarette-sales</span> make the decision themselves and wait for no
-one.</p>
+one. <span class="code">action-errand</span> waits for the decision as well, or for the button
+<span class="code">decision_not_needed</span>, and grants no permit, see its own section.</p>
 
 <p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
 an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
@@ -424,10 +432,16 @@ was not waiting for it, since such an event correlates against nothing and is go
 </table>
 
 <p>The outcomes live in two places: <span class="code">Constants</span> says which are known and which create a permit,
-and the gateways of the six models that read the decision list them in their conditions.
+and the gateways of the six permit models that read the decision list them in their conditions.
 <span class="code">DecisionOutcomeGatewayTest</span> holds the gateways to <span class="code">Constants</span>. A new
 outcome needs <span class="code">Constants</span> and all six gateways, and must be registered for the namespace in
 Support Management as well.</p>
+
+<p><span class="code">action-errand</span> decides on a permit already granted, so it has outcomes of its own:
+<span class="code">REPRIMAND</span>, <span class="code">WARNING</span> and <span class="code">REVOCATION</span>
+(<span class="code">ACTION_ERRAND_DECISION_OUTCOMES</span>). <span class="code">CheckDecisionTask</span> knows the
+outcomes by the process key, so an outcome of the other set raises an incident in either kind of model. See the
+section on the action errand below.</p>
 
 <p>The <span class="code">type</span> of the permit in party-assets follows from the process key, through a map in
 <span class="code">PartyAssetsMapper</span>: <span class="code">AlcoholServingPermit</span> for the three
@@ -655,14 +669,47 @@ or by an earlier process that was cancelled, does not count.</p>
 <p>The decision phase then offers two buttons. <span class="code">inspection_approved</span> ends the phase.
 <span class="code">action_errand_requested</span> runs <span class="code">CreateActionErrandTask</span>, which creates an
 action errand from the title, the description, the permit holder and the active measures of the inspection, each one
-being something the permit holder has to remedy. A draft, completed or cancelled measure is left out. The errand gets the classification in the input parameters of the step, the
-external tag <span class="code">inspectionErrandId</span> and, through <span class="code">referredFrom</span>, a
-<span class="code">LINK</span> relation to the inspection. The write carries no <span class="code">X-Trigger-Process</span>,
+being something the permit holder has to remedy. A draft, completed or cancelled measure is left out. The errand gets the classification of the inspection, the
+label in <span class="code">action-errand.label-id</span>, the external tag <span class="code">inspectionErrandId</span>
+and, through <span class="code">referredFrom</span>, a <span class="code">LINK</span> relation to the inspection. The
+label is what starts the process of the action errand: its metadata in Support Management names the process key
+<span class="code">action-errand</span>. Label ids differ between environments, so the id is configuration, and the
+service does not start without it. The write carries no <span class="code">X-Trigger-Process</span>,
 since the new errand is not this process's own and the header would keep its process from starting. A retry finds an
 action errand an earlier attempt created by its tag. An inspection without active measures gets no action errand: the step
 leaves a <span class="code">REJECTED</span> entry in the activity log and the process goes back to the two buttons, so
 the case worker can add the measures and choose again. An inspection without a permit holder raises an incident
 instead, since an action errand once created is found by its tag and could not be given the permit holder later.</p>
+
+<h3>The action errand</h3>
+
+<p><span class="code">action-errand</span> follows up the deficiencies an inspection found. The registration passes
+straight through. In the review the case worker checks that the permit holder has acted on the measures, and in the
+investigation the case worker may open a supervisory investigation in the user interface; neither phase has a step of
+its own. The action errand never writes back to the inspection; the two are tied by the <span class="code">LINK</span>
+relation only.</p>
+
+<p>The decision phase reads the decision as the other models do, with the outcomes of the action errand: a reprimand,
+a warning or a revocation. Any of them ends the phase. While there is no completed decision the phase also offers the
+button <span class="code">decision_not_needed</span>, for when the permit holder has acted and no decision is needed,
+which ends the phase without one. A revocation does not change the permit in party-assets yet; the outcome stays in the
+process variable <span class="code">decisionOutcome</span>. The button does not read the decision again, so a
+decision completed while its event is still on the way is not seen; that matters once a revocation changes the
+permit.</p>
+
+<p>Support Management needs this in every environment, or the action errand gets no process or its decision ends in
+an incident:</p>
+
+<ul>
+	<li>The label in <span class="code">action-errand.label-id</span>, <span class="code">INSPECTION/MEASURES</span>,
+	carries <span class="code">processKey=action-errand</span> itself, with <span class="code">processStartMode</span>
+	<span class="code">AUTOMATIC</span> or none. <span class="code">MANUAL</span>, which the inspection labels have,
+	would leave the errand waiting for a start by hand.</li>
+	<li>The label belongs to the namespace of the errand. There is one label id, so the service can create action
+	errands in one namespace only.</li>
+	<li><span class="code">REPRIMAND</span>, <span class="code">WARNING</span> and <span class="code">REVOCATION</span>
+	are registered as decision outcomes for the namespace.</li>
+</ul>
 
 <h3>Messages to the customer</h3>
 
@@ -671,7 +718,8 @@ errand in Support Management. The message shows on the errand and in Mina sidor,
 customer a notice by SMS or e-mail. The step does not call Messaging itself. The step opens the review phase of every
 model with a manual gate, and tells the customer that the processing has started. The folköl models and
 <span class="code">e-cigarette-sales</span> are notifications that are approved automatically, so they have no such
-step.</p>
+step. Nor has <span class="code">action-errand</span>, which follows up an inspection the customer already knows
+of.</p>
 
 <p>The text lives in configuration under <span class="code">customer-message.texts</span>, so it can be changed
 without a release; the service picks up a new text when it restarts. The step names the text in its input parameter

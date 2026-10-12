@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -15,6 +16,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static se.sundsvall.alkt.Constants.ACTION_ERRAND_DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
@@ -27,6 +29,7 @@ class DecisionOutcomeGatewayTest {
 
 	private static final String BPMN_NAMESPACE = "http://www.omg.org/spec/BPMN/20100524/MODEL";
 	private static final Pattern QUOTED_OUTCOME = Pattern.compile("'([A-Z_]+)'");
+	private static final String ACTION_ERRAND_MODEL = "processmodels/inspection/action-errand.bpmn";
 
 	private static Stream<Arguments> models() {
 		return Stream.of(
@@ -61,6 +64,12 @@ class DecisionOutcomeGatewayTest {
 	@MethodSource("modelPaths")
 	void theWayBackToWaitingNamesNoOutcome(final String model) throws Exception {
 		assertThat(outcomesOf(model, "flow_decision_gateway_to_wait")).containsExactly(DECISION_OUTCOME_NONE);
+	}
+
+	@Test
+	void theActionErrandNamesItsOwnOutcomes() throws Exception {
+		assertThat(outcomesOf(ACTION_ERRAND_MODEL, "flow_decision_gateway_to_decided")).isEqualTo(ACTION_ERRAND_DECISION_OUTCOMES);
+		assertThat(outcomesOf(ACTION_ERRAND_MODEL, "flow_decision_gateway_to_wait")).containsExactly(DECISION_OUTCOME_NONE);
 	}
 
 	private static Set<String> outcomesOf(final String model, final String flowId) throws Exception {

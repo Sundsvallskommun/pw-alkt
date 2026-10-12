@@ -6,6 +6,8 @@ spring:
 reconciliation:
   worker:
     enabled: false
+action-errand:
+  label-id: a8561314-5335-40db-80a9-b7f426a4baa2
 customer-message:
   texts:
     processing-started: "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."

@@ -17,6 +17,16 @@
 			"id": "8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7",
 			"title": "Brister vid tillsyn",
 			"description": "Följande brister ska åtgärdas",
+			"classification": {
+				"category": "AOT",
+				"type": "AOT.UNCATEGORIZED"
+			},
+			"labels": [
+				{
+					"id": "d18db4ab-0000-4000-8000-000000000001",
+					"resourcePath": "CATEGORYROOT/INSPECTION/EXTERNAL_INSPECTION"
+				}
+			],
 			"stakeholders": [
 				{
 					"role": "PRIMARY",

@@ -107,7 +107,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(new Decision().outcome(outcome)));
 
-		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(outcome);
+		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "alcohol-serving")).isEqualTo(outcome);
 	}
 
 	/** REJECTION was the outcome of a rejection before REJECTED took its place. */
@@ -120,7 +120,40 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(new Decision().outcome(outcome)));
 
-		assertThatThrownBy(() -> assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+		assertThatThrownBy(() -> assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "alcohol-serving"))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("expected one of [APPROVAL, APPROVAL_WITH_CONDITIONS, DISMISSED, INADMISSIBLE, REJECTED]");
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"REPRIMAND", "WARNING", "REVOCATION"
+	})
+	void getDecisionOutcomeAnswersWithTheOutcomeOfTheActionErrand(final String outcome) {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(Optional.of(new Decision().outcome(outcome)));
+
+		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "action-errand")).isEqualTo(outcome);
+	}
+
+	@Test
+	void getDecisionOutcomeOfTheActionErrandFailsOnTheOutcomeOfAPermit() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(Optional.of(new Decision().outcome("APPROVAL")));
+
+		assertThatThrownBy(() -> assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "action-errand"))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("expected one of [REPRIMAND, REVOCATION, WARNING]");
+	}
+
+	@ParameterizedTest
+	@NullSource
+	@ValueSource(strings = "alcohol-serving")
+	void getDecisionOutcomeOfAPermitFailsOnTheOutcomeOfTheActionErrand(final String processKey) {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(Optional.of(new Decision().outcome("WARNING")));
+
+		assertThatThrownBy(() -> assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, processKey))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("expected one of [APPROVAL, APPROVAL_WITH_CONDITIONS, DISMISSED, INADMISSIBLE, REJECTED]");
 	}
@@ -129,7 +162,7 @@ class AssetServiceTest {
 	void getDecisionOutcomeAnswersWithNoneWithoutACompletedDecision() {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
 
-		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(DECISION_OUTCOME_NONE);
+		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "alcohol-serving")).isEqualTo(DECISION_OUTCOME_NONE);
 	}
 
 	@Test

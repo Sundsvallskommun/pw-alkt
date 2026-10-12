@@ -28,7 +28,8 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var outcome = assetService.getDecisionOutcome(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
+		final var outcome = assetService.getDecisionOutcome(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
+			externalTask.getProcessDefinitionKey());
 
 		logInfo("Decision of errand {} has outcome {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(outcome));
 

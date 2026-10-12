@@ -1,0 +1,55 @@
+{
+	"name": "03_main_cancel-process-worker---api-support-management-put-process-completed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processService",
+					"equalTo": "pw-alkt"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "action-errand"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "COMPLETED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_cancel_process"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.externalTaskId",
+					"matches": "[0-9a-f-]{36}"
+				}
+			}
+		]
+	},
+	"newScenarioState": "main_cancel-process-worker---api-support-management-put-process-completed",
+	"requiredScenarioState": "main_cancel-process-worker---api-support-management-put-process-running",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "action-errand-cancelled"
+}
