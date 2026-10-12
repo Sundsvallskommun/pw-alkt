@@ -8,6 +8,7 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -47,6 +48,8 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 
 		// Verify mocked stubs
 		verifyAllStubs();
+		// The addition reads the number of the permanent permit and must never write to licensed business
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/.*")));
 
 		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
@@ -82,6 +85,7 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 				tuple("Decision updated", "await_decision_updated"),
 				tuple("Check decision", "external_task_check_decision"), // Approved
 				tuple("Decision outcome", "gateway_decision_outcome"),
+				tuple("Find restaurant number", "external_task_find_restaurant_number"),
 				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
@@ -209,6 +213,7 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/.*")));
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)

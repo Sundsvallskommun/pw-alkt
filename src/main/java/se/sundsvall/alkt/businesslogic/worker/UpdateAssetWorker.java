@@ -14,12 +14,8 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
-@ExternalTaskSubscription(topicName = "UpdateAssetTask", lockDuration = UpdateAssetWorker.LOCK_DURATION_IN_MILLISECONDS)
+@ExternalTaskSubscription(topicName = "UpdateAssetTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class UpdateAssetWorker extends AbstractTaskWorker {
-
-	// Covers every call of a run timing out, so another pod cannot pick the step up while this run still replaces the
-	// certificate.
-	static final long LOCK_DURATION_IN_MILLISECONDS = 15 * 60 * 1000L;
 
 	private final AssetService assetService;
 

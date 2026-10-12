@@ -32,6 +32,12 @@
 					"expression": "$.parameters.conditions",
 					"equalTo": ""
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.premisesRestaurantNumber",
+					"equalTo": "22810001"
+				}
 			}
 		]
 	},

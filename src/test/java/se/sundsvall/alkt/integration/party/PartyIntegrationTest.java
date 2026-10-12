@@ -6,8 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.dept44.exception.ClientProblem;
-import se.sundsvall.dept44.problem.Problem;
 
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,7 +44,7 @@ class PartyIntegrationTest {
 		when(partyClientMock.getLegalId(MUNICIPALITY_ID, partyId)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> partyIntegration.getLegalId(MUNICIPALITY_ID, partyId))
-			.isInstanceOf(Problem.class)
+			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(partyId)
 			.hasMessageContaining("has no legal id");
 	}

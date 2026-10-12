@@ -25,10 +25,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MESSAGE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
+import static se.sundsvall.alkt.businesslogic.worker.NotifyCustomerWorker.PROCESS_VARIABLE_MESSAGE;
 
 @ExtendWith(MockitoExtension.class)
 class NotifyCustomerWorkerTest {

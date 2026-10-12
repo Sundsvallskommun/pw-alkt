@@ -12,13 +12,13 @@ import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
+import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toAutomaticDecision;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraft;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraftTitle;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionCompletion;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionTitle;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toNoPermitHolderMessage;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
 
 @Service
@@ -58,7 +58,7 @@ public class DecisionService {
 		// Why: the next step creates the permit for this holder. Without one the approval would be locked with no permit behind
 		// it.
 		if (toPartyId(errand).isEmpty()) {
-			throw new NonRetryableException(toNoPermitHolderMessage(errandId));
+			throw new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId));
 		}
 
 		final var decisionId = draft.map(Decision::getId)
