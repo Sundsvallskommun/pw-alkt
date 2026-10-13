@@ -1,0 +1,29 @@
+{
+	"name": "decision_api-support-management-get-errand",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3b7e2c91-5d4a-4e8f-a1c6-9f0d2b8e7a54",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "3b7e2c91-5d4a-4e8f-a1c6-9f0d2b8e7a54",
+			"title": "Anmälan om försäljning av tobaksfria nikotinprodukter, Kafé Solsidan",
+			"stakeholders": [
+				{
+					"role": "APPLICANT",
+					"externalIdType": "PRIVATE",
+					"externalId": "3b7e1c2d-9a4f-4e58-b6d0-2f1a8c5e7b93"
+				}
+			]
+		},
+		"status": 200
+	}
+}

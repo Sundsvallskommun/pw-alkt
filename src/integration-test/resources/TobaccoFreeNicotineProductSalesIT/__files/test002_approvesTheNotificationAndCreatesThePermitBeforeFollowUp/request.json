@@ -1,0 +1,8 @@
+{
+	"eventId": "5b2e9c71-0d48-4a3f-8e16-c4a7f93d2b05",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "3b7e2c91-5d4a-4e8f-a1c6-9f0d2b8e7a54",
+	"processKey": "tobacco-free-nicotine-product-sales",
+	"startAllowed": true
+}

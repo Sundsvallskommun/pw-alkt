@@ -7,8 +7,8 @@ Support Management owns the errand, this service owns the process behind it.</p>
 process models are phase structures with almost nothing inside them. Every model has the work step that reports a process
 as completed. The decision phase of the alcohol-serving and tobacco models also checks the decision and creates, changes
 or ends the permit it concerns, and in <span class="code">alcohol-serving</span> it assigns the premises' restaurant
-number. In the folköl and e-cigarette models it makes the decision itself and creates the permit. The reconciliation is
-described at the end.</p>
+number. In the folköl, e-cigarette and tobacco-free nicotine product models it makes the decision itself and creates
+the permit. The reconciliation is described at the end.</p>
 
 <h3>The dialogue with Support Management</h3>
 
@@ -171,7 +171,7 @@ found.</p>
 
 <p>The models in <span class="code">src/main/resources/processmodels</span> are sorted by kind of errand:
 <span class="code">application</span> for applications (alcohol serving and tobacco sales),
-<span class="code">notification</span> for notifications (low-alcohol beer, e-cigarettes and catering occasions), and <span class="code">inspection</span> for the
+<span class="code">notification</span> for notifications (low-alcohol beer, e-cigarettes, tobacco-free nicotine products and catering occasions), and <span class="code">inspection</span> for the
 inspections. Each folder has an entry of its own under <span class="code">process-engine.deployment.processes</span>,
 and every model in them is deployed to the tenant <span class="code">ALKT</span> at startup, so a new schema is picked
 up by adding the file to the folder of its kind. A model placed directly in <span class="code">processmodels</span> is
@@ -225,6 +225,11 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 			<td>Försäljning av elektroniska cigaretter och påfyllnadsbehållare</td>
 		</tr>
 		<tr>
+			<td class="code">tobacco-free-nicotine-product-sales.bpmn</td>
+			<td class="code">tobacco-free-nicotine-product-sales</td>
+			<td>Försäljning av tobaksfria nikotinprodukter</td>
+		</tr>
+		<tr>
 			<td class="code">low-alcohol-beer-serving.bpmn</td>
 			<td class="code">low-alcohol-beer-serving</td>
 			<td>Servering av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
@@ -263,9 +268,10 @@ matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
 	</tbody>
 </table>
 
-<p>All thirteen errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
+<p>All fourteen errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
 Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The three folköl
-models and <span class="code">e-cigarette-sales</span> are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
+models, <span class="code">e-cigarette-sales</span> and <span class="code">tobacco-free-nicotine-product-sales</span>
+are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
 first three phases pass straight through and Support Management first hears from them in the decision phase, which
 makes the decision and creates the permit on its own, see the next section. Follow up is the first phase that waits.</p>
 
@@ -288,7 +294,7 @@ inspections, which are described in their own sections below. Support Management
 correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
 between two gates when the change arrived and redelivering would not help.</p>
 
-<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All thirteen models
+<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All fourteen models
 share their message names, and every correlation is made on the errand id, so two live processes on one errand
 make every signal match two executions at once. Operaton answers that with <span class="code">400</span> and the
 signal is lost. The cancellation is the exception: it is correlated to every process of the errand, so it ends them
@@ -382,8 +388,8 @@ interface.</p>
 
 <p>In the three alcohol-serving models and the three tobacco models the decision phase waits for the decision itself,
 not for a button. <span class="code">catering-occasion</span> still waits for <span class="code">decision_completed</span>.
-The three folköl models and <span class="code">e-cigarette-sales</span> make the decision themselves and wait for no
-one.</p>
+The three folköl models, <span class="code">e-cigarette-sales</span> and
+<span class="code">tobacco-free-nicotine-product-sales</span> make the decision themselves and wait for no one.</p>
 
 <p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
 an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
@@ -432,8 +438,9 @@ Support Management as well.</p>
 <p>The <span class="code">type</span> of the permit in party-assets follows from the process key, through a map in
 <span class="code">PartyAssetsMapper</span>: <span class="code">AlcoholServingPermit</span> for the three
 alcohol-serving models, <span class="code">TobaccoSalesPermit</span> for the three tobacco models,
-<span class="code">ECigaretteSalesPermit</span> for <span class="code">e-cigarette-sales</span>, and a type of its own
-for each folköl model. A new permit gets it as its type, and a step that changes or ends a permit refuses one of another
+<span class="code">ECigaretteSalesPermit</span> for <span class="code">e-cigarette-sales</span>,
+<span class="code">TobaccoFreeNicotineProductSalesPermit</span> for
+<span class="code">tobacco-free-nicotine-product-sales</span>, and a type of its own for each folköl model. A new permit gets it as its type, and a step that changes or ends a permit refuses one of another
 type with an incident, so a change errand cannot reach another kind of permit of the same holder. A process with a
 permit step and no type in the map raises an incident at that step; <span class="code">PermitTypeModelTest</span>
 catches it at build time.</p>
@@ -450,7 +457,8 @@ process created it.</p>
 <p>A step with the input parameter <span class="code">certificateTemplate</span> also adds a permit certificate to the
 draft before it is activated: <span class="code">serving-permit-certificate</span> in the three alcohol-serving models
 and <span class="code">tobacco-permit-certificate</span> in <span class="code">tobacco-sales</span> and
-<span class="code">tobacco-sales-change</span>. <span class="code">e-cigarette-sales</span> and the folköl models create
+<span class="code">tobacco-sales-change</span>. The notification models (<span class="code">e-cigarette-sales</span>,
+<span class="code">tobacco-free-nicotine-product-sales</span> and the folköl models) have no such parameter and create
 no certificate. Templating renders the named template as a PDF, and it is
 added as <span class="code">tillstandsbevis.pdf</span> in the category Tillståndsbevis. Every term of the decision is a
 placeholder named by its category as it is, so the term <span class="code">permitHolderName</span> is
@@ -526,8 +534,8 @@ active with that last day already set, writes nothing.</p>
 <p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
 A case worker cannot move the phase on by any other means.</p>
 
-<p>In the three folköl models and <span class="code">e-cigarette-sales</span>,
-<span class="code">CreateDecisionTask</span> approves the notification, and <span class="code">CreateAssetTask</span>
+<p>In the three folköl models, <span class="code">e-cigarette-sales</span> and
+<span class="code">tobacco-free-nicotine-product-sales</span>, <span class="code">CreateDecisionTask</span> approves the notification, and <span class="code">CreateAssetTask</span>
 then creates the permit from that decision as above. The decision has the
 type <span class="code">PERMIT</span>, the outcome <span class="code">APPROVAL</span>, the method
 <span class="code">AUTOMATIC</span>, a title per process and the title of the errand as description. It is valid from
@@ -669,8 +677,8 @@ instead, since an action errand once created is found by its tag and could not b
 <p><span class="code">NotifyCustomerTask</span> writes a message to the customer in the external conversation of the
 errand in Support Management. The message shows on the errand and in Mina sidor, and Support Management sends the
 customer a notice by SMS or e-mail. The step does not call Messaging itself. The step opens the review phase of every
-model with a manual gate, and tells the customer that the processing has started. The folköl models and
-<span class="code">e-cigarette-sales</span> are notifications that are approved automatically, so they have no such
+model with a manual gate, and tells the customer that the processing has started. The folköl models,
+<span class="code">e-cigarette-sales</span> and <span class="code">tobacco-free-nicotine-product-sales</span> are notifications that are approved automatically, so they have no such
 step.</p>
 
 <p>The text lives in configuration under <span class="code">customer-message.texts</span>, so it can be changed

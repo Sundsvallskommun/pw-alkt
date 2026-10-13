@@ -19,6 +19,7 @@ import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyMap;
+import static java.util.Map.entry;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
@@ -32,6 +33,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
@@ -49,6 +51,7 @@ public final class PartyAssetsMapper {
 	public static final String PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingPermit";
 	public static final String PERMIT_TYPE_TOBACCO_SALES = "TobaccoSalesPermit";
 	public static final String PERMIT_TYPE_E_CIGARETTE_SALES = "ECigaretteSalesPermit";
+	public static final String PERMIT_TYPE_TOBACCO_FREE_NICOTINE_PRODUCT_SALES = "TobaccoFreeNicotineProductSalesPermit";
 
 	// Set by pw-alkt from the errand and the decision, so a decision cannot remove them.
 	private static final Set<String> PERMIT_PARAMETERS_OF_THE_PROCESS = Set.of(PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
@@ -59,17 +62,18 @@ public final class PartyAssetsMapper {
 	static final String CERTIFICATE_CATEGORY = "Tillståndsbevis";
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 
-	private static final Map<String, String> PERMIT_TYPES = Map.of(
-		PROCESS_KEY_ALCOHOL_SERVING, PERMIT_TYPE_ALCOHOL_SERVING,
-		PROCESS_KEY_ALCOHOL_SERVING_CHANGE, PERMIT_TYPE_ALCOHOL_SERVING,
-		PROCESS_KEY_ALCOHOL_SERVING_ADDITION, PERMIT_TYPE_ALCOHOL_SERVING,
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES,
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING,
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING,
-		PROCESS_KEY_TOBACCO_SALES, PERMIT_TYPE_TOBACCO_SALES,
-		PROCESS_KEY_TOBACCO_SALES_CHANGE, PERMIT_TYPE_TOBACCO_SALES,
-		PROCESS_KEY_TOBACCO_SALES_CLOSURE, PERMIT_TYPE_TOBACCO_SALES,
-		PROCESS_KEY_E_CIGARETTE_SALES, PERMIT_TYPE_E_CIGARETTE_SALES);
+	private static final Map<String, String> PERMIT_TYPES = Map.ofEntries(
+		entry(PROCESS_KEY_ALCOHOL_SERVING, PERMIT_TYPE_ALCOHOL_SERVING),
+		entry(PROCESS_KEY_ALCOHOL_SERVING_CHANGE, PERMIT_TYPE_ALCOHOL_SERVING),
+		entry(PROCESS_KEY_ALCOHOL_SERVING_ADDITION, PERMIT_TYPE_ALCOHOL_SERVING),
+		entry(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES),
+		entry(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING),
+		entry(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING),
+		entry(PROCESS_KEY_TOBACCO_SALES, PERMIT_TYPE_TOBACCO_SALES),
+		entry(PROCESS_KEY_TOBACCO_SALES_CHANGE, PERMIT_TYPE_TOBACCO_SALES),
+		entry(PROCESS_KEY_TOBACCO_SALES_CLOSURE, PERMIT_TYPE_TOBACCO_SALES),
+		entry(PROCESS_KEY_E_CIGARETTE_SALES, PERMIT_TYPE_E_CIGARETTE_SALES),
+		entry(PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES, PERMIT_TYPE_TOBACCO_FREE_NICOTINE_PRODUCT_SALES));
 
 	private PartyAssetsMapper() {}
 
