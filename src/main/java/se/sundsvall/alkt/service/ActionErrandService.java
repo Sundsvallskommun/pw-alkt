@@ -7,6 +7,7 @@ import se.sundsvall.alkt.configuration.ActionErrandProperties;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ActionErrandMapper.toActionErrand;
@@ -16,6 +17,7 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 public class ActionErrandService {
 
 	private static final String RELATION_TYPE_LINK = "LINK";
+	private static final String NO_ASSIGNED_USER_MESSAGE = "Errand '%s' has no assigned user to report the action errand";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final ActionErrandProperties properties;
@@ -39,6 +41,7 @@ public class ActionErrandService {
 		return Optional.of(toActionErrand(inspection, errandId, properties.labelId()))
 			.filter(actionErrand -> !actionErrand.getMeasures().isEmpty())
 			.map(actionErrand -> requirePermitHolder(actionErrand, errandId))
+			.map(actionErrand -> requireReporter(actionErrand, errandId))
 			.map(actionErrand -> supportManagementIntegration.createErrand(municipalityId, namespace, toErrandRelation(RELATION_TYPE_LINK, errandId, namespace), actionErrand));
 	}
 
@@ -47,6 +50,13 @@ public class ActionErrandService {
 	private static Errand requirePermitHolder(final Errand actionErrand, final String errandId) {
 		if (actionErrand.getStakeholders().isEmpty()) {
 			throw new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId));
+		}
+		return actionErrand;
+	}
+
+	private static Errand requireReporter(final Errand actionErrand, final String errandId) {
+		if (isBlank(actionErrand.getReporterUserId())) {
+			throw new NonRetryableException(NO_ASSIGNED_USER_MESSAGE.formatted(errandId));
 		}
 		return actionErrand;
 	}

@@ -10,6 +10,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
+import static generated.se.sundsvall.supportmanagement.Priority.MEDIUM;
 import static org.assertj.core.api.Assertions.assertThat;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ActionErrandMapper.toActionErrand;
 
@@ -23,6 +24,7 @@ class ActionErrandMapperTest {
 		final var inspection = new Errand()
 			.id("inspection-id")
 			.title("Brister vid tillsyn")
+			.assignedUserId("handlaggare")
 			.description("Följande brister ska åtgärdas")
 			.classification(classification)
 			.labels(List.of(new ErrandLabel().id("inspection-label-id")))
@@ -37,7 +39,10 @@ class ActionErrandMapperTest {
 		final var result = toActionErrand(inspection, "errand-id", "label-id");
 
 		assertThat(result.getId()).isNull();
-		assertThat(result.getTitle()).isEqualTo("Brister vid tillsyn");
+		assertThat(result.getTitle()).isEqualTo("Åtgärdsärende");
+		assertThat(result.getStatus()).isEqualTo("NEW");
+		assertThat(result.getPriority()).isEqualTo(MEDIUM);
+		assertThat(result.getReporterUserId()).isEqualTo("handlaggare");
 		assertThat(result.getDescription()).isEqualTo("Följande brister ska åtgärdas");
 		assertThat(result.getClassification()).isEqualTo(classification);
 		assertThat(result.getLabels()).containsExactly(new ErrandLabel().id("label-id"));
@@ -51,6 +56,7 @@ class ActionErrandMapperTest {
 	void toActionErrandOfAnInspectionWithoutStakeholdersOrMeasures() {
 		final var result = toActionErrand(new Errand().id("inspection-id"), "inspection-id", "label-id");
 
+		assertThat(result.getReporterUserId()).isNull();
 		assertThat(result.getStakeholders()).isEmpty();
 		assertThat(result.getMeasures()).isEmpty();
 	}

@@ -16,6 +16,7 @@
 		"jsonBody": {
 			"id": "4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345",
 			"title": "Brister vid tillsyn",
+			"assignedUserId": "handlaggare",
 			"description": "Följande brister ska åtgärdas",
 			"classification": {
 				"category": "AOT",

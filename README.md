@@ -668,8 +668,11 @@ or by an earlier process that was cancelled, does not count.</p>
 
 <p>The decision phase then offers two buttons. <span class="code">inspection_approved</span> ends the phase.
 <span class="code">action_errand_requested</span> runs <span class="code">CreateActionErrandTask</span>, which creates an
-action errand from the title, the description, the permit holder and the active measures of the inspection, each one
-being something the permit holder has to remedy. A draft, completed or cancelled measure is left out. The errand gets the classification of the inspection, the
+action errand from the description, the permit holder and the active measures of the inspection, each one
+being something the permit holder has to remedy. A draft, completed or cancelled measure is left out. The case worker
+assigned to the inspection becomes the reporter of the action errand. The errand gets the title
+<span class="code">Åtgärdsärende</span>, status <span class="code">NEW</span>, priority
+<span class="code">MEDIUM</span>, the classification of the inspection, the
 label in <span class="code">action-errand.label-id</span>, the external tag <span class="code">inspectionErrandId</span>
 and, through <span class="code">referredFrom</span>, a <span class="code">LINK</span> relation to the inspection. The
 label is what starts the process of the action errand: its metadata in Support Management names the process key
@@ -679,7 +682,8 @@ since the new errand is not this process's own and the header would keep its pro
 action errand an earlier attempt created by its tag. An inspection without active measures gets no action errand: the step
 leaves a <span class="code">REJECTED</span> entry in the activity log and the process goes back to the two buttons, so
 the case worker can add the measures and choose again. An inspection without a permit holder raises an incident
-instead, since an action errand once created is found by its tag and could not be given the permit holder later.</p>
+instead, since an action errand once created is found by its tag and could not be given the permit holder later. An
+inspection without an assigned case worker raises an incident too, as the action errand would have no reporter.</p>
 
 <h3>The action errand</h3>
 

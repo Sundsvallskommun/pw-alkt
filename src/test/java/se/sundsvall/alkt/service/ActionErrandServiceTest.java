@@ -62,13 +62,14 @@ class ActionErrandServiceTest {
 		final var classification = new Classification().category("AOT").type("AOT.UNCATEGORIZED");
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(new Errand().id(ERRAND_ID).title("Brister vid tillsyn").classification(classification).stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id")))
-				.measures(List.of(new Measure().type("DEFICIENCY").status("ACTIVE"))));
+			.thenReturn(new Errand().id(ERRAND_ID).title("Brister vid tillsyn").assignedUserId("handlaggare").classification(classification)
+				.stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id"))).measures(List.of(new Measure().type("DEFICIENCY").status("ACTIVE"))));
 		when(supportManagementIntegrationMock.createErrand(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(REFERRED_FROM), errandCaptor.capture())).thenReturn("action-errand-id");
 
 		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).contains("action-errand-id");
 
-		assertThat(errandCaptor.getValue().getTitle()).isEqualTo("Brister vid tillsyn");
+		assertThat(errandCaptor.getValue().getTitle()).isEqualTo("Åtgärdsärende");
+		assertThat(errandCaptor.getValue().getReporterUserId()).isEqualTo("handlaggare");
 		assertThat(errandCaptor.getValue().getClassification()).isEqualTo(classification);
 		assertThat(errandCaptor.getValue().getLabels()).containsExactly(new ErrandLabel().id(LABEL_ID));
 		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
@@ -94,6 +95,23 @@ class ActionErrandServiceTest {
 		assertThatThrownBy(() -> service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'inspection-id' has no stakeholder with role 'PRIMARY'");
+
+		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+	}
+
+	@ParameterizedTest
+	@NullAndEmptySource
+	@ValueSource(strings = " ")
+	void failsWithoutRetryForAnInspectionWithoutAssignedUser(final String assignedUserId) {
+		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(new Errand().id(ERRAND_ID).assignedUserId(assignedUserId).stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id")))
+				.measures(List.of(new Measure().type("DEFICIENCY").status("ACTIVE"))));
+
+		assertThatThrownBy(() -> service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'inspection-id' has no assigned user to report the action errand");
 
 		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);

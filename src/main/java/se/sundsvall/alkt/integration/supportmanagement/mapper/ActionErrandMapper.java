@@ -8,12 +8,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import static generated.se.sundsvall.supportmanagement.Priority.MEDIUM;
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
 
 public final class ActionErrandMapper {
 
 	private static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
+	private static final String TITLE = "Åtgärdsärende";
+	private static final String STATUS_NEW = "NEW";
 
 	private ActionErrandMapper() {}
 
@@ -23,7 +26,10 @@ public final class ActionErrandMapper {
 	 */
 	public static Errand toActionErrand(final Errand inspection, final String errandId, final String labelId) {
 		return new Errand()
-			.title(inspection.getTitle())
+			.title(TITLE)
+			.status(STATUS_NEW)
+			.priority(MEDIUM)
+			.reporterUserId(inspection.getAssignedUserId())
 			.description(inspection.getDescription())
 			.classification(inspection.getClassification())
 			.labels(List.of(new ErrandLabel().id(labelId)))
