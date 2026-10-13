@@ -1,0 +1,29 @@
+{
+	"name": "decision_api-support-management-get-errand",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/e1c47b93-6a25-4f80-b3d6-9c052f7ae184",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "e1c47b93-6a25-4f80-b3d6-9c052f7ae184",
+			"title": "Anmälan om cateringtillfälle, Kafé Solsidan",
+			"stakeholders": [
+				{
+					"role": "PRIMARY",
+					"externalIdType": "ENTERPRISE",
+					"externalId": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
+				}
+			]
+		},
+		"status": 200
+	}
+}

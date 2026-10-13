@@ -30,6 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
@@ -121,6 +122,7 @@ class SupportManagementMapperTest {
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo("Anmälan om försäljning och servering av folköl");
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_E_CIGARETTE_SALES)).isEqualTo("Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES)).isEqualTo("Anmälan om försäljning av tobaksfria nikotinprodukter");
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_CATERING_OCCASION)).isEqualTo("Anmälan om cateringtillfälle");
 	}
 
 	@Test

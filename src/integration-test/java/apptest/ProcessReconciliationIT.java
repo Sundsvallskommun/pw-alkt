@@ -33,6 +33,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_EXTERNAL_INSPECTION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 
@@ -111,7 +112,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	@Test
 	void test002_instanceThatVanishedIsSettled() throws JacksonException {
 		// === Start process ===
-		final var processInstanceId = startProcess(ERRAND_ID_VANISHED, PROCESS_KEY_CATERING_OCCASION);
+		final var processInstanceId = startProcess(ERRAND_ID_VANISHED, PROCESS_KEY_EXTERNAL_INSPECTION);
 
 		// Someone cancels the instance from outside, and nothing reports it
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -128,7 +129,8 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		// === Start process === every report it sends on the way is answered with 500 and swallowed
 		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN, PROCESS_KEY_CATERING_OCCASION);
 
-		completeEveryPhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId);
+		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "follow_up");
+		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -172,15 +174,6 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 			.sendRequest();
 
 		return awaitProcessInstance(errandId, processKey);
-	}
-
-	private void completeEveryPhase(final String errandId, final String processInstanceId) {
-		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "registration");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "review");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "investigation");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "decision");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "follow_up");
-		completePhase(errandId, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "closure");
 	}
 
 	/** A sweep runs as its own process instance, so the test waits it out before looking at what it sent. */
