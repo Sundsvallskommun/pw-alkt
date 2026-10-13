@@ -52,3 +52,6 @@ target/
 
 # Spring
 application-default.*
+
+# Claude Code
+.claude/
