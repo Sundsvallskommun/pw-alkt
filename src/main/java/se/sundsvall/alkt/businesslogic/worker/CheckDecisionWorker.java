@@ -28,10 +28,18 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var outcome = assetService.getDecisionOutcome(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
-			externalTask.getProcessDefinitionKey());
+		final var processKey = externalTask.getProcessDefinitionKey();
+		final var outcome = assetService.getDecisionOutcome(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
 
 		logInfo("Decision of errand {} has outcome {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(outcome));
+
+		// Why: the case worker can correct the decision, and the next decision event or the hourly check then finds it. An
+		// incident would hold the process on this step, where neither reaches it.
+		if (!assetService.isKnownOutcome(processKey, outcome)) {
+			return ProcessStateReport.running(externalTask.getActivityId(), null)
+				.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, DECISION_OUTCOME_NONE))
+				.withRejection("Decision outcome %s is not an outcome of process %s".formatted(outcome, processKey));
+		}
 
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
 			.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, outcome));

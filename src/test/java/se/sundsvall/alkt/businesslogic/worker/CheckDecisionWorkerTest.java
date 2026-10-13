@@ -54,7 +54,8 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving");
-		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "alcohol-serving")).thenReturn("APPROVAL");
+		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
+		when(assetServiceMock.isKnownOutcome("alcohol-serving", "APPROVAL")).thenReturn(true);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
@@ -72,11 +73,30 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("action-errand");
-		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "action-errand")).thenReturn("NONE");
+		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("NONE");
+		when(assetServiceMock.isKnownOutcome("action-errand", "NONE")).thenReturn(true);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result.logMessage()).isNull();
 		assertThat(result.variables()).containsExactly(entry(PROCESS_VARIABLE_DECISION_OUTCOME, "NONE"));
+	}
+
+	@Test
+	void rejectsAnOutcomeOfAnotherProcessAndKeepsWaiting() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
+		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("action-errand");
+		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
+		when(assetServiceMock.isKnownOutcome("action-errand", "APPROVAL")).thenReturn(false);
+
+		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
+
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_decision", null)
+			.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, "NONE"))
+			.withRejection("Decision outcome APPROVAL is not an outcome of process action-errand"));
+		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

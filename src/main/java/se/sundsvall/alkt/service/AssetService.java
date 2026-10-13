@@ -65,21 +65,21 @@ public class AssetService {
 		this.clock = clock;
 	}
 
-	/** The outcomes a process knows are those of its gateway, so another process's outcome raises an incident. */
-	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId, final String processKey) {
-		final var outcomes = Optional.ofNullable(processKey)
-			.map(DECISION_OUTCOMES_OF_PROCESS::get)
-			.orElse(DECISION_OUTCOMES);
+	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId) {
 		return supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
-			.map(decision -> toKnownOutcome(decision, errandId, outcomes))
+			.map(decision -> String.valueOf(decision.getOutcome()))
 			.orElse(DECISION_OUTCOME_NONE);
 	}
 
-	private static String toKnownOutcome(final Decision decision, final String errandId, final Set<String> outcomes) {
-		return Optional.ofNullable(decision.getOutcome())
-			.filter(outcomes::contains)
-			.orElseThrow(() -> Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has outcome '%s', expected one of %s"
-				.formatted(errandId, decision.getOutcome(), new TreeSet<>(outcomes))));
+	/**
+	 * The outcomes a process knows are those of its gateway. NONE only keeps the process waiting, so every process knows
+	 * it.
+	 */
+	public boolean isKnownOutcome(final String processKey, final String outcome) {
+		return DECISION_OUTCOME_NONE.equals(outcome) || Optional.ofNullable(processKey)
+			.map(DECISION_OUTCOMES_OF_PROCESS::get)
+			.orElse(DECISION_OUTCOMES)
+			.contains(outcome);
 	}
 
 	/**

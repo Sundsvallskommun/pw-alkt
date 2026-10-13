@@ -1,0 +1,8 @@
+{
+	"eventId": "5b2e8c41-9a7d-4f3e-b1c6-0d8e2f4a6c13",
+	"eventType": "CREATE",
+	"eventSubType": "ERRAND",
+	"errandId": "9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d",
+	"processKey": "action-errand",
+	"startAllowed": true
+}
