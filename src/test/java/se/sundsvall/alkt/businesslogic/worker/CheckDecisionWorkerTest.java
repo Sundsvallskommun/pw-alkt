@@ -9,7 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
-import se.sundsvall.alkt.service.AssetService;
+import se.sundsvall.alkt.service.DecisionService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
@@ -36,7 +36,7 @@ class CheckDecisionWorkerTest {
 	private FailureHandler failureHandlerMock;
 
 	@Mock
-	private AssetService assetServiceMock;
+	private DecisionService decisionServiceMock;
 
 	@Mock
 	private ExternalTask externalTaskMock;
@@ -54,8 +54,8 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving");
-		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
-		when(assetServiceMock.isKnownOutcome("alcohol-serving", "APPROVAL")).thenReturn(true);
+		when(decisionServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
+		when(decisionServiceMock.isKnownOutcome("alcohol-serving", "APPROVAL")).thenReturn(true);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
@@ -73,8 +73,8 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("action-errand");
-		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("NONE");
-		when(assetServiceMock.isKnownOutcome("action-errand", "NONE")).thenReturn(true);
+		when(decisionServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("NONE");
+		when(decisionServiceMock.isKnownOutcome("action-errand", "NONE")).thenReturn(true);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
@@ -89,8 +89,8 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("action-errand");
-		when(assetServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
-		when(assetServiceMock.isKnownOutcome("action-errand", "APPROVAL")).thenReturn(false);
+		when(decisionServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
+		when(decisionServiceMock.isKnownOutcome("action-errand", "APPROVAL")).thenReturn(false);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 

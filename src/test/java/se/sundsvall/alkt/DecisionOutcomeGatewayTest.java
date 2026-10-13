@@ -19,7 +19,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import se.sundsvall.alkt.service.AssetService;
+import se.sundsvall.alkt.service.DecisionService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -94,10 +94,10 @@ class DecisionOutcomeGatewayTest {
 		final var document = read(model);
 		final var processKey = ((Element) document.getElementsByTagNameNS(BPMN_NAMESPACE, "process").item(0)).getAttribute("id");
 		final var gatewayOutcomes = outcomesLeaving(document, "gateway_decision_outcome");
-		final var assetService = mock(AssetService.class, CALLS_REAL_METHODS);
+		final var decisionService = mock(DecisionService.class, CALLS_REAL_METHODS);
 
 		Stream.concat(DECISION_OUTCOMES.stream(), ACTION_ERRAND_DECISION_OUTCOMES.stream())
-			.forEach(outcome -> assertThat(assetService.isKnownOutcome(processKey, outcome))
+			.forEach(outcome -> assertThat(decisionService.isKnownOutcome(processKey, outcome))
 				.as("%s knows %s", processKey, outcome)
 				.isEqualTo(gatewayOutcomes.contains(outcome)));
 	}

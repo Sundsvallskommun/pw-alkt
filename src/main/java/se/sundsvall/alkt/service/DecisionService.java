@@ -4,15 +4,22 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 
 import static java.util.Collections.emptyList;
+import static se.sundsvall.alkt.Constants.ACTION_ERRAND_DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_ACTION_ERRAND;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toAutomaticDecision;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraft;
@@ -24,6 +31,8 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 @Service
 public class DecisionService {
 
+	private static final Map<String, Set<String>> DECISION_OUTCOMES_OF_PROCESS = Map.of(PROCESS_KEY_ACTION_ERRAND, ACTION_ERRAND_DECISION_OUTCOMES);
+
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final AssetService assetService;
 	private final Clock clock;
@@ -32,6 +41,23 @@ public class DecisionService {
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.assetService = assetService;
 		this.clock = clock;
+	}
+
+	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId) {
+		return supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
+			.map(decision -> String.valueOf(decision.getOutcome()))
+			.orElse(DECISION_OUTCOME_NONE);
+	}
+
+	/**
+	 * The outcomes a process knows are those of its gateway. NONE only keeps the process waiting, so every process knows
+	 * it.
+	 */
+	public boolean isKnownOutcome(final String processKey, final String outcome) {
+		return DECISION_OUTCOME_NONE.equals(outcome) || Optional.ofNullable(processKey)
+			.map(DECISION_OUTCOMES_OF_PROCESS::get)
+			.orElse(DECISION_OUTCOMES)
+			.contains(outcome);
 	}
 
 	/**
