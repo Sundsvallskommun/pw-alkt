@@ -427,27 +427,19 @@ class PartyAssetsMapperTest {
 	}
 
 	@Test
-	void toPermitTypeGivesEachLowAlcoholBeerProcessATypeOfItsOwn() {
-		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES);
-		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SERVING);
-		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
-	}
-
-	@Test
-	void toPermitTypeGivesTheTobaccoProcessesOneTypeAndECigarettesAnother() {
+	void toPermitTypeGivesTheTobaccoProcessesOneType() {
 		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
 		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES_CHANGE)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
 		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES_CLOSURE)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
+	}
+
+	@Test
+	void toPermitTypeGivesEachNotificationProcessATypeOfItsOwn() {
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES);
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SERVING);
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
 		assertThat(toPermitType(PROCESS_KEY_E_CIGARETTE_SALES)).isEqualTo(NOTIFICATION_TYPE_E_CIGARETTE_SALES);
-	}
-
-	@Test
-	void toPermitTypeGivesTobaccoFreeNicotineProductsATypeOfTheirOwn() {
 		assertThat(toPermitType(PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES)).isEqualTo(NOTIFICATION_TYPE_TOBACCO_FREE_NICOTINE_PRODUCT_SALES);
-	}
-
-	@Test
-	void toPermitTypeGivesCateringOccasionsATypeOfTheirOwn() {
 		assertThat(toPermitType(PROCESS_KEY_CATERING_OCCASION)).isEqualTo(NOTIFICATION_TYPE_CATERING_OCCASION);
 	}
 
