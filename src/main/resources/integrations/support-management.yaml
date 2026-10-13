@@ -7,7 +7,7 @@ info:
     url: https://opensource.org/licenses/MIT
   version: "17.2"
 servers:
-- url: https://supportmanagement-alkt-sprint-af-supportmanagement-sprint.apps.ocp201.sundsvall.se
+- url: http://localhost:37929
   description: Generated server url
 tags:
 - name: Configuration for namespace
