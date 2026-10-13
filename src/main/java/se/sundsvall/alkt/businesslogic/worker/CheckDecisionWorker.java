@@ -34,11 +34,12 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 		logInfo("Decision of errand {} has outcome {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(outcome));
 
 		// Why: the case worker can correct the decision, and the next decision event or the hourly check then finds it. An
-		// incident would hold the process on this step, where neither reaches it.
+		// incident would hold the process on this step, where neither reaches it. The outcome is the key of the refusal, so
+		// the hourly check does not log the same refusal again.
 		if (!decisionService.isKnownOutcome(processKey, outcome)) {
 			return ProcessStateReport.running(externalTask.getActivityId(), null)
 				.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, DECISION_OUTCOME_NONE))
-				.withRejection("Decision outcome %s is not an outcome of process %s".formatted(outcome, processKey));
+				.withRejection("Decision outcome %s is not an outcome of process %s".formatted(outcome, processKey), outcome);
 		}
 
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)

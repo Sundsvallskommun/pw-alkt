@@ -96,7 +96,7 @@ class CheckDecisionWorkerTest {
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_decision", null)
 			.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, "NONE"))
-			.withRejection("Decision outcome APPROVAL is not an outcome of process action-errand"));
+			.withRejection("Decision outcome APPROVAL is not an outcome of process action-errand", "APPROVAL"));
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }
