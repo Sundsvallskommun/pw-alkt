@@ -105,34 +105,34 @@ per table below.
 
 ### Applications
 
-| Process key                | Errand                                         | What the service does                                                       | Permit in party-assets |
-|----------------------------|------------------------------------------------|-----------------------------------------------------------------------------|------------------------|
-| `alcohol-serving`          | Serving of alcoholic beverages                 | Checks the decision, creates the permit, chooses and assigns the restaurant number | `AlcoholServingPermit` |
-| `alcohol-serving-addition` | Addition to an existing serving permit         | Checks the decision, finds the holder's restaurant number, creates the permit | `AlcoholServingPermit` |
-| `alcohol-serving-change`   | Change of an existing serving permit           | Checks the decision, drafts the change, updates the permit                  | `AlcoholServingPermit` |
-| `tobacco-sales`            | Sale of tobacco products                       | Checks the decision, creates the permit                                     | `TobaccoSalesPermit`   |
-| `tobacco-sales-change`     | Change of permit-regulated sale of tobacco     | Checks the decision, drafts the change, updates the permit                  | `TobaccoSalesPermit`   |
-| `tobacco-sales-closure`    | Closure of permit-regulated sale of tobacco    | Checks the permit, checks the decision, ends the permit                     | `TobaccoSalesPermit`   |
+|        Process key         |                   Errand                    |                               What the service does                                | Permit in party-assets |
+|----------------------------|---------------------------------------------|------------------------------------------------------------------------------------|------------------------|
+| `alcohol-serving`          | Serving of alcoholic beverages              | Checks the decision, creates the permit, chooses and assigns the restaurant number | `AlcoholServingPermit` |
+| `alcohol-serving-addition` | Addition to an existing serving permit      | Checks the decision, finds the holder's restaurant number, creates the permit      | `AlcoholServingPermit` |
+| `alcohol-serving-change`   | Change of an existing serving permit        | Checks the decision, drafts the change, updates the permit                         | `AlcoholServingPermit` |
+| `tobacco-sales`            | Sale of tobacco products                    | Checks the decision, creates the permit                                            | `TobaccoSalesPermit`   |
+| `tobacco-sales-change`     | Change of permit-regulated sale of tobacco  | Checks the decision, drafts the change, updates the permit                         | `TobaccoSalesPermit`   |
+| `tobacco-sales-closure`    | Closure of permit-regulated sale of tobacco | Checks the permit, checks the decision, ends the permit                            | `TobaccoSalesPermit`   |
 
 Every application tells the customer that the processing has started.
 
 ### Notifications
 
-| Process key                          | Errand                                       | What the service does                          | Permit in party-assets                |
-|--------------------------------------|----------------------------------------------|------------------------------------------------|---------------------------------------|
-| `catering-occasion`                  | Catering occasion                            | Tells the customer that the processing has started | None                              |
-| `low-alcohol-beer-sales`             | Sale of low-alcohol beer                     | Makes the decision, creates the permit         | `LowAlcoholBeerSalesPermit`           |
-| `low-alcohol-beer-serving`           | Serving of low-alcohol beer                  | Makes the decision, creates the permit         | `LowAlcoholBeerServingPermit`         |
-| `low-alcohol-beer-sales-and-serving` | Sales and serving of low-alcohol beer        | Makes the decision, creates the permit         | `LowAlcoholBeerSalesAndServingPermit` |
-| `e-cigarette-sales`                  | Sale of electronic cigarettes and refills    | Makes the decision, creates the permit         | `ECigaretteSalesPermit`               |
+|             Process key              |                  Errand                   |               What the service does                |        Permit in party-assets         |
+|--------------------------------------|-------------------------------------------|----------------------------------------------------|---------------------------------------|
+| `catering-occasion`                  | Catering occasion                         | Tells the customer that the processing has started | None                                  |
+| `low-alcohol-beer-sales`             | Sale of low-alcohol beer                  | Makes the decision, creates the permit             | `LowAlcoholBeerSalesPermit`           |
+| `low-alcohol-beer-serving`           | Serving of low-alcohol beer               | Makes the decision, creates the permit             | `LowAlcoholBeerServingPermit`         |
+| `low-alcohol-beer-sales-and-serving` | Sales and serving of low-alcohol beer     | Makes the decision, creates the permit             | `LowAlcoholBeerSalesAndServingPermit` |
+| `e-cigarette-sales`                  | Sale of electronic cigarettes and refills | Makes the decision, creates the permit             | `ECigaretteSalesPermit`               |
 
 ### Inspections
 
-| Process key           | Errand              | What the service does                                                              | Permit in party-assets |
-|-----------------------|---------------------|------------------------------------------------------------------------------------|------------------------|
-| `external-inspection` | External inspection | Tells the customer, creates the protocol, creates the action errand when asked to   | None                   |
-| `internal-inspection` | Internal inspection | Tells the customer, creates the protocol, creates the action errand when asked to   | None                   |
-| `action-errand`       | Action errand       | Checks the decision                                                                | None yet, see `docs/todo/story-action-errand-permit-decisions.md` |
+|      Process key      |       Errand        |                               What the service does                               |                      Permit in party-assets                       |
+|-----------------------|---------------------|-----------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| `external-inspection` | External inspection | Tells the customer, creates the protocol, creates the action errand when asked to | None                                                              |
+| `internal-inspection` | Internal inspection | Tells the customer, creates the protocol, creates the action errand when asked to | None                                                              |
+| `action-errand`       | Action errand       | Checks the decision                                                               | None yet, see `docs/todo/story-action-errand-permit-decisions.md` |
 
 The action errand gets the title `Åtgärdsärende`, status `NEW`, priority `MEDIUM`, and the case worker assigned to
 the inspection as reporter. An inspection without an assigned case worker or without a permit holder raises an
@@ -140,12 +140,12 @@ incident.
 
 ### Decision outcomes
 
-| Process                    | Outcome                                        | Result                           |
-|----------------------------|------------------------------------------------|----------------------------------|
-| Applications               | `APPROVAL`, `APPROVAL_WITH_CONDITIONS`         | Creates, changes or ends the permit |
-| Applications               | `REJECTED`, `DISMISSED`, `INADMISSIBLE`        | Ends without a permit            |
-| `action-errand`            | `REPRIMAND`, `WARNING`, `REVOCATION`           | Ends the decision phase          |
-| Any                        | An outcome of another process                  | Logs a refusal in the activity log and waits for a corrected decision |
+|     Process     |                 Outcome                 |                                Result                                 |
+|-----------------|-----------------------------------------|-----------------------------------------------------------------------|
+| Applications    | `APPROVAL`, `APPROVAL_WITH_CONDITIONS`  | Creates, changes or ends the permit                                   |
+| Applications    | `REJECTED`, `DISMISSED`, `INADMISSIBLE` | Ends without a permit                                                 |
+| `action-errand` | `REPRIMAND`, `WARNING`, `REVOCATION`    | Ends the decision phase                                               |
+| Any             | An outcome of another process           | Logs a refusal in the activity log and waits for a corrected decision |
 
 ### Process reconciliation
 
@@ -191,6 +191,7 @@ Configuration is crucial for the application to run successfully. Ensure all nec
 
   The label the action errand gets. Its metadata in Support Management names the process key `action-errand`. Label ids
   differ between environments.
+
 - **Texts for the customer and the activity log:**
 
   ```yaml
