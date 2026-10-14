@@ -15,7 +15,6 @@ import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 
 import static java.util.UUID.randomUUID;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -160,22 +159,6 @@ class ProcessServiceTest {
 		// Assert
 		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
 		verifyNoMoreInteractions(operatonIntegrationMock);
-	}
-
-	@Test
-	void rejectsAProcessKeyThatIsNotDeployed() {
-
-		// Arrange
-		final var errandId = randomUUID().toString();
-		when(operatonIntegrationMock.findProcessInstances(errandId, "no-such-process", TENANT_ID)).thenReturn(List.of());
-
-		// Act
-		final var problem = assertThrows(se.sundsvall.dept44.problem.ThrowableProblem.class,
-			() -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, "no-such-process", true)));
-
-		// Assert
-		assertThat(problem.getStatus().value()).isEqualTo(422);
-		verify(operatonIntegrationMock, never()).startProcess(any(), any(), any(), any(), any());
 	}
 
 	@Test

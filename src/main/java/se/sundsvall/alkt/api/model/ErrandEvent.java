@@ -5,11 +5,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
 import java.util.Objects;
+import se.sundsvall.alkt.api.validation.ValidProcessKey;
 import se.sundsvall.dept44.common.validators.annotation.ValidUuid;
 
 import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 
 @Schema(description = "An event on an errand, published by Support Management")
+@ValidProcessKey
 public class ErrandEvent {
 
 	@Schema(description = "What happened to the errand", requiredMode = REQUIRED)
@@ -34,7 +36,8 @@ public class ErrandEvent {
 
 	@Schema(description = """
 		Key of the process that drives the errand, taken from its running instance when it has one and from the labels of
-		the errand otherwise. Absent when an errand is deleted before a key can be resolved.
+		the errand otherwise. Absent when an errand is deleted before a key can be resolved. A key this service does not know
+		is rejected, except on a delete.
 		""", example = "alcohol-serving")
 	private String processKey;
 

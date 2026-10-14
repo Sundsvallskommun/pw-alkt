@@ -6,14 +6,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
-import se.sundsvall.alkt.service.model.AlktProcess;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
-import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
 import static se.sundsvall.alkt.Constants.MESSAGE_DECISION_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_ERRAND_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_PROCESS_CANCELLED;
@@ -66,10 +63,6 @@ public class ProcessService {
 		if (!errandEvent.isStartAllowed()) {
 			LOG.info("Event {} on errand {} is not allowed to start a process", sanitizeForLogging(errandEvent.getEventId()), sanitizeForLogging(errandEvent.getErrandId()));
 			return;
-		}
-
-		if (!AlktProcess.keys().contains(errandEvent.getProcessKey())) {
-			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Process key '%s' matches no deployed process definition".formatted(errandEvent.getProcessKey()));
 		}
 
 		final var instance = operatonIntegration.startProcess(municipalityId, namespace, errandEvent.getErrandId(), errandEvent.getProcessKey(), TENANT_ID_ALKT);
