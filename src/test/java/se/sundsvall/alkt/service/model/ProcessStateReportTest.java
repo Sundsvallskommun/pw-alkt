@@ -83,7 +83,7 @@ class ProcessStateReportTest {
 
 	@Test
 	void nullCollectionsBecomeEmpty() {
-		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null, null, null, false, null);
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null, null, null, false);
 
 		assertThat(report.activities()).isEmpty();
 		assertThat(report.awaitingSignals()).isEmpty();
@@ -94,7 +94,7 @@ class ProcessStateReportTest {
 	void activitiesAreCopied() {
 		final var activities = new ArrayList<>(List.of(new ProcessActivity().activityType("PHASE")));
 
-		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, activities, null, null, null, false, null);
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, activities, null, null, null, false);
 		activities.clear();
 
 		assertThat(report.activities()).hasSize(1);
@@ -166,17 +166,8 @@ class ProcessStateReportTest {
 		final var report = ProcessStateReport.running("activity", null).withRejection("Nothing to do");
 
 		assertThat(report.rejected()).isTrue();
-		assertThat(report.rejectionKey()).isNull();
 		assertThat(report.logMessage()).isEqualTo("Nothing to do");
 		assertThat(report.currentActivityId()).isEqualTo("activity");
-	}
-
-	@Test
-	void withRejectionCarriesTheKeyThroughLaterChanges() {
-		final var report = ProcessStateReport.running("activity", null).withRejection("Nothing to do", "key").withVariables(Map.of("decision", "NONE"));
-
-		assertThat(report.rejected()).isTrue();
-		assertThat(report.rejectionKey()).isEqualTo("key");
 	}
 
 	@Test

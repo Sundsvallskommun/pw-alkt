@@ -16,8 +16,7 @@ import static se.sundsvall.alkt.service.model.ProcessStatus.WAITING;
 /**
  * What a work step tells Support Management; variables is what the step hands back to the engine on complete, and
  * logMessage what it did, in technical terms, for the entry it leaves in the activity log. rejected when the step
- * refused its work for a reason the case worker can fix, so that the entry warns and every refusal gets one. A
- * rejectionKey makes refusals with the same key share one entry.
+ * refused its work for a reason the case worker can fix, so that the entry warns and every refusal gets one.
  */
 public record ProcessStateReport(
 	ProcessStatus status,
@@ -29,8 +28,7 @@ public record ProcessStateReport(
 	List<AwaitingSignal> awaitingSignals,
 	Map<String, Object> variables,
 	String logMessage,
-	boolean rejected,
-	String rejectionKey) {
+	boolean rejected) {
 
 	// The lengths Support Management accepts. A longer value is answered with 400, and that answer is swallowed further
 	// up, so the report is cut here rather than left to fail silently.
@@ -47,7 +45,7 @@ public record ProcessStateReport(
 	}
 
 	private static ProcessStateReport of(final ProcessStatus status, final String activityId, final String activityName, final ProcessError error) {
-		return new ProcessStateReport(status, activityId, activityName, null, error, null, null, null, null, false, null);
+		return new ProcessStateReport(status, activityId, activityName, null, error, null, null, null, null, false);
 	}
 
 	public static ProcessStateReport running(final String activityId, final String activityName) {
@@ -71,39 +69,35 @@ public record ProcessStateReport(
 	}
 
 	public ProcessStateReport atActivity(final String activityId) {
-		return new ProcessStateReport(status, activityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected, rejectionKey);
+		return new ProcessStateReport(status, activityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport named(final String activityName) {
-		return new ProcessStateReport(status, currentActivityId, activityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected, rejectionKey);
+		return new ProcessStateReport(status, currentActivityId, activityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withLogMessage(final String logMessage) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected, rejectionKey);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withRejection(final String logMessage) {
-		return withRejection(logMessage, null);
-	}
-
-	public ProcessStateReport withRejection(final String logMessage, final String rejectionKey) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, true, rejectionKey);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, true);
 	}
 
 	public ProcessStateReport withErrandVersion(final Long errandVersion) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected, rejectionKey);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withActivities(final List<ProcessActivity> activities) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected, rejectionKey);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withAwaitingSignals(final List<AwaitingSignal> awaitingSignals) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected, rejectionKey);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withVariables(final Map<String, Object> variables) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected, rejectionKey);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	private static ProcessError toError(final String code, final String message) {

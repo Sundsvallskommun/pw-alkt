@@ -36,7 +36,6 @@ process-log:
       done: Beslutet i ärendet har kontrollerats
       retry: Beslutet kunde inte kontrolleras just nu, ett nytt försök görs automatiskt
       failed: Beslutet kunde inte kontrolleras. Processen har stannat och felet behöver åtgärdas
-      rejected: Beslutets utfall hör inte till den här typen av ärende. Ändra beslutet så fortsätter processen
     "[external_task_create_decision]":
       done: Beslut har fattats automatiskt
       retry: Beslutet kunde inte skapas just nu, ett nytt försök görs automatiskt
@@ -69,7 +68,7 @@ process-log:
       done: Åtgärdsärende har skapats och kopplats till tillsynsärendet
       retry: Åtgärdsärendet kunde inte skapas just nu, ett nytt försök görs automatiskt
       failed: Åtgärdsärendet kunde inte skapas. Processen har stannat och felet behöver åtgärdas
-      rejected: Inget åtgärdsärende skapades eftersom tillsynsärendet saknar brister. Lägg till brister och välj igen
+      rejected: Inget åtgärdsärende skapades eftersom tillsynsärendet saknar brister eller tilldelad handläggare. Komplettera ärendet och välj igen
     "[external_task_update_asset]":
       done: Tillståndet har ändrats
       retry: Tillståndet kunde inte ändras just nu, ett nytt försök görs automatiskt

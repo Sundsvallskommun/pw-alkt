@@ -136,17 +136,17 @@ Every application tells the customer that the processing has started.
 | `action-errand`       | Action errand       | Checks the decision                                                               | None yet               |
 
 The action errand gets the title `Åtgärdsärende`, status `NEW`, priority `MEDIUM`, and the case worker assigned to
-the inspection as reporter. An inspection without an assigned case worker or without a permit holder raises an
-incident.
+the inspection as reporter. An inspection without deficiencies or without an assigned case worker sends the process
+back to the choice with a refusal in the activity log. An inspection without a permit holder raises an incident.
 
 ### Decision outcomes
 
-|     Process     |                 Outcome                 |                                Result                                 |
-|-----------------|-----------------------------------------|-----------------------------------------------------------------------|
-| Applications    | `APPROVAL`, `APPROVAL_WITH_CONDITIONS`  | Creates, changes or ends the permit                                   |
-| Applications    | `REJECTED`, `DISMISSED`, `INADMISSIBLE` | Ends without a permit                                                 |
-| `action-errand` | `REPRIMAND`, `WARNING`, `REVOCATION`    | Ends the decision phase                                               |
-| Any             | An outcome of another process           | Logs a refusal in the activity log and waits for a corrected decision |
+|     Process     |                 Outcome                 |               Result                |
+|-----------------|-----------------------------------------|-------------------------------------|
+| Applications    | `APPROVAL`, `APPROVAL_WITH_CONDITIONS`  | Creates, changes or ends the permit |
+| Applications    | `REJECTED`, `DISMISSED`, `INADMISSIBLE` | Ends without a permit               |
+| `action-errand` | `REPRIMAND`, `WARNING`, `REVOCATION`    | Ends the decision phase             |
+| Any             | An outcome of another process           | Raises an incident                  |
 
 ### Process reconciliation
 
@@ -205,7 +205,6 @@ Configuration is crucial for the application to run successfully. Ensure all nec
         done: Beslutet i ärendet har kontrollerats
         retry: Beslutet kunde inte kontrolleras just nu, ett nytt försök görs automatiskt
         failed: Beslutet kunde inte kontrolleras. Processen har stannat och felet behöver åtgärdas
-        rejected: Beslutets utfall hör inte till den här typen av ärende. Ändra beslutet så fortsätter processen
   ```
 
   Every step and phase of the models needs its texts, or the service does not start. `application-it.yaml` holds the

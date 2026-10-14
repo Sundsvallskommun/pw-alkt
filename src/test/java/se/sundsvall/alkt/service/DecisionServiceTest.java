@@ -103,7 +103,7 @@ class DecisionServiceTest {
 		assertThat(decisionService.isKnownOutcome(processKey, outcome)).isTrue();
 	}
 
-	/** REJECTION was the outcome of a rejection before REJECTED took its place. */
+	/** An outcome outside the set of the process is not known, a near miss of a known one included. */
 	@ParameterizedTest
 	@CsvSource({
 		"alcohol-serving, WARNING", "alcohol-serving, REJECTION", "alcohol-serving, PARTIAL_APPROVAL", "alcohol-serving, approval", "alcohol-serving, null",
