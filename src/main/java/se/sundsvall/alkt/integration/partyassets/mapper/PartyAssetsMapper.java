@@ -46,21 +46,21 @@ public final class PartyAssetsMapper {
 
 	private PartyAssetsMapper() {}
 
-	public static AssetType toPermitType(final String processKey) {
+	public static AssetType toAssetType(final String processKey) {
 		return AlktProcess.fromKey(processKey)
 			.flatMap(AlktProcess::getAssetType)
-			.orElseThrow(() -> new NonRetryableException("Process '%s' has no permit type, one of %s was expected"
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no asset type, one of %s was expected"
 				.formatted(processKey, AlktProcess.keysWhere(process -> process.getAssetType().isPresent()))));
 	}
 
-	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType permitType,
+	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType assetType,
 		final String restaurantNumber) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
 			.status(DRAFT)
 			.origin(ORIGIN)
 			.partyId(partyId)
-			.type(permitType.value())
+			.type(assetType.value())
 			.issued(toFirstDay(decision).orElse(null))
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())

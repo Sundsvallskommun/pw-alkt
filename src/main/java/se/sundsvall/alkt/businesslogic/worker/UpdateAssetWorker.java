@@ -9,7 +9,7 @@ import se.sundsvall.alkt.service.AssetService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitType;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetType;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -25,7 +25,7 @@ public class UpdateAssetWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var assetId = assetService.updateAsset(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), toPermitType(externalTask.getProcessDefinitionKey()));
+		final var assetId = assetService.updateAsset(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), toAssetType(externalTask.getProcessDefinitionKey()));
 
 		logInfo("Errand {} changed asset {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 
