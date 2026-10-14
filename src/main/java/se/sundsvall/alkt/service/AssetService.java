@@ -28,9 +28,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
-import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
-import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
@@ -58,19 +56,6 @@ public class AssetService {
 		this.partyAssetsIntegration = partyAssetsIntegration;
 		this.templatingIntegration = templatingIntegration;
 		this.clock = clock;
-	}
-
-	public String getDecisionOutcome(final String municipalityId, final String namespace, final String errandId) {
-		return supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
-			.map(decision -> toKnownOutcome(decision, errandId))
-			.orElse(DECISION_OUTCOME_NONE);
-	}
-
-	private static String toKnownOutcome(final Decision decision, final String errandId) {
-		return Optional.ofNullable(decision.getOutcome())
-			.filter(DECISION_OUTCOMES::contains)
-			.orElseThrow(() -> Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has outcome '%s', expected one of %s"
-				.formatted(errandId, decision.getOutcome(), new TreeSet<>(DECISION_OUTCOMES))));
 	}
 
 	/**

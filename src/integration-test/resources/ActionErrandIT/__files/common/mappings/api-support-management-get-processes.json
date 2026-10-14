@@ -1,0 +1,20 @@
+{
+	"name": "api-support-management-get-processes",
+	"metadata": {
+		"comment": "Read before a report that may open a phase, to tell whether the process was in another one. No row means it just started. Lower priority, so a stub of the test case itself always wins."
+	},
+	"priority": 10,
+	"request": {
+		"method": "GET",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/[^/]+/processes"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"processes": []
+		},
+		"status": 200
+	}
+}

@@ -6,7 +6,8 @@ import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
-import se.sundsvall.alkt.service.AssetService;
+import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.service.DecisionService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
@@ -19,18 +20,25 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 
 	static final String PROCESS_VARIABLE_DECISION_OUTCOME = "decisionOutcome";
 
-	private final AssetService assetService;
+	private final DecisionService decisionService;
 
-	CheckDecisionWorker(final ProcessReportService processReportService, final FailureHandler failureHandler, final AssetService assetService) {
+	CheckDecisionWorker(final ProcessReportService processReportService, final FailureHandler failureHandler, final DecisionService decisionService) {
 		super(processReportService, failureHandler);
-		this.assetService = assetService;
+		this.decisionService = decisionService;
 	}
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var outcome = assetService.getDecisionOutcome(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
+		final var processKey = externalTask.getProcessDefinitionKey();
+		final var outcome = decisionService.getDecisionOutcome(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
 
 		logInfo("Decision of errand {} has outcome {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(outcome));
+
+		// Why: Support Management locks a completed decision, so the case worker cannot correct it and only an incident tells
+		// anyone.
+		if (!decisionService.isKnownOutcome(processKey, outcome)) {
+			throw new NonRetryableException("Decision outcome %s is not an outcome of process %s".formatted(outcome, processKey));
+		}
 
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
 			.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, outcome));
