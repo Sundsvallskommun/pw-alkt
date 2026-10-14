@@ -25,7 +25,6 @@ import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
@@ -60,11 +59,10 @@ public class AssetService {
 	}
 
 	/**
-	 * Without a certificate template the asset gets no certificate, and without a restaurant number it carries none. A
-	 * decision with a validTo must end after today, as party-assets refuses to activate the permit otherwise.
+	 * An asset type without a certificate template gets no certificate, and without a restaurant number the asset carries
+	 * none. A decision with a validTo must end after today, as party-assets refuses to activate the permit otherwise.
 	 */
-	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final AssetType permitType,
-		final String restaurantNumber) {
+	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final AssetType permitType, final String restaurantNumber) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		if (isBlank(decision.getId())) {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
@@ -80,15 +78,15 @@ public class AssetService {
 			})
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, permitType, restaurantNumber), certificateTemplate);
+				return createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, permitType, restaurantNumber), permitType);
 			});
 	}
 
 	/**
-	 * Changes the permit the errand names. party-assets keeps the earlier content as a revision. Without a certificate
-	 * template the certificate is left as it is.
+	 * Changes the permit the errand names. party-assets keeps the earlier content as a revision. An asset type without a
+	 * certificate template leaves the certificate as it is.
 	 */
-	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final AssetType permitType) {
+	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final AssetType permitType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
 		// Why: checked again at the decision, as the permit may have been deactivated while the errand was handled.
@@ -99,8 +97,7 @@ public class AssetService {
 		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was.
 		// Rendered from the parameters the asset gets, since the certificate shows the whole permit.
 		final var update = toAssetUpdateRequest(asset, decision);
-		final var certificate = Optional.ofNullable(certificateTemplate)
-			.filter(StringUtils::isNotBlank)
+		final var certificate = permitType.certificateTemplate()
 			.map(template -> toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, update.getAdditionalParameters()))));
 
 		// Why: a rerun after the certificate failed finds the change already made, and every PATCH adds a revision.
@@ -231,7 +228,7 @@ public class AssetService {
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
 	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
-		final String certificateTemplate) {
+		final AssetType permitType) {
 		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, request);
 
 		try {
@@ -239,10 +236,8 @@ public class AssetService {
 				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
 			// Why: rendered from the parameters the permit gets, as on a change, so the certificate shows the restaurant number.
-			if (isNotBlank(certificateTemplate)) {
-				partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
-					toCertificateFile(templatingIntegration.renderPdf(municipalityId, certificateTemplate, toTemplateParameters(decision, request.getAdditionalParameters()))));
-			}
+			permitType.certificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
+				toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);
 		} catch (final NonRetryableException e) {
 			throw new NonRetryableException(removeDraftAsset(municipalityId, assetId, e), e);
