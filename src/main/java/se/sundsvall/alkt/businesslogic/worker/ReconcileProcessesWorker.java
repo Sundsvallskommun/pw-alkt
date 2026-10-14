@@ -15,7 +15,7 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
  * The work step of process-reconciliation.bpmn, the scheduler of pw-alkt: the engine fires its timer once per cycle and
- * locks the task for one pod. No errand, so not an AbstractTaskWorker. See README, "Process reconciliation".
+ * locks the task for one pod. No errand, so not an AbstractTaskWorker.
  */
 @Component
 @ConditionalOnProperty(name = "reconciliation.worker.enabled", matchIfMissing = true)
