@@ -16,12 +16,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.businesslogic.worker.CreateDecisionWorker.PROCESS_VARIABLE_VALID_TO_PARAMETER;
+import static se.sundsvall.alkt.service.model.AlktProcess.CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SERVING;
 
 @ExtendWith(MockitoExtension.class)
 class CreateDecisionWorkerTest {
@@ -53,14 +53,14 @@ class CreateDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(LOW_ALCOHOL_BEER_SERVING.key());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_decision");
-		when(decisionServiceMock.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, null)).thenReturn("decision-id");
+		when(decisionServiceMock.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SERVING.key(), null)).thenReturn("decision-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_decision", null).withLogMessage("Decision 'decision-id' completed"));
-		verify(decisionServiceMock).approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, null);
+		verify(decisionServiceMock).approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SERVING.key(), null);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 
@@ -70,9 +70,9 @@ class CreateDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_VALID_TO_PARAMETER)).thenReturn("occasionEndDate");
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_CATERING_OCCASION);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(CATERING_OCCASION.key());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_decision");
-		when(decisionServiceMock.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PROCESS_KEY_CATERING_OCCASION, "occasionEndDate")).thenReturn("decision-id");
+		when(decisionServiceMock.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CATERING_OCCASION.key(), "occasionEndDate")).thenReturn("decision-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 

@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_INTERNAL_INSPECTION;
+import static se.sundsvall.alkt.service.model.AlktProcess.INTERNAL_INSPECTION;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/InternalInspectionIT/", classes = Application.class)
@@ -32,17 +32,17 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, INTERNAL_INSPECTION.key());
 
 		// Wait for the process to park in each phase, then signal that phase completed
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "investigation");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "review");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "investigation");
 		awaitProcessState(processInstanceId, "await_inspection_approved", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
-		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "inspection_approved");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "closure");
+		sendSignal(ERRAND_ID, INTERNAL_INSPECTION.key(), "inspection_approved");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -111,7 +111,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, INTERNAL_INSPECTION.key());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -135,15 +135,15 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, INTERNAL_INSPECTION.key());
 
-		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "registration");
+		cancelProcess(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "registration");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// A second press finds no process to cancel: it is answered with 202, starts nothing and reports nothing
-		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "process_cancelled");
-		assertThat(operatonClient.findProcessInstances(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "ALKT")).isEmpty();
+		sendSignal(ERRAND_ID, INTERNAL_INSPECTION.key(), "process_cancelled");
+		assertThat(operatonClient.findProcessInstances(ERRAND_ID, INTERNAL_INSPECTION.key(), "ALKT")).isEmpty();
 		assertThat(wiremock.findUnmatchedRequests().getRequests()).isEmpty();
 
 		// The WAITING report is asserted by its mapping to offer the cancellation alongside the phase gate
@@ -166,11 +166,11 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, INTERNAL_INSPECTION.key());
 
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "review");
-		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "investigation");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "review");
+		cancelProcess(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "investigation");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -202,16 +202,16 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, INTERNAL_INSPECTION.key());
 
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "investigation");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "review");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "investigation");
 		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
-		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "action_errand_requested");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "closure");
+		sendSignal(ERRAND_ID, INTERNAL_INSPECTION.key(), "action_errand_requested");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -239,22 +239,22 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, INTERNAL_INSPECTION.key());
 
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "investigation");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "review");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "investigation");
 		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
 		final var reportsBefore = countReportsAt("decision_phase");
-		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "action_errand_requested");
+		sendSignal(ERRAND_ID, INTERNAL_INSPECTION.key(), "action_errand_requested");
 
 		// The errand has no deficiencies: no action errand, a warning in the log, and the choice is offered again
 		awaitProcessState(processInstanceId, "await_inspection_approved", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportsAt("decision_phase", reportsBefore + 1);
-		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "inspection_approved");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "closure");
+		sendSignal(ERRAND_ID, INTERNAL_INSPECTION.key(), "inspection_approved");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -281,22 +281,22 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, INTERNAL_INSPECTION.key());
 
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "registration");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "investigation");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "review");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "investigation");
 		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
 		final var reportsBefore = countReportsAt("decision_phase");
-		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "action_errand_requested");
+		sendSignal(ERRAND_ID, INTERNAL_INSPECTION.key(), "action_errand_requested");
 
 		// The first attempt finds no deficiencies; the GET errand mapping has them once the refusal is reported
 		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportsAt("decision_phase", reportsBefore + 1);
-		sendSignal(ERRAND_ID, PROCESS_KEY_INTERNAL_INSPECTION, "action_errand_requested");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_INTERNAL_INSPECTION, "closure");
+		sendSignal(ERRAND_ID, INTERNAL_INSPECTION.key(), "action_errand_requested");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, INTERNAL_INSPECTION.key(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

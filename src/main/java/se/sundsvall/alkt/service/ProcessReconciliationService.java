@@ -18,6 +18,7 @@ import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.ProcessLog.Outcome;
+import se.sundsvall.alkt.service.model.AlktProcess;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -29,7 +30,6 @@ import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_INCIDENT;
 import static se.sundsvall.alkt.Constants.ERROR_CODE_TERMINATED;
-import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -76,7 +76,7 @@ public class ProcessReconciliationService {
 
 	/** One incident failing must not stop the others, so each is handled on its own. */
 	private void reportIncidents() {
-		final var incidents = operatonClient.findIncidents(TENANT_ID_ALKT, toProcessDefinitionKeyIn(PROCESS_KEYS));
+		final var incidents = operatonClient.findIncidents(TENANT_ID_ALKT, toProcessDefinitionKeyIn(AlktProcess.keys()));
 		if (!incidents.isEmpty()) {
 			LOG.info("Found {} incidents in tenant {}", incidents.size(), TENANT_ID_ALKT);
 		}
@@ -106,7 +106,7 @@ public class ProcessReconciliationService {
 	/** An instance that ended without a final report leaves the errand on RUNNING for good. */
 	private void settleEndedInstances() {
 		final var finishedAfter = toOperatonTimestamp(OffsetDateTime.now(clock.withZone(UTC)).minus(properties.lookback()));
-		final var instances = operatonClient.findHistoricProcessInstances(TENANT_ID_ALKT, toProcessDefinitionKeyIn(PROCESS_KEYS), true, finishedAfter);
+		final var instances = operatonClient.findHistoricProcessInstances(TENANT_ID_ALKT, toProcessDefinitionKeyIn(AlktProcess.keys()), true, finishedAfter);
 		if (!instances.isEmpty()) {
 			LOG.info("Found {} instances in tenant {} that ended after {}", instances.size(), TENANT_ID_ALKT, finishedAfter);
 		}

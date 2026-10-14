@@ -14,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.service.model.AssetType;
 
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.ACTION_ERRAND_DECISION_OUTCOMES;
@@ -23,7 +24,6 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ACTION_ERRAND;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toAutomaticDecision;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraft;
@@ -32,11 +32,12 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionTitle;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
+import static se.sundsvall.alkt.service.model.AlktProcess.ACTION_ERRAND;
 
 @Service
 public class DecisionService {
 
-	private static final Map<String, Set<String>> DECISION_OUTCOMES_OF_PROCESS = Map.of(PROCESS_KEY_ACTION_ERRAND, ACTION_ERRAND_DECISION_OUTCOMES);
+	private static final Map<String, Set<String>> DECISION_OUTCOMES_OF_PROCESS = Map.of(ACTION_ERRAND.key(), ACTION_ERRAND_DECISION_OUTCOMES);
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final AssetService assetService;
@@ -116,7 +117,7 @@ public class DecisionService {
 	 * Drafts the decision of a change errand from the change the customer asks for. An errand has one decision at most, so
 	 * one already there is the draft of an earlier attempt.
 	 */
-	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId, final String permitType, final String processKey) {
+	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId, final AssetType permitType, final String processKey) {
 		final var title = toChangeDraftTitle(processKey);
 
 		return supportManagementIntegration.getDecisions(municipalityId, namespace, errandId).stream()

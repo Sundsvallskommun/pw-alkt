@@ -19,6 +19,7 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.task.ExternalTask;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.service.model.AlktProcess;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
@@ -46,14 +47,6 @@ import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
@@ -72,18 +65,6 @@ public final class SupportManagementMapper {
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
 	static final String ERRAND_RESOURCE_TYPE = "case";
 	static final String ERRAND_SERVICE = "supportmanagement";
-
-	private static final Map<String, String> DECISION_TITLES = Map.of(
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Anmälan om försäljning av folköl",
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, "Anmälan om servering av folköl",
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, "Anmälan om försäljning och servering av folköl",
-		PROCESS_KEY_E_CIGARETTE_SALES, "Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare",
-		PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES, "Anmälan om försäljning av tobaksfria nikotinprodukter",
-		PROCESS_KEY_CATERING_OCCASION, "Anmälan om cateringtillfälle");
-
-	private static final Map<String, String> CHANGE_DRAFT_TITLES = Map.of(
-		PROCESS_KEY_ALCOHOL_SERVING_CHANGE, "Ändring av serveringstillstånd",
-		PROCESS_KEY_TOBACCO_SALES_CHANGE, "Ändring av tobakstillstånd");
 
 	private SupportManagementMapper() {}
 
@@ -106,17 +87,17 @@ public final class SupportManagementMapper {
 	}
 
 	public static String toDecisionTitle(final String processKey) {
-		return Optional.ofNullable(processKey)
-			.map(DECISION_TITLES::get)
+		return AlktProcess.fromKey(processKey)
+			.flatMap(AlktProcess::decisionTitle)
 			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a decision made automatically, one of %s was expected"
-				.formatted(processKey, DECISION_TITLES.keySet())));
+				.formatted(processKey, AlktProcess.keysWhere(process -> process.decisionTitle().isPresent()))));
 	}
 
 	public static String toChangeDraftTitle(final String processKey) {
-		return Optional.ofNullable(processKey)
-			.map(CHANGE_DRAFT_TITLES::get)
+		return AlktProcess.fromKey(processKey)
+			.flatMap(AlktProcess::changeDraftTitle)
 			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a change draft, one of %s was expected"
-				.formatted(processKey, CHANGE_DRAFT_TITLES.keySet())));
+				.formatted(processKey, AlktProcess.keysWhere(process -> process.changeDraftTitle().isPresent()))));
 	}
 
 	// Why: an approval of an ongoing notification holds until further notice, so it has no validTo; one for a single

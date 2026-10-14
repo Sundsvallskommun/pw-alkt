@@ -14,30 +14,19 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
+import se.sundsvall.alkt.service.model.AlktProcess;
+import se.sundsvall.alkt.service.model.AssetType;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyMap;
-import static java.util.Map.entry;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecidedOn;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toFirstDay;
@@ -45,15 +34,6 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toRemovedParameterKeys;
 
 public final class PartyAssetsMapper {
-
-	public static final String PERMIT_TYPE_ALCOHOL_SERVING = "AlcoholServingPermit";
-	public static final String NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES = "LowAlcoholBeerSalesNotification";
-	public static final String NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SERVING = "LowAlcoholBeerServingNotification";
-	public static final String NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "LowAlcoholBeerSalesAndServingNotification";
-	public static final String PERMIT_TYPE_TOBACCO_SALES = "TobaccoSalesPermit";
-	public static final String NOTIFICATION_TYPE_E_CIGARETTE_SALES = "ECigaretteSalesNotification";
-	public static final String NOTIFICATION_TYPE_TOBACCO_FREE_NICOTINE_PRODUCT_SALES = "TobaccoFreeNicotineProductSalesNotification";
-	public static final String NOTIFICATION_TYPE_CATERING_OCCASION = "CateringOccasionNotification";
 
 	// Set by pw-alkt from the errand and the decision, so a decision cannot remove them.
 	private static final Set<String> PERMIT_PARAMETERS_OF_THE_PROCESS = Set.of(PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
@@ -64,37 +44,23 @@ public final class PartyAssetsMapper {
 	static final String CERTIFICATE_CATEGORY = "Tillståndsbevis";
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 
-	private static final Map<String, String> PERMIT_TYPES = Map.ofEntries(
-		entry(PROCESS_KEY_ALCOHOL_SERVING, PERMIT_TYPE_ALCOHOL_SERVING),
-		entry(PROCESS_KEY_ALCOHOL_SERVING_CHANGE, PERMIT_TYPE_ALCOHOL_SERVING),
-		entry(PROCESS_KEY_ALCOHOL_SERVING_ADDITION, PERMIT_TYPE_ALCOHOL_SERVING),
-		entry(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES),
-		entry(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SERVING),
-		entry(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING),
-		entry(PROCESS_KEY_TOBACCO_SALES, PERMIT_TYPE_TOBACCO_SALES),
-		entry(PROCESS_KEY_TOBACCO_SALES_CHANGE, PERMIT_TYPE_TOBACCO_SALES),
-		entry(PROCESS_KEY_TOBACCO_SALES_CLOSURE, PERMIT_TYPE_TOBACCO_SALES),
-		entry(PROCESS_KEY_E_CIGARETTE_SALES, NOTIFICATION_TYPE_E_CIGARETTE_SALES),
-		entry(PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES, NOTIFICATION_TYPE_TOBACCO_FREE_NICOTINE_PRODUCT_SALES),
-		entry(PROCESS_KEY_CATERING_OCCASION, NOTIFICATION_TYPE_CATERING_OCCASION));
-
 	private PartyAssetsMapper() {}
 
-	public static String toPermitType(final String processKey) {
-		return Optional.ofNullable(processKey)
-			.map(PERMIT_TYPES::get)
+	public static AssetType toPermitType(final String processKey) {
+		return AlktProcess.fromKey(processKey)
+			.flatMap(AlktProcess::assetType)
 			.orElseThrow(() -> new NonRetryableException("Process '%s' has no permit type, one of %s was expected"
-				.formatted(processKey, PERMIT_TYPES.keySet())));
+				.formatted(processKey, AlktProcess.keysWhere(process -> process.assetType().isPresent()))));
 	}
 
-	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final String permitType,
+	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType permitType,
 		final String restaurantNumber) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
 			.status(DRAFT)
 			.origin(ORIGIN)
 			.partyId(partyId)
-			.type(permitType)
+			.type(permitType.value())
 			.issued(toFirstDay(decision).orElse(null))
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())

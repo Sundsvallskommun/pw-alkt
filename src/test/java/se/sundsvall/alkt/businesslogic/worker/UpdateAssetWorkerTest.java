@@ -18,12 +18,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_CERTIFICATE_TEMPLATE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateAssetWorkerTest {
@@ -59,14 +59,14 @@ class UpdateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_CERTIFICATE_TEMPLATE)).thenReturn(certificateTemplate);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_ALCOHOL_SERVING_CHANGE);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING_CHANGE.key());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_update_asset");
-		when(assetServiceMock.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE_ALCOHOL_SERVING)).thenReturn("asset-id");
+		when(assetServiceMock.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, ALCOHOL_SERVING_PERMIT)).thenReturn("asset-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_update_asset", null).withLogMessage("Asset 'asset-id' updated"));
-		verify(assetServiceMock).updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE_ALCOHOL_SERVING);
+		verify(assetServiceMock).updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, ALCOHOL_SERVING_PERMIT);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

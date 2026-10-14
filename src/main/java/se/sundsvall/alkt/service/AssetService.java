@@ -16,6 +16,7 @@ import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
 import se.sundsvall.alkt.integration.partyassets.model.VersionedAsset;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
+import se.sundsvall.alkt.service.model.AssetType;
 import se.sundsvall.dept44.common.validators.annotation.impl.ValidUuidConstraintValidator;
 import se.sundsvall.dept44.problem.Problem;
 
@@ -62,7 +63,7 @@ public class AssetService {
 	 * Without a certificate template the asset gets no certificate, and without a restaurant number it carries none. A
 	 * decision with a validTo must end after today, as party-assets refuses to activate the permit otherwise.
 	 */
-	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final String permitType,
+	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final AssetType permitType,
 		final String restaurantNumber) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		if (isBlank(decision.getId())) {
@@ -87,7 +88,7 @@ public class AssetService {
 	 * Changes the permit the errand names. party-assets keeps the earlier content as a revision. Without a certificate
 	 * template the certificate is left as it is.
 	 */
-	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final String permitType) {
+	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final String certificateTemplate, final AssetType permitType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
 		// Why: checked again at the decision, as the permit may have been deactivated while the errand was handled.
@@ -114,7 +115,7 @@ public class AssetService {
 	 * Checks the permit the errand names before the case worker handles the errand, and answers with its id. A permit that
 	 * has already ended passes, as the closure then has nothing to do.
 	 */
-	public String checkPermit(final String municipalityId, final String namespace, final String errandId, final String permitType) {
+	public String checkPermit(final String municipalityId, final String namespace, final String errandId, final AssetType permitType) {
 		final var asset = getPermitOfTheErrand(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, permitType).asset();
 		if (asset.getStatus() != EXPIRED) {
 			requireActive(asset);
@@ -123,7 +124,7 @@ public class AssetService {
 	}
 
 	/** Ends the permit the errand names. The permit certificate stays as it is. */
-	public String closeAsset(final String municipalityId, final String namespace, final String errandId, final String permitType) {
+	public String closeAsset(final String municipalityId, final String namespace, final String errandId, final AssetType permitType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		final var versioned = getPermitOfTheErrand(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, permitType);
 		final var asset = versioned.asset();
@@ -152,13 +153,13 @@ public class AssetService {
 	}
 
 	/** The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. */
-	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId, final String permitType) {
+	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId, final AssetType permitType) {
 		final var versioned = getPermitOfTheErrand(municipalityId, errand, errandId, permitType);
 		requireActive(versioned.asset());
 		return versioned;
 	}
 
-	private VersionedAsset getPermitOfTheErrand(final String municipalityId, final Errand errand, final String errandId, final String permitType) {
+	private VersionedAsset getPermitOfTheErrand(final String municipalityId, final Errand errand, final String errandId, final AssetType permitType) {
 		final var assetId = toAssetId(errand)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' names no asset to change".formatted(errandId)));
 		// Why: party-assets answers an id that is not a UUID with 400, which would be retried in vain.
@@ -176,9 +177,9 @@ public class AssetService {
 		return versioned;
 	}
 
-	private static void requirePermitType(final Asset asset, final String permitType) {
-		if (!permitType.equals(asset.getType())) {
-			throw new NonRetryableException("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(asset.getId(), asset.getType(), permitType));
+	private static void requirePermitType(final Asset asset, final AssetType permitType) {
+		if (!permitType.value().equals(asset.getType())) {
+			throw new NonRetryableException("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(asset.getId(), asset.getType(), permitType.value()));
 		}
 	}
 

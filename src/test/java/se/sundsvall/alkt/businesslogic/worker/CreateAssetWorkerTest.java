@@ -19,13 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_CERTIFICATE_TEMPLATE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
 
 @ExtendWith(MockitoExtension.class)
 class CreateAssetWorkerTest {
@@ -61,14 +61,14 @@ class CreateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_CERTIFICATE_TEMPLATE)).thenReturn(certificateTemplate);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_ALCOHOL_SERVING);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING.key());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_asset");
-		when(assetServiceMock.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE_ALCOHOL_SERVING, null)).thenReturn("asset-id");
+		when(assetServiceMock.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, ALCOHOL_SERVING_PERMIT, null)).thenReturn("asset-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_asset", null).withLogMessage("Asset 'asset-id' found or created"));
-		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE_ALCOHOL_SERVING, null);
+		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, ALCOHOL_SERVING_PERMIT, null);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 
@@ -78,11 +78,11 @@ class CreateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_CERTIFICATE_TEMPLATE)).thenReturn("serving-permit-certificate");
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_ALCOHOL_SERVING);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING.key());
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER)).thenReturn("22810001");
 
 		worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "serving-permit-certificate", PERMIT_TYPE_ALCOHOL_SERVING, "22810001");
+		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "serving-permit-certificate", ALCOHOL_SERVING_PERMIT, "22810001");
 	}
 }

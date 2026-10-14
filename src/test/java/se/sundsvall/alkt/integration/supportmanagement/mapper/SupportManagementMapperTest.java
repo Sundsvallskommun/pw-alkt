@@ -28,18 +28,18 @@ import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
+import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.service.model.AlktProcess.CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.AlktProcess.E_CIGARETTE_SALES;
+import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES_AND_SERVING;
+import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.service.model.AlktProcess.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
+import static se.sundsvall.alkt.service.model.AlktProcess.TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
 
 class SupportManagementMapperTest {
@@ -117,39 +117,39 @@ class SupportManagementMapperTest {
 
 	@Test
 	void toDecisionTitleNamesThePermitOfEachNotificationProcess() {
-		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo("Anmälan om försäljning av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo("Anmälan om servering av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo("Anmälan om försäljning och servering av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_E_CIGARETTE_SALES)).isEqualTo("Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
-		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES)).isEqualTo("Anmälan om försäljning av tobaksfria nikotinprodukter");
-		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_CATERING_OCCASION)).isEqualTo("Anmälan om cateringtillfälle");
+		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SALES.key())).isEqualTo("Anmälan om försäljning av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SERVING.key())).isEqualTo("Anmälan om servering av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SALES_AND_SERVING.key())).isEqualTo("Anmälan om försäljning och servering av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(E_CIGARETTE_SALES.key())).isEqualTo("Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
+		assertThat(SupportManagementMapper.toDecisionTitle(TOBACCO_FREE_NICOTINE_PRODUCT_SALES.key())).isEqualTo("Anmälan om försäljning av tobaksfria nikotinprodukter");
+		assertThat(SupportManagementMapper.toDecisionTitle(CATERING_OCCASION.key())).isEqualTo("Anmälan om cateringtillfälle");
 	}
 
 	@Test
 	void toDecisionTitleRefusesAProcessWithoutAnAutomaticDecision() {
-		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(PROCESS_KEY_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(ALCOHOL_SERVING.key()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING)
-			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)
-			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)
-			.hasMessageContaining(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
+			.hasMessageContaining(ALCOHOL_SERVING.key())
+			.hasMessageContaining(LOW_ALCOHOL_BEER_SALES.key())
+			.hasMessageContaining(LOW_ALCOHOL_BEER_SERVING.key())
+			.hasMessageContaining(LOW_ALCOHOL_BEER_SALES_AND_SERVING.key());
 		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(null))
 			.isInstanceOf(NonRetryableException.class);
 	}
 
 	@Test
 	void toChangeDraftTitleNamesThePermitOfEachChangeProcess() {
-		assertThat(SupportManagementMapper.toChangeDraftTitle(PROCESS_KEY_ALCOHOL_SERVING_CHANGE)).isEqualTo("Ändring av serveringstillstånd");
-		assertThat(SupportManagementMapper.toChangeDraftTitle(PROCESS_KEY_TOBACCO_SALES_CHANGE)).isEqualTo("Ändring av tobakstillstånd");
+		assertThat(SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING_CHANGE.key())).isEqualTo("Ändring av serveringstillstånd");
+		assertThat(SupportManagementMapper.toChangeDraftTitle(TOBACCO_SALES_CHANGE.key())).isEqualTo("Ändring av tobakstillstånd");
 	}
 
 	@Test
 	void toChangeDraftTitleRefusesAProcessWithoutAChangeDraft() {
-		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(PROCESS_KEY_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING.key()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING)
-			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING_CHANGE)
-			.hasMessageContaining(PROCESS_KEY_TOBACCO_SALES_CHANGE);
+			.hasMessageContaining(ALCOHOL_SERVING.key())
+			.hasMessageContaining(ALCOHOL_SERVING_CHANGE.key())
+			.hasMessageContaining(TOBACCO_SALES_CHANGE.key());
 		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(null))
 			.isInstanceOf(NonRetryableException.class);
 	}

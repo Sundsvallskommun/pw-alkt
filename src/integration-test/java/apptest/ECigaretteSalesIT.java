@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
+import static se.sundsvall.alkt.service.model.AlktProcess.E_CIGARETTE_SALES;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/ECigaretteSalesIT/", classes = Application.class)
@@ -34,11 +34,11 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.key());
 
 		// The first four phases hold no catch event in this model, so follow up is the first one to park
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "closure");
+		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.key(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.key(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -102,7 +102,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.key());
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -145,9 +145,9 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.key());
 
-		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_E_CIGARETTE_SALES, "follow_up");
+		cancelProcess(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.key(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -187,9 +187,9 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_E_CIGARETTE_SALES);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.key());
 
-		awaitIncidentAt(PROCESS_KEY_E_CIGARETTE_SALES, processInstanceId, "external_task_create_decision");
+		awaitIncidentAt(E_CIGARETTE_SALES.key(), processInstanceId, "external_task_create_decision");
 
 		// No decision is written, so nothing is locked before the case worker has added the permit holder
 		verifyAllStubs();

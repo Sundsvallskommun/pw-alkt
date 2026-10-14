@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/LowAlcoholBeerSalesIT/", classes = Application.class)
@@ -31,11 +31,11 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key());
 
 		// The first four phases hold no catch event in this model, so follow up is the first one to park
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "closure");
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.key(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.key(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -99,7 +99,7 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key());
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -142,9 +142,9 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key());
 
-		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "follow_up");
+		cancelProcess(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.key(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

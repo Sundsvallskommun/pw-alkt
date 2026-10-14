@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ACTION_ERRAND;
+import static se.sundsvall.alkt.service.model.AlktProcess.ACTION_ERRAND;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/ActionErrandIT/", classes = Application.class)
@@ -31,14 +31,14 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ACTION_ERRAND);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.key());
 
 		// The registration passes straight through. The decision phase moves on by a decision event
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND);
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "closure");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, ACTION_ERRAND.key());
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -104,15 +104,15 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ACTION_ERRAND);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.key());
 
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "investigation");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "investigation");
 		awaitProcessState(processInstanceId, "await_decision_not_needed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
-		sendSignal(ERRAND_ID, PROCESS_KEY_ACTION_ERRAND, "decision_not_needed");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "closure");
+		sendSignal(ERRAND_ID, ACTION_ERRAND.key(), "decision_not_needed");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -165,9 +165,9 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ACTION_ERRAND);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.key());
 
-		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "review");
+		cancelProcess(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "review");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -193,14 +193,14 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ACTION_ERRAND);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.key());
 
 		// The decision has the outcome of a permit. Support Management locks a completed decision, so it cannot be corrected
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "review");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND);
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, ACTION_ERRAND.key());
 
-		awaitIncidentAt(PROCESS_KEY_ACTION_ERRAND, processInstanceId, "external_task_check_decision");
+		awaitIncidentAt(ACTION_ERRAND.key(), processInstanceId, "external_task_check_decision");
 
 		verifyAllStubs();
 	}
