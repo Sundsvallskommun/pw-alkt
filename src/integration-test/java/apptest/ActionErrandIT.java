@@ -12,8 +12,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ACTION_ERRAND;
 
 @DirtiesContext
@@ -22,7 +20,6 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d";
-	private static final String REJECTED_CHECK_DECISION = "$.activities[?(@.severity == 'WARN' && @.activityId =~ /external_task_check_decision#rejected#.*/)]";
 
 	@Test
 	void test001_processWithWarning() throws JacksonException {
@@ -187,7 +184,7 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 	}
 
 	@Test
-	void test004_outcomeOfAnotherProcessIsRejected() throws JacksonException {
+	void test004_outcomeOfAnotherProcessLeavesAnIncident() throws JacksonException {
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
 			.withHttpMethod(POST)
@@ -198,24 +195,13 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_ACTION_ERRAND);
 
-		// The first decision has the outcome of a permit, which the process refuses and waits on. The corrected one moves it on
+		// The decision has the outcome of a permit. Support Management locks a completed decision, so it cannot be corrected
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "review");
 		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "investigation");
 		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND);
-		await()
-			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> countReports(REJECTED_CHECK_DECISION) == 1);
-		completeDecision(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND);
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_ACTION_ERRAND, "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitIncidentAt(PROCESS_KEY_ACTION_ERRAND, processInstanceId, "external_task_check_decision");
 
 		verifyAllStubs();
-		assertThat(countReports(REJECTED_CHECK_DECISION)).as("the refusal is in the log").isOne();
-		assertThat(getProcessInstanceRoute(processInstanceId))
-			.extracting(HistoricActivityInstanceDto::getActivityId)
-			.filteredOn("external_task_check_decision"::equals)
-			.hasSize(3);
 	}
 }

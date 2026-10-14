@@ -2,7 +2,6 @@
 	"name": "decision_api-support-management-get-decisions-outcome-of-another-process",
 	"scenarioName": "decision",
 	"requiredScenarioState": "outcome-of-another-process",
-	"newScenarioState": "decided",
 	"request": {
 		"method": "GET",
 		"urlPath": "/api-support-management/2281/ALKT/errands/9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d/decisions",

@@ -1,0 +1,39 @@
+{
+	"name": "decision_check-decision-worker---api-support-management-put-process-failed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "FAILED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].errorCode",
+					"equalTo": "INCIDENT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].message",
+					"contains": "Decision outcome APPROVAL is not an outcome of process action-errand"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

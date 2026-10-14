@@ -65,7 +65,7 @@ public class ProcessReportService {
 			return;
 		}
 		final var entry = report.rejected()
-			? processLog.taskRejected(externalTask, report.logMessage(), report.rejectionKey())
+			? processLog.taskRejected(externalTask, report.logMessage())
 			: processLog.taskDone(externalTask, report.logMessage());
 		report(externalTask, report.withActivities(List.of(entry)));
 	}
