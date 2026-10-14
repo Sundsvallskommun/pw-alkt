@@ -7,7 +7,7 @@ info:
     url: 'https://opensource.org/licenses/MIT'
   version: '2.2'
 servers:
-  - url: 'https://party-af-party.apps.ocp201.sundsvall.se'
+  - url: http://localhost:8080
     description: Generated server url
 tags:
   - name: Party

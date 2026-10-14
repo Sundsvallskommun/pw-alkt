@@ -72,10 +72,12 @@ public class ProcessLog {
 
 	/**
 	 * Every choice by the case worker runs the step as a new external task, so its id gives each refusal an entry of its
-	 * own while a replayed report of the same run is dropped.
+	 * own while a replayed report of the same run is dropped. A rejection key replaces the id, so a refusal repeated on
+	 * every run shares one entry.
 	 */
-	public ProcessActivity taskRejected(final ExternalTask externalTask, final String logMessage) {
-		return entry(ACTIVITY_TYPE_TASK, "%s#rejected#%s".formatted(externalTask.getActivityId(), externalTask.getId()), nameOf(externalTask, Outcome.REJECTED),
+	public ProcessActivity taskRejected(final ExternalTask externalTask, final String logMessage, final String rejectionKey) {
+		final var key = Optional.ofNullable(rejectionKey).orElse(externalTask.getId());
+		return entry(ACTIVITY_TYPE_TASK, "%s#rejected#%s".formatted(externalTask.getActivityId(), key), nameOf(externalTask, Outcome.REJECTED),
 			SEVERITY_WARN, ERROR_CODE_REJECTED, "%s, x-request-id %s".formatted(logMessage, RequestId.get()), now());
 	}
 

@@ -112,7 +112,7 @@ class ProcessLogTest {
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 		when(externalTaskMock.getId()).thenReturn("external-task-id");
 
-		final var entry = processLog.taskRejected(externalTaskMock, "No deficiencies, no action errand created");
+		final var entry = processLog.taskRejected(externalTaskMock, "No deficiencies, no action errand created", null);
 
 		assertThat(entry.getActivityType()).isEqualTo("TASK");
 		assertThat(entry.getActivityId()).isEqualTo(ACTIVITY_ID + "#rejected#external-task-id");
@@ -130,12 +130,26 @@ class ProcessLogTest {
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 		when(externalTaskMock.getId()).thenReturn("first-task", "first-task", "second-task");
 
-		final var first = processLog.taskRejected(externalTaskMock, "message");
-		final var replay = processLog.taskRejected(externalTaskMock, "message");
-		final var second = processLog.taskRejected(externalTaskMock, "message");
+		final var first = processLog.taskRejected(externalTaskMock, "message", null);
+		final var replay = processLog.taskRejected(externalTaskMock, "message", null);
+		final var second = processLog.taskRejected(externalTaskMock, "message", null);
 
 		assertThat(replay.getActivityId()).isEqualTo(first.getActivityId());
 		assertThat(second.getActivityId()).isNotEqualTo(first.getActivityId());
+	}
+
+	/** A refusal repeated on every run shares one entry by its key, whatever the external task. */
+	@Test
+	void rejectedRunsWithTheSameKeyShareAnId() {
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+
+		final var first = processLog.taskRejected(externalTaskMock, "message", "APPROVAL");
+		final var second = processLog.taskRejected(externalTaskMock, "message", "APPROVAL");
+		final var other = processLog.taskRejected(externalTaskMock, "message", "DISMISSED");
+
+		assertThat(first.getActivityId()).isEqualTo(ACTIVITY_ID + "#rejected#APPROVAL");
+		assertThat(second.getActivityId()).isEqualTo(first.getActivityId());
+		assertThat(other.getActivityId()).isNotEqualTo(first.getActivityId());
 	}
 
 	/**

@@ -51,7 +51,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
-import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
 
@@ -97,39 +96,6 @@ class AssetServiceTest {
 	void setUp() {
 		assetService = new AssetService(supportManagementIntegrationMock, partyAssetsIntegrationMock, templatingIntegrationMock,
 			Clock.fixed(TODAY.atTime(12, 0).atZone(SWEDISH_TIME).toInstant(), SWEDISH_TIME));
-	}
-
-	@ParameterizedTest
-	@ValueSource(strings = {
-		"APPROVAL", "APPROVAL_WITH_CONDITIONS", "REJECTED", "DISMISSED", "INADMISSIBLE"
-	})
-	void getDecisionOutcomeAnswersWithTheOutcomeOfTheCompletedDecision(final String outcome) {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(Optional.of(new Decision().outcome(outcome)));
-
-		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(outcome);
-	}
-
-	/** REJECTION was the outcome of a rejection before REJECTED took its place. */
-	@ParameterizedTest
-	@NullSource
-	@ValueSource(strings = {
-		"REJECTION", "PARTIAL_APPROVAL", "approval"
-	})
-	void getDecisionOutcomeFailsOnAnOutcomeItDoesNotKnow(final String outcome) {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(Optional.of(new Decision().outcome(outcome)));
-
-		assertThatThrownBy(() -> assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.isInstanceOf(Problem.class)
-			.hasMessageContaining("expected one of [APPROVAL, APPROVAL_WITH_CONDITIONS, DISMISSED, INADMISSIBLE, REJECTED]");
-	}
-
-	@Test
-	void getDecisionOutcomeAnswersWithNoneWithoutACompletedDecision() {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
-
-		assertThat(assetService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(DECISION_OUTCOME_NONE);
 	}
 
 	@Test

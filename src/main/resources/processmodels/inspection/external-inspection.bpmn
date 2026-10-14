@@ -140,12 +140,6 @@
       <bpmn:sequenceFlow id="flow_decision_action_errand_requested_to_create" sourceRef="await_action_errand_requested" targetRef="external_task_create_action_errand" />
       <bpmn:serviceTask id="external_task_create_action_errand" name="Create action errand" camunda:type="external" camunda:topic="CreateActionErrandTask">
         <bpmn:documentation>Creates the action errand from the inspection, with its deficiencies and permit holder, related to the inspection errand.</bpmn:documentation>
-        <bpmn:extensionElements>
-          <camunda:inputOutput>
-            <camunda:inputParameter name="actionErrandCategory">INSPECTION</camunda:inputParameter>
-            <camunda:inputParameter name="actionErrandType">ACTION_ERRAND</camunda:inputParameter>
-          </camunda:inputOutput>
-        </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_action_errand_requested_to_create</bpmn:incoming>
         <bpmn:outgoing>flow_decision_create_action_errand_to_gateway</bpmn:outgoing>
       </bpmn:serviceTask>

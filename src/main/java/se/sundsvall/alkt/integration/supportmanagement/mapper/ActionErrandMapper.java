@@ -1,18 +1,22 @@
 package se.sundsvall.alkt.integration.supportmanagement.mapper;
 
-import generated.se.sundsvall.supportmanagement.Classification;
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.ErrandLabel;
 import generated.se.sundsvall.supportmanagement.ExternalTag;
 import generated.se.sundsvall.supportmanagement.Measure;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import static generated.se.sundsvall.supportmanagement.Priority.MEDIUM;
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
 
 public final class ActionErrandMapper {
 
 	private static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
+	private static final String TITLE = "Åtgärdsärende";
+	private static final String STATUS_NEW = "NEW";
 
 	private ActionErrandMapper() {}
 
@@ -20,11 +24,15 @@ public final class ActionErrandMapper {
 	 * The deficiencies found by the inspection are its active measures, since a draft, completed or cancelled one is
 	 * nothing to remedy. They follow without the fields Support Management sets.
 	 */
-	public static Errand toActionErrand(final Errand inspection, final String errandId, final String category, final String type) {
+	public static Errand toActionErrand(final Errand inspection, final String errandId, final String labelId) {
 		return new Errand()
-			.title(inspection.getTitle())
+			.title(TITLE)
+			.status(STATUS_NEW)
+			.priority(MEDIUM)
+			.reporterUserId(inspection.getAssignedUserId())
 			.description(inspection.getDescription())
-			.classification(new Classification().category(category).type(type))
+			.classification(inspection.getClassification())
+			.labels(List.of(new ErrandLabel().id(labelId)))
 			.stakeholders(Optional.ofNullable(inspection.getStakeholders()).orElse(emptyList()).stream()
 				.filter(SupportManagementMapper::isPermitHolder)
 				.toList())

@@ -1,20 +1,30 @@
 package se.sundsvall.alkt;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import se.sundsvall.alkt.service.DecisionService;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
+import static se.sundsvall.alkt.Constants.ACTION_ERRAND_DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
@@ -26,7 +36,9 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 class DecisionOutcomeGatewayTest {
 
 	private static final String BPMN_NAMESPACE = "http://www.omg.org/spec/BPMN/20100524/MODEL";
+	private static final String CAMUNDA_NAMESPACE = "http://camunda.org/schema/1.0/bpmn";
 	private static final Pattern QUOTED_OUTCOME = Pattern.compile("'([A-Z_]+)'");
+	private static final String ACTION_ERRAND_MODEL = "processmodels/inspection/action-errand.bpmn";
 
 	private static Stream<Arguments> models() {
 		return Stream.of(
@@ -61,6 +73,63 @@ class DecisionOutcomeGatewayTest {
 	@MethodSource("modelPaths")
 	void theWayBackToWaitingNamesNoOutcome(final String model) throws Exception {
 		assertThat(outcomesOf(model, "flow_decision_gateway_to_wait")).containsExactly(DECISION_OUTCOME_NONE);
+	}
+
+	@Test
+	void theActionErrandNamesItsOwnOutcomes() throws Exception {
+		assertThat(outcomesOf(ACTION_ERRAND_MODEL, "flow_decision_gateway_to_decided")).isEqualTo(ACTION_ERRAND_DECISION_OUTCOMES);
+		assertThat(outcomesOf(ACTION_ERRAND_MODEL, "flow_decision_gateway_to_wait")).containsExactly(DECISION_OUTCOME_NONE);
+	}
+
+	/** Found by the topic, so a new model that reads a decision cannot be left out. */
+	private static Stream<String> modelsCheckingTheDecision() throws Exception {
+		return Stream.of(new PathMatchingResourcePatternResolver().getResources("classpath*:processmodels/*/*.bpmn"))
+			.map(DecisionOutcomeGatewayTest::classpathOf)
+			.filter(DecisionOutcomeGatewayTest::hasCheckDecisionTask);
+	}
+
+	@ParameterizedTest
+	@MethodSource("modelsCheckingTheDecision")
+	void theServiceKnowsExactlyTheOutcomesOfTheGateway(final String model) throws Exception {
+		final var document = read(model);
+		final var processKey = ((Element) document.getElementsByTagNameNS(BPMN_NAMESPACE, "process").item(0)).getAttribute("id");
+		final var gatewayOutcomes = outcomesLeaving(document, "gateway_decision_outcome");
+		final var decisionService = mock(DecisionService.class, CALLS_REAL_METHODS);
+
+		Stream.concat(DECISION_OUTCOMES.stream(), ACTION_ERRAND_DECISION_OUTCOMES.stream())
+			.forEach(outcome -> assertThat(decisionService.isKnownOutcome(processKey, outcome))
+				.as("%s knows %s", processKey, outcome)
+				.isEqualTo(gatewayOutcomes.contains(outcome)));
+	}
+
+	private static String classpathOf(final Resource resource) {
+		try {
+			final var url = resource.getURL().toString();
+			return url.substring(url.lastIndexOf("processmodels/"));
+		} catch (final IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private static boolean hasCheckDecisionTask(final String model) {
+		try {
+			final var tasks = read(model).getElementsByTagNameNS(BPMN_NAMESPACE, "serviceTask");
+			return IntStream.range(0, tasks.getLength())
+				.mapToObj(i -> (Element) tasks.item(i))
+				.anyMatch(task -> "CheckDecisionTask".equals(task.getAttributeNS(CAMUNDA_NAMESPACE, "topic")));
+		} catch (final Exception e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	private static Set<String> outcomesLeaving(final Document document, final String gatewayId) {
+		final var flows = document.getElementsByTagNameNS(BPMN_NAMESPACE, "sequenceFlow");
+		return IntStream.range(0, flows.getLength())
+			.mapToObj(i -> (Element) flows.item(i))
+			.filter(flow -> gatewayId.equals(flow.getAttribute("sourceRef")))
+			.flatMap(flow -> QUOTED_OUTCOME.matcher(flow.getElementsByTagNameNS(BPMN_NAMESPACE, "conditionExpression").item(0).getTextContent()).results())
+			.map(result -> result.group(1))
+			.collect(Collectors.toSet());
 	}
 
 	private static Set<String> outcomesOf(final String model, final String flowId) throws Exception {

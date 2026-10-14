@@ -27,6 +27,7 @@ public final class Constants {
 	public static final String PROCESS_KEY_CATERING_OCCASION = "catering-occasion";
 	public static final String PROCESS_KEY_EXTERNAL_INSPECTION = "external-inspection";
 	public static final String PROCESS_KEY_INTERNAL_INSPECTION = "internal-inspection";
+	public static final String PROCESS_KEY_ACTION_ERRAND = "action-errand";
 	public static final Set<String> PROCESS_KEYS = Set.of(
 		PROCESS_KEY_ALCOHOL_SERVING,
 		PROCESS_KEY_ALCOHOL_SERVING_CHANGE,
@@ -41,7 +42,8 @@ public final class Constants {
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING,
 		PROCESS_KEY_CATERING_OCCASION,
 		PROCESS_KEY_EXTERNAL_INSPECTION,
-		PROCESS_KEY_INTERNAL_INSPECTION);
+		PROCESS_KEY_INTERNAL_INSPECTION,
+		PROCESS_KEY_ACTION_ERRAND);
 	// Outside PROCESS_KEYS on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
 
@@ -66,8 +68,8 @@ public final class Constants {
 
 	// Set by CheckDecisionTask while there is no completed decision; not an outcome Support Management knows.
 	public static final String DECISION_OUTCOME_NONE = "NONE";
-	// Must match the outcomes registered for the namespace in Support Management, and the gateway of every bpmn schema that
-	// checks the decision.
+	// Must match the outcomes registered for the namespace in Support Management, and the gateway of every permit model
+	// that checks the decision.
 	public static final String DECISION_OUTCOME_APPROVAL = "APPROVAL";
 	public static final String DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS = "APPROVAL_WITH_CONDITIONS";
 	public static final String DECISION_OUTCOME_REJECTED = "REJECTED";
@@ -82,6 +84,14 @@ public final class Constants {
 	public static final Set<String> DECISION_OUTCOMES_CREATING_ASSET = Set.of(
 		DECISION_OUTCOME_APPROVAL,
 		DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS);
+	// The outcomes of the action errand, which decides on a permit already granted instead of granting one.
+	public static final String DECISION_OUTCOME_REPRIMAND = "REPRIMAND";
+	public static final String DECISION_OUTCOME_WARNING = "WARNING";
+	public static final String DECISION_OUTCOME_REVOCATION = "REVOCATION";
+	public static final Set<String> ACTION_ERRAND_DECISION_OUTCOMES = Set.of(
+		DECISION_OUTCOME_REPRIMAND,
+		DECISION_OUTCOME_WARNING,
+		DECISION_OUTCOME_REVOCATION);
 	public static final String DECISION_STATUS_COMPLETED = "COMPLETED";
 	public static final String DECISION_STATUS_DRAFT = "DRAFT";
 	public static final String DECISION_METHOD_AUTOMATIC = "AUTOMATIC";

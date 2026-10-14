@@ -333,14 +333,14 @@ class ProcessReportServiceTest {
 	@Test
 	void reportDoneLeavesAWarningForAStepThatRefusedItsWork() {
 		mockExternalTask();
-		when(processLogMock.taskRejected(externalTaskMock, "No deficiencies")).thenReturn(TASK_ENTRY);
+		when(processLogMock.taskRejected(externalTaskMock, "No deficiencies", "rejection-key")).thenReturn(TASK_ENTRY);
 		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
-		service.reportDone(externalTaskMock, ProcessStateReport.completed().withRejection("No deficiencies"));
+		service.reportDone(externalTaskMock, ProcessStateReport.completed().withRejection("No deficiencies", "rejection-key"));
 
 		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
 		assertThat(captor.getValue().getActivities()).containsExactly(TASK_ENTRY);
-		verify(processLogMock).taskRejected(externalTaskMock, "No deficiencies");
+		verify(processLogMock).taskRejected(externalTaskMock, "No deficiencies", "rejection-key");
 		verifyNoMoreInteractions(processLogMock);
 	}
 

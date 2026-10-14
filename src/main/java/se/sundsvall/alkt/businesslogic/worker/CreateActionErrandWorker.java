@@ -16,9 +16,6 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 @ExternalTaskSubscription(topicName = "CreateActionErrandTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class CreateActionErrandWorker extends AbstractTaskWorker {
 
-	// Input parameters of the step in the bpmn schema, not process variables.
-	static final String PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY = "actionErrandCategory";
-	static final String PROCESS_VARIABLE_ACTION_ERRAND_TYPE = "actionErrandType";
 	static final String PROCESS_VARIABLE_ACTION_ERRAND_CREATED = "actionErrandCreated";
 
 	private final ActionErrandService actionErrandService;
@@ -33,8 +30,7 @@ public class CreateActionErrandWorker extends AbstractTaskWorker {
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final var errandId = getErrandId(externalTask);
-		final var actionErrandId = actionErrandService.createActionErrand(getMunicipalityId(externalTask), getNamespace(externalTask), errandId,
-			externalTask.getVariable(PROCESS_VARIABLE_ACTION_ERRAND_CATEGORY), externalTask.getVariable(PROCESS_VARIABLE_ACTION_ERRAND_TYPE));
+		final var actionErrandId = actionErrandService.createActionErrand(getMunicipalityId(externalTask), getNamespace(externalTask), errandId);
 
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
 			.withVariables(Map.of(PROCESS_VARIABLE_ACTION_ERRAND_CREATED, actionErrandId.isPresent()));
