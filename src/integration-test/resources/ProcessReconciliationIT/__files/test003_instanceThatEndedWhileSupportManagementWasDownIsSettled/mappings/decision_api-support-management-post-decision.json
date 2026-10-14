@@ -61,7 +61,10 @@
 				}
 			},
 			{
-				"matchesJsonPath": "$[?(!@.validTo)]"
+				"matchesJsonPath": {
+					"expression": "$.validTo",
+					"equalTo": "2099-12-31"
+				}
 			}
 		]
 	},

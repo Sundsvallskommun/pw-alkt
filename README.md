@@ -127,6 +127,10 @@ Every application tells the customer that the processing has started.
 | `e-cigarette-sales`                   | Sale of electronic cigarettes and refills | Makes the decision, creates the asset | `ECigaretteSalesNotification`                 |
 | `tobacco-free-nicotine-product-sales` | Sale of tobacco-free nicotine products    | Makes the decision, creates the asset | `TobaccoFreeNicotineProductSalesNotification` |
 
+An approved notification holds until further notice, except a catering occasion. Its decision and asset end on the date
+in the errand parameter `occasionEndDate` (`yyyy-MM-dd`). An errand without that date, or with one that is not after
+today, raises an incident before any decision is written.
+
 ### Inspections
 
 |      Process key      |       Errand        |                               What the service does                               | Permit in party-assets |

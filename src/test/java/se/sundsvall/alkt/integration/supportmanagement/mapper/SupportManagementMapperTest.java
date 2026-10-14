@@ -238,7 +238,7 @@ class SupportManagementMapperTest {
 		final var validFrom = LocalDate.of(2026, 9, 24);
 		final var decidedAt = OffsetDateTime.now();
 
-		final var result = SupportManagementMapper.toAutomaticDecision("Anmälan om servering av folköl", new Errand().title("Anmälan om servering av folköl, Kafé Solsidan"), validFrom, decidedAt);
+		final var result = SupportManagementMapper.toAutomaticDecision("Anmälan om servering av folköl", new Errand().title("Anmälan om servering av folköl, Kafé Solsidan"), validFrom, null, decidedAt);
 
 		assertThat(result.getType()).isEqualTo("PERMIT");
 		assertThat(result.getStatus()).isEqualTo("DRAFT");

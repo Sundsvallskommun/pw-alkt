@@ -16,6 +16,14 @@
 		"jsonBody": {
 			"id": "9696b9e6-6753-48ca-aa9d-cd1ca7f18d70",
 			"title": "Anmälan om cateringtillfälle, Kafé Solsidan",
+			"parameters": [
+				{
+					"key": "occasionEndDate",
+					"values": [
+						"2099-12-31"
+					]
+				}
+			],
 			"stakeholders": [
 				{
 					"role": "PRIMARY",

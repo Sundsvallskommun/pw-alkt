@@ -119,9 +119,9 @@ public final class SupportManagementMapper {
 				.formatted(processKey, CHANGE_DRAFT_TITLES.keySet())));
 	}
 
-	// Why: an approval of a notification holds until further notice, so it has no last day. Support Management requires
-	// decidedAt already on the draft.
-	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final OffsetDateTime decidedAt) {
+	// Why: an approval of an ongoing notification holds until further notice, so it has no validTo; one for a single
+	// occasion ends with it. Support Management requires decidedAt already on the draft.
+	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final LocalDate validTo, final OffsetDateTime decidedAt) {
 		return new Decision()
 			.type(DECISION_TYPE_PERMIT)
 			.status(DECISION_STATUS_DRAFT)
@@ -131,7 +131,8 @@ public final class SupportManagementMapper {
 			.outcome(DECISION_OUTCOME_APPROVAL)
 			.title(title)
 			.description(errand.getTitle())
-			.validFrom(validFrom);
+			.validFrom(validFrom)
+			.validTo(validTo);
 	}
 
 	// Why: Support Management lets the process write only an automatic decision, with outcome and decidedAt already on the

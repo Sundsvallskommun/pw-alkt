@@ -25,6 +25,7 @@
 				"title": "Anmälan om cateringtillfälle",
 				"description": "Anmälan om cateringtillfälle, Kafé Solsidan",
 				"validFrom": "2026-09-24",
+				"validTo": "2099-12-31",
 				"decidedAt": "2026-09-24T08:00:00Z",
 				"attachments": [
 					{

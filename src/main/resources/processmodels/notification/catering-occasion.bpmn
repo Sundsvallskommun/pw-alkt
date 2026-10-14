@@ -59,7 +59,12 @@
       </bpmn:startEvent>
       <bpmn:sequenceFlow id="flow_decision_start_to_create_decision" sourceRef="start_decision_phase" targetRef="external_task_create_decision" />
       <bpmn:serviceTask id="external_task_create_decision" name="Create decision" camunda:type="external" camunda:topic="CreateDecisionTask">
-        <bpmn:documentation>Approves the notification with a completed decision that carries every attachment of the errand.</bpmn:documentation>
+        <bpmn:documentation>Approves the notification with a completed decision that carries every attachment of the errand. The decision, and so the asset, ends on the last day of the occasion.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="validToParameter">occasionEndDate</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_start_to_create_decision</bpmn:incoming>
         <bpmn:outgoing>flow_decision_create_decision_to_create_asset</bpmn:outgoing>
       </bpmn:serviceTask>

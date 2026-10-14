@@ -16,6 +16,12 @@
 		"bodyPatterns": [
 			{
 				"matchesJsonPath": {
+					"expression": "$.validTo",
+					"equalTo": "2099-12-31"
+				}
+			},
+			{
+				"matchesJsonPath": {
 					"expression": "$.status",
 					"equalTo": "DRAFT"
 				}
