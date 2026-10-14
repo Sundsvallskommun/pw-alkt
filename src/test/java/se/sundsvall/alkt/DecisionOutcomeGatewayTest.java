@@ -3,6 +3,7 @@ package se.sundsvall.alkt;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -96,7 +97,9 @@ class DecisionOutcomeGatewayTest {
 		final var gatewayOutcomes = outcomesLeaving(document, "gateway_decision_outcome");
 		final var decisionService = mock(DecisionService.class, CALLS_REAL_METHODS);
 
-		Stream.concat(DECISION_OUTCOMES.stream(), ACTION_ERRAND_DECISION_OUTCOMES.stream())
+		Stream.of(DECISION_OUTCOMES, ACTION_ERRAND_DECISION_OUTCOMES, gatewayOutcomes)
+			.flatMap(Collection::stream)
+			.distinct()
 			.forEach(outcome -> assertThat(decisionService.isKnownOutcome(processKey, outcome))
 				.as("%s knows %s", processKey, outcome)
 				.isEqualTo(gatewayOutcomes.contains(outcome)));
