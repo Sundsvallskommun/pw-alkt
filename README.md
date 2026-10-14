@@ -135,8 +135,8 @@ Every application tells the customer that the processing has started.
 | `action-errand`       | Action errand       | Checks the decision                                                               | None yet               |
 
 The action errand gets the title `Åtgärdsärende`, status `NEW`, priority `MEDIUM`, and the case worker assigned to
-the inspection as reporter. An inspection without an assigned case worker or without a permit holder raises an
-incident.
+the inspection as reporter. An inspection without deficiencies or without an assigned case worker sends the process
+back to the choice with a refusal in the activity log. An inspection without a permit holder raises an incident.
 
 ### Decision outcomes
 

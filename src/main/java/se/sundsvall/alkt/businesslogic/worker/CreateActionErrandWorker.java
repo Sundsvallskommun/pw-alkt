@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
 import java.util.Map;
+import java.util.Optional;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
@@ -25,12 +26,13 @@ public class CreateActionErrandWorker extends AbstractTaskWorker {
 		this.actionErrandService = actionErrandService;
 	}
 
-	// Why: an inspection without deficiencies is the case worker's to fix, so the process goes back to the choice instead
-	// of raising an incident.
+	// Why: an inspection without deficiencies or an assigned case worker is the case worker's to fix, so the process goes
+	// back to the choice instead of raising an incident.
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final var errandId = getErrandId(externalTask);
-		final var actionErrandId = actionErrandService.createActionErrand(getMunicipalityId(externalTask), getNamespace(externalTask), errandId);
+		final var result = actionErrandService.createActionErrand(getMunicipalityId(externalTask), getNamespace(externalTask), errandId);
+		final var actionErrandId = Optional.ofNullable(result.actionErrandId());
 
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
 			.withVariables(Map.of(PROCESS_VARIABLE_ACTION_ERRAND_CREATED, actionErrandId.isPresent()));
@@ -41,8 +43,8 @@ public class CreateActionErrandWorker extends AbstractTaskWorker {
 				return report.withLogMessage("Action errand '%s' found or created".formatted(id));
 			})
 			.orElseGet(() -> {
-				logInfo("Errand {} has no deficiencies, no action errand created", sanitizeForLogging(errandId));
-				return report.withRejection("The inspection errand has no deficiencies, no action errand created");
+				logInfo("{}", sanitizeForLogging(result.refusal()));
+				return report.withRejection(result.refusal());
 			});
 	}
 }

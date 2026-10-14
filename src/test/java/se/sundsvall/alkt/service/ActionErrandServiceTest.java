@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.configuration.ActionErrandProperties;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.service.model.ActionErrandResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,7 +67,7 @@ class ActionErrandServiceTest {
 				.stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id"))).measures(List.of(new Measure().type("DEFICIENCY").status("ACTIVE"))));
 		when(supportManagementIntegrationMock.createErrand(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(REFERRED_FROM), errandCaptor.capture())).thenReturn("action-errand-id");
 
-		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).contains("action-errand-id");
+		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(ActionErrandResult.created("action-errand-id"));
 
 		assertThat(errandCaptor.getValue().getTitle()).isEqualTo("Åtgärdsärende");
 		assertThat(errandCaptor.getValue().getReporterUserId()).isEqualTo("handlaggare");
@@ -81,7 +82,7 @@ class ActionErrandServiceTest {
 	void answersWithTheActionErrandAnEarlierAttemptCreated() {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.of("action-errand-id"));
 
-		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).contains("action-errand-id");
+		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(ActionErrandResult.created("action-errand-id"));
 
 		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
 	}
@@ -103,15 +104,14 @@ class ActionErrandServiceTest {
 	@ParameterizedTest
 	@NullAndEmptySource
 	@ValueSource(strings = " ")
-	void failsWithoutRetryForAnInspectionWithoutAssignedUser(final String assignedUserId) {
+	void refusesAnInspectionWithoutAssignedUser(final String assignedUserId) {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().id(ERRAND_ID).assignedUserId(assignedUserId).stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id")))
 				.measures(List.of(new Measure().type("DEFICIENCY").status("ACTIVE"))));
 
-		assertThatThrownBy(() -> service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand 'inspection-id' has no assigned user to report the action errand");
+		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isEqualTo(ActionErrandResult.refused("Errand 'inspection-id' has no assigned user to report the action errand, no action errand created"));
 
 		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -119,11 +119,11 @@ class ActionErrandServiceTest {
 
 	@ParameterizedTest
 	@NullAndEmptySource
-	void createsNothingForAnInspectionWithoutDeficiencies(final List<Measure> measures) {
+	void refusesAnInspectionWithoutDeficiencies(final List<Measure> measures) {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().id(ERRAND_ID).measures(measures));
 
-		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(ActionErrandResult.refused("Errand 'inspection-id' has no deficiencies, no action errand created"));
 
 		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -134,12 +134,12 @@ class ActionErrandServiceTest {
 	@ValueSource(strings = {
 		"DRAFT", "COMPLETED", "CANCELLED"
 	})
-	void createsNothingForAnInspectionWithoutActiveMeasures(final String status) {
+	void refusesAnInspectionWithoutActiveMeasures(final String status) {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().id(ERRAND_ID).stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id"))).measures(List.of(new Measure().type("DEFICIENCY").status(status))));
 
-		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(ActionErrandResult.refused("Errand 'inspection-id' has no deficiencies, no action errand created"));
 
 		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);

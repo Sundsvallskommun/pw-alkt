@@ -145,7 +145,7 @@
       </bpmn:serviceTask>
       <bpmn:sequenceFlow id="flow_decision_create_action_errand_to_gateway" sourceRef="external_task_create_action_errand" targetRef="gateway_action_errand_created" />
       <bpmn:exclusiveGateway id="gateway_action_errand_created" name="Action errand created?">
-        <bpmn:documentation>An inspection without deficiencies gives no action errand. The process then goes back to the choice, so the case worker can add the deficiencies and choose again, instead of stopping on an incident.</bpmn:documentation>
+        <bpmn:documentation>An inspection without deficiencies or without an assigned case worker gives no action errand. The process then goes back to the choice, so the case worker can complete the inspection and choose again, instead of stopping on an incident.</bpmn:documentation>
         <bpmn:incoming>flow_decision_create_action_errand_to_gateway</bpmn:incoming>
         <bpmn:outgoing>flow_decision_action_errand_created_to_end</bpmn:outgoing>
         <bpmn:outgoing>flow_decision_no_action_errand_to_gateway</bpmn:outgoing>
@@ -153,7 +153,7 @@
       <bpmn:sequenceFlow id="flow_decision_action_errand_created_to_end" name="Created" sourceRef="gateway_action_errand_created" targetRef="end_decision_phase">
         <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${actionErrandCreated}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-      <bpmn:sequenceFlow id="flow_decision_no_action_errand_to_gateway" name="No deficiencies" sourceRef="gateway_action_errand_created" targetRef="gateway_inspection_outcome">
+      <bpmn:sequenceFlow id="flow_decision_no_action_errand_to_gateway" name="Not created" sourceRef="gateway_action_errand_created" targetRef="gateway_inspection_outcome">
         <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!actionErrandCreated}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
       <bpmn:endEvent id="end_decision_phase" name="End decision phase">
