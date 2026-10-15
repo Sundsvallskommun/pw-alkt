@@ -52,14 +52,14 @@ class CreateChangeDraftWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING_CHANGE.key());
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING_CHANGE.getKey());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_change_draft");
-		when(decisionServiceMock.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.key())).thenReturn("decision-id");
+		when(decisionServiceMock.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.getKey())).thenReturn("decision-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_change_draft", null).withLogMessage("Errand has decision 'decision-id'"));
-		verify(decisionServiceMock).createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.key());
+		verify(decisionServiceMock).createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.getKey());
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

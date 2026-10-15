@@ -52,7 +52,7 @@ class CheckPermitWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(TOBACCO_SALES_CLOSURE.key());
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(TOBACCO_SALES_CLOSURE.getKey());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_permit");
 		when(assetServiceMock.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TOBACCO_SALES_PERMIT)).thenReturn("asset-id");
 

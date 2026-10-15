@@ -32,17 +32,17 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
 		// Wait for the process to park in each phase, then signal that phase completed
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
 		awaitProcessState(processInstanceId, "await_inspection_approved", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
-		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.key(), "inspection_approved");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "closure");
+		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "inspection_approved");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -111,7 +111,7 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -135,9 +135,9 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "registration");
+		cancelProcess(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -161,11 +161,11 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "review");
-		cancelProcess(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
+		cancelProcess(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -197,16 +197,16 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
 		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
-		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.key(), "action_errand_requested");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "closure");
+		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "action_errand_requested");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -234,22 +234,22 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
 		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
 		final var reportsBefore = countReportsAt("decision_phase");
-		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.key(), "action_errand_requested");
+		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "action_errand_requested");
 
 		// The errand has no deficiencies: no action errand, a warning in the log, and the choice is offered again
 		awaitProcessState(processInstanceId, "await_inspection_approved", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportsAt("decision_phase", reportsBefore + 1);
-		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.key(), "inspection_approved");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "closure");
+		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "inspection_approved");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -276,22 +276,22 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
 		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
 		final var reportsBefore = countReportsAt("decision_phase");
-		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.key(), "action_errand_requested");
+		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "action_errand_requested");
 
 		// The first attempt finds no deficiencies; the GET errand mapping has them once the refusal is reported
 		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportsAt("decision_phase", reportsBefore + 1);
-		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.key(), "action_errand_requested");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.key(), "closure");
+		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "action_errand_requested");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

@@ -36,15 +36,15 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
 		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES.key());
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "closure");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey());
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -128,7 +128,7 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -152,11 +152,11 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -179,9 +179,9 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "registration");
+		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -205,11 +205,11 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "review");
-		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "review");
+		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -241,16 +241,16 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
 
 		// No decision yet, so the phase waits for one, and the cancellation is the only button it offers
 		awaitProcessState(processInstanceId, "await_decision_updated", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
-		sendSignal(ERRAND_ID, TOBACCO_SALES.key(), "process_cancelled");
+		sendSignal(ERRAND_ID, TOBACCO_SALES.getKey(), "process_cancelled");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -289,14 +289,14 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES.key());
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "closure");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey());
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -318,11 +318,11 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

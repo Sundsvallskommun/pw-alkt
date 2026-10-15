@@ -421,34 +421,34 @@ class PartyAssetsMapperTest {
 	/** An addition is a serving permit of its own, which alcohol-serving-change can change like the main one. */
 	@Test
 	void toPermitTypeGivesTheServingProcessesOneType() {
-		assertThat(toPermitType(ALCOHOL_SERVING.key())).isEqualTo(ALCOHOL_SERVING_PERMIT);
-		assertThat(toPermitType(ALCOHOL_SERVING_CHANGE.key())).isEqualTo(ALCOHOL_SERVING_PERMIT);
-		assertThat(toPermitType(ALCOHOL_SERVING_ADDITION.key())).isEqualTo(ALCOHOL_SERVING_PERMIT);
+		assertThat(toPermitType(ALCOHOL_SERVING.getKey())).isEqualTo(ALCOHOL_SERVING_PERMIT);
+		assertThat(toPermitType(ALCOHOL_SERVING_CHANGE.getKey())).isEqualTo(ALCOHOL_SERVING_PERMIT);
+		assertThat(toPermitType(ALCOHOL_SERVING_ADDITION.getKey())).isEqualTo(ALCOHOL_SERVING_PERMIT);
 	}
 
 	@Test
 	void toPermitTypeGivesTheTobaccoProcessesOneType() {
-		assertThat(toPermitType(TOBACCO_SALES.key())).isEqualTo(TOBACCO_SALES_PERMIT);
-		assertThat(toPermitType(TOBACCO_SALES_CHANGE.key())).isEqualTo(TOBACCO_SALES_PERMIT);
-		assertThat(toPermitType(TOBACCO_SALES_CLOSURE.key())).isEqualTo(TOBACCO_SALES_PERMIT);
+		assertThat(toPermitType(TOBACCO_SALES.getKey())).isEqualTo(TOBACCO_SALES_PERMIT);
+		assertThat(toPermitType(TOBACCO_SALES_CHANGE.getKey())).isEqualTo(TOBACCO_SALES_PERMIT);
+		assertThat(toPermitType(TOBACCO_SALES_CLOSURE.getKey())).isEqualTo(TOBACCO_SALES_PERMIT);
 	}
 
 	@Test
 	void toPermitTypeGivesEachNotificationProcessATypeOfItsOwn() {
-		assertThat(toPermitType(LOW_ALCOHOL_BEER_SALES.key())).isEqualTo(LOW_ALCOHOL_BEER_SALES_NOTIFICATION);
-		assertThat(toPermitType(LOW_ALCOHOL_BEER_SERVING.key())).isEqualTo(LOW_ALCOHOL_BEER_SERVING_NOTIFICATION);
-		assertThat(toPermitType(LOW_ALCOHOL_BEER_SALES_AND_SERVING.key())).isEqualTo(LOW_ALCOHOL_BEER_SALES_AND_SERVING_NOTIFICATION);
-		assertThat(toPermitType(E_CIGARETTE_SALES.key())).isEqualTo(E_CIGARETTE_SALES_NOTIFICATION);
-		assertThat(toPermitType(TOBACCO_FREE_NICOTINE_PRODUCT_SALES.key())).isEqualTo(TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION);
-		assertThat(toPermitType(CATERING_OCCASION.key())).isEqualTo(CATERING_OCCASION_NOTIFICATION);
+		assertThat(toPermitType(LOW_ALCOHOL_BEER_SALES.getKey())).isEqualTo(LOW_ALCOHOL_BEER_SALES_NOTIFICATION);
+		assertThat(toPermitType(LOW_ALCOHOL_BEER_SERVING.getKey())).isEqualTo(LOW_ALCOHOL_BEER_SERVING_NOTIFICATION);
+		assertThat(toPermitType(LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey())).isEqualTo(LOW_ALCOHOL_BEER_SALES_AND_SERVING_NOTIFICATION);
+		assertThat(toPermitType(E_CIGARETTE_SALES.getKey())).isEqualTo(E_CIGARETTE_SALES_NOTIFICATION);
+		assertThat(toPermitType(TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey())).isEqualTo(TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION);
+		assertThat(toPermitType(CATERING_OCCASION.getKey())).isEqualTo(CATERING_OCCASION_NOTIFICATION);
 	}
 
 	@Test
 	void toPermitTypeRefusesAProcessWithoutAPermit() {
-		assertThatThrownBy(() -> toPermitType(EXTERNAL_INSPECTION.key()))
+		assertThatThrownBy(() -> toPermitType(EXTERNAL_INSPECTION.getKey()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(EXTERNAL_INSPECTION.key())
-			.hasMessageContaining(ALCOHOL_SERVING.key());
+			.hasMessageContaining(EXTERNAL_INSPECTION.getKey())
+			.hasMessageContaining(ALCOHOL_SERVING.getKey());
 		assertThatThrownBy(() -> toPermitType(null))
 			.isInstanceOf(NonRetryableException.class);
 	}

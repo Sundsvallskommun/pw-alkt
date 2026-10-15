@@ -31,14 +31,14 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.getKey());
 
 		// The registration passes straight through. The decision phase moves on by a decision event
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, ACTION_ERRAND.key());
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "closure");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey());
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -104,15 +104,15 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "investigation");
 		awaitProcessState(processInstanceId, "await_decision_not_needed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitReportAt("decision_phase");
-		sendSignal(ERRAND_ID, ACTION_ERRAND.key(), "decision_not_needed");
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "closure");
+		sendSignal(ERRAND_ID, ACTION_ERRAND.getKey(), "decision_not_needed");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -165,9 +165,9 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "review");
+		cancelProcess(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "review");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -193,14 +193,14 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.getKey());
 
 		// The decision has the outcome of a permit. Support Management locks a completed decision, so it cannot be corrected
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.key(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, ACTION_ERRAND.key());
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey());
 
-		awaitIncidentAt(ACTION_ERRAND.key(), processInstanceId, "external_task_check_decision");
+		awaitIncidentAt(ACTION_ERRAND.getKey(), processInstanceId, "external_task_check_decision");
 
 		verifyAllStubs();
 	}

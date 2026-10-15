@@ -122,7 +122,7 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new ErrandAttachment().id("first"), new ErrandAttachment().id("second")));
 
-		assertThat(decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key(), null)).isEqualTo(DECISION_ID);
+		assertThat(decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey(), null)).isEqualTo(DECISION_ID);
 
 		final InOrder inOrder = inOrder(supportManagementIntegrationMock);
 		inOrder.verify(supportManagementIntegrationMock).createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), decisionCaptor.capture());
@@ -150,7 +150,7 @@ class DecisionServiceTest {
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("occasionEndDate").values(List.of("2026-03-30")))));
 		when(supportManagementIntegrationMock.createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), decisionCaptor.capture())).thenReturn(DECISION_ID);
 
-		assertThat(decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CATERING_OCCASION.key(), "occasionEndDate")).isEqualTo(DECISION_ID);
+		assertThat(decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CATERING_OCCASION.getKey(), "occasionEndDate")).isEqualTo(DECISION_ID);
 
 		assertThat(decisionCaptor.getValue().getValidFrom()).isEqualTo(LocalDate.of(2026, 3, 29));
 		assertThat(decisionCaptor.getValue().getValidTo()).isEqualTo(LocalDate.of(2026, 3, 30));
@@ -167,7 +167,7 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().parameters(parameters));
 
-		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CATERING_OCCASION.key(), "occasionEndDate"))
+		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CATERING_OCCASION.getKey(), "occasionEndDate"))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(message);
 
@@ -184,7 +184,7 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new ErrandAttachment().id("first"), new ErrandAttachment().id("second")));
 
-		assertThat(decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key(), null)).isEqualTo(DECISION_ID);
+		assertThat(decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey(), null)).isEqualTo(DECISION_ID);
 
 		verify(supportManagementIntegrationMock, never()).createDecision(any(), any(), any(), any());
 		verify(supportManagementIntegrationMock, never()).linkDecisionAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, "first");
@@ -199,7 +199,7 @@ class DecisionServiceTest {
 	void approveAutomaticallyLeavesACompletedDecisionAlone() {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Decision().id(DECISION_ID).status("COMPLETED")));
 
-		assertThat(decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key(), null)).isEqualTo(DECISION_ID);
+		assertThat(decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey(), null)).isEqualTo(DECISION_ID);
 
 		verify(supportManagementIntegrationMock).getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
@@ -211,7 +211,7 @@ class DecisionServiceTest {
 			new Decision().id("manual").status("DRAFT").method("MANUAL").decidedBy("case-worker").outcome("REJECTED"),
 			new Decision().id("automatic").status("DRAFT").method("AUTOMATIC").decidedBy("another-service")));
 
-		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key(), null))
+		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey(), null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(ERRAND_ID);
 
@@ -223,7 +223,7 @@ class DecisionServiceTest {
 	void approveAutomaticallyLeavesACancelledDecisionAlone() {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Decision().id(DECISION_ID).status("CANCELLED")));
 
-		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key(), null))
+		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey(), null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(ERRAND_ID);
 
@@ -238,7 +238,7 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(DECISION_ID);
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 
-		decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key(), null);
+		decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey(), null);
 
 		verify(supportManagementIntegrationMock, never()).linkDecisionAttachment(anyString(), anyString(), anyString(), anyString(), anyString());
 		verify(supportManagementIntegrationMock).updateDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(DECISION_ID), any());
@@ -250,7 +250,7 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().stakeholders(List.of(new Stakeholder().role("APPLICANT").externalId("applicant-id"), new Stakeholder().role("PRIMARY"))));
 
-		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key(), null))
+		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey(), null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has no stakeholder with role 'PRIMARY'");
 
@@ -265,7 +265,7 @@ class DecisionServiceTest {
 			.thenReturn(List.of(new Decision().id(DECISION_ID).status("DRAFT").method("AUTOMATIC").decidedBy("pw-alkt")));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 
-		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key(), null))
+		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey(), null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has no stakeholder with role 'PRIMARY'");
 
@@ -274,9 +274,9 @@ class DecisionServiceTest {
 
 	@Test
 	void approveAutomaticallyFailsForAProcessWithoutAnAutomaticDecision() {
-		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING.key(), null))
+		assertThatThrownBy(() -> decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING.getKey(), null))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(ALCOHOL_SERVING.key());
+			.hasMessageContaining(ALCOHOL_SERVING.getKey());
 
 		verifyNoInteractions(supportManagementIntegrationMock);
 	}
@@ -290,7 +290,7 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(supportManagementIntegrationMock.createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), decisionCaptor.capture())).thenReturn(DECISION_ID);
 
-		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.key())).isEqualTo(DECISION_ID);
+		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.getKey())).isEqualTo(DECISION_ID);
 
 		final InOrder inOrder = inOrder(assetServiceMock, supportManagementIntegrationMock);
 		inOrder.verify(assetServiceMock).getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
@@ -302,9 +302,9 @@ class DecisionServiceTest {
 
 	@Test
 	void createChangeDraftFailsForAProcessWithoutAChangeDraft() {
-		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING.key()))
+		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING.getKey()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(ALCOHOL_SERVING.key());
+			.hasMessageContaining(ALCOHOL_SERVING.getKey());
 
 		verifyNoInteractions(supportManagementIntegrationMock, assetServiceMock);
 	}
@@ -314,7 +314,7 @@ class DecisionServiceTest {
 	void createChangeDraftAnswersWithTheDecisionAlreadyOnTheErrand() {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Decision().id(DECISION_ID).status("DRAFT")));
 
-		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.key())).isEqualTo(DECISION_ID);
+		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.getKey())).isEqualTo(DECISION_ID);
 
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
 		verifyNoInteractions(assetServiceMock);
@@ -327,7 +327,7 @@ class DecisionServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(assetServiceMock.getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).thenThrow(new NonRetryableException("Errand 'errand-id' names no asset to change"));
 
-		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.key()))
+		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.getKey()))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' names no asset to change");
 

@@ -80,11 +80,11 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	@Test
 	void test001_incidentIsReportedOnce() throws JacksonException {
 		// === Start process === every report it sends is refused, so the first work step leaves an incident behind
-		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT, LOW_ALCOHOL_BEER_SALES.key());
+		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT, LOW_ALCOHOL_BEER_SALES.getKey());
 
 		await()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, LOW_ALCOHOL_BEER_SALES.key()).stream()
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, LOW_ALCOHOL_BEER_SALES.getKey()).stream()
 				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
 
 		stubRowsOfTheErrand(processInstanceId);
@@ -112,7 +112,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	@Test
 	void test002_instanceThatVanishedIsSettled() throws JacksonException {
 		// === Start process ===
-		final var processInstanceId = startProcess(ERRAND_ID_VANISHED, EXTERNAL_INSPECTION.key());
+		final var processInstanceId = startProcess(ERRAND_ID_VANISHED, EXTERNAL_INSPECTION.getKey());
 
 		// Someone cancels the instance from outside, and nothing reports it
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -127,10 +127,10 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	@Test
 	void test003_instanceThatEndedWhileSupportManagementWasDownIsSettled() throws JacksonException {
 		// === Start process === every report it sends on the way is answered with 500 and swallowed
-		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN, CATERING_OCCASION.key());
+		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN, CATERING_OCCASION.getKey());
 
-		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.key(), "follow_up");
-		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.key(), "closure");
+		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.getKey(), "follow_up");
+		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.getKey(), "closure");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

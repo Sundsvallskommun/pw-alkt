@@ -12,7 +12,7 @@ class AlktProcessTest {
 
 	@Test
 	void fromKey() {
-		Arrays.stream(AlktProcess.values()).forEach(process -> assertThat(AlktProcess.fromKey(process.key())).contains(process));
+		Arrays.stream(AlktProcess.values()).forEach(process -> assertThat(AlktProcess.fromKey(process.getKey())).contains(process));
 	}
 
 	@Test
@@ -25,12 +25,12 @@ class AlktProcessTest {
 	void keys() {
 		assertThat(AlktProcess.keys())
 			.hasSize(AlktProcess.values().length)
-			.contains(ALCOHOL_SERVING.key());
+			.contains(ALCOHOL_SERVING.getKey());
 	}
 
 	@Test
 	void keysWhere() {
-		assertThat(AlktProcess.keysWhere(process -> process.changeDraftTitle().isPresent()))
-			.containsExactlyInAnyOrder(ALCOHOL_SERVING_CHANGE.key(), TOBACCO_SALES_CHANGE.key());
+		assertThat(AlktProcess.keysWhere(process -> process.getChangeDraftTitle().isPresent()))
+			.containsExactlyInAnyOrder(ALCOHOL_SERVING_CHANGE.getKey(), TOBACCO_SALES_CHANGE.getKey());
 	}
 }

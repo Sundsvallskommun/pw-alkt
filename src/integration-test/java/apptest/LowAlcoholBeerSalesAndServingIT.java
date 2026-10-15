@@ -31,11 +31,11 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES_AND_SERVING.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey());
 
 		// The first four phases hold no catch event in this model, so follow up is the first one to park
-		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES_AND_SERVING.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES_AND_SERVING.key(), "closure");
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -99,7 +99,7 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES_AND_SERVING.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey());
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -142,9 +142,9 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES_AND_SERVING.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES_AND_SERVING.key(), "follow_up");
+		cancelProcess(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

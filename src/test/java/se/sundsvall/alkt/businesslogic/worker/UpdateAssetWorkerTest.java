@@ -52,7 +52,7 @@ class UpdateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING_CHANGE.key());
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING_CHANGE.getKey());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_update_asset");
 		when(assetServiceMock.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).thenReturn("asset-id");
 

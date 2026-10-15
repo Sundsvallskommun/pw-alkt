@@ -34,15 +34,15 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.getKey());
 
 		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key());
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "closure");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey());
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -116,7 +116,7 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.getKey());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -141,9 +141,9 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "registration");
+		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "registration");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -168,11 +168,11 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "review");
-		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "review");
+		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "investigation");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -205,11 +205,11 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CHANGE.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -233,9 +233,9 @@ class TobaccoSalesChangeIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CHANGE.getKey());
 
-		awaitIncidentAt(TOBACCO_SALES_CHANGE.key(), processInstanceId, "external_task_create_change_draft");
+		awaitIncidentAt(TOBACCO_SALES_CHANGE.getKey(), processInstanceId, "external_task_create_change_draft");
 
 		verifyAllStubs();
 		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-support-management/.*/decisions")));

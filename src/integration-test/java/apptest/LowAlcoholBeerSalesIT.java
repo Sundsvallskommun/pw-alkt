@@ -31,11 +31,11 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey());
 
 		// The first four phases hold no catch event in this model, so follow up is the first one to park
-		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.key(), "closure");
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -99,7 +99,7 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey());
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -142,9 +142,9 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.key(), "follow_up");
+		cancelProcess(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

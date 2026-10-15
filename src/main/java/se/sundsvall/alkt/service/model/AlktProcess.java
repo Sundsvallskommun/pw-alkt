@@ -17,6 +17,7 @@ import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_SALES_PERMIT;
 
 /** The processes an errand can start. Each key must match the id of the process in its bpmn schema. */
 public enum AlktProcess {
+
 	ALCOHOL_SERVING("alcohol-serving", ALCOHOL_SERVING_PERMIT, null, null),
 	ALCOHOL_SERVING_CHANGE("alcohol-serving-change", ALCOHOL_SERVING_PERMIT, null, "Ändring av serveringstillstånd"),
 	ALCOHOL_SERVING_ADDITION("alcohol-serving-addition", ALCOHOL_SERVING_PERMIT, null, null),
@@ -52,30 +53,30 @@ public enum AlktProcess {
 	}
 
 	public static Set<String> keys() {
-		return keysWhere(process -> true);
+		return keysWhere(_ -> true);
 	}
 
 	public static Set<String> keysWhere(final Predicate<AlktProcess> condition) {
 		return Arrays.stream(values())
 			.filter(condition)
-			.map(AlktProcess::key)
+			.map(AlktProcess::getKey)
 			.collect(toUnmodifiableSet());
 	}
 
-	public String key() {
+	public String getKey() {
 		return key;
 	}
 
-	public Optional<AssetType> assetType() {
+	public Optional<AssetType> getAssetType() {
 		return Optional.ofNullable(assetType);
 	}
 
 	/** The title of a decision the process makes automatically. */
-	public Optional<String> decisionTitle() {
+	public Optional<String> getDecisionTitle() {
 		return Optional.ofNullable(decisionTitle);
 	}
 
-	public Optional<String> changeDraftTitle() {
+	public Optional<String> getChangeDraftTitle() {
 		return Optional.ofNullable(changeDraftTitle);
 	}
 }

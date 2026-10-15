@@ -53,7 +53,7 @@ class CreateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING.key());
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING.getKey());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_asset");
 		when(assetServiceMock.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).thenReturn("asset-id");
 
@@ -69,7 +69,7 @@ class CreateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING.key());
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING.getKey());
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER)).thenReturn("22810001");
 
 		worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);

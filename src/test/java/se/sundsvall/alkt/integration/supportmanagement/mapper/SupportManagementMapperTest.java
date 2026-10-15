@@ -117,39 +117,39 @@ class SupportManagementMapperTest {
 
 	@Test
 	void toDecisionTitleNamesThePermitOfEachNotificationProcess() {
-		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SALES.key())).isEqualTo("Anmälan om försäljning av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SERVING.key())).isEqualTo("Anmälan om servering av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SALES_AND_SERVING.key())).isEqualTo("Anmälan om försäljning och servering av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(E_CIGARETTE_SALES.key())).isEqualTo("Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
-		assertThat(SupportManagementMapper.toDecisionTitle(TOBACCO_FREE_NICOTINE_PRODUCT_SALES.key())).isEqualTo("Anmälan om försäljning av tobaksfria nikotinprodukter");
-		assertThat(SupportManagementMapper.toDecisionTitle(CATERING_OCCASION.key())).isEqualTo("Anmälan om cateringtillfälle");
+		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SALES.getKey())).isEqualTo("Anmälan om försäljning av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SERVING.getKey())).isEqualTo("Anmälan om servering av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey())).isEqualTo("Anmälan om försäljning och servering av folköl");
+		assertThat(SupportManagementMapper.toDecisionTitle(E_CIGARETTE_SALES.getKey())).isEqualTo("Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
+		assertThat(SupportManagementMapper.toDecisionTitle(TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey())).isEqualTo("Anmälan om försäljning av tobaksfria nikotinprodukter");
+		assertThat(SupportManagementMapper.toDecisionTitle(CATERING_OCCASION.getKey())).isEqualTo("Anmälan om cateringtillfälle");
 	}
 
 	@Test
 	void toDecisionTitleRefusesAProcessWithoutAnAutomaticDecision() {
-		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(ALCOHOL_SERVING.key()))
+		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(ALCOHOL_SERVING.getKey()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(ALCOHOL_SERVING.key())
-			.hasMessageContaining(LOW_ALCOHOL_BEER_SALES.key())
-			.hasMessageContaining(LOW_ALCOHOL_BEER_SERVING.key())
-			.hasMessageContaining(LOW_ALCOHOL_BEER_SALES_AND_SERVING.key());
+			.hasMessageContaining(ALCOHOL_SERVING.getKey())
+			.hasMessageContaining(LOW_ALCOHOL_BEER_SALES.getKey())
+			.hasMessageContaining(LOW_ALCOHOL_BEER_SERVING.getKey())
+			.hasMessageContaining(LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey());
 		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(null))
 			.isInstanceOf(NonRetryableException.class);
 	}
 
 	@Test
 	void toChangeDraftTitleNamesThePermitOfEachChangeProcess() {
-		assertThat(SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING_CHANGE.key())).isEqualTo("Ändring av serveringstillstånd");
-		assertThat(SupportManagementMapper.toChangeDraftTitle(TOBACCO_SALES_CHANGE.key())).isEqualTo("Ändring av tobakstillstånd");
+		assertThat(SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING_CHANGE.getKey())).isEqualTo("Ändring av serveringstillstånd");
+		assertThat(SupportManagementMapper.toChangeDraftTitle(TOBACCO_SALES_CHANGE.getKey())).isEqualTo("Ändring av tobakstillstånd");
 	}
 
 	@Test
 	void toChangeDraftTitleRefusesAProcessWithoutAChangeDraft() {
-		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING.key()))
+		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING.getKey()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(ALCOHOL_SERVING.key())
-			.hasMessageContaining(ALCOHOL_SERVING_CHANGE.key())
-			.hasMessageContaining(TOBACCO_SALES_CHANGE.key());
+			.hasMessageContaining(ALCOHOL_SERVING.getKey())
+			.hasMessageContaining(ALCOHOL_SERVING_CHANGE.getKey())
+			.hasMessageContaining(TOBACCO_SALES_CHANGE.getKey());
 		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(null))
 			.isInstanceOf(NonRetryableException.class);
 	}

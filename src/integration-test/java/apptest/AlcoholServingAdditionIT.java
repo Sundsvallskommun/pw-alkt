@@ -33,15 +33,15 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.getKey());
 
 		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key());
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "closure");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey());
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -117,7 +117,7 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.getKey());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -141,9 +141,9 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "registration");
+		cancelProcess(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "registration");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -167,11 +167,11 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "review");
-		cancelProcess(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "review");
+		cancelProcess(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "investigation");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -203,11 +203,11 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 

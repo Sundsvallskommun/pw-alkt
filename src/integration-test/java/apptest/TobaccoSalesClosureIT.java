@@ -33,15 +33,15 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
 		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key());
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "closure");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey());
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -115,7 +115,7 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -140,9 +140,9 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "registration");
+		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "registration");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -167,11 +167,11 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "review");
-		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "review");
+		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "investigation");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -204,11 +204,11 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "review");
-		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.key(), "investigation");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -232,9 +232,9 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.key());
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
-		awaitIncidentAt(TOBACCO_SALES_CLOSURE.key(), processInstanceId, "external_task_check_permit");
+		awaitIncidentAt(TOBACCO_SALES_CLOSURE.getKey(), processInstanceId, "external_task_check_permit");
 
 		verifyAllStubs();
 		wiremock.verify(0, patchRequestedFor(urlPathMatching("/api-party-assets/.*")));

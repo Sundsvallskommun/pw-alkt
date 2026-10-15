@@ -37,7 +37,7 @@ import static se.sundsvall.alkt.service.model.AlktProcess.ACTION_ERRAND;
 @Service
 public class DecisionService {
 
-	private static final Map<String, Set<String>> DECISION_OUTCOMES_OF_PROCESS = Map.of(ACTION_ERRAND.key(), ACTION_ERRAND_DECISION_OUTCOMES);
+	private static final Map<String, Set<String>> DECISION_OUTCOMES_OF_PROCESS = Map.of(ACTION_ERRAND.getKey(), ACTION_ERRAND_DECISION_OUTCOMES);
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final AssetService assetService;
