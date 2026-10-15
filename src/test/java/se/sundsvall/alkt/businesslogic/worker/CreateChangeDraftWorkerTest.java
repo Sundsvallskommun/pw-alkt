@@ -16,11 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
 
 @ExtendWith(MockitoExtension.class)
 class CreateChangeDraftWorkerTest {
@@ -52,14 +52,14 @@ class CreateChangeDraftWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_ALCOHOL_SERVING_CHANGE);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING_CHANGE.getKey());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_change_draft");
-		when(decisionServiceMock.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING, PROCESS_KEY_ALCOHOL_SERVING_CHANGE)).thenReturn("decision-id");
+		when(decisionServiceMock.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.getKey())).thenReturn("decision-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_change_draft", null).withLogMessage("Errand has decision 'decision-id'"));
-		verify(decisionServiceMock).createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING, PROCESS_KEY_ALCOHOL_SERVING_CHANGE);
+		verify(decisionServiceMock).createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, ALCOHOL_SERVING_CHANGE.getKey());
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

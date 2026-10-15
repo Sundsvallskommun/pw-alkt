@@ -2,10 +2,8 @@ package se.sundsvall.alkt.businesslogic.worker;
 
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,12 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_CERTIFICATE_TEMPLATE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateAssetWorkerTest {
@@ -50,23 +47,19 @@ class UpdateAssetWorkerTest {
 	@InjectMocks
 	private UpdateAssetWorker worker;
 
-	/** A step without the parameter passes no template, and the certificate of the asset is left as it is. */
-	@ParameterizedTest
-	@NullSource
-	@ValueSource(strings = "serving-permit-certificate")
-	void updatesTheAssetWithTheCertificateTemplateOfTheStep(final String certificateTemplate) {
+	@Test
+	void updatesTheAsset() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_CERTIFICATE_TEMPLATE)).thenReturn(certificateTemplate);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_ALCOHOL_SERVING_CHANGE);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING_CHANGE.getKey());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_update_asset");
-		when(assetServiceMock.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE_ALCOHOL_SERVING)).thenReturn("asset-id");
+		when(assetServiceMock.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).thenReturn("asset-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_update_asset", null).withLogMessage("Asset 'asset-id' updated"));
-		verify(assetServiceMock).updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE_ALCOHOL_SERVING);
+		verify(assetServiceMock).updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

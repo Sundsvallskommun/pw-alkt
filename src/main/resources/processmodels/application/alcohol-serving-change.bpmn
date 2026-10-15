@@ -156,11 +156,6 @@
       </bpmn:sequenceFlow>
       <bpmn:serviceTask id="external_task_update_asset" name="Update asset" camunda:type="external" camunda:topic="UpdateAssetTask">
         <bpmn:documentation>Changes the permit the errand names in party-assets from the approved decision, and replaces its permit certificate.</bpmn:documentation>
-        <bpmn:extensionElements>
-          <camunda:inputOutput>
-            <camunda:inputParameter name="certificateTemplate">serving-permit-certificate</camunda:inputParameter>
-          </camunda:inputOutput>
-        </bpmn:extensionElements>
         <bpmn:incoming>flow_decision_gateway_to_update_asset</bpmn:incoming>
         <bpmn:outgoing>flow_decision_update_asset_to_end</bpmn:outgoing>
       </bpmn:serviceTask>

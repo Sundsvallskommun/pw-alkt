@@ -12,39 +12,7 @@ public final class Constants {
 	// Must match process-engine.deployment.processes[].tenant in application.yaml.
 	public static final String TENANT_ID_ALKT = "ALKT";
 
-	// Each key must match the id of the process in its bpmn schema.
-	public static final String PROCESS_KEY_ALCOHOL_SERVING = "alcohol-serving";
-	public static final String PROCESS_KEY_ALCOHOL_SERVING_CHANGE = "alcohol-serving-change";
-	public static final String PROCESS_KEY_ALCOHOL_SERVING_ADDITION = "alcohol-serving-addition";
-	public static final String PROCESS_KEY_TOBACCO_SALES = "tobacco-sales";
-	public static final String PROCESS_KEY_TOBACCO_SALES_CHANGE = "tobacco-sales-change";
-	public static final String PROCESS_KEY_TOBACCO_SALES_CLOSURE = "tobacco-sales-closure";
-	public static final String PROCESS_KEY_E_CIGARETTE_SALES = "e-cigarette-sales";
-	public static final String PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES = "tobacco-free-nicotine-product-sales";
-	public static final String PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING = "low-alcohol-beer-serving";
-	public static final String PROCESS_KEY_LOW_ALCOHOL_BEER_SALES = "low-alcohol-beer-sales";
-	public static final String PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING = "low-alcohol-beer-sales-and-serving";
-	public static final String PROCESS_KEY_CATERING_OCCASION = "catering-occasion";
-	public static final String PROCESS_KEY_EXTERNAL_INSPECTION = "external-inspection";
-	public static final String PROCESS_KEY_INTERNAL_INSPECTION = "internal-inspection";
-	public static final String PROCESS_KEY_ACTION_ERRAND = "action-errand";
-	public static final Set<String> PROCESS_KEYS = Set.of(
-		PROCESS_KEY_ALCOHOL_SERVING,
-		PROCESS_KEY_ALCOHOL_SERVING_CHANGE,
-		PROCESS_KEY_ALCOHOL_SERVING_ADDITION,
-		PROCESS_KEY_TOBACCO_SALES,
-		PROCESS_KEY_TOBACCO_SALES_CHANGE,
-		PROCESS_KEY_TOBACCO_SALES_CLOSURE,
-		PROCESS_KEY_E_CIGARETTE_SALES,
-		PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES,
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING,
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES,
-		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING,
-		PROCESS_KEY_CATERING_OCCASION,
-		PROCESS_KEY_EXTERNAL_INSPECTION,
-		PROCESS_KEY_INTERNAL_INSPECTION,
-		PROCESS_KEY_ACTION_ERRAND);
-	// Outside PROCESS_KEYS on purpose: it belongs to no errand and must not be startable from an errand event.
+	// Outside ProcessType on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
 
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
@@ -54,7 +22,6 @@ public final class Constants {
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER = "restaurantNumber";
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT = "restaurantNumberLatestAssignment";
 	public static final String PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID = "restaurantNumberAddressId";
-	public static final String PROCESS_VARIABLE_CERTIFICATE_TEMPLATE = "certificateTemplate";
 
 	public static final String MESSAGE_ERRAND_UPDATED = "errandUpdated";
 	public static final String MESSAGE_DECISION_UPDATED = "decision_updated";

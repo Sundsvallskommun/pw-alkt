@@ -52,7 +52,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
+import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SALES_NOTIFICATION;
 
 @ExtendWith(MockitoExtension.class)
 class AssetServiceTest {
@@ -108,7 +109,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn(content);
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "second")).thenReturn(content);
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
 
 		final InOrder inOrder = inOrder(supportManagementIntegrationMock, partyAssetsIntegrationMock);
 		inOrder.verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
@@ -121,7 +122,7 @@ class AssetServiceTest {
 
 		assertThat(assetCaptor.getValue().getAssetId()).isEqualTo(DECISION_ID);
 		assertThat(assetCaptor.getValue().getPartyId()).isEqualTo(PARTY_ID);
-		assertThat(assetCaptor.getValue().getType()).isEqualTo(PERMIT_TYPE_ALCOHOL_SERVING);
+		assertThat(assetCaptor.getValue().getType()).isEqualTo(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.getValue());
 		assertThat(attachmentCaptor.getAllValues()).extracting(file -> file.file().getOriginalFilename()).containsExactly("beslut.pdf", "ritning.pdf");
 		assertThat(attachmentCaptor.getAllValues().getFirst().file().getBytes()).isEqualTo(content);
 		verifyNoInteractions(templatingIntegrationMock);
@@ -141,7 +142,7 @@ class AssetServiceTest {
 			Map.of("caseNumber", "IAN-2026-00209", "permitHolderName", "Runt Hörnet AB", "errandId", ERRAND_ID, "conditions", "Serveringsområdet ska vara avgränsat.")))
 			.thenReturn(pdf);
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
 
 		final InOrder inOrder = inOrder(templatingIntegrationMock, partyAssetsIntegrationMock);
 		inOrder.verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
@@ -161,7 +162,7 @@ class AssetServiceTest {
 		givenADraftFor(approval());
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING, "22810001")).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, "22810001")).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
 		assertThat(assetCaptor.getValue().getAdditionalParameters()).containsEntry("premisesRestaurantNumber", "22810001");
@@ -174,7 +175,7 @@ class AssetServiceTest {
 		givenADraftFor(approval().outcome("APPROVAL_WITH_CONDITIONS")
 			.parameters(List.of(new Parameter().key("conditions").values(List.of("Ordningsvakt efter 23.00.")))));
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining("approval with conditions but has no conditions");
 
@@ -188,7 +189,7 @@ class AssetServiceTest {
 		givenADraftFor(approval());
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenThrow(new ClientProblem(BAD_GATEWAY, "Templating is down"));
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
 			.hasMessageContaining("ClientProblem 502")
@@ -206,7 +207,7 @@ class AssetServiceTest {
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any()))
 			.thenThrow(new NonRetryableException("Missing template parameter 'premisesName'"));
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining("removed again")
 			.hasMessageContaining("Missing template parameter 'premisesName'");
@@ -223,7 +224,7 @@ class AssetServiceTest {
 			.thenThrow(new NonRetryableException("Missing template parameter 'premisesName'"));
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(ASSET_ID)
 			.hasMessageContaining("Missing template parameter 'premisesName'")
@@ -231,16 +232,11 @@ class AssetServiceTest {
 			.hasMessageNotContaining("Party assets is down");
 	}
 
-	/** A blank parameter names no template, just as a missing one. */
-	@ParameterizedTest
-	@NullSource
-	@ValueSource(strings = {
-		"", " "
-	})
-	void findOrCreateAssetCreatesNoCertificateWithoutATemplate(final String certificateTemplate) {
+	@Test
+	void findOrCreateAssetCreatesNoCertificateForANotification() {
 		givenADraftFor(approval());
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 		verifyNoInteractions(templatingIntegrationMock);
@@ -252,7 +248,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
 		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset().id("existing-asset-id")));
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo("existing-asset-id");
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo("existing-asset-id");
 
 		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 		verify(supportManagementIntegrationMock, never()).getAttachment(any(), any(), any(), any());
@@ -265,7 +261,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
 		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset().id("existing-asset-id")));
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo("existing-asset-id");
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo("existing-asset-id");
 	}
 
 	@Test
@@ -274,18 +270,18 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
 		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset().type("PERMIT")));
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' is of type 'PERMIT', the process handles only type '%s'".formatted(ASSET_ID, PERMIT_TYPE_ALCOHOL_SERVING));
+			.hasMessage("Asset '%s' is of type 'PERMIT', the process handles only type '%s'".formatted(ASSET_ID, ALCOHOL_SERVING_PERMIT.getValue()));
 
 		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 	}
 
 	@Test
-	void findOrCreateAssetCreatesAPermitThatEndsAfterToday() {
+	void findOrCreateAssetCreatesAnAssetThatEndsAfterToday() {
 		givenADraftFor(approval().validTo(TODAY.plusDays(2)));
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 	}
@@ -300,7 +296,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
 		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Decision of errand 'errand-id' is valid to %s, which is not after today, so the permit cannot be activated".formatted(validTo));
 
@@ -311,7 +307,7 @@ class AssetServiceTest {
 	void findOrCreateAssetWithoutAttachmentsOnTheDecision() {
 		givenADraftFor(approval().attachments(null));
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 		verify(partyAssetsIntegrationMock, never()).addAttachmentToDraft(any(), any(), any());
@@ -324,7 +320,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first"))
 			.thenThrow(Problem.valueOf(BAD_GATEWAY, "Support management is down"));
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
 			.hasMessageContaining("Support management is down");
@@ -341,7 +337,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
 			.hasMessageContaining("ClientProblem 502")
@@ -357,7 +353,7 @@ class AssetServiceTest {
 		givenADraftFor(approval());
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again")
 			.hasMessageContaining("ClientProblem 502")
@@ -372,7 +368,7 @@ class AssetServiceTest {
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is still down")).when(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining(ASSET_ID)
 			.hasMessageContaining("ClientProblem 502")
@@ -384,7 +380,7 @@ class AssetServiceTest {
 	void findOrCreateAssetFailsWithoutACompletedDecision() {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("no completed decision");
 
@@ -393,10 +389,10 @@ class AssetServiceTest {
 
 	/** An approval with conditions grants the permit as well, so it is created the same way. */
 	@Test
-	void findOrCreateAssetCreatesThePermitOfAnApprovalWithConditions() {
+	void findOrCreateAssetCreatesTheAssetOfAnApprovalWithConditions() {
 		givenADraftFor(new Decision().id(DECISION_ID).outcome("APPROVAL_WITH_CONDITIONS"));
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null)).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 	}
@@ -410,7 +406,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(new Decision().id(DECISION_ID).outcome(outcome)));
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("only created or changed from one of [APPROVAL, APPROVAL_WITH_CONDITIONS]");
 
@@ -422,7 +418,7 @@ class AssetServiceTest {
 	void findOrCreateAssetFailsOnADecisionWithoutId() {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().id(null)));
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("no id");
 
@@ -434,7 +430,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(STAKEHOLDER_ROLE_PERMIT_HOLDER);
 
@@ -457,7 +453,7 @@ class AssetServiceTest {
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn(pdf);
 
-		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		final InOrder inOrder = inOrder(partyAssetsIntegrationMock, templatingIntegrationMock);
 		inOrder.verify(templatingIntegrationMock).renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture());
@@ -488,7 +484,7 @@ class AssetServiceTest {
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
-		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING);
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getAdditionalParameters()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
@@ -503,7 +499,7 @@ class AssetServiceTest {
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
-		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING);
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getAdditionalParameters()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
@@ -515,7 +511,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().outcome("APPROVAL_WITH_CONDITIONS"));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining("approval with conditions but has no conditions");
 
@@ -534,7 +530,7 @@ class AssetServiceTest {
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
 
-		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING);
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
@@ -545,7 +541,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(TODAY));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
-		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING);
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(TODAY);
@@ -556,7 +552,7 @@ class AssetServiceTest {
 		final var validTo = TODAY.minusDays(1);
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().validTo(validTo)));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Decision of errand 'errand-id' is valid to %s, which has passed, so the permit is not changed".formatted(validTo));
 
@@ -572,7 +568,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(LocalDate.of(2100, 9, 30)).parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 
-		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, PERMIT_TYPE_ALCOHOL_SERVING);
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.of(2100, 9, 30));
@@ -587,7 +583,7 @@ class AssetServiceTest {
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
-		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING);
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
 		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "");
 	}
@@ -602,7 +598,7 @@ class AssetServiceTest {
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture()))
 			.thenThrow(new NonRetryableException("Template 'serving-permit-certificate' cannot be rendered from the given parameters: Missing placeholder 'serveringsyta'"));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class);
 
 		assertThat(templateParametersCaptor.getValue()).containsEntry("serveringstid", "11.00–01.00").doesNotContainKey("serveringsyta");
@@ -617,7 +613,7 @@ class AssetServiceTest {
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any()))
 			.thenThrow(new NonRetryableException("Missing template parameter 'premisesName'"));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Missing template parameter 'premisesName'");
 
@@ -625,16 +621,12 @@ class AssetServiceTest {
 		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
 	}
 
-	@ParameterizedTest
-	@NullSource
-	@ValueSource(strings = {
-		"", " "
-	})
-	void updateAssetLeavesTheCertificateAloneWithoutATemplate(final String certificateTemplate) {
+	@Test
+	void updateAssetLeavesTheCertificateAloneOfANotification() {
 		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.getValue())));
 
-		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, certificateTemplate, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), any());
 		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
@@ -651,7 +643,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(assetId == null ? null : List.of(assetId)))));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' names no asset to change");
 
@@ -667,7 +659,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(assetId)))));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' names asset '%s', which is not an asset id".formatted(assetId));
 
@@ -679,7 +671,7 @@ class AssetServiceTest {
 		final var versioned = versioned(activeAsset());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned);
 
-		assertThat(assetService.getPermitToChange(MUNICIPALITY_ID, errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThat(assetService.getPermitToChange(MUNICIPALITY_ID, errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isSameAs(versioned);
 		verifyNoInteractions(supportManagementIntegrationMock, templatingIntegrationMock);
 	}
@@ -693,9 +685,9 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type(type)));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(ASSET_ID, type, PERMIT_TYPE_ALCOHOL_SERVING));
+			.hasMessage("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(ASSET_ID, type, ALCOHOL_SERVING_PERMIT.getValue()));
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verifyNoInteractions(templatingIntegrationMock);
@@ -706,7 +698,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().parameters(null));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining("names no asset to change");
 	}
@@ -717,7 +709,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Asset '%s' has status %s, only an active permit can be handled".formatted(ASSET_ID, status));
 
@@ -730,7 +722,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().partyId("someone-else")));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Asset '%s' does not belong to the permit holder of errand 'errand-id'".formatted(ASSET_ID));
 
@@ -743,7 +735,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has no stakeholder with role '%s'".formatted(STAKEHOLDER_ROLE_PERMIT_HOLDER));
 
@@ -759,7 +751,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(new Decision().id(DECISION_ID).outcome(outcome)));
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("only created or changed from one of [APPROVAL, APPROVAL_WITH_CONDITIONS]");
 
@@ -771,7 +763,7 @@ class AssetServiceTest {
 	void updateAssetFailsWithoutACompletedDecision() {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_TEMPLATE, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("no completed decision");
 
@@ -784,7 +776,7 @@ class AssetServiceTest {
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
-		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verifyNoInteractions(templatingIntegrationMock);
@@ -796,7 +788,7 @@ class AssetServiceTest {
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED)));
 
-		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 	}
 
 	@ParameterizedTest
@@ -808,7 +800,7 @@ class AssetServiceTest {
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
 
-		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Asset '%s' has status %s, only an active permit can be handled".formatted(ASSET_ID, status));
 	}
@@ -819,9 +811,9 @@ class AssetServiceTest {
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type("LowAlcoholBeerSalesNotification")));
 
-		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' is of type 'LowAlcoholBeerSalesNotification', the process handles only type '%s'".formatted(ASSET_ID, PERMIT_TYPE_ALCOHOL_SERVING));
+			.hasMessage("Asset '%s' is of type 'LowAlcoholBeerSalesNotification', the process handles only type '%s'".formatted(ASSET_ID, ALCOHOL_SERVING_PERMIT.getValue()));
 	}
 
 	@Test
@@ -830,7 +822,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(lastDay));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(TODAY.plusDays(30))));
 
-		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getStatus()).isEqualTo(Status.EXPIRED);
@@ -846,7 +838,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(TODAY));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
-		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getStatus()).isNull();
@@ -858,7 +850,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(TODAY.plusDays(90)));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(TODAY.plusDays(30))));
 
-		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 	}
@@ -869,7 +861,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(lastDay));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
-		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getStatus()).isNull();
@@ -883,7 +875,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(lastDay));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(lastDay)));
 
-		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 	}
@@ -894,7 +886,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED)));
 
-		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING)).isEqualTo(ASSET_ID);
+		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 	}
@@ -907,7 +899,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
 
-		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Asset '%s' has status %s, only an active permit can be handled".formatted(ASSET_ID, status));
 
@@ -919,7 +911,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(TODAY.minusDays(10)));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().issued(TODAY.minusDays(5))));
 
-		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Decision of errand 'errand-id' ends asset '%s' on %s, before it was issued on %s".formatted(ASSET_ID, TODAY.minusDays(10), TODAY.minusDays(5)));
 
@@ -931,7 +923,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval().validTo(TODAY.minusDays(5)));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().issued(TODAY.minusDays(5))));
 
-		assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING);
+		assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(TODAY.minusDays(5));
@@ -942,7 +934,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED).type("LowAlcoholBeerSalesNotification")));
 
-		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining("is of type 'LowAlcoholBeerSalesNotification'");
 	}
@@ -952,7 +944,7 @@ class AssetServiceTest {
 		givenAnErrandNaming(approval());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().partyId("someone-else")));
 
-		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Asset '%s' does not belong to the permit holder of errand 'errand-id'".formatted(ASSET_ID));
 
@@ -968,7 +960,7 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(new Decision().id(DECISION_ID).outcome(outcome)));
 
-		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
+		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(Problem.class);
 
 		verifyNoInteractions(partyAssetsIntegrationMock);
@@ -987,7 +979,7 @@ class AssetServiceTest {
 	}
 
 	private static Asset activeAsset() {
-		return new Asset().id(ASSET_ID).partyId(PARTY_ID).type(PERMIT_TYPE_ALCOHOL_SERVING).status(Status.ACTIVE);
+		return new Asset().id(ASSET_ID).partyId(PARTY_ID).type(ALCOHOL_SERVING_PERMIT.getValue()).status(Status.ACTIVE);
 	}
 
 	private void givenADraftFor(final Decision decision) {

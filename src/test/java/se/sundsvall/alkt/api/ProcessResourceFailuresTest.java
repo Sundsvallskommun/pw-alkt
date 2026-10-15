@@ -109,6 +109,26 @@ class ProcessResourceFailuresTest {
 	}
 
 	@Test
+	void processKeyIsUnknown() {
+
+		// Arrange
+		final var errandEvent = validEvent();
+		errandEvent.setProcessKey("no-such-process");
+
+		// Act
+		final var response = post("/2281/ALKT/process/errand-events", errandEvent);
+
+		// Assert
+		assertThat(response).isNotNull();
+		assertThat(response.getTitle()).isEqualTo("Constraint Violation");
+		assertThat(response.getStatus()).isEqualTo(BAD_REQUEST);
+		assertThat(response.getViolations())
+			.extracting(Violation::field, Violation::message)
+			.containsExactly(tuple("processKey", "not a process key this service knows"));
+		verifyNoInteractions(processServiceMock);
+	}
+
+	@Test
 	void invalidNamespace() {
 
 		// Act
