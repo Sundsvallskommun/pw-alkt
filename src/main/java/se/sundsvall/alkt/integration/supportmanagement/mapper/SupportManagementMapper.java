@@ -47,10 +47,12 @@ import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
@@ -75,7 +77,9 @@ public final class SupportManagementMapper {
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES, "Anmälan om försäljning av folköl",
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING, "Anmälan om servering av folköl",
 		PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING, "Anmälan om försäljning och servering av folköl",
-		PROCESS_KEY_E_CIGARETTE_SALES, "Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
+		PROCESS_KEY_E_CIGARETTE_SALES, "Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare",
+		PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES, "Anmälan om försäljning av tobaksfria nikotinprodukter",
+		PROCESS_KEY_CATERING_OCCASION, "Anmälan om cateringtillfälle");
 
 	private static final Map<String, String> CHANGE_DRAFT_TITLES = Map.of(
 		PROCESS_KEY_ALCOHOL_SERVING_CHANGE, "Ändring av serveringstillstånd",
@@ -115,9 +119,9 @@ public final class SupportManagementMapper {
 				.formatted(processKey, CHANGE_DRAFT_TITLES.keySet())));
 	}
 
-	// Why: an approval of a notification holds until further notice, so it has no last day. Support Management requires
-	// decidedAt already on the draft.
-	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final OffsetDateTime decidedAt) {
+	// Why: an approval of an ongoing notification holds until further notice, so it has no validTo; one for a single
+	// occasion ends with it. Support Management requires decidedAt already on the draft.
+	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final LocalDate validTo, final OffsetDateTime decidedAt) {
 		return new Decision()
 			.type(DECISION_TYPE_PERMIT)
 			.status(DECISION_STATUS_DRAFT)
@@ -127,7 +131,8 @@ public final class SupportManagementMapper {
 			.outcome(DECISION_OUTCOME_APPROVAL)
 			.title(title)
 			.description(errand.getTitle())
-			.validFrom(validFrom);
+			.validFrom(validFrom)
+			.validTo(validTo);
 	}
 
 	// Why: Support Management lets the process write only an automatic decision, with outcome and decidedAt already on the

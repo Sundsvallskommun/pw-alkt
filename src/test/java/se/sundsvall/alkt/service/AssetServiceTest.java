@@ -687,7 +687,7 @@ class AssetServiceTest {
 	@ParameterizedTest
 	@NullSource
 	@ValueSource(strings = {
-		"PERMIT", "LowAlcoholBeerServingPermit"
+		"PERMIT", "LowAlcoholBeerServingNotification"
 	})
 	void updateAssetFailsWithoutRetryOnAnAssetOfAnotherType(final String type) {
 		givenAnErrandNaming(approval());
@@ -817,11 +817,11 @@ class AssetServiceTest {
 	void checkPermitFailsWithoutRetryOnAnAssetOfAnotherType() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type("LowAlcoholBeerSalesPermit")));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type("LowAlcoholBeerSalesNotification")));
 
 		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' is of type 'LowAlcoholBeerSalesPermit', the process handles only type '%s'".formatted(ASSET_ID, PERMIT_TYPE_ALCOHOL_SERVING));
+			.hasMessage("Asset '%s' is of type 'LowAlcoholBeerSalesNotification', the process handles only type '%s'".formatted(ASSET_ID, PERMIT_TYPE_ALCOHOL_SERVING));
 	}
 
 	@Test
@@ -940,11 +940,11 @@ class AssetServiceTest {
 	@Test
 	void closeAssetFailsWithoutRetryOnAnEndedAssetOfAnotherType() {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED).type("LowAlcoholBeerSalesPermit")));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED).type("LowAlcoholBeerSalesNotification")));
 
 		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_ALCOHOL_SERVING))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining("is of type 'LowAlcoholBeerSalesPermit'");
+			.hasMessageContaining("is of type 'LowAlcoholBeerSalesNotification'");
 	}
 
 	@Test

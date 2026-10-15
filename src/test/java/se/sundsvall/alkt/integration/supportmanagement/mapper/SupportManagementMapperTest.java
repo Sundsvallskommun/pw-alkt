@@ -30,10 +30,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
@@ -119,6 +121,8 @@ class SupportManagementMapperTest {
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo("Anmälan om servering av folköl");
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo("Anmälan om försäljning och servering av folköl");
 		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_E_CIGARETTE_SALES)).isEqualTo("Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES)).isEqualTo("Anmälan om försäljning av tobaksfria nikotinprodukter");
+		assertThat(SupportManagementMapper.toDecisionTitle(PROCESS_KEY_CATERING_OCCASION)).isEqualTo("Anmälan om cateringtillfälle");
 	}
 
 	@Test
@@ -234,7 +238,7 @@ class SupportManagementMapperTest {
 		final var validFrom = LocalDate.of(2026, 9, 24);
 		final var decidedAt = OffsetDateTime.now();
 
-		final var result = SupportManagementMapper.toAutomaticDecision("Anmälan om servering av folköl", new Errand().title("Anmälan om servering av folköl, Kafé Solsidan"), validFrom, decidedAt);
+		final var result = SupportManagementMapper.toAutomaticDecision("Anmälan om servering av folköl", new Errand().title("Anmälan om servering av folköl, Kafé Solsidan"), validFrom, null, decidedAt);
 
 		assertThat(result.getType()).isEqualTo("PERMIT");
 		assertThat(result.getStatus()).isEqualTo("DRAFT");

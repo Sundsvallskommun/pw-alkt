@@ -1,12 +1,16 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
@@ -26,6 +30,7 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraftTitle;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionCompletion;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionTitle;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
 
 @Service
@@ -63,9 +68,10 @@ public class DecisionService {
 	/**
 	 * Support Management locks a completed decision, attachments included, so the decision is written as a draft, given
 	 * every attachment of the errand and completed last. A rerun picks up the draft an earlier attempt left behind. Any
-	 * other decision on the errand is the case worker's, so it is left alone and the step goes to an incident.
+	 * other decision on the errand is the case worker's, so it is left alone and the step goes to an incident. The decision
+	 * ends on the date in the errand parameter validToParameter names, and holds until further notice when it names none.
 	 */
-	public String approveAutomatically(final String municipalityId, final String namespace, final String errandId, final String processKey) {
+	public String approveAutomatically(final String municipalityId, final String namespace, final String errandId, final String processKey, final String validToParameter) {
 		final var title = toDecisionTitle(processKey);
 
 		final var decisions = supportManagementIntegration.getDecisions(municipalityId, namespace, errandId);
@@ -86,10 +92,13 @@ public class DecisionService {
 		if (toPartyId(errand).isEmpty()) {
 			throw new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId));
 		}
+		final var validTo = Optional.ofNullable(validToParameter)
+			.filter(StringUtils::isNotBlank)
+			.map(parameter -> toValidTo(errand, errandId, parameter, decidedAt.toLocalDate()));
 
 		final var decisionId = draft.map(Decision::getId)
 			.orElseGet(() -> supportManagementIntegration.createDecision(municipalityId, namespace, errandId,
-				toAutomaticDecision(title, errand, decidedAt.toLocalDate(), decidedAt)));
+				toAutomaticDecision(title, errand, decidedAt.toLocalDate(), validTo.orElse(null), decidedAt)));
 
 		final var linked = draft.map(Decision::getAttachments).orElse(emptyList()).stream()
 			.map(ErrandAttachment::getId)
@@ -119,6 +128,23 @@ public class DecisionService {
 				assetService.getPermitToChange(municipalityId, errand, errandId, permitType);
 				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, title, OffsetDateTime.now(clock)));
 			});
+	}
+
+	// Why: the completed decision is locked, and party-assets refuses to activate an asset whose last day is not after
+	// today, so a date that cannot end the asset stops the step before anything is written.
+	private static LocalDate toValidTo(final Errand errand, final String errandId, final String parameter, final LocalDate today) {
+		final var value = Optional.ofNullable(toParameterValues(errand.getParameters()).get(parameter))
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no parameter '%s' with the last day of the decision".formatted(errandId, parameter)));
+		final LocalDate validTo;
+		try {
+			validTo = LocalDate.parse(value);
+		} catch (final DateTimeParseException _) {
+			throw new NonRetryableException("Errand '%s' has a parameter '%s' that is not a date on the form yyyy-MM-dd".formatted(errandId, parameter));
+		}
+		if (!validTo.isAfter(today)) {
+			throw new NonRetryableException("Errand '%s' has %s in parameter '%s', which is not after today, so the asset cannot be activated".formatted(errandId, validTo, parameter));
+		}
+		return validTo;
 	}
 
 	private static boolean isOwnDraft(final Decision decision) {

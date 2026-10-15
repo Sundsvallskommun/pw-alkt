@@ -118,13 +118,18 @@ Every application tells the customer that the processing has started.
 
 ### Notifications
 
-|             Process key              |                  Errand                   |               What the service does                |        Permit in party-assets         |
-|--------------------------------------|-------------------------------------------|----------------------------------------------------|---------------------------------------|
-| `catering-occasion`                  | Catering occasion                         | Tells the customer that the processing has started | None                                  |
-| `low-alcohol-beer-sales`             | Sale of low-alcohol beer                  | Makes the decision, creates the permit             | `LowAlcoholBeerSalesPermit`           |
-| `low-alcohol-beer-serving`           | Serving of low-alcohol beer               | Makes the decision, creates the permit             | `LowAlcoholBeerServingPermit`         |
-| `low-alcohol-beer-sales-and-serving` | Sales and serving of low-alcohol beer     | Makes the decision, creates the permit             | `LowAlcoholBeerSalesAndServingPermit` |
-| `e-cigarette-sales`                  | Sale of electronic cigarettes and refills | Makes the decision, creates the permit             | `ECigaretteSalesPermit`               |
+|              Process key              |                  Errand                   |         What the service does         |             Asset in party-assets             |
+|---------------------------------------|-------------------------------------------|---------------------------------------|-----------------------------------------------|
+| `catering-occasion`                   | Catering occasion                         | Makes the decision, creates the asset | `CateringOccasionNotification`                |
+| `low-alcohol-beer-sales`              | Sale of low-alcohol beer                  | Makes the decision, creates the asset | `LowAlcoholBeerSalesNotification`             |
+| `low-alcohol-beer-serving`            | Serving of low-alcohol beer               | Makes the decision, creates the asset | `LowAlcoholBeerServingNotification`           |
+| `low-alcohol-beer-sales-and-serving`  | Sales and serving of low-alcohol beer     | Makes the decision, creates the asset | `LowAlcoholBeerSalesAndServingNotification`   |
+| `e-cigarette-sales`                   | Sale of electronic cigarettes and refills | Makes the decision, creates the asset | `ECigaretteSalesNotification`                 |
+| `tobacco-free-nicotine-product-sales` | Sale of tobacco-free nicotine products    | Makes the decision, creates the asset | `TobaccoFreeNicotineProductSalesNotification` |
+
+An approved notification holds until further notice, except a catering occasion. Its decision and asset end on the date
+in the errand parameter `occasionEndDate` (`yyyy-MM-dd`). An errand without that date, or with one that is not after
+today, raises an incident before any decision is written.
 
 ### Inspections
 

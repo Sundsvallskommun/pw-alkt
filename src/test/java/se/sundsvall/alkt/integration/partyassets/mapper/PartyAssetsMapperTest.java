@@ -33,20 +33,24 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_ADDITION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_EXTERNAL_INSPECTION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_E_CIGARETTE_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ATTACHMENT_PART_NAME;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.NOTIFICATION_TYPE_CATERING_OCCASION;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.NOTIFICATION_TYPE_E_CIGARETTE_SALES;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.NOTIFICATION_TYPE_TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ORIGIN;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_ALCOHOL_SERVING;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_TOBACCO_SALES;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
@@ -423,25 +427,27 @@ class PartyAssetsMapperTest {
 	}
 
 	@Test
-	void toPermitTypeGivesEachLowAlcoholBeerProcessATypeOfItsOwn() {
-		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES);
-		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SERVING);
-		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo(PERMIT_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
-	}
-
-	@Test
-	void toPermitTypeGivesTheTobaccoProcessesOneTypeAndECigarettesAnother() {
+	void toPermitTypeGivesTheTobaccoProcessesOneType() {
 		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
 		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES_CHANGE)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
 		assertThat(toPermitType(PROCESS_KEY_TOBACCO_SALES_CLOSURE)).isEqualTo(PERMIT_TYPE_TOBACCO_SALES);
-		assertThat(toPermitType(PROCESS_KEY_E_CIGARETTE_SALES)).isEqualTo(PERMIT_TYPE_E_CIGARETTE_SALES);
+	}
+
+	@Test
+	void toPermitTypeGivesEachNotificationProcessATypeOfItsOwn() {
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES);
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SERVING)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SERVING);
+		assertThat(toPermitType(PROCESS_KEY_LOW_ALCOHOL_BEER_SALES_AND_SERVING)).isEqualTo(NOTIFICATION_TYPE_LOW_ALCOHOL_BEER_SALES_AND_SERVING);
+		assertThat(toPermitType(PROCESS_KEY_E_CIGARETTE_SALES)).isEqualTo(NOTIFICATION_TYPE_E_CIGARETTE_SALES);
+		assertThat(toPermitType(PROCESS_KEY_TOBACCO_FREE_NICOTINE_PRODUCT_SALES)).isEqualTo(NOTIFICATION_TYPE_TOBACCO_FREE_NICOTINE_PRODUCT_SALES);
+		assertThat(toPermitType(PROCESS_KEY_CATERING_OCCASION)).isEqualTo(NOTIFICATION_TYPE_CATERING_OCCASION);
 	}
 
 	@Test
 	void toPermitTypeRefusesAProcessWithoutAPermit() {
-		assertThatThrownBy(() -> toPermitType(PROCESS_KEY_CATERING_OCCASION))
+		assertThatThrownBy(() -> toPermitType(PROCESS_KEY_EXTERNAL_INSPECTION))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(PROCESS_KEY_CATERING_OCCASION)
+			.hasMessageContaining(PROCESS_KEY_EXTERNAL_INSPECTION)
 			.hasMessageContaining(PROCESS_KEY_ALCOHOL_SERVING);
 		assertThatThrownBy(() -> toPermitType(null))
 			.isInstanceOf(NonRetryableException.class);
