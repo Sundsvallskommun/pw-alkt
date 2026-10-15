@@ -4,7 +4,7 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.alkt.api.validation.ValidProcessKey;
-import se.sundsvall.alkt.service.model.AlktProcess;
+import se.sundsvall.alkt.service.model.ProcessType;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.DELETE;
@@ -18,7 +18,7 @@ public class ValidProcessKeyConstraintValidator implements ConstraintValidator<V
 	@Override
 	public boolean isValid(final ErrandEvent errandEvent, final ConstraintValidatorContext context) {
 		if (errandEvent == null || errandEvent.getEventType() == DELETE || isBlank(errandEvent.getProcessKey())
-			|| AlktProcess.fromKey(errandEvent.getProcessKey()).isPresent()) {
+			|| ProcessType.fromKey(errandEvent.getProcessKey()).isPresent()) {
 			return true;
 		}
 

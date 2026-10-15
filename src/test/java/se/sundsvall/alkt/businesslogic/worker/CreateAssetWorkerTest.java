@@ -20,8 +20,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING;
 import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
 
 @ExtendWith(MockitoExtension.class)
 class CreateAssetWorkerTest {

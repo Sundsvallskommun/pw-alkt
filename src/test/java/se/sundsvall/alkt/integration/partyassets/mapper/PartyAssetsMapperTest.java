@@ -37,19 +37,6 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetType;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING_ADDITION;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.service.model.AlktProcess.CATERING_OCCASION;
-import static se.sundsvall.alkt.service.model.AlktProcess.EXTERNAL_INSPECTION;
-import static se.sundsvall.alkt.service.model.AlktProcess.E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.service.model.AlktProcess.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
-import static se.sundsvall.alkt.service.model.AlktProcess.TOBACCO_SALES;
-import static se.sundsvall.alkt.service.model.AlktProcess.TOBACCO_SALES_CHANGE;
-import static se.sundsvall.alkt.service.model.AlktProcess.TOBACCO_SALES_CLOSURE;
 import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
 import static se.sundsvall.alkt.service.model.AssetType.CATERING_OCCASION_NOTIFICATION;
 import static se.sundsvall.alkt.service.model.AssetType.E_CIGARETTE_SALES_NOTIFICATION;
@@ -58,6 +45,19 @@ import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SALES_N
 import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SERVING_NOTIFICATION;
 import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION;
 import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_SALES_PERMIT;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_ADDITION;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
+import static se.sundsvall.alkt.service.model.ProcessType.E_CIGARETTE_SALES;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES_AND_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
+import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES;
+import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CHANGE;
+import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CLOSURE;
 
 class PartyAssetsMapperTest {
 

@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/LowAlcoholBeerSalesIT/", classes = Application.class)

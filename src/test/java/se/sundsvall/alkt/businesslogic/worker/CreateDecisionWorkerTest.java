@@ -20,8 +20,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.businesslogic.worker.CreateDecisionWorker.PROCESS_VARIABLE_VALID_TO_PARAMETER;
-import static se.sundsvall.alkt.service.model.AlktProcess.CATERING_OCCASION;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SERVING;
 
 @ExtendWith(MockitoExtension.class)
 class CreateDecisionWorkerTest {

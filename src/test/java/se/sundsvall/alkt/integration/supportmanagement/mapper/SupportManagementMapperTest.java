@@ -31,16 +31,16 @@ import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.service.model.AlktProcess.CATERING_OCCASION;
-import static se.sundsvall.alkt.service.model.AlktProcess.E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.service.model.AlktProcess.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
-import static se.sundsvall.alkt.service.model.AlktProcess.TOBACCO_SALES_CHANGE;
 import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.ProcessType.E_CIGARETTE_SALES;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES_AND_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
+import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CHANGE;
 
 class SupportManagementMapperTest {
 

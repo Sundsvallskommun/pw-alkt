@@ -12,7 +12,7 @@ public final class Constants {
 	// Must match process-engine.deployment.processes[].tenant in application.yaml.
 	public static final String TENANT_ID_ALKT = "ALKT";
 
-	// Outside AlktProcess on purpose: it belongs to no errand and must not be startable from an errand event.
+	// Outside ProcessType on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
 
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";

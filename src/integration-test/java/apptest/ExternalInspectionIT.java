@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.service.model.AlktProcess.EXTERNAL_INSPECTION;
+import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/ExternalInspectionIT/", classes = Application.class)

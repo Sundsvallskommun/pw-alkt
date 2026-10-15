@@ -19,9 +19,9 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.task.ExternalTask;
 import se.sundsvall.alkt.exception.NonRetryableException;
-import se.sundsvall.alkt.service.model.AlktProcess;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
+import se.sundsvall.alkt.service.model.ProcessType;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.support.Relation;
 import se.sundsvall.dept44.support.Relation.ResourceIdentifier;
@@ -87,17 +87,17 @@ public final class SupportManagementMapper {
 	}
 
 	public static String toDecisionTitle(final String processKey) {
-		return AlktProcess.fromKey(processKey)
-			.flatMap(AlktProcess::getDecisionTitle)
+		return ProcessType.fromKey(processKey)
+			.flatMap(ProcessType::getDecisionTitle)
 			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a decision made automatically, one of %s was expected"
-				.formatted(processKey, AlktProcess.keysWhere(process -> process.getDecisionTitle().isPresent()))));
+				.formatted(processKey, ProcessType.keysWhere(process -> process.getDecisionTitle().isPresent()))));
 	}
 
 	public static String toChangeDraftTitle(final String processKey) {
-		return AlktProcess.fromKey(processKey)
-			.flatMap(AlktProcess::getChangeDraftTitle)
+		return ProcessType.fromKey(processKey)
+			.flatMap(ProcessType::getChangeDraftTitle)
 			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a change draft, one of %s was expected"
-				.formatted(processKey, AlktProcess.keysWhere(process -> process.getChangeDraftTitle().isPresent()))));
+				.formatted(processKey, ProcessType.keysWhere(process -> process.getChangeDraftTitle().isPresent()))));
 	}
 
 	// Why: an approval of an ongoing notification holds until further notice, so it has no validTo; one for a single

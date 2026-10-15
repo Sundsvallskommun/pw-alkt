@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 
 @DirtiesContext

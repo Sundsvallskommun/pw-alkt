@@ -14,8 +14,8 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
-import se.sundsvall.alkt.service.model.AlktProcess;
 import se.sundsvall.alkt.service.model.AssetType;
+import se.sundsvall.alkt.service.model.ProcessType;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
@@ -47,10 +47,10 @@ public final class PartyAssetsMapper {
 	private PartyAssetsMapper() {}
 
 	public static AssetType toAssetType(final String processKey) {
-		return AlktProcess.fromKey(processKey)
-			.flatMap(AlktProcess::getAssetType)
+		return ProcessType.fromKey(processKey)
+			.flatMap(ProcessType::getAssetType)
 			.orElseThrow(() -> new NonRetryableException("Process '%s' has no asset type, one of %s was expected"
-				.formatted(processKey, AlktProcess.keysWhere(process -> process.getAssetType().isPresent()))));
+				.formatted(processKey, ProcessType.keysWhere(process -> process.getAssetType().isPresent()))));
 	}
 
 	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType assetType,

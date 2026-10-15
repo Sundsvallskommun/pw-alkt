@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.service.model.AlktProcess.CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/CateringOccasionIT/", classes = Application.class)

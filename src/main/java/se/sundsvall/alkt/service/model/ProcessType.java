@@ -16,7 +16,7 @@ import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_FREE_NICOTINE_PR
 import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_SALES_PERMIT;
 
 /** The processes an errand can start. Each key must match the id of the process in its bpmn schema. */
-public enum AlktProcess {
+public enum ProcessType {
 
 	ALCOHOL_SERVING("alcohol-serving", ALCOHOL_SERVING_PERMIT, null, null),
 	ALCOHOL_SERVING_CHANGE("alcohol-serving-change", ALCOHOL_SERVING_PERMIT, null, "Ändring av serveringstillstånd"),
@@ -39,14 +39,14 @@ public enum AlktProcess {
 	private final String decisionTitle;
 	private final String changeDraftTitle;
 
-	AlktProcess(final String key, final AssetType assetType, final String decisionTitle, final String changeDraftTitle) {
+	ProcessType(final String key, final AssetType assetType, final String decisionTitle, final String changeDraftTitle) {
 		this.key = key;
 		this.assetType = assetType;
 		this.decisionTitle = decisionTitle;
 		this.changeDraftTitle = changeDraftTitle;
 	}
 
-	public static Optional<AlktProcess> fromKey(final String key) {
+	public static Optional<ProcessType> fromKey(final String key) {
 		return Arrays.stream(values())
 			.filter(process -> process.key.equals(key))
 			.findFirst();
@@ -56,10 +56,10 @@ public enum AlktProcess {
 		return keysWhere(_ -> true);
 	}
 
-	public static Set<String> keysWhere(final Predicate<AlktProcess> condition) {
+	public static Set<String> keysWhere(final Predicate<ProcessType> condition) {
 		return Arrays.stream(values())
 			.filter(condition)
-			.map(AlktProcess::getKey)
+			.map(ProcessType::getKey)
 			.collect(toUnmodifiableSet());
 	}
 

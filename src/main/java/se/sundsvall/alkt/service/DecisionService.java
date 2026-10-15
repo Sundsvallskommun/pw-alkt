@@ -32,7 +32,7 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionTitle;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
-import static se.sundsvall.alkt.service.model.AlktProcess.ACTION_ERRAND;
+import static se.sundsvall.alkt.service.model.ProcessType.ACTION_ERRAND;
 
 @Service
 public class DecisionService {

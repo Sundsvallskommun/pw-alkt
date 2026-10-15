@@ -37,11 +37,11 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING;
-import static se.sundsvall.alkt.service.model.AlktProcess.ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.service.model.AlktProcess.CATERING_OCCASION;
-import static se.sundsvall.alkt.service.model.AlktProcess.LOW_ALCOHOL_BEER_SALES;
 import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
+import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
+import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
 
 @ExtendWith(MockitoExtension.class)
 class DecisionServiceTest {
