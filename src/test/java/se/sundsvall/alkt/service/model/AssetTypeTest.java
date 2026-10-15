@@ -13,19 +13,19 @@ class AssetTypeTest {
 
 	@Test
 	void eachPermitHasItsOwnCertificateTemplate() {
-		assertThat(ALCOHOL_SERVING_PERMIT.certificateTemplate()).contains("serving-permit-certificate");
-		assertThat(TOBACCO_SALES_PERMIT.certificateTemplate()).contains("tobacco-permit-certificate");
+		assertThat(ALCOHOL_SERVING_PERMIT.getCertificateTemplate()).contains("serving-permit-certificate");
+		assertThat(TOBACCO_SALES_PERMIT.getCertificateTemplate()).contains("tobacco-permit-certificate");
 	}
 
 	@ParameterizedTest
 	@EnumSource(mode = MATCH_ALL, names = ".*_PERMIT")
 	void aPermitHasACertificateTemplate(final AssetType assetType) {
-		assertThat(assetType.certificateTemplate()).isPresent();
+		assertThat(assetType.getCertificateTemplate()).isPresent();
 	}
 
 	@ParameterizedTest
 	@EnumSource(mode = MATCH_ALL, names = ".*_NOTIFICATION")
 	void aNotificationHasNoCertificateTemplate(final AssetType assetType) {
-		assertThat(assetType.certificateTemplate()).isEmpty();
+		assertThat(assetType.getCertificateTemplate()).isEmpty();
 	}
 }

@@ -87,7 +87,7 @@ class PartyAssetsMapperTest {
 		assertThat(result.getAssetId()).isEqualTo(decision.getId());
 		assertThat(result.getOrigin()).isEqualTo(ORIGIN);
 		assertThat(result.getPartyId()).isEqualTo(PARTY_ID);
-		assertThat(result.getType()).isEqualTo(ALCOHOL_SERVING_PERMIT.value());
+		assertThat(result.getType()).isEqualTo(ALCOHOL_SERVING_PERMIT.getValue());
 		assertThat(result.getIssued()).isEqualTo(LocalDate.of(2026, 10, 1));
 		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
 		assertThat(result.getTitle()).isEqualTo("Beslut om serveringstillstånd");

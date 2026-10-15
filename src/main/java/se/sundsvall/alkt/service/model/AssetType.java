@@ -22,12 +22,12 @@ public enum AssetType {
 	}
 
 	/** The type as party-assets knows it. */
-	public String value() {
+	public String getValue() {
 		return value;
 	}
 
 	/** The template in templating that renders the certificate. A notification has none. */
-	public Optional<String> certificateTemplate() {
+	public Optional<String> getCertificateTemplate() {
 		return Optional.ofNullable(certificateTemplate);
 	}
 }

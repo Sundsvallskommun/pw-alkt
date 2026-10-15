@@ -122,7 +122,7 @@ class AssetServiceTest {
 
 		assertThat(assetCaptor.getValue().getAssetId()).isEqualTo(DECISION_ID);
 		assertThat(assetCaptor.getValue().getPartyId()).isEqualTo(PARTY_ID);
-		assertThat(assetCaptor.getValue().getType()).isEqualTo(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.value());
+		assertThat(assetCaptor.getValue().getType()).isEqualTo(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.getValue());
 		assertThat(attachmentCaptor.getAllValues()).extracting(file -> file.file().getOriginalFilename()).containsExactly("beslut.pdf", "ritning.pdf");
 		assertThat(attachmentCaptor.getAllValues().getFirst().file().getBytes()).isEqualTo(content);
 		verifyNoInteractions(templatingIntegrationMock);
@@ -272,7 +272,7 @@ class AssetServiceTest {
 
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' is of type 'PERMIT', the process handles only type '%s'".formatted(ASSET_ID, ALCOHOL_SERVING_PERMIT.value()));
+			.hasMessage("Asset '%s' is of type 'PERMIT', the process handles only type '%s'".formatted(ASSET_ID, ALCOHOL_SERVING_PERMIT.getValue()));
 
 		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 	}
@@ -624,7 +624,7 @@ class AssetServiceTest {
 	@Test
 	void updateAssetLeavesTheCertificateAloneOfANotification() {
 		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.value())));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.getValue())));
 
 		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION)).isEqualTo(ASSET_ID);
 
@@ -687,7 +687,7 @@ class AssetServiceTest {
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(ASSET_ID, type, ALCOHOL_SERVING_PERMIT.value()));
+			.hasMessage("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(ASSET_ID, type, ALCOHOL_SERVING_PERMIT.getValue()));
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verifyNoInteractions(templatingIntegrationMock);
@@ -813,7 +813,7 @@ class AssetServiceTest {
 
 		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Asset '%s' is of type 'LowAlcoholBeerSalesNotification', the process handles only type '%s'".formatted(ASSET_ID, ALCOHOL_SERVING_PERMIT.value()));
+			.hasMessage("Asset '%s' is of type 'LowAlcoholBeerSalesNotification', the process handles only type '%s'".formatted(ASSET_ID, ALCOHOL_SERVING_PERMIT.getValue()));
 	}
 
 	@Test
@@ -979,7 +979,7 @@ class AssetServiceTest {
 	}
 
 	private static Asset activeAsset() {
-		return new Asset().id(ASSET_ID).partyId(PARTY_ID).type(ALCOHOL_SERVING_PERMIT.value()).status(Status.ACTIVE);
+		return new Asset().id(ASSET_ID).partyId(PARTY_ID).type(ALCOHOL_SERVING_PERMIT.getValue()).status(Status.ACTIVE);
 	}
 
 	private void givenADraftFor(final Decision decision) {

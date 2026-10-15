@@ -97,7 +97,7 @@ public class AssetService {
 		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was.
 		// Rendered from the parameters the asset gets, since the certificate shows the whole permit.
 		final var update = toAssetUpdateRequest(asset, decision);
-		final var certificate = assetType.certificateTemplate()
+		final var certificate = assetType.getCertificateTemplate()
 			.map(template -> toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, update.getAdditionalParameters()))));
 
 		// Why: a rerun after the certificate failed finds the change already made, and every PATCH adds a revision.
@@ -175,8 +175,8 @@ public class AssetService {
 	}
 
 	private static void requireAssetType(final Asset asset, final AssetType assetType) {
-		if (!assetType.value().equals(asset.getType())) {
-			throw new NonRetryableException("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(asset.getId(), asset.getType(), assetType.value()));
+		if (!assetType.getValue().equals(asset.getType())) {
+			throw new NonRetryableException("Asset '%s' is of type '%s', the process handles only type '%s'".formatted(asset.getId(), asset.getType(), assetType.getValue()));
 		}
 	}
 
@@ -236,7 +236,7 @@ public class AssetService {
 				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
 			// Why: rendered from the parameters the asset gets, as on a change, so the certificate shows the restaurant number.
-			assetType.certificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
+			assetType.getCertificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
 				toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);
 		} catch (final NonRetryableException e) {

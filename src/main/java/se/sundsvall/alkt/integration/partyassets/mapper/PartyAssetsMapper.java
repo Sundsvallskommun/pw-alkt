@@ -60,7 +60,7 @@ public final class PartyAssetsMapper {
 			.status(DRAFT)
 			.origin(ORIGIN)
 			.partyId(partyId)
-			.type(assetType.value())
+			.type(assetType.getValue())
 			.issued(toFirstDay(decision).orElse(null))
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())
