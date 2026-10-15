@@ -1,0 +1,22 @@
+{
+	"name": "decision_api-support-management-get-decisions-pending",
+	"scenarioName": "decision",
+	"requiredScenarioState": "Started",
+	"newScenarioState": "decided",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d/decisions",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [],
+		"status": 200
+	}
+}

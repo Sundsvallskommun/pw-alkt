@@ -21,7 +21,7 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
  * The display name of an element and the phase it sits in, read from the deployed XML because the runtime API answers
- * with ids alone. See the README section on manual gates.
+ * with ids alone.
  */
 @Component
 public class ProcessModelCache {

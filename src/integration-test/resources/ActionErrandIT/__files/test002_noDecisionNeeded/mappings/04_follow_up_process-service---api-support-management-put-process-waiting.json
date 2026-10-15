@@ -1,0 +1,55 @@
+{
+	"name": "04_follow_up_process-service---api-support-management-put-process-waiting",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "WAITING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "action-errand"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "follow_up_phase"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityName",
+					"equalTo": "Follow up"
+				}
+			},
+			{
+				"matchesJsonPath": "$.awaitingSignals[?(@.name == 'follow_up_completed' && @.label == 'Follow up completed')]"
+			},
+			{
+				"matchesJsonPath": "$.awaitingSignals[?(@.name == 'process_cancelled')]"
+			}
+		]
+	},
+	"newScenarioState": "follow_up_process-service---api-support-management-put-process-waiting",
+	"requiredScenarioState": "decision_process-service---api-support-management-put-process-waiting",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	},
+	"scenarioName": "action-errand-no-decision"
+}

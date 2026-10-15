@@ -1,0 +1,23 @@
+{
+	"name": "decision_check-decision-worker---api-messaging-post-slack",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/slack",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.message",
+					"contains": "[2281][ALKT][action-errand] Incident in external_task_check_decision for errand 9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d"
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 201
+	}
+}

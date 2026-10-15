@@ -1,909 +1,238 @@
 # PwAlkt
 
-<p>Alkt hosts the process models of the alkohol- och tobaksverksamheten and drives them in the Operaton process engine.
-Support Management owns the errand, this service owns the process behind it.</p>
-
-<p>The service is a skeleton. The API, the engine integration, the reporting and the test harness are in place, but the
-process models are phase structures with almost nothing inside them. Every model has the work step that reports a process
-as completed. The decision phase of the alcohol-serving and tobacco models also checks the decision and creates, changes
-or ends the permit it concerns, and in <span class="code">alcohol-serving</span> it assigns the premises' restaurant
-number. In the folköl and e-cigarette models it makes the decision itself and creates the permit. The reconciliation is
-described at the end.</p>
-
-<h3>The dialogue with Support Management</h3>
-
-<p>Two conversations in opposite directions. Support Management tells this service that something happened to an errand.
-This service tells Support Management where the process now stands. Neither is the answer to the other: the errand event
-is answered with <span class="code">202</span> and an empty body.</p>
-
-<pre>
-Support Management                    pw-alkt                       Operaton
-        |                                |                              |
-        |  1. POST .../process/errand-events                            |
-        |------------------------------->|                              |
-        |                                |  2. start or correlate       |
-        |                                |----------------------------->|
-        |                                |  3. subscriptions + model    |
-        |                                |&lt;-----------------------------|
-        |  4. PUT .../processes/{processInstanceId}                     |
-        |&lt;-------------------------------|                              |
-        |  202 Accepted                  |                              |
-        |&lt;-------------------------------|                              |
-        |                                |                              |
-        |                                |  5. external task polling    |
-        |                                |&lt;---------------------------->|
-        |  6. PUT .../processes/{processInstanceId}                     |
-        |&lt;-------------------------------|                              |
-</pre>
-
-<p><strong>Inbound</strong> there is one endpoint,
-<span class="code">POST /{municipalityId}/{namespace}/process/errand-events</span>. What it does is decided by the body,
-not by the path. <span class="code">DELETE</span> removes every instance of the errand. Anything else starts a process
-when none is running, and otherwise correlates a message: the <span class="code">signalName</span> when
-<span class="code">eventSubType</span> is <span class="code">SIGNAL</span>, <span class="code">decision_updated</span>
-when it is <span class="code">DECISION</span>, and <span class="code">errandUpdated</span> in every other case. Only <span class="code">eventId</span> and
-<span class="code">eventType</span> are required, so the rest is checked at runtime and a nothing-to-do event is
-accepted as well. A key this service does not deploy is answered with <span class="code">422</span>.</p>
-
-<p><strong>Outbound</strong> the state goes to
-<span class="code">PUT /{municipalityId}/{namespace}/errands/{errandId}/processes/{processInstanceId}</span>, which
-creates the row on the first report and updates it after that. The body carries
-<span class="code">processStatus</span> (<span class="code">RUNNING</span>, <span class="code">WAITING</span>,
-<span class="code">RETRYING</span>, <span class="code">COMPLETED</span> or <span class="code">FAILED</span>), the
-current activity, the signals the process waits for, and any error. Reports come from four places:</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>Trigger</th>
-			<th>Reports</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td>A process is started</td>
-			<td><span class="code">WAITING</span>, if the instance parked on a gate rather than on a work step</td>
-		</tr>
-		<tr>
-			<td>A correlation moved a process on</td>
-			<td><span class="code">WAITING</span>, on the instance the message actually reached</td>
-		</tr>
-		<tr>
-			<td>A work step runs</td>
-			<td><span class="code">RUNNING</span> before it, whatever the step returned after it, even the same
-			<span class="code">RUNNING</span> again, then <span class="code">WAITING</span> unless the process ended. A step that throws reports
-			<span class="code">RETRYING</span>, or <span class="code">FAILED</span> once the retries are spent. A live report carries
-			the cancellation button, see Cancelling a process</td>
-		</tr>
-		<tr>
-			<td>The reconciliation</td>
-			<td>Only what the work steps could not, see below</td>
-		</tr>
-	</tbody>
-</table>
-
-<p>Nothing compares against the row before writing it, except the reconciliation and the phase check of the activity
-log below. A retried step reports
-<span class="code">RUNNING</span> again, and idempotence at the receiver is cheaper than a read before every write.
-Today a six-gate process without work steps of its own is eight reports over its whole life.</p>
-
-<p>Reports carry no sequence number, and a wait state is read after the task that led to it was completed. Two reports
-about one instance can therefore land out of order. The window is short and the next report corrects the row, because
-every report reads the engine anew instead of replaying something remembered. Worth knowing before trusting a row that
-disagrees with Cockpit.</p>
-
-<h3>The activity log</h3>
-
-<p>A report can carry entries for the activity log of the errand, which Draken shows as the process log. Support
-Management appends them in the same call as the state and gives them back through
-<span class="code">GET .../errands/{errandId}/process-activities</span>. Each entry is written for two readers.
-<span class="code">activityName</span> is a sentence in Swedish for the case worker, and
-<span class="code">message</span> is the technical account for whoever debugs, ending in the
-<span class="code">x-request-id</span> to search the logs for.</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>Entry</th>
-			<th>Written when</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td><span class="code">TASK</span>, <span class="code">INFO</span></td>
-			<td>A work step did its work. Checking the decision leaves no entry while there is none yet, since the step then
-			reruns every hour</td>
-		</tr>
-		<tr>
-			<td><span class="code">TASK</span>, <span class="code">WARN</span> with code <span class="code">RETRY</span>,
-			<span class="code">SKIPPED</span> or <span class="code">REJECTED</span></td>
-			<td>A step failed and will be retried, a skippable step was skipped, or a step refused work the case worker has to
-			make possible first, such as an action errand for an inspection without deficiencies</td>
-		</tr>
-		<tr>
-			<td><span class="code">TASK</span>, <span class="code">ERROR</span> with code <span class="code">INCIDENT</span></td>
-			<td>A step raised an incident</td>
-		</tr>
-		<tr>
-			<td><span class="code">PHASE</span>, <span class="code">INFO</span></td>
-			<td>The process entered a phase</td>
-		</tr>
-		<tr>
-			<td><span class="code">INCIDENT</span>, <span class="code">RECONCILIATION</span></td>
-			<td>The reconciliation reported what the work steps could not</td>
-		</tr>
-	</tbody>
-</table>
-
-<p>Support Management keeps one entry per task and activity id, and every run of a task is the same task, a retry from
-Cockpit included. The id of a failure therefore ends in the time it happened,
-<span class="code">external_task_create_asset#1790680986123</span>, or a later failure would be dropped as a replay of
-an earlier one. The attempt is in the message instead. It is read from the retries the engine holds, so after a retry
-from Cockpit it counts from wherever the retries were set.</p>
-
-<p>A phase is entered when a report places the process in a phase other than the one its row stands in. The row is read
-first, and both sides are reduced to their phase, so a decision phase that loops back to its own step every hour is not
-entered again. The check runs before the wait state and before a work step, since some phases open with a step. It is
-best effort: a row that cannot be read costs the entry, not the report, and a phase entry whose report is lost is not
-written again, since the next report finds the row in that phase already. A wait state is taken to be a phase, which
-holds for every model today; a gate outside a phase would be logged as one.</p>
-
-<p>The technical account never holds the text of another service's answer, since there is no telling what it holds.
-A failure is described by its kind, its status and the service that answered, for example
-<span class="code">ServerProblem 502 from party-assets (remote 503 Service Unavailable). Attempt 2 of 4</span>. Two
-exceptions name more: a token that could not be obtained names the client registration it was for, and a template
-parameter that templating missed is named when the name is a plain identifier, since a decision that leaves one empty
-is for the case worker to fix. Our own messages carry ids only and are kept in full. The same description goes into the error of the row, the incident in
-Operaton and the alert.</p>
-
-<p>The texts live in configuration under <span class="code">process-log</span>, set per environment like the
-messages to the customer, and the service does not start without them. The test profiles hold a full set to copy from.
-<span class="code">steps</span> is keyed by the id of the step in the model, and each step
-needs <span class="code">done</span>, <span class="code">retry</span> and <span class="code">failed</span>, plus
-<span class="code">skipped</span> when the model can skip it and <span class="code">rejected</span> when the step can
-refuse its work. <span class="code">phases</span> is keyed by the id of the
-phase and holds <span class="code">entered</span>. <span class="code">process</span> holds
-<span class="code">settled-completed</span> and <span class="code">settled-terminated</span> for the reconciliation. A
-step that lacks one of its required texts stops the start. A step or phase with no texts at all falls back to the name
-in the model and then to the id. A key holding an underscore must be written in brackets,
-<span class="code">"[external_task_create_asset]"</span>, or Spring drops the underscore and the texts are never
-found.</p>
-
-<h3>Process definitions</h3>
-
-<p>The models in <span class="code">src/main/resources/processmodels</span> are sorted by kind of errand:
-<span class="code">application</span> for applications (alcohol serving and tobacco sales),
-<span class="code">notification</span> for notifications (low-alcohol beer, e-cigarettes and catering occasions), and <span class="code">inspection</span> for the
-inspections. Each folder has an entry of its own under <span class="code">process-engine.deployment.processes</span>,
-and every model in them is deployed to the tenant <span class="code">ALKT</span> at startup, so a new schema is picked
-up by adding the file to the folder of its kind. A model placed directly in <span class="code">processmodels</span> is
-not deployed. The three entries share the name <span class="code">Alkt processes</span>, since the deployment in the
-engine is named after it and the file, and a new name would deploy every model again. The
-<span class="code">id</span> of the <span class="code">bpmn:process</span> element is the process key, and it has a
-matching constant in <span class="code">se.sundsvall.alkt.Constants</span>.</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>File</th>
-			<th>Process key</th>
-			<th>Description</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td class="code">alcohol-serving.bpmn</td>
-			<td class="code">alcohol-serving</td>
-			<td>Servering av alkoholdrycker</td>
-		</tr>
-		<tr>
-			<td class="code">alcohol-serving-change.bpmn</td>
-			<td class="code">alcohol-serving-change</td>
-			<td>Förändring av befintligt serveringstillstånd</td>
-		</tr>
-		<tr>
-			<td class="code">alcohol-serving-addition.bpmn</td>
-			<td class="code">alcohol-serving-addition</td>
-			<td>Tillägg av befintligt serveringstillstånd</td>
-		</tr>
-		<tr>
-			<td class="code">tobacco-sales.bpmn</td>
-			<td class="code">tobacco-sales</td>
-			<td>Försäljning av tobaksvaror</td>
-		</tr>
-		<tr>
-			<td class="code">tobacco-sales-change.bpmn</td>
-			<td class="code">tobacco-sales-change</td>
-			<td>Ändring av tillståndspliktig försäljning av tobaksvaror</td>
-		</tr>
-		<tr>
-			<td class="code">tobacco-sales-closure.bpmn</td>
-			<td class="code">tobacco-sales-closure</td>
-			<td>Avslut av tillståndspliktig försäljning av tobaksvaror</td>
-		</tr>
-		<tr>
-			<td class="code">e-cigarette-sales.bpmn</td>
-			<td class="code">e-cigarette-sales</td>
-			<td>Försäljning av elektroniska cigaretter och påfyllnadsbehållare</td>
-		</tr>
-		<tr>
-			<td class="code">low-alcohol-beer-serving.bpmn</td>
-			<td class="code">low-alcohol-beer-serving</td>
-			<td>Servering av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
-		</tr>
-		<tr>
-			<td class="code">low-alcohol-beer-sales.bpmn</td>
-			<td class="code">low-alcohol-beer-sales</td>
-			<td>Försäljning av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
-		</tr>
-		<tr>
-			<td class="code">low-alcohol-beer-sales-and-serving.bpmn</td>
-			<td class="code">low-alcohol-beer-sales-and-serving</td>
-			<td>Försäljning och servering av folköl, dvs. öl med högst 3,5 volymprocent alkohol</td>
-		</tr>
-		<tr>
-			<td class="code">catering-occasion.bpmn</td>
-			<td class="code">catering-occasion</td>
-			<td>Anmälan om cateringtillfälle</td>
-		</tr>
-		<tr>
-			<td class="code">external-inspection.bpmn</td>
-			<td class="code">external-inspection</td>
-			<td>Yttre tillsyn, dvs. tillsyn på serveringsstället</td>
-		</tr>
-		<tr>
-			<td class="code">internal-inspection.bpmn</td>
-			<td class="code">internal-inspection</td>
-			<td>Inre tillsyn, dvs. prövning av tillståndshavarens lämplighet</td>
-		</tr>
-		<tr>
-			<td class="code">reconciliation/process-reconciliation.bpmn</td>
-			<td class="code">process-reconciliation</td>
-			<td>The scheduler of the service, see below. Belongs to no errand, is not in <span class="code">PROCESS_KEYS</span>
-			and cannot be started from an errand event</td>
-		</tr>
-	</tbody>
-</table>
-
-<p>All thirteen errand processes run the same six phases: Registration, Review, Investigation, Decision, Follow up and
-Closure. What differs is what happens inside a phase and whether the phase waits for a case worker. The three folköl
-models and <span class="code">e-cigarette-sales</span> are the only ones that do not wait early: a notification needs no case worker before the follow up, so their
-first three phases pass straight through and Support Management first hears from them in the decision phase, which
-makes the decision and creates the permit on its own, see the next section. Follow up is the first phase that waits.</p>
-
-<p>Which process an errand gets, and whether it starts by itself, is metadata on the label in Support Management
-(<span class="code">processKey</span> and <span class="code">processStartMode</span>), set per environment through its
-<span class="code">metadata/labels</span> API and not in this repository. The key has to be the exact string in the
-table above. Tillsyn is two keys, <span class="code">external-inspection</span> and
-<span class="code">internal-inspection</span>, and neither is <span class="code">alkt-tillsyn</span> as the solution
-document exemplifies with.</p>
-
-<p>The two inspections are the ones a case worker starts by hand. Starta handläggning arrives as an event with the sub
-type <span class="code">PROCESS</span>, which this service never reads, so a manual start and an automatic one follow
-the same path.</p>
-
-<h3>Manual gates and awaiting signals</h3>
-
-<p>A phase ends when a case worker says so, except the decision phase of the models that read the decision and of the
-inspections, which are described in their own sections below. Support Management publishes that as a
-<span class="code">SIGNAL</span> event, and this service correlates a message of that name against the instance. A
-correlation that matches no wait state is answered with <span class="code">202</span> and logged, since the process was
-between two gates when the change arrived and redelivering would not help.</p>
-
-<p><strong>An errand runs one process at a time.</strong> Nothing in this service enforces that. All thirteen models
-share their message names, and every correlation is made on the errand id, so two live processes on one errand
-make every signal match two executions at once. Operaton answers that with <span class="code">400</span> and the
-signal is lost. The cancellation is the exception: it is correlated to every process of the errand, so it ends them
-all. Starting a second process on an errand that already has one is therefore a mistake, and the place it
-can happen is the label metadata in Support Management.</p>
-
-<p>The gates an instance stands at are reported as <span class="code">awaitingSignals</span>. The list is read from the
-message subscriptions in the engine, so adding a gate is a change to the BPMN file and nothing else. The signal name is
-the message name and the label is the <span class="code">name</span> attribute of the catch event.
-<span class="code">errandUpdated</span> and <span class="code">decision_updated</span> are left out, because neither
-is a button anyone should see. The activity reported
-alongside is the phase, read from the model as the subprocess enclosing the gate.</p>
-
-<p>The model of a definition is read once through <span class="code">GET /process-definition/{id}/xml</span> and kept
-in memory per pod, keyed by definition id. A deployed definition never changes, so entries never go stale and nothing
-is evicted. If the model cannot be read the report still goes out with the message name as the label, because a button
-with a technical name beats no button.</p>
-
-<p><strong>Support Management stores the list.</strong> Every report replaces it whole, so a report that leaves the
-field out says the process waits for no one. Support Management reads no meaning into the names: it hands them back to
-the user interface as buttons, and compares them exactly, case included. A process that has ended shows none, whichever
-way it ended. A name longer than 128 characters is refused, so
-<span class="code">AwaitingSignal</span> cuts it there.</p>
-
-<p>Pressing a button posts to
-<span class="code">POST /errands/{errandId}/processes/{processInstanceId}/signals</span>, which reaches this service as
-a <span class="code">SIGNAL</span> event carrying the message name. Support Management does not consume the signal, so
-the same name is accepted again until the next report closes the gate. A second press correlates against nothing and is
-answered with <span class="code">202</span>.</p>
-
-<p>What this needs from a model:</p>
-
-<ul>
-	<li>A gate is a named message catch event. No user tasks, since the case worker never logs into the engine.</li>
-	<li>Several ways forward are an event-based gateway with one catch event per alternative. A time limit belongs in
-	the same gateway as a timer catch event.</li>
-	<li>No <span class="code">asyncBefore</span> or <span class="code">asyncAfter</span> between a wakeup and the next
-	wait state. The report is built from what the engine answers once the REST call returns, so a process still on its
-	way looks like one waiting for nothing and no report goes out at all.</li>
-	<li>The <span class="code">name</span> of a catch event is the button text, and the outermost subprocess around it
-	is the phase. A phase without a name is reported by its id, and a boundary event hangs on a phase rather than inside
-	it, so it is reported under its own id.</li>
-	<li>Every phase has a diagram of its own, so Modeler can open it.</li>
-</ul>
-
-<h3>Cancelling a process</h3>
-
-<p>A process can be cancelled in any phase, typically because the applicant got the application wrong and withdraws
-it. Every errand model has an event subprocess, <span class="code">cancel_process_subprocess</span>, whose interrupting
-message start event listens for <span class="code">process_cancelled</span> for as long as the instance lives. When the
-case worker presses "Process cancelled", whatever runs is interrupted and the subprocess runs
-<span class="code">CancelProcessTask</span>, which reports <span class="code">COMPLETED</span>. The instance then ends
-at <span class="code">end_process_cancelled</span> and cannot be resumed. No decision is made or stored for a
-cancellation.</p>
-
-<p>Support Management has no status of its own for a cancellation, and needs none. <span class="code">COMPLETED</span>
-closes the process life of the errand: no new process is started for it, and a later report does not overwrite the row.
-A new attempt is a new errand. The row tells a cancelled process from one that ran to its end by its activity,
-<span class="code">external_task_cancel_process</span>, and the activity log of the errand holds the
-<span class="code">process_cancelled</span> signal with who pressed it and when. If the report of the cancellation is lost,
-the reconciliation settles the row on the same activity.</p>
-
-<p>The cancellation is always subscribed, so it must never decide where the process stands. Its subscription is offered
-as the last button after the gates of the phase, but the phase is taken from the other subscriptions only. An instance
-where the cancellation is the only thing listening stands on a work step and waits for no one, so no wait state is
-reported. The cancellation is told apart by its message name, <span class="code">process_cancelled</span>.</p>
-
-<p>Support Management replaces the buttons on every report, so the cancellation rides on every live report, not only on
-<span class="code">WAITING</span>. A <span class="code">RUNNING</span>, <span class="code">RETRYING</span> or
-<span class="code">FAILED</span> report from a work step carries the subscriptions that listen in every phase, read from
-the engine at the time of the report. A <span class="code">COMPLETED</span> report carries none, and neither does the
-<span class="code">RUNNING</span> of
-<span class="code">CancelProcessTask</span> itself, since the cancellation no longer listens by then. If the
-subscriptions cannot be read, the report goes out without them.</p>
-
-<p>A work step that a worker has already fetched is not stopped by the cancellation. <span class="code">CreateDecisionTask</span>
-may complete and lock a decision, and <span class="code">CreateAssetTask</span> may create the permit, before the
-cancellation lands, and what it did stays. The step then finds its task gone, whether it completes the task or hands a
-failure back. That is logged and nothing more happens: nothing is retried and no incident is raised. What the step
-reported before that may reach Support Management before or after the <span class="code">COMPLETED</span> of the
-cancellation. Either way the row ends up <span class="code">COMPLETED</span>, since Support Management keeps a completed
-row as it is.</p>
-
-<p>A process that stands on an incident is reported <span class="code">FAILED</span>, but the instance lives and still
-listens, so the incident report carries the cancellation, both from the work step and from the reconciliation. From
-api-service-support-management#760, Support Management takes the signals of a <span class="code">FAILED</span> row and
-refuses only those of a <span class="code">COMPLETED</span> one, so such a process can be cancelled from the user
-interface.</p>
-
-<h3>The decision phase and the permit</h3>
-
-<p>In the three alcohol-serving models and the three tobacco models the decision phase waits for the decision itself,
-not for a button. <span class="code">catering-occasion</span> still waits for <span class="code">decision_completed</span>.
-The three folköl models and <span class="code">e-cigarette-sales</span> make the decision themselves and wait for no
-one.</p>
-
-<p>Support Management publishes an event with the sub type <span class="code">DECISION</span> whenever the decision of
-an errand is created, changed or removed, and this service correlates it as <span class="code">decision_updated</span>.
-The event only says that something changed, so the work step <span class="code">CheckDecisionTask</span> reads the
-decision back and sets <span class="code">decisionOutcome</span>. The phase reads the decision when it starts, after
-every decision event, and once an hour while it waits. The hourly timer catches an event that arrived while the process
-was not waiting for it, since such an event correlates against nothing and is gone.</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>Decision</th>
-			<th>What the phase does</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td>None that is <span class="code">COMPLETED</span></td>
-			<td>Goes back to waiting (<span class="code">NONE</span>)</td>
-		</tr>
-		<tr>
-			<td><span class="code">APPROVAL</span>, <span class="code">APPROVAL_WITH_CONDITIONS</span></td>
-			<td>Creates the permit, then ends. In the change models it changes the permit the errand names instead, and
-			in <span class="code">tobacco-sales-closure</span> it ends it. In <span class="code">alcohol-serving</span> it
-			also chooses and assigns the restaurant number, and in <span class="code">alcohol-serving-addition</span> it
-			finds the holder's number, see below</td>
-		</tr>
-		<tr>
-			<td><span class="code">REJECTED</span>, <span class="code">DISMISSED</span>, <span class="code">INADMISSIBLE</span></td>
-			<td>Ends without a permit</td>
-		</tr>
-		<tr>
-			<td>Any other outcome</td>
-			<td>The step fails and ends in an incident. A completed decision is locked in Support Management, so waiting
-			would never help. The outcomes registered for the namespace should be exactly these five</td>
-		</tr>
-	</tbody>
-</table>
-
-<p>The outcomes live in two places: <span class="code">Constants</span> says which are known and which create a permit,
-and the gateways of the six models that read the decision list them in their conditions.
-<span class="code">DecisionOutcomeGatewayTest</span> holds the gateways to <span class="code">Constants</span>. A new
-outcome needs <span class="code">Constants</span> and all six gateways, and must be registered for the namespace in
-Support Management as well.</p>
-
-<p>The <span class="code">type</span> of the permit in party-assets follows from the process key, through a map in
-<span class="code">PartyAssetsMapper</span>: <span class="code">AlcoholServingPermit</span> for the three
-alcohol-serving models, <span class="code">TobaccoSalesPermit</span> for the three tobacco models,
-<span class="code">ECigaretteSalesPermit</span> for <span class="code">e-cigarette-sales</span>, and a type of its own
-for each folköl model. A new permit gets it as its type, and a step that changes or ends a permit refuses one of another
-type with an incident, so a change errand cannot reach another kind of permit of the same holder. A process with a
-permit step and no type in the map raises an incident at that step; <span class="code">PermitTypeModelTest</span>
-catches it at build time.</p>
-
-<p><span class="code">CreateAssetTask</span> builds the permit in party-assets from a decision that grants it. The id of
-the decision is the <span class="code">assetId</span> of the permit, and the party is the stakeholder with the role
-<span class="code">PRIMARY</span>. The step first looks for a permit with that id and is done if it finds one, so a
-retry after a lost answer creates nothing twice. Otherwise it removes any draft an earlier attempt left behind, creates
-a new draft, adds the attachments of the decision with the name of their purpose as category, and activates the draft.
-If any of that fails the draft is removed again. A permit assembled as a draft goes live at revision 0, and every call
-carries <span class="code">X-Sent-By: pw-alkt; type=processEngine</span>, so the history of the permit shows that the
-process created it.</p>
-
-<p>A step with the input parameter <span class="code">certificateTemplate</span> also adds a permit certificate to the
-draft before it is activated: <span class="code">serving-permit-certificate</span> in the three alcohol-serving models
-and <span class="code">tobacco-permit-certificate</span> in <span class="code">tobacco-sales</span> and
-<span class="code">tobacco-sales-change</span>. <span class="code">e-cigarette-sales</span> and the folköl models create
-no certificate. Templating renders the named template as a PDF, and it is
-added as <span class="code">tillstandsbevis.pdf</span> in the category Tillståndsbevis. Every term of the decision is a
-placeholder named by its category as it is, so the term <span class="code">permitHolderName</span> is
-<span class="code">{{ permitHolderName }}</span> in the template. A term without text is left out, as if it were
-missing, so an empty required field is caught like a missing one. pw-alkt does not check that the terms fill the
-template; the template is strict, and Templating answers 400 with the name of a missing placeholder. That is a fault in
-the decision, so the draft is removed and the step raises an incident at once instead of retrying.</p>
-
-<p>In <span class="code">alcohol-serving-addition</span> the addition becomes a separate permit next to the main one.
-It has the same type as the main permit, and <span class="code">alcohol-serving-change</span> changes it the same way.
-A permanent permit has no <span class="code">validTo</span>. party-assets refuses to activate a permit whose
-<span class="code">validTo</span> is not after today, so the step checks a decision that has one before it creates the
-draft, and raises an incident at once if it has already ended. A 400 on activation is not retried either.</p>
-
-<p>A change errand names the permit in its parameter <span class="code">assetId</span>, and every other parameter of
-the errand is a change the customer asks for, keyed as on the permit. A parameter without a value asks for the key to
-be removed. When the process starts, <span class="code">CreateChangeDraftTask</span> checks the permit and drafts the
-decision in Support Management with those changes, so the case worker sees them from the review on. The title of the
-draft is set per process, "Ändring av serveringstillstånd" or "Ändring av tobakstillstånd". A missing
-<span class="code">assetId</span>, one that is not a UUID, a permit that is not active, a permit of another party or type, or an
-errand without a <span class="code">PRIMARY</span> stakeholder raise an incident there, before anyone decides. An
-errand has one decision at most, so a rerun that finds one leaves it as it is. The parameters pw-alkt sets on the permit
-itself, <span class="code">errandId</span>, <span class="code">legalBasis</span>,
-<span class="code">delegationReference</span>, <span class="code">conditions</span> and
-<span class="code">premisesRestaurantNumber</span>, never come from the errand, and a decision cannot remove them. Nor
-can it change <span class="code">errandId</span> or <span class="code">premisesRestaurantNumber</span>.</p>
-
-<p>Support Management lets the process write only an automatic decision, and wants an outcome on it from the start, so
-the draft is <span class="code">AUTOMATIC</span>, decided by pw-alkt, with the outcome
-<span class="code">APPROVAL</span>. The case worker edits and completes it. The user interface has to make it
-<span class="code">MANUAL</span> with the case worker's account as it does so, or Support Management answers 403.</p>
-
-<p>Once the decision is completed, <span class="code">UpdateAssetTask</span> reads the permit afresh and puts the
-parameters of the decision on top: a key the decision has replaces the permit's, a key it has without a value is
-removed, and every other key stays. Fields the customer changes on their own, such as the person responsible for the
-serving, are never part of a change errand, so they come along from the fresh read with their latest value. The step
-checks the permit again, as it may have been deactivated while the errand was handled. The conditions of the permit
-stay unless the decision has terms of its own, also for <span class="code">APPROVAL_WITH_CONDITIONS</span>; a change
-cannot remove them yet. <span class="code">errandId</span> keeps naming the errand that granted the permit,
-<span class="code">premisesRestaurantNumber</span> keeps the number licensed business holds, and the permit keeps its
-<span class="code">validTo</span> unless the decision gives one. The change applies as soon as the decision is
-completed; the step does not wait for the <span class="code">validFrom</span> of the decision. A change
-can end the permit today at the earliest: a <span class="code">validTo</span> that has passed raises an incident before
-anything is written.</p>
-
-<p>A key the certificate template requires cannot be removed. The certificate is rendered from the merged parameters
-before anything is written, so Templating answers 400 for the missing placeholder, the step raises an incident at once
-and the permit stays as it was.</p>
-
-<p>The step renders the new certificate from the merged parameters before it writes anything, so a decision that does
-not fill the template leaves the permit as it was. The PATCH carries the version it read as
-<span class="code">If-Match</span>, and a permit changed in between answers 412, so the step reruns on a fresh read.
-A 400 is a change party-assets refuses, and raises an incident at once. party-assets keeps the earlier content as a revision. The step then replaces the certificate. A rerun that finds the
-change already on the permit skips the PATCH and only replaces the certificate, so a failed certificate does not add a
-revision per attempt.</p>
-
-<p>party-assets replaces any parameter container it is sent, and an empty one clears what the permit has. The models of
-party-assets are therefore generated with <span class="code">containerDefaultToNull</span>, so a request that does not
-set <span class="code">additionalParameters</span> or <span class="code">jsonParameters</span> leaves them out.</p>
-
-<p>A closure errand names the permit in <span class="code">assetId</span> as well. When the process starts,
-<span class="code">CheckPermitTask</span> checks the permit as above but drafts nothing, and also lets a permit that
-has already expired through, since the closure then has nothing to do; the case worker makes the
-decision. Once it is completed, <span class="code">CloseAssetTask</span> checks the permit again and sets its
-<span class="code">validTo</span> to the <span class="code">validTo</span> of the decision, or the day the decision was
-made if it has none. A last day that has passed also sets the status <span class="code">EXPIRED</span>; a last day of
-today or later is left to party-assets, which expires the permit once the day has passed. A last day before the permit
-was issued raises an incident without a PATCH, and so does a 400 from party-assets. The PATCH carries
-<span class="code">If-Match</span> and no <span class="code">statusReason</span>, since party-assets refuses one unless
-reasons are registered for the status. The certificate stays as it is. A rerun that finds the permit expired, or
-active with that last day already set, writes nothing.</p>
-
-<p>Support Management has to mark the decision <span class="code">COMPLETED</span> when the case worker finishes it.
-A case worker cannot move the phase on by any other means.</p>
-
-<p>In the three folköl models and <span class="code">e-cigarette-sales</span>,
-<span class="code">CreateDecisionTask</span> approves the notification, and <span class="code">CreateAssetTask</span>
-then creates the permit from that decision as above. The decision has the
-type <span class="code">PERMIT</span>, the outcome <span class="code">APPROVAL</span>, the method
-<span class="code">AUTOMATIC</span>, a title per process and the title of the errand as description. It is valid from
-the Swedish date it is made and has no last day. Every attachment of the errand is linked to it, while a manual decision
-carries only the attachments the case worker linked. Support Management locks a completed decision, attachments
-included, so the step writes a draft, links the attachments and completes it last. A retry picks up the draft an earlier
-attempt left behind and links only what is missing, and a completed decision is left as it is. An errand without a
-<span class="code">PRIMARY</span> stakeholder raises an incident before the decision is completed, since the permit
-would have no holder and the decision could no longer be changed. Every write carries
-<span class="code">X-Trigger-Process: false</span>, so it does not wake the process that made it.</p>
-
-<h3>The restaurant number</h3>
-
-<p>Licensed business keeps the restaurant numbers. A number belongs to the premises, which is an address, and stays
-there when the business changes hands. An assignment gives the number to a permit holder for a period. Only
-<span class="code">alcohol-serving</span> assigns numbers, in two steps around <span class="code">CreateAssetTask</span>.
-<span class="code">ResolveRestaurantNumberTask</span> runs first and chooses the number, so the permit and its
-certificate carry it. <span class="code">AssignRestaurantNumberTask</span> runs once the permit exists and creates the
-assignment, so a permit that ends in an incident leaves no assignment behind.</p>
-
-<p>Both steps read the errand's parameters. The e-service sets the premises when it registers the errand, and the case
-worker's interface sets the choice. The choice has to be on the errand when the decision is completed, since
-<span class="code">ResolveRestaurantNumberTask</span> runs at once after that. Any phase before that will do.
-<span class="code">ResolveRestaurantNumberTask</span> saves the id of the address in licensed business in the process variable
-<span class="code">restaurantNumberAddressId</span>, and <span class="code">AssignRestaurantNumberTask</span> assigns the
-number there. Licensed business refuses an assignment at any other address than the number's own, so a premises address
-corrected on the errand after the number was chosen does not reach the assignment.</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>Parameter</th>
-			<th>Holds</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td><span class="code">premisesStreetAddress</span>, <span class="code">premisesPostalCode</span>,
-			<span class="code">premisesPostalArea</span></td>
-			<td>The visiting address of the premises. Required, a missing part raises an incident</td>
-		</tr>
-		<tr>
-			<td><span class="code">premisesName</span></td>
-			<td>The name of the premises on the assignment. Optional</td>
-		</tr>
-		<tr>
-			<td><span class="code">restaurantNumber</span></td>
-			<td>A number the case worker chose at the address</td>
-		</tr>
-		<tr>
-			<td><span class="code">newRestaurantNumber</span></td>
-			<td><span class="code">true</span> when the case worker asked for a new number</td>
-		</tr>
-	</tbody>
-</table>
-
-<p>A chosen <span class="code">restaurantNumber</span> wins. It may be any number at the address, free or held, and a
-number the address does not have raises an incident. Choosing a held number is how an owner change works. Licensed
-business ends the earlier holder's assignment the day before the new one starts. Without a chosen number,
-<span class="code">newRestaurantNumber</span> creates a new number even when the address has a free one. Without either,
-the step takes the first free number at the address and creates one when there is none. Licensed business picks the
-new number itself.</p>
-
-<p>The holder is the stakeholder with the role <span class="code">PRIMARY</span>. Its organization name becomes the
-holder name on the assignment, and Party turns its <span class="code">externalId</span> into the organization number.
-<span class="code">ResolveRestaurantNumberTask</span> checks both before it chooses a number, so a holder the number cannot be
-assigned to stops the process before there is a permit. The assignment starts on the <span class="code">validFrom</span>
-of the decision, or on the day it was decided, and ends on its <span class="code">validTo</span> if it has one. The
-permit gets the number as the parameter <span class="code">premisesRestaurantNumber</span>, which is also the
-placeholder for it in <span class="code">serving-permit-certificate</span>, the certificate being rendered from the
-permit's parameters. A decision can neither change nor remove it, so a change keeps it. A change errand ignores the
-premises address and the choice parameters, since they are for licensed business and the choice of a number, not for
-the permit. A new <span class="code">premisesName</span> is a change and goes into the draft, but the assignment in
-licensed business keeps the name it was given.</p>
-
-<p>A rerun creates nothing twice. Before <span class="code">ResolveRestaurantNumberTask</span> creates a number it saves
-the free numbers at the address in the process variable <span class="code">restaurantNumbersBeforeCreate</span>, and it
-writes that variable at once rather than on completion. If the step fails after the create, the rerun finds a free
-number that is not in the list and takes it. Without a choice a rerun finds the new number free anyway.
-<span class="code">AssignRestaurantNumberTask</span> does nothing when the latest assignment of the number already has
-the same organization number and the same first day.</p>
-
-<p>Licensed business cannot reserve a number, so two errands at the same address can choose the same free number
-before either of them has assigned it. A number one errand has just created counts as free as well, until that errand
-assigns it. Without a check, the errand that assigns last would end the other holder's assignment without anyone
-noticing. <span class="code">ResolveRestaurantNumberTask</span> therefore saves the id of the number's latest assignment
-in the process variable <span class="code">restaurantNumberLatestAssignment</span>, or an empty value when the number
-has none. <span class="code">AssignRestaurantNumberTask</span> reads the latest assignment again. If it is the same one,
-it assigns the number, which is how an owner change goes through. If it is a different one and not the errand's own,
-another errand got there first. The step then assigns nothing and raises an incident. The check holds because licensed
-business counts the assignment with the latest <span class="code">validFrom</span> as the latest one, and an assignment
-that overlaps an active one has to start later. Two assign steps that run in the same instant can both see the
-number as free. That window is milliseconds and is accepted.</p>
-
-<p>The incident is resolved by hand. Choose another number for the errand together with the case worker, correct
-<span class="code">premisesRestaurantNumber</span> on the permit in party-assets and replace its certificate, then set
-the process variable <span class="code">restaurantNumber</span> to the new number and
-<span class="code">restaurantNumberLatestAssignment</span> to the id of its latest assignment in licensed business, or an
-empty value when it has none, in Operaton cockpit and retry the step. The new number must be at the same address, since
-<span class="code">restaurantNumberAddressId</span> stays as it is.</p>
-
-<p>An addition is a temporary permit that runs beside the holder's permanent one at the same premises, so it gets the
-number the holder already has there. <span class="code">alcohol-serving-addition</span> has
-<span class="code">FindRestaurantNumberTask</span> before <span class="code">CreateAssetTask</span> and no assign step.
-It writes nothing to licensed business, since a new assignment on the number would end the one of the permanent permit.
-A chosen <span class="code">restaurantNumber</span> must be at the address with the holder's organization number on its
-latest, active assignment. Without one the step takes the only number at the address that the holder holds. An address
-licensed business does not know, or no such number, raises an incident. More than one raises an incident as well, and
-the case worker then chooses the number. The step reads only the latest assignment of each number, so an owner change
-already registered on the number stops an addition for the earlier holder. <span class="code">newRestaurantNumber</span>
-means nothing here.</p>
-
-<h3>The inspections</h3>
-
-<p>No decision is made on an inspection. When the case worker completes the investigation,
-<span class="code">CreateProtocolTask</span> renders the protocol of an external inspection, or the report of an
-internal one, from the parameters of the investigation and attaches it to the errand as a PDF. The template and the file
-name are input parameters of the step in each model. The protocol is made from the one completed investigation of the
-inspection; a draft, active or cancelled one is left out. No completed investigation is retried, since the completion
-may not be saved yet when the phase ends, and then raised as an incident; several raise one at once. A retry finds a PDF
-an earlier attempt uploaded by its file name and by it being uploaded at or after the <span class="code">completedAt</span>
-of the investigation, or its last change when it has none. A file of that name uploaded before then, by the case worker
-or by an earlier process that was cancelled, does not count.</p>
-
-<p>The decision phase then offers two buttons. <span class="code">inspection_approved</span> ends the phase.
-<span class="code">action_errand_requested</span> runs <span class="code">CreateActionErrandTask</span>, which creates an
-action errand from the title, the description, the permit holder and the active measures of the inspection, each one
-being something the permit holder has to remedy. A draft, completed or cancelled measure is left out. The errand gets the classification in the input parameters of the step, the
-external tag <span class="code">inspectionErrandId</span> and, through <span class="code">referredFrom</span>, a
-<span class="code">LINK</span> relation to the inspection. The write carries no <span class="code">X-Trigger-Process</span>,
-since the new errand is not this process's own and the header would keep its process from starting. A retry finds an
-action errand an earlier attempt created by its tag. An inspection without active measures gets no action errand: the step
-leaves a <span class="code">REJECTED</span> entry in the activity log and the process goes back to the two buttons, so
-the case worker can add the measures and choose again. An inspection without a permit holder raises an incident
-instead, since an action errand once created is found by its tag and could not be given the permit holder later.</p>
-
-<h3>Messages to the customer</h3>
-
-<p><span class="code">NotifyCustomerTask</span> writes a message to the customer in the external conversation of the
-errand in Support Management. The message shows on the errand and in Mina sidor, and Support Management sends the
-customer a notice by SMS or e-mail. The step does not call Messaging itself. The step opens the review phase of every
-model with a manual gate, and tells the customer that the processing has started. The folköl models and
-<span class="code">e-cigarette-sales</span> are notifications that are approved automatically, so they have no such
-step.</p>
-
-<p>The text lives in configuration under <span class="code">customer-message.texts</span>, so it can be changed
-without a release; the service picks up a new text when it restarts. The step names the text in its input parameter
-<span class="code">message</span>, for example <span class="code">processing-started</span>. A step without the
-parameter, or one naming a text that is not configured, is a modelling fault and goes straight to an incident. The
-service does not start without at least one text. The step uses the first conversation of type <span class="code">EXTERNAL</span> that has the stakeholder with the
-role <span class="code">PRIMARY</span> as a participant, which may be one the customer started in Mina sidor. An external
-conversation with anyone else, such as a referral body, is left alone. If there is none it creates one with the topic
-Mina Sidor and the stakeholder as participant.</p>
-
-<p>The notice must not hold up the errand. The step is retried as usual, but once the retries are spent, or at once for
-a modelling fault, it throws the BPMN error <span class="code">step_skipped</span> instead of raising an incident. A
-boundary event on the step catches the error and takes the process to the review gate, and the failure is alerted in
-Slack. The customer then gets no notice unless someone sends it by hand.</p>
-
-<p>A retry must not send the message twice, and a process variable cannot remember that it was sent. The step reads
-the messages of the conversation first, and sends nothing if pw-alkt has already written the same text there. The step
-is locked long enough to cover every call timing out, so another pod cannot read the conversation before this run has
-written to it. If the text changes between two attempts, the customer gets both texts. Message Exchange stores pw-alkt
-as the sender with the type <span class="code">processEngine</span>, which the spec of Support Management does not
-list, so the models generated from it accept unknown enum values. The text of a message is never logged.</p>
-
-<p>Outside pw-alkt the message needs a <span class="code">CONVERSATION</span> entry with
-a <span class="code">supportText</span> for the namespace in messaging-settings, or the notice is empty. Mina sidor
-also has to list the ALKT namespace, and until it knows the type <span class="code">processEngine</span> it shows the
-sender as unknown.</p>
-
-<h3>Automatic deployment</h3>
-
-<p>The engine is shared with other process workers, and topic names such as <span class="code">CheckDecisionTask</span>
-recur among them. Every subscription therefore fetches only tasks of the tenant <span class="code">ALKT</span>, and a
-process added to this service must be deployed to that tenant, or its tasks are never fetched.</p>
-
-<p>The automatic deployment interprets properties present in the application yaml file. The following settings are used to configure the automatic deployment mechanism:</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>Setting</th>
-			<th>Description</th>
-			<th>Default&nbsp;value</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td class="code">integration.operaton.url</td>
-			<td>URL address to the Operaton rest api that process resources are deployed to. The same rest client is used
-			when starting and updating process instances; the external task client's poll url is a separate setting</td>
-			<td><strong>null</strong></td>
-		</tr>
-		<tr>
-			<td class="code">process-engine.deployment</td>
-			<td>The node contains information about the processes that shall be deployed</td>
-			<td><strong>null</strong></td>
-		</tr>
-		<tr>
-			<td class="code">process-engine.deployment.autoDeployEnabled</td>
-			<td>When set to <strong>false</strong> then autodeploy is disabled</td>
-			<td><strong>true</strong></td>
-		</tr>
-		<tr>
-			<td class="code">process-engine.deployment.processes</td>
-			<td>When deployment node is present, the processes node should contain a list<br />
-			of one or more processes to deploy (in one or more tenant namespaces)</td>
-			<td><strong>null</strong> (behaves as an empty list)</td>
-		</tr>
-	</tbody>
-</table>
-
-<p>The following attributes are possible to configure for each entry in the list of processes:</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>Setting</th>
-			<th>Description</th>
-			<th>Default&nbsp;value</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td class="code">name</td>
-			<td>Human readable name of the process, must not be null or empty</td>
-			<td><strong>null</strong></td>
-		</tr>
-		<tr>
-			<td class="code">tenant</td>
-			<td>
-				The tenant id that owns the process which will affect in which namespace the process will be deployed.<br />
-				If no id is present, the process will be deployed to the default namespace (making it a shared process, usable<br />
-				for all tenants in the engine)
-			</td>
-			<td><strong>null</strong></td>
-		</tr>
-		<tr>
-			<td class="code">bpmnResourcePattern</td>
-			<td>
-				Pattern to match when searching for bpmn resources in the service.<br />
-				For example&nbsp;<span class="code">classpath*:processmodels/*.bpmn</span>
-			</td>
-			<td><strong>classpath*:**/*.bpmn</strong></td>
-		</tr>
-		<tr>
-			<td class="code">dmnResourcePattern</td>
-			<td>
-				Pattern to match when searching for dmn resources in the service.<br />
-				For example&nbsp;<span class="code">classpath*:processmodels/*.dmn</span>
-			</td>
-			<td><strong>classpath*:**/*.dmn</strong></td>
-		</tr>
-		<tr>
-			<td class="code">formResourcePattern</td>
-			<td>
-				Pattern to match when searching for form resources in the service.<br />
-				For example&nbsp;<span class="code">classpath*:processmodels/*.form</span>
-			</td>
-			<td><strong>classpath*:**/*.form</strong></td>
-		</tr>
-	</tbody>
-</table>
-
-<p>Below is an example definition for a single process for tenant id "my_namespace" with defined process models in the awesome directory:</p>
-
-<table class="settings">
-	<tbody>
-		<tr>
-			<th>
-				Example
-			</th>
-		</tr>
-		<tr>
-			<td class="code">
-			<span class="code">
-				process-engine:<br />
-				&nbsp; deployment:<br />
-				&nbsp; &nbsp; processes:<br />
-				&nbsp; &nbsp; &nbsp; - name: My awesome process<br />
-				&nbsp; &nbsp; &nbsp; &nbsp; tenant: my_namespace<br />
-				&nbsp; &nbsp; &nbsp; &nbsp; bpmnResourcePattern: classpath*:processmodels/awesome/*.bpmn<br />
-				&nbsp; &nbsp; &nbsp; &nbsp; dmnResourcePattern: classpath*:processmodels/awesome/*.dmn<br />
-				&nbsp; &nbsp; &nbsp; &nbsp; formResourcePattern: classpath*:processmodels/awesome/*.form
-			</span>
-			</td>
-		</tr>
-	</tbody>
-</table>
-
-<h3>Process reconciliation</h3>
-
-<p>Two things leave a process row wrong for good: an incident, where the engine gave up on a step and no worker runs any
-more, and an instance that ended without a final report. The reconciliation is the net under both. Each run reports
-every incident in the tenant as <span class="code">FAILED</span> with code <span class="code">INCIDENT</span>, and
-settles each instance that ended within <span class="code">reconciliation.lookback</span> whose row is still live:
-<span class="code">COMPLETED</span> for an end the model chose, <span class="code">FAILED</span> with code
-<span class="code">TERMINATED</span> for one cancelled from outside. Rows that already say so are skipped, and an errand
-that is gone (404) is left alone. Each report leaves an entry in the activity log, named from
-<span class="code">process-log.steps</span> and <span class="code">process-log.process</span>. The id of an incident entry is the activity alone, as it has always been, so
-an incident already in the log is not written again.</p>
-
-<p>It runs as a process of its own, <span class="code">process-reconciliation.bpmn</span>: a timer start event every
-five minutes followed by the external task <span class="code">ReconcileProcessesTask</span>. That is what makes a run
-happen once even though the service runs in two pods, since the engine fires the timer once per cycle and locks the task
-for one worker. No database and no shedlock. Each run leaves an instance in the engine history, kept for one day, so
-history cleanup has to be on in Operaton. The history level has to be <span class="code">audit</span> or above, since
-the errand identity of an instance is read from its historic variables.</p>
-
-<p>Runs show up in Cockpit as instances of <span class="code">process-reconciliation</span>. A run that fails is logged
-and completed anyway, because the next cycle is the retry and an incident would only leave an instance standing. One
-failing errand never stops the rest of a run.</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>Setting</th>
-			<th>Description</th>
-			<th>Default&nbsp;value</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td class="code">reconciliation.lookback</td>
-			<td>How far back in the history of the engine each run looks for instances that ended. Every instance in the window
-			costs a lookup in Support Management per run, so the window is kept short; an end further back than this while
-			the service was down is not settled</td>
-			<td><strong>PT2H</strong></td>
-		</tr>
-		<tr>
-			<td class="code">reconciliation.worker.enabled</td>
-			<td>Set to <strong>false</strong> to stop polling for the task. The timer keeps firing in the engine and the
-			tasks wait there. The integration test profile uses it to keep the shared engine quiet</td>
-			<td><strong>true</strong></td>
-		</tr>
-	</tbody>
-</table>
-
-<h3>Incident alerts</h3>
-
-<p>An incident needs someone to act in Operaton, so the step that raises it also posts to Slack through
-api-service-messaging. The message names the municipality, namespace, process key, activity, errand and process
-instance, followed by the description of the failure from the activity log. That ends in the attempt and the
-<span class="code">x-request-id</span> of the event that started the process, which is the id to search the logs for.
-A failed alert is logged and does not stop the engine from being told about the failure. Only a work step that runs out
-of retries sends an alert. A step that throws <span class="code">NonRetryableException</span>, for a fault no retry can
-fix such as a process key without a decision title, skips the retries and raises the incident and the alert on the first
-attempt. An incident the engine raises on its own, such as a failing timer job, shows up only through the
-reconciliation.</p>
-
-<table class="settings">
-	<thead>
-		<tr>
-			<th>Setting</th>
-			<th>Description</th>
-			<th>Default&nbsp;value</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td class="code">integration.messaging.slack.token</td>
-			<td>Token of the Slack app that posts the alert</td>
-			<td><strong>null</strong></td>
-		</tr>
-		<tr>
-			<td class="code">integration.messaging.slack.channel</td>
-			<td>Channel name or id the alert is posted to</td>
-			<td><strong>null</strong></td>
-		</tr>
-	</tbody>
-</table>
-
-## Status
+_PwAlkt runs the process models of the alcohol and tobacco unit (ALKT) in a shared Operaton process engine. Support
+Management owns the errand, and this service owns the process behind it._
+
+## Getting Started
+
+### Prerequisites
+
+- **Java 25 or higher**
+- **Maven**
+- **Git**
+- **Operaton**
+- **[Dependent Microservices](#dependencies)**
+
+### Installation
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone git@github.com:Sundsvallskommun/pw-alkt.git
+   ```
+2. **Configure the application:**
+
+   Before running the application, you need to set up configuration settings.
+   See [Configuration](#configuration)
+
+   **Note:** Ensure all required configurations are set; otherwise, the application may fail to start.
+
+3. **Ensure dependent services are running:**
+
+   Make sure the services below are up and accessible. See [Dependencies](#dependencies) for more details.
+
+4. **Build and run the application:**
+
+   ```bash
+   mvn spring-boot:run
+   ```
+
+## Dependencies
+
+This microservice depends on the following services:
+
+- **Operaton**
+  - **Purpose:** The process engine. The service deploys its models there on start and works the external tasks of
+    tenant `ALKT`. Other services share the engine and its topic names.
+  - **Repository:** [https://github.com/operaton/operaton](https://github.com/operaton/operaton)
+- **Support Management**
+  - **Purpose:** Owns the errand. Sends the errand events that start and move the processes, and receives the process
+    state and the activity log.
+  - **Repository:** [https://github.com/Sundsvallskommun/api-service-support-management](https://github.com/Sundsvallskommun/api-service-support-management)
+- **Party Assets**
+  - **Purpose:** Keeps the permits the processes create, change and end.
+  - **Repository:** [https://github.com/Sundsvallskommun/api-service-party-assets](https://github.com/Sundsvallskommun/api-service-party-assets)
+- **Licensed Business**
+  - **Purpose:** Keeps the restaurant numbers of the premises.
+  - **Repository:** [https://github.com/Sundsvallskommun/api-service-licensed-business](https://github.com/Sundsvallskommun/api-service-licensed-business)
+- **Party**
+  - **Purpose:** Looks up the organisation number of the permit holder, which licensed business keys the restaurant
+    number on.
+  - **Repository:** [https://github.com/Sundsvallskommun/api-service-party](https://github.com/Sundsvallskommun/api-service-party)
+- **Templating**
+  - **Purpose:** Renders the permit certificate and the inspection protocol.
+  - **Repository:** [https://github.com/Sundsvallskommun/api-service-templating](https://github.com/Sundsvallskommun/api-service-templating)
+- **Messaging**
+  - **Purpose:** Posts incident alerts to Slack.
+  - **Repository:** [https://github.com/Sundsvallskommun/api-service-messaging](https://github.com/Sundsvallskommun/api-service-messaging)
+
+Ensure that these services are running and properly configured before starting this microservice.
+
+## API Documentation
+
+Access the API documentation via Swagger UI:
+
+- **Swagger UI:** [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
+
+## Usage
+
+### API Endpoints
+
+Refer to the [API Documentation](#api-documentation) for detailed information on available endpoints.
+
+### Example Request
+
+Support Management posts every event on an errand to one endpoint, which answers `202`. The event starts a process,
+moves it on or deletes it.
+
+```bash
+curl -X POST http://localhost:8080/2281/ALKT/process/errand-events \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "eventId": "5b2e8c41-9a7d-4f3e-b1c6-0d8e2f4a6c13",
+        "eventType": "CREATE",
+        "eventSubType": "ERRAND",
+        "errandId": "9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d",
+        "processKey": "alcohol-serving",
+        "startAllowed": true
+      }'
+```
+
+## Processes
+
+The `processKey` of the event names the process. The models are in `src/main/resources/processmodels`, one folder
+per table below.
+
+### Applications
+
+|        Process key         |                   Errand                    |                               What the service does                                | Permit in party-assets |
+|----------------------------|---------------------------------------------|------------------------------------------------------------------------------------|------------------------|
+| `alcohol-serving`          | Serving of alcoholic beverages              | Checks the decision, creates the permit, chooses and assigns the restaurant number | `AlcoholServingPermit` |
+| `alcohol-serving-addition` | Addition to an existing serving permit      | Checks the decision, finds the holder's restaurant number, creates the permit      | `AlcoholServingPermit` |
+| `alcohol-serving-change`   | Change of an existing serving permit        | Checks the decision, drafts the change, updates the permit                         | `AlcoholServingPermit` |
+| `tobacco-sales`            | Sale of tobacco products                    | Checks the decision, creates the permit                                            | `TobaccoSalesPermit`   |
+| `tobacco-sales-change`     | Change of permit-regulated sale of tobacco  | Checks the decision, drafts the change, updates the permit                         | `TobaccoSalesPermit`   |
+| `tobacco-sales-closure`    | Closure of permit-regulated sale of tobacco | Checks the permit, checks the decision, ends the permit                            | `TobaccoSalesPermit`   |
+
+Every application tells the customer that the processing has started.
+
+### Notifications
+
+|             Process key              |                  Errand                   |               What the service does                |        Permit in party-assets         |
+|--------------------------------------|-------------------------------------------|----------------------------------------------------|---------------------------------------|
+| `catering-occasion`                  | Catering occasion                         | Tells the customer that the processing has started | None                                  |
+| `low-alcohol-beer-sales`             | Sale of low-alcohol beer                  | Makes the decision, creates the permit             | `LowAlcoholBeerSalesPermit`           |
+| `low-alcohol-beer-serving`           | Serving of low-alcohol beer               | Makes the decision, creates the permit             | `LowAlcoholBeerServingPermit`         |
+| `low-alcohol-beer-sales-and-serving` | Sales and serving of low-alcohol beer     | Makes the decision, creates the permit             | `LowAlcoholBeerSalesAndServingPermit` |
+| `e-cigarette-sales`                  | Sale of electronic cigarettes and refills | Makes the decision, creates the permit             | `ECigaretteSalesPermit`               |
+
+### Inspections
+
+|      Process key      |       Errand        |                               What the service does                               | Permit in party-assets |
+|-----------------------|---------------------|-----------------------------------------------------------------------------------|------------------------|
+| `external-inspection` | External inspection | Tells the customer, creates the protocol, creates the action errand when asked to | None                   |
+| `internal-inspection` | Internal inspection | Tells the customer, creates the protocol, creates the action errand when asked to | None                   |
+| `action-errand`       | Action errand       | Checks the decision                                                               | None yet               |
+
+The action errand gets the title `Åtgärdsärende`, status `NEW`, priority `MEDIUM`, and the case worker assigned to
+the inspection as reporter. An inspection without deficiencies or without an assigned case worker sends the process
+back to the choice with a refusal in the activity log. An inspection without a permit holder raises an incident.
+
+### Decision outcomes
+
+|     Process     |                 Outcome                 |               Result                |
+|-----------------|-----------------------------------------|-------------------------------------|
+| Applications    | `APPROVAL`, `APPROVAL_WITH_CONDITIONS`  | Creates, changes or ends the permit |
+| Applications    | `REJECTED`, `DISMISSED`, `INADMISSIBLE` | Ends without a permit               |
+| `action-errand` | `REPRIMAND`, `WARNING`, `REVOCATION`    | Ends the decision phase             |
+| Any             | An outcome of another process           | Raises an incident                  |
+
+### Process reconciliation
+
+`process-reconciliation` runs every five minutes in the engine and reports processes that ended or stopped without
+telling Support Management. It is not started by an event.
+
+## Configuration
+
+Configuration is crucial for the application to run successfully. Ensure all necessary settings are configured in
+`application.yaml`.
+
+### Key Configuration Parameters
+
+- **Server Port:**
+
+  ```yaml
+  server:
+    port: 8080
+  ```
+- **Integrations:**
+
+  Every integration takes a base url and OAuth2 client credentials.
+
+  ```yaml
+  config:
+    support-management:
+      base-url: http://dependency_service_url
+      token-uri: http://token_url
+      client-id: client-id
+      client-secret: client-secret
+    # the same for operaton, party-assets, licensed-business, party, templating and messaging
+    messaging:
+      slack:
+        token: slack-token
+        channel: slack-channel
+  ```
+- **Action errand:**
+
+  ```yaml
+  action-errand:
+    label-id: a8561314-5335-40db-80a9-b7f426a4baa2
+  ```
+
+  The label the action errand gets. Its metadata in Support Management names the process key `action-errand`. Label ids
+  differ between environments.
+
+- **Texts for the customer and the activity log:**
+
+  ```yaml
+  customer-message:
+    texts:
+      processing-started: Vi har nu börjat handlägga ditt ärende.
+  process-log:
+    steps:
+      "[external_task_check_decision]":
+        done: Beslutet i ärendet har kontrollerats
+        retry: Beslutet kunde inte kontrolleras just nu, ett nytt försök görs automatiskt
+        failed: Beslutet kunde inte kontrolleras. Processen har stannat och felet behöver åtgärdas
+  ```
+
+  Every step and phase of the models needs its texts, or the service does not start. `application-it.yaml` holds the
+  full set. A key with an underscore must be in brackets.
+
+### Additional Notes
+
+- **Support Management:**
+
+  The namespace needs the status `NEW`, the decision outcomes above and the label of the action errand.
+
+- **Application Profiles:**
+
+  Use Spring profiles (`dev`, `prod`, etc.) to manage different configurations for different environments.
+
+- **Logging Configuration:**
+
+  Adjust logging levels if necessary.
+
+## Contributing
+
+Contributions are welcome! Please
+see [CONTRIBUTING.md](https://github.com/Sundsvallskommun/.github/blob/main/.github/CONTRIBUTING.md) for guidelines.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Code status
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Sundsvallskommun_pw-alkt&metric=alert_status)](https://sonarcloud.io/summary/overall?id=Sundsvallskommun_pw-alkt)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=Sundsvallskommun_pw-alkt&metric=reliability_rating)](https://sonarcloud.io/summary/overall?id=Sundsvallskommun_pw-alkt)
@@ -912,6 +241,6 @@ reconciliation.</p>
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Sundsvallskommun_pw-alkt&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=Sundsvallskommun_pw-alkt)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=Sundsvallskommun_pw-alkt&metric=bugs)](https://sonarcloud.io/summary/overall?id=Sundsvallskommun_pw-alkt)
 
-## 
+---
 
-Copyright &copy; 2026 Sundsvalls kommun
+© 2026 Sundsvalls kommun

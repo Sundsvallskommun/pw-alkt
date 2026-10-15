@@ -10,9 +10,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InOrder;
@@ -32,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_ALCOHOL_SERVING_CHANGE;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_LOW_ALCOHOL_BEER_SALES;
@@ -61,6 +66,51 @@ class DecisionServiceTest {
 	@BeforeEach
 	void setUp() {
 		decisionService = new DecisionService(supportManagementIntegrationMock, assetServiceMock, CLOCK);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"APPROVAL", "WARNING", "REJECTION"
+	})
+	void getDecisionOutcomeAnswersWithTheOutcomeOfTheCompletedDecision(final String outcome) {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(Optional.of(new Decision().outcome(outcome)));
+
+		assertThat(decisionService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(outcome);
+	}
+
+	@Test
+	void getDecisionOutcomeAnswersWithNullForACompletedDecisionWithoutOutcome() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(new Decision()));
+
+		assertThat(decisionService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("null");
+	}
+
+	@Test
+	void getDecisionOutcomeAnswersWithNoneWithoutACompletedDecision() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
+
+		assertThat(decisionService.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(DECISION_OUTCOME_NONE);
+	}
+
+	@ParameterizedTest
+	@CsvSource(nullValues = "null", value = {
+		"alcohol-serving, APPROVAL", "alcohol-serving, APPROVAL_WITH_CONDITIONS", "alcohol-serving, REJECTED", "alcohol-serving, DISMISSED",
+		"alcohol-serving, INADMISSIBLE", "alcohol-serving, NONE", "null, APPROVAL", "action-errand, REPRIMAND", "action-errand, WARNING",
+		"action-errand, REVOCATION", "action-errand, NONE"
+	})
+	void isKnownOutcomeKnowsTheOutcomesOfTheProcess(final String processKey, final String outcome) {
+		assertThat(decisionService.isKnownOutcome(processKey, outcome)).isTrue();
+	}
+
+	/** An outcome outside the set of the process is not known, a near miss of a known one included. */
+	@ParameterizedTest
+	@CsvSource({
+		"alcohol-serving, WARNING", "alcohol-serving, REJECTION", "alcohol-serving, PARTIAL_APPROVAL", "alcohol-serving, approval", "alcohol-serving, null",
+		"action-errand, APPROVAL", "action-errand, null"
+	})
+	void isKnownOutcomeDoesNotKnowTheOutcomesOfAnotherProcess(final String processKey, final String outcome) {
+		assertThat(decisionService.isKnownOutcome(processKey, outcome)).isFalse();
 	}
 
 	@Test

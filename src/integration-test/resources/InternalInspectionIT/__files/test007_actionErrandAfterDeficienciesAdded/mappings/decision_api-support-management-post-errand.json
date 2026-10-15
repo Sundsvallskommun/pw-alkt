@@ -19,12 +19,20 @@
 		"bodyPatterns": [
 			{
 				"equalToJson": {
-					"title": "Brister vid tillsyn",
+					"title": "Åtgärdsärende",
+					"status": "NEW",
+					"priority": "MEDIUM",
+					"reporterUserId": "handlaggare",
 					"description": "Följande brister ska åtgärdas",
 					"classification": {
-						"category": "INSPECTION",
-						"type": "ACTION_ERRAND"
+						"category": "AOT",
+						"type": "AOT.UNCATEGORIZED"
 					},
+					"labels": [
+						{
+							"id": "a8561314-5335-40db-80a9-b7f426a4baa2"
+						}
+					],
 					"stakeholders": [
 						{
 							"role": "PRIMARY",
