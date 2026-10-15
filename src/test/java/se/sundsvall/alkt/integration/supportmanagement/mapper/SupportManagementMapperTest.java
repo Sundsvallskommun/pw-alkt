@@ -129,12 +129,10 @@ class SupportManagementMapperTest {
 	void toDecisionTitleRefusesAProcessWithoutAnAutomaticDecision() {
 		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(ALCOHOL_SERVING.getKey()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(ALCOHOL_SERVING.getKey())
-			.hasMessageContaining(LOW_ALCOHOL_BEER_SALES.getKey())
-			.hasMessageContaining(LOW_ALCOHOL_BEER_SERVING.getKey())
-			.hasMessageContaining(LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey());
+			.hasMessage("Process 'alcohol-serving' has no title for a decision made automatically");
 		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(null))
-			.isInstanceOf(NonRetryableException.class);
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Process 'null' has no title for a decision made automatically");
 	}
 
 	@Test
@@ -147,11 +145,10 @@ class SupportManagementMapperTest {
 	void toChangeDraftTitleRefusesAProcessWithoutAChangeDraft() {
 		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING.getKey()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(ALCOHOL_SERVING.getKey())
-			.hasMessageContaining(ALCOHOL_SERVING_CHANGE.getKey())
-			.hasMessageContaining(TOBACCO_SALES_CHANGE.getKey());
+			.hasMessage("Process 'alcohol-serving' has no title for a change draft");
 		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(null))
-			.isInstanceOf(NonRetryableException.class);
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Process 'null' has no title for a change draft");
 	}
 
 	@Test

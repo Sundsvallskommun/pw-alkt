@@ -447,9 +447,9 @@ class PartyAssetsMapperTest {
 	void toAssetTypeRefusesAProcessWithoutAnAssetType() {
 		assertThatThrownBy(() -> toAssetType(EXTERNAL_INSPECTION.getKey()))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(EXTERNAL_INSPECTION.getKey())
-			.hasMessageContaining(ALCOHOL_SERVING.getKey());
+			.hasMessage("Process 'external-inspection' has no asset type");
 		assertThatThrownBy(() -> toAssetType(null))
-			.isInstanceOf(NonRetryableException.class);
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Process 'null' has no asset type");
 	}
 }

@@ -49,8 +49,7 @@ public final class PartyAssetsMapper {
 	public static AssetType toAssetType(final String processKey) {
 		return ProcessType.fromKey(processKey)
 			.flatMap(ProcessType::getAssetType)
-			.orElseThrow(() -> new NonRetryableException("Process '%s' has no asset type, one of %s was expected"
-				.formatted(processKey, ProcessType.keysWhere(process -> process.getAssetType().isPresent()))));
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no asset type".formatted(processKey)));
 	}
 
 	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType assetType,

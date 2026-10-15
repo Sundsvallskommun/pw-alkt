@@ -5,8 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
-import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CHANGE;
 
 class ProcessTypeTest {
 
@@ -26,11 +24,5 @@ class ProcessTypeTest {
 		assertThat(ProcessType.keys())
 			.hasSize(ProcessType.values().length)
 			.contains(ALCOHOL_SERVING.getKey());
-	}
-
-	@Test
-	void keysWhere() {
-		assertThat(ProcessType.keysWhere(process -> process.getChangeDraftTitle().isPresent()))
-			.containsExactlyInAnyOrder(ALCOHOL_SERVING_CHANGE.getKey(), TOBACCO_SALES_CHANGE.getKey());
 	}
 }

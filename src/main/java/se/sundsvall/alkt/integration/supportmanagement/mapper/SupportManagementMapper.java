@@ -89,15 +89,13 @@ public final class SupportManagementMapper {
 	public static String toDecisionTitle(final String processKey) {
 		return ProcessType.fromKey(processKey)
 			.flatMap(ProcessType::getDecisionTitle)
-			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a decision made automatically, one of %s was expected"
-				.formatted(processKey, ProcessType.keysWhere(process -> process.getDecisionTitle().isPresent()))));
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a decision made automatically".formatted(processKey)));
 	}
 
 	public static String toChangeDraftTitle(final String processKey) {
 		return ProcessType.fromKey(processKey)
 			.flatMap(ProcessType::getChangeDraftTitle)
-			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a change draft, one of %s was expected"
-				.formatted(processKey, ProcessType.keysWhere(process -> process.getChangeDraftTitle().isPresent()))));
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a change draft".formatted(processKey)));
 	}
 
 	// Why: an approval of an ongoing notification holds until further notice, so it has no validTo; one for a single

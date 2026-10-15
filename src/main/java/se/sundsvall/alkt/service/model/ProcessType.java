@@ -3,7 +3,6 @@ package se.sundsvall.alkt.service.model;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import static java.util.stream.Collectors.toUnmodifiableSet;
 import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
@@ -53,12 +52,7 @@ public enum ProcessType {
 	}
 
 	public static Set<String> keys() {
-		return keysWhere(_ -> true);
-	}
-
-	public static Set<String> keysWhere(final Predicate<ProcessType> condition) {
 		return Arrays.stream(values())
-			.filter(condition)
 			.map(ProcessType::getKey)
 			.collect(toUnmodifiableSet());
 	}
