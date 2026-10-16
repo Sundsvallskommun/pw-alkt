@@ -83,8 +83,7 @@ Refer to the [API Documentation](#api-documentation) for detailed information on
 ### Example Request
 
 Support Management posts every event on an errand to one endpoint, which answers `202`. The event starts a process,
-moves it on or deletes it. A `processKey` this service does not know is answered with `400`, except on a delete,
-which removes the processes of the errand whatever their key.
+moves it on or deletes it.
 
 ```bash
 curl -X POST http://localhost:8080/2281/ALKT/process/errand-events \

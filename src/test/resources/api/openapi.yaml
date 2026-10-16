@@ -53,6 +53,13 @@ paths:
                 oneOf:
                 - $ref: "#/components/schemas/Problem"
                 - $ref: "#/components/schemas/ConstraintViolationProblem"
+        "422":
+          description: The process key matches no deployed process definition. Permanent
+            - do not deliver again
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
         "500":
           description: Internal Server error
           content:
@@ -112,8 +119,7 @@ components:
           type: string
           description: |
             Key of the process that drives the errand, taken from its running instance when it has one and from the labels of
-            the errand otherwise. Absent when an errand is deleted before a key can be resolved. A key this service does not know
-            is rejected, except on a delete.
+            the errand otherwise. Absent when an errand is deleted before a key can be resolved.
           example: alcohol-serving
         startAllowed:
           type: boolean

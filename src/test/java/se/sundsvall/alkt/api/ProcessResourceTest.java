@@ -16,7 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
-import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.DELETE;
 import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.UPDATE;
 
 @AutoConfigureWebTestClient
@@ -55,26 +54,6 @@ class ProcessResourceTest {
 		// Assert
 		verify(processServiceMock).handleErrandEvent("2281", "ALKT", errandEvent);
 		verifyNoMoreInteractions(processServiceMock);
-	}
-
-	@Test
-	void acceptsADeleteWithAnUnknownProcessKey() {
-
-		// Arrange
-		final var errandEvent = new ErrandEvent();
-		errandEvent.setEventId(randomUUID().toString());
-		errandEvent.setEventType(DELETE);
-		errandEvent.setErrandId(randomUUID().toString());
-		errandEvent.setProcessKey("no-such-process");
-
-		// Act
-		webTestClient.post().uri(PATH)
-			.bodyValue(errandEvent)
-			.exchange()
-			.expectStatus().isAccepted();
-
-		// Assert
-		verify(processServiceMock).handleErrandEvent("2281", "ALKT", errandEvent);
 	}
 
 	/**
