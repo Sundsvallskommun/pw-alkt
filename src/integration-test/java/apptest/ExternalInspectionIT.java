@@ -65,7 +65,6 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 				// Review
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
 				tuple("Review completed", "await_review_completed"),
 				tuple("End review phase", "end_review_phase"),
 
@@ -179,7 +178,6 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
 				tuple("Review completed", "await_review_completed"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
