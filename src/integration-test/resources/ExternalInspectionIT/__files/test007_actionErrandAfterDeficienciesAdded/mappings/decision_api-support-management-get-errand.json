@@ -1,8 +1,8 @@
 {
-	"name": "review_api-support-management-get-errand",
+	"name": "decision_api-support-management-get-errand",
 	"request": {
 		"method": "GET",
-		"urlPath": "/api-support-management/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7",
+		"urlPath": "/api-support-management/2281/ALKT/errands/4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345",
 		"headers": {
 			"X-Sent-By": {
 				"equalTo": "pw-alkt; type=processEngine"
@@ -15,7 +15,7 @@
 			"Content-Type": "application/json"
 		},
 		"jsonBody": {
-			"id": "8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7",
+			"id": "4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345",
 			"title": "Brister vid tillsyn",
 			"assignedUserId": "handlaggare",
 			"description": "Följande brister ska åtgärdas",
@@ -26,7 +26,7 @@
 			"labels": [
 				{
 					"id": "d18db4ab-0000-4000-8000-000000000001",
-					"resourcePath": "CATEGORYROOT/INSPECTION/INTERNAL_INSPECTION"
+					"resourcePath": "CATEGORYROOT/INSPECTION/EXTERNAL_INSPECTION"
 				}
 			],
 			"stakeholders": [
@@ -39,5 +39,5 @@
 		},
 		"status": 200
 	},
-	"scenarioName": "internal-inspection-deficiencies"
+	"scenarioName": "external-inspection-deficiencies"
 }

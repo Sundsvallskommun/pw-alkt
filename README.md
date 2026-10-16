@@ -133,11 +133,11 @@ today, raises an incident before any decision is written.
 
 ### Inspections
 
-|      Process key      |       Errand        |                               What the service does                               | Permit in party-assets |
-|-----------------------|---------------------|-----------------------------------------------------------------------------------|------------------------|
-| `external-inspection` | External inspection | Tells the customer, creates the protocol, creates the action errand when asked to | None                   |
-| `internal-inspection` | Internal inspection | Tells the customer, creates the protocol, creates the action errand when asked to | None                   |
-| `action-errand`       | Action errand       | Checks the decision                                                               | None yet               |
+|      Process key      |       Errand        |                     What the service does                     | Permit in party-assets |
+|-----------------------|---------------------|---------------------------------------------------------------|------------------------|
+| `external-inspection` | External inspection | Creates the protocol, creates the action errand when asked to | None                   |
+| `internal-inspection` | Internal inspection | Creates the protocol, creates the action errand when asked to | None                   |
+| `action-errand`       | Action errand       | Checks the decision                                           | None yet               |
 
 The action errand gets the title `Åtgärdsärende`, status `NEW`, priority `MEDIUM`, and the case worker assigned to
 the inspection as reporter. An inspection without deficiencies or without an assigned case worker sends the process
