@@ -31,11 +31,11 @@ import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
-import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
+import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
+import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
 
 /**
  * What the reconciliation settles, and what it leaves alone. Every sweep is started by hand; max.retries=0 makes the

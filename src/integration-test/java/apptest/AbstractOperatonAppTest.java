@@ -14,6 +14,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
+import se.sundsvall.alkt.service.model.ProcessType;
 import se.sundsvall.dept44.test.AbstractAppTest;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -47,7 +48,6 @@ import static org.awaitility.Awaitility.setDefaultTimeout;
 import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import se.sundsvall.alkt.service.model.ProcessType;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.UPDATE;
 
