@@ -7,19 +7,15 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
-import se.sundsvall.alkt.service.model.AssetType;
+import se.sundsvall.alkt.service.model.ProcessType;
 
 import static java.util.Collections.emptyList;
-import static se.sundsvall.alkt.Constants.ACTION_ERRAND_DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
-import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
@@ -27,17 +23,12 @@ import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toAutomaticDecision;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraft;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toChangeDraftTitle;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionCompletion;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionTitle;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
-import static se.sundsvall.alkt.service.model.ProcessType.ACTION_ERRAND;
 
 @Service
 public class DecisionService {
-
-	private static final Map<String, Set<String>> DECISION_OUTCOMES_OF_PROCESS = Map.of(ACTION_ERRAND.getKey(), ACTION_ERRAND_DECISION_OUTCOMES);
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final AssetService assetService;
@@ -56,24 +47,13 @@ public class DecisionService {
 	}
 
 	/**
-	 * The outcomes a process knows are those of its gateway. NONE only keeps the process waiting, so every process knows
-	 * it.
-	 */
-	public boolean isKnownOutcome(final String processKey, final String outcome) {
-		return DECISION_OUTCOME_NONE.equals(outcome) || Optional.ofNullable(processKey)
-			.map(DECISION_OUTCOMES_OF_PROCESS::get)
-			.orElse(DECISION_OUTCOMES)
-			.contains(outcome);
-	}
-
-	/**
 	 * Support Management locks a completed decision, attachments included, so the decision is written as a draft, given
 	 * every attachment of the errand and completed last. A rerun picks up the draft an earlier attempt left behind. Any
 	 * other decision on the errand is the case worker's, so it is left alone and the step goes to an incident. The decision
 	 * ends on the date in the errand parameter validToParameter names, and holds until further notice when it names none.
 	 */
-	public String approveAutomatically(final String municipalityId, final String namespace, final String errandId, final String processKey, final String validToParameter) {
-		final var title = toDecisionTitle(processKey);
+	public String approveAutomatically(final String municipalityId, final String namespace, final String errandId, final ProcessType processType, final String validToParameter) {
+		final var title = processType.getDecisionTitle();
 
 		final var decisions = supportManagementIntegration.getDecisions(municipalityId, namespace, errandId);
 		final var completed = decisions.stream().filter(decision -> DECISION_STATUS_COMPLETED.equals(decision.getStatus())).findFirst();
@@ -117,8 +97,8 @@ public class DecisionService {
 	 * Drafts the decision of a change errand from the change the customer asks for. An errand has one decision at most, so
 	 * one already there is the draft of an earlier attempt.
 	 */
-	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId, final AssetType assetType, final String processKey) {
-		final var title = toChangeDraftTitle(processKey);
+	public String createChangeDraft(final String municipalityId, final String namespace, final String errandId, final ProcessType processType) {
+		final var title = processType.getChangeDraftTitle();
 
 		return supportManagementIntegration.getDecisions(municipalityId, namespace, errandId).stream()
 			.findFirst()
@@ -126,7 +106,7 @@ public class DecisionService {
 			.orElseGet(() -> {
 				final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 				// Why: a fault in the permit the customer chose shows now, not once the decision is locked.
-				assetService.getPermitToChange(municipalityId, errand, errandId, assetType);
+				assetService.getPermitToChange(municipalityId, errand, errandId, processType.getAssetType());
 				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, title, OffsetDateTime.now(clock)));
 			});
 	}

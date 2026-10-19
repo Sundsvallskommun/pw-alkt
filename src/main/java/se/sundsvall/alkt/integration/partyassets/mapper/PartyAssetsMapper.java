@@ -12,10 +12,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
-import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.service.model.AssetType;
-import se.sundsvall.alkt.service.model.ProcessType;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
@@ -45,12 +43,6 @@ public final class PartyAssetsMapper {
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 
 	private PartyAssetsMapper() {}
-
-	public static AssetType toAssetType(final String processKey) {
-		return ProcessType.fromKey(processKey)
-			.flatMap(ProcessType::getAssetType)
-			.orElseThrow(() -> new NonRetryableException("Process '%s' has no asset type".formatted(processKey)));
-	}
 
 	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType assetType,
 		final String restaurantNumber) {

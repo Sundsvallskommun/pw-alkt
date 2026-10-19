@@ -3,8 +3,12 @@ package se.sundsvall.alkt.service.model;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
+import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static java.util.stream.Collectors.toUnmodifiableSet;
+import static se.sundsvall.alkt.Constants.ACTION_ERRAND_DECISION_OUTCOMES;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
+import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_NONE;
 import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
 import static se.sundsvall.alkt.service.model.AssetType.CATERING_OCCASION_NOTIFICATION;
 import static se.sundsvall.alkt.service.model.AssetType.E_CIGARETTE_SALES_NOTIFICATION;
@@ -31,24 +35,36 @@ public enum ProcessType {
 	CATERING_OCCASION("catering-occasion", CATERING_OCCASION_NOTIFICATION, "Anmälan om cateringtillfälle", null),
 	EXTERNAL_INSPECTION("external-inspection", null, null, null),
 	INTERNAL_INSPECTION("internal-inspection", null, null, null),
-	ACTION_ERRAND("action-errand", null, null, null);
+	ACTION_ERRAND("action-errand", null, null, null, ACTION_ERRAND_DECISION_OUTCOMES);
 
 	private final String key;
 	private final AssetType assetType;
 	private final String decisionTitle;
 	private final String changeDraftTitle;
+	private final Set<String> decisionOutcomes;
 
 	ProcessType(final String key, final AssetType assetType, final String decisionTitle, final String changeDraftTitle) {
+		this(key, assetType, decisionTitle, changeDraftTitle, DECISION_OUTCOMES);
+	}
+
+	ProcessType(final String key, final AssetType assetType, final String decisionTitle, final String changeDraftTitle, final Set<String> decisionOutcomes) {
 		this.key = key;
 		this.assetType = assetType;
 		this.decisionTitle = decisionTitle;
 		this.changeDraftTitle = changeDraftTitle;
+		this.decisionOutcomes = decisionOutcomes;
 	}
 
 	public static Optional<ProcessType> fromKey(final String key) {
 		return Arrays.stream(values())
 			.filter(process -> process.key.equals(key))
 			.findFirst();
+	}
+
+	/** The process of a running instance. A key no process has is a fault a retry cannot fix. */
+	public static ProcessType ofKey(final String key) {
+		return fromKey(key)
+			.orElseThrow(() -> new NonRetryableException("Process '%s' is not a process of this service".formatted(key)));
 	}
 
 	public static Set<String> keys() {
@@ -61,16 +77,24 @@ public enum ProcessType {
 		return key;
 	}
 
-	public Optional<AssetType> getAssetType() {
-		return Optional.ofNullable(assetType);
+	public AssetType getAssetType() {
+		return Optional.ofNullable(assetType)
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no asset type".formatted(key)));
 	}
 
 	/** The title of a decision the process makes automatically. */
-	public Optional<String> getDecisionTitle() {
-		return Optional.ofNullable(decisionTitle);
+	public String getDecisionTitle() {
+		return Optional.ofNullable(decisionTitle)
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a decision made automatically".formatted(key)));
 	}
 
-	public Optional<String> getChangeDraftTitle() {
-		return Optional.ofNullable(changeDraftTitle);
+	public String getChangeDraftTitle() {
+		return Optional.ofNullable(changeDraftTitle)
+			.orElseThrow(() -> new NonRetryableException("Process '%s' has no title for a change draft".formatted(key)));
+	}
+
+	/** The outcomes of the decision gateway. NONE only keeps the process waiting, so every process knows it. */
+	public boolean isKnownOutcome(final String outcome) {
+		return DECISION_OUTCOME_NONE.equals(outcome) || decisionOutcomes.contains(outcome);
 	}
 }

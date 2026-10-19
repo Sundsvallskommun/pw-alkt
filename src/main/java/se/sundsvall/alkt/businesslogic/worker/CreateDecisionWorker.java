@@ -29,7 +29,7 @@ public class CreateDecisionWorker extends AbstractTaskWorker {
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final var decisionId = decisionService.approveAutomatically(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
-			externalTask.getProcessDefinitionKey(), externalTask.getVariable(PROCESS_VARIABLE_VALID_TO_PARAMETER));
+			getProcessType(externalTask), externalTask.getVariable(PROCESS_VARIABLE_VALID_TO_PARAMETER));
 
 		logInfo("Errand {} has decision {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(decisionId));
 

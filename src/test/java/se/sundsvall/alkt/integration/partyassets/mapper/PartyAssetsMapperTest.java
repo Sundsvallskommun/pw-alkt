@@ -16,13 +16,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
@@ -34,30 +32,10 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetType;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
 import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
-import static se.sundsvall.alkt.service.model.AssetType.CATERING_OCCASION_NOTIFICATION;
-import static se.sundsvall.alkt.service.model.AssetType.E_CIGARETTE_SALES_NOTIFICATION;
-import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SALES_AND_SERVING_NOTIFICATION;
-import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SALES_NOTIFICATION;
-import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SERVING_NOTIFICATION;
-import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION;
 import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_SALES_PERMIT;
-import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
-import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_ADDITION;
-import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
-import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
-import static se.sundsvall.alkt.service.model.ProcessType.E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
-import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES;
-import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CHANGE;
-import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CLOSURE;
 
 class PartyAssetsMapperTest {
 
@@ -416,40 +394,5 @@ class PartyAssetsMapperTest {
 		assertThat(result.file().getContentType()).isEqualTo("application/pdf");
 		assertThat(result.file().getBytes()).isEqualTo(content);
 		assertThat(result.category()).isEqualTo("Tillståndsbevis");
-	}
-
-	/** An addition is a serving permit of its own, which alcohol-serving-change can change like the main one. */
-	@Test
-	void toAssetTypeGivesTheServingProcessesOneType() {
-		assertThat(toAssetType(ALCOHOL_SERVING.getKey())).isEqualTo(ALCOHOL_SERVING_PERMIT);
-		assertThat(toAssetType(ALCOHOL_SERVING_CHANGE.getKey())).isEqualTo(ALCOHOL_SERVING_PERMIT);
-		assertThat(toAssetType(ALCOHOL_SERVING_ADDITION.getKey())).isEqualTo(ALCOHOL_SERVING_PERMIT);
-	}
-
-	@Test
-	void toAssetTypeGivesTheTobaccoProcessesOneType() {
-		assertThat(toAssetType(TOBACCO_SALES.getKey())).isEqualTo(TOBACCO_SALES_PERMIT);
-		assertThat(toAssetType(TOBACCO_SALES_CHANGE.getKey())).isEqualTo(TOBACCO_SALES_PERMIT);
-		assertThat(toAssetType(TOBACCO_SALES_CLOSURE.getKey())).isEqualTo(TOBACCO_SALES_PERMIT);
-	}
-
-	@Test
-	void toAssetTypeGivesEachNotificationProcessATypeOfItsOwn() {
-		assertThat(toAssetType(LOW_ALCOHOL_BEER_SALES.getKey())).isEqualTo(LOW_ALCOHOL_BEER_SALES_NOTIFICATION);
-		assertThat(toAssetType(LOW_ALCOHOL_BEER_SERVING.getKey())).isEqualTo(LOW_ALCOHOL_BEER_SERVING_NOTIFICATION);
-		assertThat(toAssetType(LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey())).isEqualTo(LOW_ALCOHOL_BEER_SALES_AND_SERVING_NOTIFICATION);
-		assertThat(toAssetType(E_CIGARETTE_SALES.getKey())).isEqualTo(E_CIGARETTE_SALES_NOTIFICATION);
-		assertThat(toAssetType(TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey())).isEqualTo(TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION);
-		assertThat(toAssetType(CATERING_OCCASION.getKey())).isEqualTo(CATERING_OCCASION_NOTIFICATION);
-	}
-
-	@Test
-	void toAssetTypeRefusesAProcessWithoutAnAssetType() {
-		assertThatThrownBy(() -> toAssetType(EXTERNAL_INSPECTION.getKey()))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Process 'external-inspection' has no asset type");
-		assertThatThrownBy(() -> toAssetType(null))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Process 'null' has no asset type");
 	}
 }

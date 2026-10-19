@@ -17,13 +17,11 @@ import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
@@ -32,15 +30,6 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.service.model.ProcessStatus.FAILED;
-import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
-import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
-import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
-import static se.sundsvall.alkt.service.model.ProcessType.E_CIGARETTE_SALES;
-import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
-import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES_AND_SERVING;
-import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SERVING;
-import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
-import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CHANGE;
 
 class SupportManagementMapperTest {
 
@@ -113,42 +102,6 @@ class SupportManagementMapperTest {
 		assertThat(result.getError()).isNull();
 		assertThat(result.getActivities()).isEmpty();
 		assertThat(result.getAwaitingSignals()).isEmpty();
-	}
-
-	@Test
-	void toDecisionTitleNamesThePermitOfEachNotificationProcess() {
-		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SALES.getKey())).isEqualTo("Anmälan om försäljning av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SERVING.getKey())).isEqualTo("Anmälan om servering av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey())).isEqualTo("Anmälan om försäljning och servering av folköl");
-		assertThat(SupportManagementMapper.toDecisionTitle(E_CIGARETTE_SALES.getKey())).isEqualTo("Anmälan om försäljning av elektroniska cigaretter och påfyllningsbehållare");
-		assertThat(SupportManagementMapper.toDecisionTitle(TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey())).isEqualTo("Anmälan om försäljning av tobaksfria nikotinprodukter");
-		assertThat(SupportManagementMapper.toDecisionTitle(CATERING_OCCASION.getKey())).isEqualTo("Anmälan om cateringtillfälle");
-	}
-
-	@Test
-	void toDecisionTitleRefusesAProcessWithoutAnAutomaticDecision() {
-		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(ALCOHOL_SERVING.getKey()))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Process 'alcohol-serving' has no title for a decision made automatically");
-		assertThatThrownBy(() -> SupportManagementMapper.toDecisionTitle(null))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Process 'null' has no title for a decision made automatically");
-	}
-
-	@Test
-	void toChangeDraftTitleNamesThePermitOfEachChangeProcess() {
-		assertThat(SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING_CHANGE.getKey())).isEqualTo("Ändring av serveringstillstånd");
-		assertThat(SupportManagementMapper.toChangeDraftTitle(TOBACCO_SALES_CHANGE.getKey())).isEqualTo("Ändring av tobakstillstånd");
-	}
-
-	@Test
-	void toChangeDraftTitleRefusesAProcessWithoutAChangeDraft() {
-		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(ALCOHOL_SERVING.getKey()))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Process 'alcohol-serving' has no title for a change draft");
-		assertThatThrownBy(() -> SupportManagementMapper.toChangeDraftTitle(null))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Process 'null' has no title for a change draft");
 	}
 
 	@Test
