@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_CATERING_OCCASION;
+import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/CateringOccasionIT/", classes = Application.class)
@@ -34,11 +34,11 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_CATERING_OCCASION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
 
 		// The first four phases hold no catch event in this model, so follow up is the first one to park
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "follow_up");
-		completePhase(ERRAND_ID, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "closure");
+		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "closure");
 
 		// Wait for process to finish
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -102,7 +102,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_CATERING_OCCASION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -145,9 +145,9 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_CATERING_OCCASION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
 
-		cancelProcess(ERRAND_ID, processInstanceId, PROCESS_KEY_CATERING_OCCASION, "follow_up");
+		cancelProcess(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
@@ -187,9 +187,9 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, PROCESS_KEY_CATERING_OCCASION);
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
 
-		awaitIncidentAt(PROCESS_KEY_CATERING_OCCASION, processInstanceId, "external_task_create_decision");
+		awaitIncidentAt(CATERING_OCCASION.getKey(), processInstanceId, "external_task_create_decision");
 
 		// No decision is written, so nothing is locked before the case worker has added the permit holder
 		verifyAllStubs();

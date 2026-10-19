@@ -11,6 +11,7 @@ import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ProcessStatus;
+import se.sundsvall.alkt.service.model.ProcessType;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.requestid.RequestId;
@@ -140,5 +141,9 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 
 	protected String getErrandId(final ExternalTask externalTask) {
 		return externalTask.getVariable(PROCESS_VARIABLE_ERRAND_ID);
+	}
+
+	protected ProcessType getProcessType(final ExternalTask externalTask) {
+		return ProcessType.ofKey(externalTask.getProcessDefinitionKey());
 	}
 }

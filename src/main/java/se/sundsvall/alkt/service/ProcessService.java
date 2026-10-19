@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
+import se.sundsvall.alkt.service.model.ProcessType;
 import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
@@ -16,7 +17,6 @@ import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
 import static se.sundsvall.alkt.Constants.MESSAGE_DECISION_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_ERRAND_UPDATED;
 import static se.sundsvall.alkt.Constants.MESSAGE_PROCESS_CANCELLED;
-import static se.sundsvall.alkt.Constants.PROCESS_KEYS;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
@@ -68,7 +68,7 @@ public class ProcessService {
 			return;
 		}
 
-		if (!PROCESS_KEYS.contains(errandEvent.getProcessKey())) {
+		if (ProcessType.fromKey(errandEvent.getProcessKey()).isEmpty()) {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Process key '%s' matches no deployed process definition".formatted(errandEvent.getProcessKey()));
 		}
 

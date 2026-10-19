@@ -20,11 +20,9 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import se.sundsvall.alkt.service.DecisionService;
+import se.sundsvall.alkt.service.model.ProcessType;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
-import static org.mockito.Mockito.mock;
 import static se.sundsvall.alkt.Constants.ACTION_ERRAND_DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
@@ -93,15 +91,14 @@ class DecisionOutcomeGatewayTest {
 	@MethodSource("modelsCheckingTheDecision")
 	void theServiceKnowsExactlyTheOutcomesOfTheGateway(final String model) throws Exception {
 		final var document = read(model);
-		final var processKey = ((Element) document.getElementsByTagNameNS(BPMN_NAMESPACE, "process").item(0)).getAttribute("id");
+		final var processType = ProcessType.ofKey(((Element) document.getElementsByTagNameNS(BPMN_NAMESPACE, "process").item(0)).getAttribute("id"));
 		final var gatewayOutcomes = outcomesLeaving(document, "gateway_decision_outcome");
-		final var decisionService = mock(DecisionService.class, CALLS_REAL_METHODS);
 
 		Stream.of(DECISION_OUTCOMES, ACTION_ERRAND_DECISION_OUTCOMES, gatewayOutcomes)
 			.flatMap(Collection::stream)
 			.distinct()
-			.forEach(outcome -> assertThat(decisionService.isKnownOutcome(processKey, outcome))
-				.as("%s knows %s", processKey, outcome)
+			.forEach(outcome -> assertThat(processType.isKnownOutcome(outcome))
+				.as("%s knows %s", processType.getKey(), outcome)
 				.isEqualTo(gatewayOutcomes.contains(outcome)));
 	}
 
