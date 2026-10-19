@@ -16,11 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_TOBACCO_SALES_CLOSURE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.PERMIT_TYPE_TOBACCO_SALES;
+import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_SALES_PERMIT;
+import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CLOSURE;
 
 @ExtendWith(MockitoExtension.class)
 class CheckPermitWorkerTest {
@@ -52,14 +52,14 @@ class CheckPermitWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_TOBACCO_SALES_CLOSURE);
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(TOBACCO_SALES_CLOSURE.getKey());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_permit");
-		when(assetServiceMock.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_TOBACCO_SALES)).thenReturn("asset-id");
+		when(assetServiceMock.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TOBACCO_SALES_PERMIT)).thenReturn("asset-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_permit", null).withLogMessage("Permit 'asset-id' checked"));
-		verify(assetServiceMock).checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, PERMIT_TYPE_TOBACCO_SALES);
+		verify(assetServiceMock).checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TOBACCO_SALES_PERMIT);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

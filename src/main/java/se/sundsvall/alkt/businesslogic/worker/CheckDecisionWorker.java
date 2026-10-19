@@ -29,15 +29,15 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var processKey = externalTask.getProcessDefinitionKey();
+		final var processType = getProcessType(externalTask);
 		final var outcome = decisionService.getDecisionOutcome(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
 
 		logInfo("Decision of errand {} has outcome {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(outcome));
 
 		// Why: Support Management locks a completed decision, so the case worker cannot correct it and only an incident tells
 		// anyone.
-		if (!decisionService.isKnownOutcome(processKey, outcome)) {
-			throw new NonRetryableException("Decision outcome %s is not an outcome of process %s".formatted(outcome, processKey));
+		if (!processType.isKnownOutcome(outcome)) {
+			throw new NonRetryableException("Decision outcome %s is not an outcome of process %s".formatted(outcome, processType.getKey()));
 		}
 
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)

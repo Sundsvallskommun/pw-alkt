@@ -57,7 +57,6 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("alcohol-serving");
 		when(decisionServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
-		when(decisionServiceMock.isKnownOutcome("alcohol-serving", "APPROVAL")).thenReturn(true);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
@@ -76,7 +75,6 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_decision");
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("action-errand");
 		when(decisionServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("NONE");
-		when(decisionServiceMock.isKnownOutcome("action-errand", "NONE")).thenReturn(true);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
@@ -91,7 +89,6 @@ class CheckDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("action-errand");
 		when(decisionServiceMock.getDecisionOutcome(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("APPROVAL");
-		when(decisionServiceMock.isKnownOutcome("action-errand", "APPROVAL")).thenReturn(false);
 
 		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock))
 			.isInstanceOf(NonRetryableException.class)
