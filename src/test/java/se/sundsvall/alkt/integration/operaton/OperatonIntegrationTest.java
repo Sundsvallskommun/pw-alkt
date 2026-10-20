@@ -543,6 +543,7 @@ class OperatonIntegrationTest {
 
 		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
 		verify(operatonClientMock, never()).setExternalTaskRetries(any(), any());
+		verifyNoMoreInteractions(operatonClientMock);
 	}
 
 	@Test
@@ -553,7 +554,9 @@ class OperatonIntegrationTest {
 
 		assertThatThrownBy(() -> operatonIntegration.retryStuckExternalTasks(processInstanceId)).isSameAs(failure);
 
+		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
 		verify(operatonClientMock, never()).setExternalTaskRetries(any(), any());
+		verifyNoMoreInteractions(operatonClientMock);
 	}
 
 	@Test
@@ -564,6 +567,10 @@ class OperatonIntegrationTest {
 		doThrow(failure).when(operatonClientMock).setExternalTaskRetries("task-1", new RetriesDto().retries(1));
 
 		assertThatThrownBy(() -> operatonIntegration.retryStuckExternalTasks(processInstanceId)).isSameAs(failure);
+
+		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
+		verify(operatonClientMock).setExternalTaskRetries("task-1", new RetriesDto().retries(1));
+		verifyNoMoreInteractions(operatonClientMock);
 	}
 
 	@Test
@@ -575,6 +582,10 @@ class OperatonIntegrationTest {
 		assertThatThrownBy(() -> operatonIntegration.retryStuckExternalTasks(processInstanceId))
 			.isInstanceOfSatisfying(Problem.class, problem -> assertThat(problem.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY))
 			.hasMessageContaining("Task is not active");
+
+		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
+		verify(operatonClientMock).setExternalTaskRetries("task-1", new RetriesDto().retries(1));
+		verifyNoMoreInteractions(operatonClientMock);
 	}
 
 	private static EventSubscriptionDto subscription(final String activityId, final String eventName) {

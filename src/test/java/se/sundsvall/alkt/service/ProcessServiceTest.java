@@ -486,8 +486,11 @@ class ProcessServiceTest {
 
 		// Assert
 		final var inOrder = inOrder(operatonIntegrationMock);
+		inOrder.verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
 		inOrder.verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
 		inOrder.verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	/** Support Management's casing of eventSubType is not guaranteed. */
@@ -505,7 +508,11 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
 		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -522,8 +529,12 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
 		verify(operatonIntegrationMock).retryStuckExternalTasks(first);
 		verify(operatonIntegrationMock).retryStuckExternalTasks(second);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -539,7 +550,11 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
 		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -556,8 +571,12 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).findProcessInstance(processInstanceId);
 		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, PROCESS_KEY, null), DEFINITION_ID);
 		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock, processReportServiceMock);
 	}
 
 	@Test
@@ -581,6 +600,11 @@ class ProcessServiceTest {
 			.hasSize(2)
 			.anySatisfy(line -> assertThat(line).contains("external_task_create_asset"))
 			.anySatisfy(line -> assertThat(line).contains("external_task_check_decision"));
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@ParameterizedTest
@@ -599,8 +623,11 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
 		verify(operatonIntegrationMock).correlateMessage(any(), eq(errandId), eq(TENANT_ID));
 		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -617,8 +644,11 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
 		verify(operatonIntegrationMock).correlateMessage("review_completed", errandId, TENANT_ID);
 		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -626,13 +656,18 @@ class ProcessServiceTest {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		when(operatonIntegrationMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+		final var processInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
 
 		// Act
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(DELETE, errandId, PROCESS_KEY, false));
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, null, TENANT_ID);
+		verify(operatonIntegrationMock).deleteProcessInstance(processInstanceId);
 		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -646,8 +681,11 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(CREATE, errandId, PROCESS_KEY, true));
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
 		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
 		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -663,8 +701,11 @@ class ProcessServiceTest {
 		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, true));
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
 		verify(operatonIntegrationMock).startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID);
 		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, PROCESS_KEY, null), DEFINITION_ID);
+		verifyNoMoreInteractions(operatonIntegrationMock, processReportServiceMock);
 	}
 
 	/** Thrown on, so that Support Management delivers the event again. */
@@ -684,6 +725,11 @@ class ProcessServiceTest {
 
 		// Assert
 		assertThat(thrown).isSameAs(failure);
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 
 	@Test
@@ -698,6 +744,10 @@ class ProcessServiceTest {
 		assertThrows(ClientProblem.class, () -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
 
 		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
 		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
 	}
 }
