@@ -1,0 +1,51 @@
+{
+	"name": "investigation_api-support-management-patch-errand-parameters",
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-support-management/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3/parameters",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"equalToJson": [
+					{
+						"key": "assetId",
+						"values": [
+							"9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d"
+						]
+					},
+					{
+						"key": "forsaljningstid",
+						"values": [
+							"Försäljning får ske mellan 11.00 och 02.00."
+						]
+					},
+					{
+						"key": "forsaljningsstalle",
+						"values": []
+					},
+					{
+						"key": "completeAt",
+						"values": [
+							"${json-unit.regex}^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+						]
+					}
+				],
+				"ignoreExtraElements": true
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "[]",
+		"status": 200
+	}
+}

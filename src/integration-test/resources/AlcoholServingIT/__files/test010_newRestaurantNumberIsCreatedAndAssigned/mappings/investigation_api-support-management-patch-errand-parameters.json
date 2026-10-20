@@ -1,0 +1,65 @@
+{
+	"name": "investigation_api-support-management-patch-errand-parameters",
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/parameters",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"equalToJson": [
+					{
+						"key": "premisesName",
+						"values": [
+							"Runt Hörnet"
+						]
+					},
+					{
+						"key": "premisesStreetAddress",
+						"values": [
+							"Storgatan 33"
+						]
+					},
+					{
+						"key": "premisesPostalCode",
+						"values": [
+							"852 30"
+						]
+					},
+					{
+						"key": "premisesPostalArea",
+						"values": [
+							"Sundsvall"
+						]
+					},
+					{
+						"key": "newRestaurantNumber",
+						"values": [
+							"true"
+						]
+					},
+					{
+						"key": "completeAt",
+						"values": [
+							"${json-unit.regex}^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+						]
+					}
+				],
+				"ignoreExtraElements": true
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "[]",
+		"status": 200
+	}
+}

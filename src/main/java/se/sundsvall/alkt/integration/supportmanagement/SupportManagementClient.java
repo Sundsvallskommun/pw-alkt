@@ -11,6 +11,7 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -28,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 
+import static org.springframework.http.HttpHeaders.IF_MATCH;
 import static org.springframework.http.MediaType.ALL_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
@@ -52,6 +54,15 @@ public interface SupportManagementClient {
 		@RequestHeader("If-Match") String ifMatch,
 		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
 		@RequestBody Errand errand);
+
+	@PatchMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/parameters", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> updateErrandParameters(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@RequestHeader(name = IF_MATCH, required = false) String ifMatch,
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
+		@RequestBody List<Parameter> parameters);
 
 	/** 201 the first time, 200 after that. No X-Trigger-Process, a report is not an errand write. */
 	@PutMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/processes/{processInstanceId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)

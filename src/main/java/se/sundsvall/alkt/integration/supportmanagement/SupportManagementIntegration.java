@@ -11,6 +11,7 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,16 @@ public class SupportManagementIntegration {
 	public Errand getErrand(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getErrand(municipalityId, namespace, errandId).getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Errand '%s' came back without content".formatted(errandId)));
+	}
+
+	/**
+	 * Support Management replaces every parameter of the errand with the ones sent. The errand version turns a change made
+	 * since the read into a 412; without one the version is not checked.
+	 */
+	public void updateErrandParameters(final String municipalityId, final String namespace, final String errandId, final Long errandVersion, final List<Parameter> parameters) {
+		final var ifMatch = Optional.ofNullable(errandVersion).map("\"%s\""::formatted).orElse(null);
+		// Why: the parameters are written by the process of the errand, and must not wake that process again.
+		supportManagementClient.updateErrandParameters(municipalityId, namespace, errandId, ifMatch, false, parameters);
 	}
 
 	public void reportProcess(final String municipalityId, final String namespace, final String errandId, final String processInstanceId, final ErrandProcessReport report) {

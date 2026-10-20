@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.task.ExternalTask;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
@@ -157,6 +158,14 @@ public final class SupportManagementMapper {
 				}
 			});
 		return parameterValues;
+	}
+
+	/** The parameters with the one of the key set to the value, added last when there is none. */
+	public static List<Parameter> withParameter(final List<Parameter> parameters, final String key, final String value) {
+		return Stream.concat(
+			Optional.ofNullable(parameters).orElse(emptyList()).stream().filter(parameter -> !key.equals(parameter.getKey())),
+			Stream.of(new Parameter().key(key).values(List.of(value))))
+			.toList();
 	}
 
 	/** The terms of the decision are its conditions, one per line in their order, and empty for a decision without any. */

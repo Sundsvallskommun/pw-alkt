@@ -48,7 +48,8 @@
 						"Sundsvall"
 					]
 				}
-			]
+			],
+			"version": 3
 		},
 		"status": 200
 	}

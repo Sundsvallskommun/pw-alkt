@@ -41,6 +41,7 @@ class TenantAwareSubscriptionsTest {
 			"NotifyCustomerTask",
 			"ReconcileProcessesTask",
 			"ResolveRestaurantNumberTask",
+			"SetCompleteAtTask",
 			"UpdateAssetTask");
 		assertThat(subscriptions).allSatisfy(subscription -> assertThat(subscription.getTenantIdIn())
 			.as("tenant filter for topic '%s'", subscription.getTopicName())
