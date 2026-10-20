@@ -2,9 +2,11 @@ package se.sundsvall.alkt.integration.operaton;
 
 import generated.se.sundsvall.operaton.EventSubscriptionDto;
 import generated.se.sundsvall.operaton.ExecutionDto;
+import generated.se.sundsvall.operaton.ExternalTaskDto;
 import generated.se.sundsvall.operaton.MessageCorrelationResultWithVariableDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
+import generated.se.sundsvall.operaton.RetriesDto;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -75,6 +77,15 @@ public class OperatonIntegration {
 		asGatewayFault(() -> {
 			operatonClient.deleteProcessInstance(processInstanceId, false);
 			return null;
+		});
+	}
+
+	/** Gives every external task of the instance that has no retries left one more attempt. Returns those tasks. */
+	public List<ExternalTaskDto> retryStuckExternalTasks(final String processInstanceId) {
+		return asGatewayFault(() -> {
+			final var stuckTasks = operatonClient.findExternalTasks(processInstanceId, true);
+			stuckTasks.forEach(task -> operatonClient.setExternalTaskRetries(task.getId(), new RetriesDto().retries(1)));
+			return stuckTasks;
 		});
 	}
 
