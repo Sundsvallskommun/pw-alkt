@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
@@ -72,8 +73,16 @@ public class LicensedBusinessIntegration {
 		return licensedBusinessClient.getLatestAssignment(municipalityId, number);
 	}
 
-	public void createAssignment(final String municipalityId, final AssignmentCreateRequest assignment) {
-		requireSuccess(licensedBusinessClient.createAssignment(municipalityId, assignment));
+	public void createAssignment(final String municipalityId, final String restaurantNumber, final AssignmentCreateRequest assignment) {
+		try {
+			requireSuccess(licensedBusinessClient.createAssignment(municipalityId, assignment));
+		} catch (final ClientProblem e) {
+			if (!CONFLICT.equals(e.getStatus())) {
+				throw e;
+			}
+			throw new NonRetryableException("Restaurant number '%s' has an assignment that overlaps the one from %s. End it in licensed business, then update the errand to try again"
+				.formatted(restaurantNumber, assignment.getValidFrom()));
+		}
 	}
 
 	// A 409 means someone created the same address between the lookup and the create, so its id is there to be read now.

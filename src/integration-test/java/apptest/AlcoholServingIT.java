@@ -347,7 +347,10 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
 	}
 
-	/** An owner change: the case worker picks the number the premises already has, and it is assigned to the new holder. */
+	/**
+	 * An owner change: the case worker picks the number the premises already has and has ended the earlier holder's
+	 * assignment, and it is assigned to the new holder.
+	 */
 	@Test
 	void test009_chosenRestaurantNumberOfAnOwnerChangeIsAssigned() throws JacksonException {
 		runThroughAnApproval();
@@ -364,10 +367,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		wiremock.verify(1, postRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers")));
 	}
 
-	/**
-	 * The number was free when it was chosen, but another errand assigned it before this one could, so the process stops
-	 * instead of ending the other holder's assignment.
-	 */
+	/** The number was free when it was chosen, but another errand assigned it before this one could. */
 	@Test
 	void test011_anotherErrandAssignedTheNumberFirstLeavesAnIncident() throws JacksonException {
 		setupCall()
@@ -397,6 +397,38 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 		verifyAllStubs();
 		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/2281/assignments")));
+	}
+
+	/** An owner change where the earlier holder's assignment is not ended: licensed business refuses the overlap, which is not retried. */
+	@Test
+	void test012_ownerChangeOverlappingTheEarlierAssignmentLeavesAnIncident() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
+
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey());
+
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, ALCOHOL_SERVING.getKey()).stream()
+				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())
+					&& "external_task_assign_restaurant_number".equals(incident.getActivityId())));
+		// The failure report and the alert are sent after the incident is raised, the alert last
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.untilAsserted(() -> wiremock.verify(postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack"))));
+
+		verifyAllStubs();
+		wiremock.verify(1, postRequestedFor(urlPathMatching("/api-licensed-business/2281/assignments")));
 	}
 
 	private void runThroughAnApproval() throws JacksonException {

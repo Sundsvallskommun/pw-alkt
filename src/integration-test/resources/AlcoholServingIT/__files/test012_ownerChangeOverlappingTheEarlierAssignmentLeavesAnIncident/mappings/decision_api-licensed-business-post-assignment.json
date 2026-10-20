@@ -1,0 +1,32 @@
+{
+	"name": "decision_api-licensed-business-post-assignment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-licensed-business/2281/assignments",
+		"bodyPatterns": [
+			{
+				"equalToJson": {
+					"restaurantNumberId": "4d5e6f70-8192-4a3b-9c4d-5e6f708192a3",
+					"addressId": "8be2e4a1-3d4f-4b2e-9c18-2f6d5a7b1c33",
+					"orgNumber": "5566124144",
+					"holderName": "Runt Hörnet AB",
+					"premisesName": "Runt Hörnet",
+					"validFrom": "2026-10-01"
+				},
+				"ignoreExtraElements": true,
+				"ignoreArrayOrder": true
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/problem+json"
+		},
+		"jsonBody": {
+			"title": "Conflict",
+			"status": 409,
+			"detail": "The period 2026-10-01 to null overlaps assignment 0f1e2d3c-4b5a-4968-8776-655443322110, which runs from 2019-05-01 to null"
+		},
+		"status": 409
+	}
+}

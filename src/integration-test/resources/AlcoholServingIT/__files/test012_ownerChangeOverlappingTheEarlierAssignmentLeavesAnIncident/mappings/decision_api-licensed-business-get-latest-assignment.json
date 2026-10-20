@@ -1,0 +1,28 @@
+{
+	"name": "decision_api-licensed-business-get-latest-assignment",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-licensed-business/2281/restaurant-numbers/22810005/assignment"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "0f1e2d3c-4b5a-4968-8776-655443322110",
+			"restaurantNumber": {
+				"id": "4d5e6f70-8192-4a3b-9c4d-5e6f708192a3",
+				"number": "22810005"
+			},
+			"licenseHolder": {
+				"orgNumber": "5590001111",
+				"name": "Förra Ägaren AB"
+			},
+			"holderName": "Förra Ägaren AB",
+			"premisesName": "Hörnan",
+			"validFrom": "2019-05-01",
+			"status": "ACTIVE"
+		},
+		"status": 200
+	}
+}

@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
@@ -180,9 +181,29 @@ class LicensedBusinessIntegrationTest {
 		final var assignment = new AssignmentCreateRequest().orgNumber("5566124144").validFrom(LocalDate.of(2026, 1, 1));
 		when(licensedBusinessClientMock.createAssignment(MUNICIPALITY_ID, assignment)).thenReturn(ResponseEntity.status(CREATED).build());
 
-		licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, assignment);
+		licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, "22810001", assignment);
 
 		verify(licensedBusinessClientMock).createAssignment(MUNICIPALITY_ID, assignment);
+	}
+
+	@Test
+	void failsWithoutRetryWhenTheAssignmentOverlapsAnother() {
+		final var assignment = new AssignmentCreateRequest().orgNumber("5566124144").validFrom(LocalDate.of(2026, 1, 1));
+		when(licensedBusinessClientMock.createAssignment(MUNICIPALITY_ID, assignment)).thenThrow(new ClientProblem(CONFLICT, "The period overlaps assignment 42"));
+
+		assertThatThrownBy(() -> licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, "22810001", assignment))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Restaurant number '22810001' has an assignment that overlaps the one from 2026-01-01. End it in licensed business, then update the errand to try again");
+	}
+
+	@Test
+	void letsAFailedAssignmentCreateThrough() {
+		final var assignment = new AssignmentCreateRequest().orgNumber("5566124144").validFrom(LocalDate.of(2026, 1, 1));
+		when(licensedBusinessClientMock.createAssignment(MUNICIPALITY_ID, assignment)).thenThrow(new ClientProblem(BAD_GATEWAY, "Licensed business is down"));
+
+		assertThatThrownBy(() -> licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, "22810001", assignment))
+			.isInstanceOf(ClientProblem.class)
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
 	}
 
 	/** dismiss404 hands a 404 on a create back as a response instead of throwing it. */
@@ -191,7 +212,7 @@ class LicensedBusinessIntegrationTest {
 		final var assignment = new AssignmentCreateRequest().orgNumber("5566124144").validFrom(LocalDate.of(2026, 1, 1));
 		when(licensedBusinessClientMock.createAssignment(MUNICIPALITY_ID, assignment)).thenReturn(ResponseEntity.status(NOT_FOUND).build());
 
-		assertThatThrownBy(() -> licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, assignment))
+		assertThatThrownBy(() -> licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, "22810001", assignment))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("answered 404 to a create")
 			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
