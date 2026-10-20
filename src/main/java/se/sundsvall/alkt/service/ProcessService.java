@@ -27,6 +27,7 @@ public class ProcessService {
 
 	private static final String SUB_TYPE_SIGNAL = "SIGNAL";
 	private static final String SUB_TYPE_DECISION = "DECISION";
+	private static final String SUB_TYPE_ERRAND = "ERRAND";
 
 	private final OperatonIntegration operatonIntegration;
 	private final ProcessReportService processReportService;
@@ -42,11 +43,22 @@ public class ProcessService {
 			return;
 		}
 
-		if (operatonIntegration.findProcessInstances(errandEvent.getErrandId(), errandEvent.getProcessKey(), TENANT_ID_ALKT).isEmpty()) {
+		final var instances = operatonIntegration.findProcessInstances(errandEvent.getErrandId(), errandEvent.getProcessKey(), TENANT_ID_ALKT);
+		if (instances.isEmpty()) {
 			startProcess(municipalityId, namespace, errandEvent);
 		} else {
 			correlateMessage(municipalityId, namespace, errandEvent);
+			if (errandEvent.getEventType() == ErrandEvent.EventType.UPDATE && SUB_TYPE_ERRAND.equalsIgnoreCase(errandEvent.getEventSubType())) {
+				instances.forEach(instance -> retryStuckTasks(errandEvent, instance.getId()));
+			}
 		}
+	}
+
+	// A case worker who corrected the errand gets the step that stood on an incident tried once more.
+	private void retryStuckTasks(final ErrandEvent errandEvent, final String processInstanceId) {
+		operatonIntegration.retryStuckExternalTasks(processInstanceId)
+			.forEach(task -> LOG.info("Gave task {} at activity {} of process instance {} of errand {} a new attempt", sanitizeForLogging(task.getId()),
+				sanitizeForLogging(task.getActivityId()), sanitizeForLogging(processInstanceId), sanitizeForLogging(errandEvent.getErrandId())));
 	}
 
 	private void deleteProcess(final ErrandEvent errandEvent) {
