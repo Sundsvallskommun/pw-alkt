@@ -6,20 +6,24 @@ import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.springframework.util.StringUtils;
 import se.sundsvall.alkt.integration.templating.model.Field;
 import se.sundsvall.alkt.integration.templating.model.GroupField;
 import se.sundsvall.alkt.integration.templating.model.Section;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.MissingNode;
 
+import static java.util.Collections.emptyList;
 import static java.util.function.Predicate.not;
 
 /**
@@ -44,7 +48,6 @@ public final class SubmissionDocumentMapper {
 	private static final Pattern BARE_AMPERSAND = Pattern.compile("&(?!(#\\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);)");
 
 	private SubmissionDocumentMapper() {}
-
 
 	public static String toTitle(final Errand errand) {
 		return "Inkommen anmälan " + errand.getErrandNumber();
@@ -82,7 +85,7 @@ public final class SubmissionDocumentMapper {
 			.map(purpose -> schema.path("x-attachments").values().stream()
 				.filter(candidate -> candidate.path("key").asString("").equals(purpose.getName()))
 				.map(candidate -> candidate.path("label").asString(null))
-				.filter(label -> label != null)
+				.filter(Objects::nonNull)
 				.findFirst()
 				.or(() -> Optional.ofNullable(purpose.getDisplayName()))
 				.orElse(""))
@@ -97,19 +100,19 @@ public final class SubmissionDocumentMapper {
 		Optional.ofNullable(stakeholder.getExternalId()).map(legalIds::get)
 			.ifPresent(legalId -> addIfPresent(fields, STAKEHOLDER_TYPE_PRIVATE.equals(stakeholder.getExternalIdType()) ? "Personnummer" : "Organisationsnummer", legalId));
 		addIfPresent(fields, "Adress", joinNonBlank(SEPARATOR, stakeholder.getCareOf(), stakeholder.getAddress(), joinNonBlank(" ", stakeholder.getZipCode(), stakeholder.getCity())));
-		Optional.ofNullable(stakeholder.getContactChannels()).orElse(List.of())
+		Optional.ofNullable(stakeholder.getContactChannels()).orElse(emptyList())
 			.forEach(channel -> addIfPresent(fields, Optional.ofNullable(channel.getType()).orElse(""), channel.getValue()));
 		return fields;
 	}
 
 	private static void addIfPresent(final List<GroupField> fields, final String label, final String value) {
-		if (value != null && !value.isBlank()) {
+		if (StringUtils.hasText(value)) {
 			fields.add(new GroupField(label, value));
 		}
 	}
 
 	private static String joinNonBlank(final String separator, final String... parts) {
-		return java.util.Arrays.stream(parts).filter(part -> part != null && !part.isBlank()).collect(Collectors.joining(separator));
+		return Arrays.stream(parts).filter(StringUtils::hasText).collect(Collectors.joining(separator));
 	}
 
 	public static List<Section> toSections(final JsonNode schema, final JsonNode uiSchema, final JsonNode answers) {
@@ -201,7 +204,7 @@ public final class SubmissionDocumentMapper {
 		return schema.path("oneOf").values().stream()
 			.filter(option -> value.equals(option.path("const")))
 			.map(option -> option.path("title").asString(null))
-			.filter(title -> title != null)
+			.filter(Objects::nonNull)
 			.findFirst()
 			.orElseGet(() -> toTime(value.asString()));
 	}
@@ -222,7 +225,7 @@ public final class SubmissionDocumentMapper {
 		return value.isMissingNode() || value.isNull() || (value.isString() && value.asString().isBlank()) || (value.isContainer() && value.isEmpty());
 	}
 
-	static String sanitize(final String html) {
+	private static String sanitize(final String html) {
 		final var text = SCRIPT_OR_STYLE.matcher(html).replaceAll("");
 		final var sanitized = new StringBuilder();
 		final var matcher = TAG.matcher(text);

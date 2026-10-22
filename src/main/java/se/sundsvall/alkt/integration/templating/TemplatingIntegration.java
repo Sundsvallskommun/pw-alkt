@@ -24,11 +24,11 @@ public class TemplatingIntegration {
 		this.templatingClient = templatingClient;
 	}
 
-	/** A 400 means the parameters do not fill the template, which no retry fixes. */
 	public byte[] renderPdf(final String municipalityId, final String templateId, final Map<String, Object> parameters) {
 		return renderPdf(municipalityId, templateId, null, parameters);
 	}
 
+	/** A 400 means the parameters do not fill the template, which no retry fixes. */
 	public byte[] renderPdf(final String municipalityId, final String templateId, final String version, final Map<String, Object> parameters) {
 		final ResponseEntity<RenderResponse> response;
 		try {

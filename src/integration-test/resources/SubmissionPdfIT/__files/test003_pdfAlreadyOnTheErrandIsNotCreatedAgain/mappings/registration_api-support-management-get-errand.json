@@ -25,13 +25,18 @@
 						"arDuFirmatecknare": "JA",
 						"fakturareferens": "<p>Ref <img src=\"http://evil.example/x.png\">123</p>",
 						"serveringsstalletsNamn": "Kiosken",
-						"kontaktuppgifterTillServeringsstallet": {"telefonnummer": "060-123456", "ePostadress": "kiosk@example.com"}
+						"kontaktuppgifterTillServeringsstallet": {
+							"telefonnummer": "060-123456",
+							"ePostadress": "kiosk@example.com"
+						}
 					}
 				},
 				{
 					"key": "other",
 					"schemaId": "2281_other_1.0",
-					"value": {"x": "y"}
+					"value": {
+						"x": "y"
+					}
 				}
 			],
 			"stakeholders": [
@@ -40,7 +45,12 @@
 					"externalIdType": "ENTERPRISE",
 					"externalId": "c4d5e6f7-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
 					"organizationName": "Kiosken AB",
-					"contactChannels": [{"type": "EMAIL", "value": "kiosk@example.com"}]
+					"contactChannels": [
+						{
+							"type": "EMAIL",
+							"value": "kiosk@example.com"
+						}
+					]
 				}
 			]
 		},

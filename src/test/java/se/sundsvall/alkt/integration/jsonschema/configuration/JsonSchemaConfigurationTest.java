@@ -1,9 +1,9 @@
 package se.sundsvall.alkt.integration.jsonschema.configuration;
 
 import feign.RequestInterceptor;
-import java.util.List;
 import feign.RequestTemplate;
 import feign.codec.ErrorDecoder;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

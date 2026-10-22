@@ -77,7 +77,6 @@ class TemplatingIntegrationTest {
 		assertThatThrownBy(() -> templatingIntegration.renderPdf(MUNICIPALITY_ID, TEMPLATE_ID, PARAMETERS)).isSameAs(notFound);
 	}
 
-
 	@Test
 	void renderPdfOfAVersionAsksForThatVersionOfTheTemplate() {
 		final var pdf = "%PDF-1.7".getBytes();
@@ -95,6 +94,7 @@ class TemplatingIntegrationTest {
 		assertThatThrownBy(() -> templatingIntegration.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", PARAMETERS))
 			.isInstanceOf(NonRetryableException.class);
 	}
+
 	private static RenderRequest renderRequest() {
 		return new RenderRequest().identifier(TEMPLATE_ID).parameters(PARAMETERS);
 	}

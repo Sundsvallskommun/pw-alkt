@@ -24,20 +24,20 @@ public class JsonSchemaIntegration {
 		this.jsonSchemaClient = jsonSchemaClient;
 	}
 
-	// Why: a schema that does not exist will not appear on a retry.
 	public JsonNode getSchema(final String municipalityId, final String schemaId) {
-		return Optional.ofNullable(call(() -> jsonSchemaClient.getSchema(municipalityId, schemaId), "Schema", schemaId).getBody())
+		return Optional.ofNullable(failWithoutRetryWhenMissing(() -> jsonSchemaClient.getSchema(municipalityId, schemaId), "Schema", schemaId).getBody())
 			.map(JsonSchema::getValue)
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Schema '%s' came back without content".formatted(schemaId)));
 	}
 
 	public JsonNode getUiSchema(final String municipalityId, final String schemaId) {
-		return Optional.ofNullable(call(() -> jsonSchemaClient.getUiSchema(municipalityId, schemaId), "UI schema of schema", schemaId).getBody())
+		return Optional.ofNullable(failWithoutRetryWhenMissing(() -> jsonSchemaClient.getUiSchema(municipalityId, schemaId), "UI schema of schema", schemaId).getBody())
 			.map(UiSchema::getValue)
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "UI schema of schema '%s' came back without content".formatted(schemaId)));
 	}
 
-	private static <T> ResponseEntity<T> call(final Supplier<ResponseEntity<T>> request, final String what, final String schemaId) {
+	// Why: a schema that does not exist will not appear on a retry.
+	private static <T> ResponseEntity<T> failWithoutRetryWhenMissing(final Supplier<ResponseEntity<T>> request, final String what, final String schemaId) {
 		try {
 			return request.get();
 		} catch (final ClientProblem e) {

@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.util.ArrayList;
@@ -68,7 +69,7 @@ public class SubmissionPdfService {
 	}
 
 	private Map<String, Object> toParameters(final String municipalityId, final Errand errand, final JsonParameter submission,
-		final List<generated.se.sundsvall.supportmanagement.ErrandAttachment> attachments) {
+		final List<ErrandAttachment> attachments) {
 		final var schema = jsonSchemaIntegration.getSchema(municipalityId, submission.getSchemaId());
 		final var uiSchema = jsonSchemaIntegration.getUiSchema(municipalityId, submission.getSchemaId());
 		final var stakeholders = Optional.ofNullable(errand.getStakeholders()).orElse(emptyList());

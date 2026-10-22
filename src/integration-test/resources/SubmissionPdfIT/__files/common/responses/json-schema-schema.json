@@ -1,301 +1,381 @@
 {
-  "created" : "2026-10-16T08:47:16.254+02:00",
-  "description" : "Försäljnin av folköl (klass 2)",
-  "id" : "2281_aot_alcohol_folkol_sales_notification_0.11",
-  "name" : "aot_alcohol_folkol_sales_notification",
-  "validationUsageCount" : 0,
-  "value" : {
-    "$schema" : "https://json-schema.org/draft/2020-12/schema",
-    "title" : "Försäljning av folköl (klass 2)",
-    "type" : "object",
-    "properties" : {
-      "arDuFirmatecknare" : {
-        "type" : "string",
-        "oneOf" : [ {
-          "const" : "JA",
-          "title" : "Ja"
-        }, {
-          "const" : "NEJ",
-          "title" : "Nej"
-        } ],
-        "title" : "Är du firmatecknare?"
-      },
-      "fakturaadressSammaSomForetaget" : {
-        "type" : "string",
-        "oneOf" : [ {
-          "const" : "JA",
-          "title" : "Ja"
-        }, {
-          "const" : "NEJ",
-          "title" : "Nej"
-        } ],
-        "title" : "Är fakturaadressen samma som företagets adress?",
-        "description" : "Kommunen kan komma att ta ut en avgift. Om du vill att fakturan ska gå till den adress som företaget är registrerad på anger du \"Ja\" i fältet nedan. Om du vill att fakturan ska gå till en annan adress anger du \"Nej\" och fyller sedan i den. Du har även möjlighet att ange en fakturareferens."
-      },
-      "fakturamottagare" : {
-        "type" : "object",
-        "properties" : {
-          "cO" : {
-            "type" : "string",
-            "title" : "c/o"
-          },
-          "utdelningsadress" : {
-            "type" : "string",
-            "title" : "Utdelningsadress"
-          },
-          "postnummer" : {
-            "type" : "string",
-            "title" : "Postnummer",
-            "pattern" : "^\\d{3}\\s?\\d{2}$"
-          },
-          "postort" : {
-            "type" : "string",
-            "title" : "Postort"
-          }
-        },
-        "required" : [ "utdelningsadress", "postnummer", "postort" ],
-        "title" : "Fakturamottagare"
-      },
-      "fakturareferens" : {
-        "type" : "string",
-        "title" : "Fakturareferens",
-        "description" : "Ange här om du vill att fakturan ska ha någon specifik märkning, exempelvis ett namn eller nummer."
-      },
-      "verksamhetsbeskrivningsval" : {
-        "type" : "string",
-        "oneOf" : [ {
-          "const" : "JAG_VILL_SKRIVA_VERKSAMHETSBESKRIVNINGEN_I",
-          "title" : "Jag vill skriva verksamhetsbeskrivningen i formuläret"
-        }, {
-          "const" : "JAG_VILL_BIFOGA_VERKSAMHETSBESKRIVNINGEN_SOM",
-          "title" : "Jag vill bifoga verksamhetsbeskrivningen som fil"
-        } ],
-        "title" : "Verksamhetsbeskrivning",
-        "description" : "Du måste lämna en detaljerad beskrivning av företagets verksamhet.\n\nHur vill du lämna verksamhetsbeskrivningen?"
-      },
-      "verksamhetsbeskrivning" : {
-        "type" : "string",
-        "title" : "Verksamhetsbeskrivning"
-      },
-      "stadigvarandeForsaljningAvLivsmedel" : {
-        "type" : "string",
-        "oneOf" : [ {
-          "const" : "JA",
-          "title" : "Ja"
-        }, {
-          "const" : "NEJ",
-          "title" : "Nej"
-        } ],
-        "title" : "Kommer du att ha stadigvarande försäljning av livsmedel?",
-        "description" : "Exempelvis mejerivaror, grönsaker och frukt."
-      },
-      "tillverkarFolkolPaForsaljningsstallet" : {
-        "type" : "string",
-        "oneOf" : [ {
-          "const" : "JA",
-          "title" : "Ja"
-        }, {
-          "const" : "NEJ",
-          "title" : "Nej"
-        } ],
-        "title" : "Kommer du att tillverka folköl på försäljningsstället?"
-      },
-      "dokumentationKanVisasVidTillsyn" : {
-        "type" : "array",
-        "uniqueItems" : true,
-        "minItems" : 1,
-        "items" : {
-          "type" : "string",
-          "oneOf" : [ {
-            "const" : "JAG_KAN_VISA_DOKUMENTATION",
-            "title" : "Jag kan visa dokumentation om detta vid tillsyn"
-          } ]
-        },
-        "title" : "Dokumentation vid tillsyn"
-      },
-      "egenkontrollprogramFolkol" : {
-        "type" : "string",
-        "oneOf" : [ {
-          "const" : "JA",
-          "title" : "Ja"
-        }, {
-          "const" : "NEJ_JAG_FYLLER_I_DOKUMENTET",
-          "title" : "Nej, det finns ett egenkontrollprogram och det kan visas vid tillsyn"
-        } ],
-        "title" : "Egenkontrollprogram vid försäljning av folköl (klass 2)",
-        "description" : "Din verksamhet behöver ha ett så kallat \"egenkontrollprogram\".\n\nEtt egenkontrollprogram fungerar som ett stöd för dig som näringsidkare i egenkontrollen och är ett viktigt underlag för kommunen när det blir tillsyn.\n\nOm du och din verksamhet inte följer alkohollagens bestämmelser kan kommunen ge dig försäljningsförbud eller en varning. Det gäller också om din verksamhet inte har ett egenkontrollprogram.\n\nVill du bifoga ifyllt egenkontrollprogram i denna anmälan?"
-      },
-      "serveringsstalletsNamn" : {
-        "type" : "string",
-        "title" : "Försäljningsställets namn",
-        "description" : "Det namn som du skyltar med till kund."
-      },
-      "besoksadressSammaSomArendeagare" : {
-        "type" : "string",
-        "oneOf" : [ {
-          "const" : "JA",
-          "title" : "Ja"
-        }, {
-          "const" : "NEJ",
-          "title" : "Nej"
-        } ],
-        "title" : "Är försäljningsställets besöksadress samma som företagets adress?"
-      },
-      "besoksadress" : {
-        "type" : "object",
-        "properties" : {
-          "gatuadress" : {
-            "type" : "string",
-            "title" : "Gatuadress"
-          },
-          "postnummer" : {
-            "type" : "string",
-            "title" : "Postnummer",
-            "pattern" : "^\\d{3}\\s?\\d{2}$"
-          },
-          "postort" : {
-            "type" : "string",
-            "title" : "Postort"
-          }
-        },
-        "required" : [ "gatuadress", "postnummer", "postort" ],
-        "title" : "Försäljningsställets besöksadress"
-      },
-      "kontaktuppgifterTillServeringsstallet" : {
-        "type" : "object",
-        "properties" : {
-          "telefonnummer" : {
-            "type" : "string",
-            "title" : "Telefonnummer"
-          },
-          "ePostadress" : {
-            "type" : "string",
-            "title" : "E-postadress",
-            "format" : "email"
-          },
-          "hemsida" : {
-            "type" : "string",
-            "title" : "Hemsida"
-          }
-        },
-        "title" : "Kontaktuppgifter till försäljningsstället"
-      }
-    },
-    "required" : [ "arDuFirmatecknare", "verksamhetsbeskrivningsval", "fakturaadressSammaSomForetaget", "serveringsstalletsNamn", "besoksadressSammaSomArendeagare", "stadigvarandeForsaljningAvLivsmedel", "tillverkarFolkolPaForsaljningsstallet", "egenkontrollprogramFolkol" ],
-    "allOf" : [ {
-      "if" : {
-        "properties" : {
-          "fakturaadressSammaSomForetaget" : {
-            "const" : "NEJ"
-          }
-        },
-        "required" : [ "fakturaadressSammaSomForetaget" ]
-      },
-      "then" : {
-        "properties" : {
-          "fakturamottagare" : true
-        }
-      }
-    }, {
-      "if" : {
-        "properties" : {
-          "verksamhetsbeskrivningsval" : {
-            "const" : "JAG_VILL_SKRIVA_VERKSAMHETSBESKRIVNINGEN_I"
-          }
-        },
-        "required" : [ "verksamhetsbeskrivningsval" ]
-      },
-      "then" : {
-        "required" : [ "verksamhetsbeskrivning" ]
-      }
-    }, {
-      "if" : {
-        "properties" : {
-          "besoksadressSammaSomArendeagare" : {
-            "const" : "NEJ"
-          }
-        },
-        "required" : [ "besoksadressSammaSomArendeagare" ]
-      },
-      "then" : {
-        "required" : [ "besoksadress" ]
-      }
-    }, {
-      "if" : {
-        "properties" : {
-          "stadigvarandeForsaljningAvLivsmedel" : {
-            "const" : "JA"
-          }
-        },
-        "required" : [ "stadigvarandeForsaljningAvLivsmedel" ]
-      },
-      "then" : {
-        "required" : [ "dokumentationKanVisasVidTillsyn" ]
-      }
-    }, {
-      "if" : {
-        "properties" : {
-          "tillverkarFolkolPaForsaljningsstallet" : {
-            "const" : "JA"
-          }
-        },
-        "required" : [ "tillverkarFolkolPaForsaljningsstallet" ]
-      },
-      "then" : {
-        "required" : [ "dokumentationKanVisasVidTillsyn" ]
-      }
-    } ],
-    "x-attachments" : [ {
-      "key" : "POWER_OF_ATTORNEY",
-      "label" : "Fullmakt",
-      "requiredWhen" : {
-        "properties" : {
-          "arDuFirmatecknare" : {
-            "const" : "NEJ"
-          }
-        },
-        "required" : [ "arDuFirmatecknare" ]
-      }
-    }, {
-      "key" : "BUSINESS_DESCRIPTION",
-      "label" : "Verksamhetsbeskrivning",
-      "requiredWhen" : {
-        "properties" : {
-          "verksamhetsbeskrivningsval" : {
-            "const" : "JAG_VILL_BIFOGA_VERKSAMHETSBESKRIVNINGEN_SOM"
-          }
-        },
-        "required" : [ "verksamhetsbeskrivningsval" ]
-      }
-    }, {
-      "key" : "SELF_MONITORING_PROGRAM",
-      "label" : "Egenkontrollprogram",
-      "requiredWhen" : {
-        "properties" : {
-          "egenkontrollprogramFolkol" : {
-            "const" : "JA"
-          }
-        },
-        "required" : [ "egenkontrollprogramFolkol" ]
-      }
-    }, {
-      "key" : "FOOD_BUSINESS_REGISTRATION",
-      "label" : "Livsmedelsregistrering från miljökontoret"
-    } ],
-    "x-stops" : [ {
-      "when" : {
-        "properties" : {
-          "stadigvarandeForsaljningAvLivsmedel" : {
-            "const" : "NEJ"
-          },
-          "tillverkarFolkolPaForsaljningsstallet" : {
-            "const" : "NEJ"
-          }
-        },
-        "required" : [ "stadigvarandeForsaljningAvLivsmedel", "tillverkarFolkolPaForsaljningsstallet" ]
-      },
-      "text" : "[TEXT SAKNAS: varför anmälan inte kan göras utan stadigvarande försäljning av livsmedel eller egen tillverkning av folköl]"
-    } ]
-  },
-  "version" : "0.11"
+	"created": "2026-10-16T08:47:16.254+02:00",
+	"description": "Försäljnin av folköl (klass 2)",
+	"id": "2281_aot_alcohol_folkol_sales_notification_0.11",
+	"name": "aot_alcohol_folkol_sales_notification",
+	"validationUsageCount": 0,
+	"value": {
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"title": "Försäljning av folköl (klass 2)",
+		"type": "object",
+		"properties": {
+			"arDuFirmatecknare": {
+				"type": "string",
+				"oneOf": [
+					{
+						"const": "JA",
+						"title": "Ja"
+					},
+					{
+						"const": "NEJ",
+						"title": "Nej"
+					}
+				],
+				"title": "Är du firmatecknare?"
+			},
+			"fakturaadressSammaSomForetaget": {
+				"type": "string",
+				"oneOf": [
+					{
+						"const": "JA",
+						"title": "Ja"
+					},
+					{
+						"const": "NEJ",
+						"title": "Nej"
+					}
+				],
+				"title": "Är fakturaadressen samma som företagets adress?",
+				"description": "Kommunen kan komma att ta ut en avgift. Om du vill att fakturan ska gå till den adress som företaget är registrerad på anger du \"Ja\" i fältet nedan. Om du vill att fakturan ska gå till en annan adress anger du \"Nej\" och fyller sedan i den. Du har även möjlighet att ange en fakturareferens."
+			},
+			"fakturamottagare": {
+				"type": "object",
+				"properties": {
+					"cO": {
+						"type": "string",
+						"title": "c/o"
+					},
+					"utdelningsadress": {
+						"type": "string",
+						"title": "Utdelningsadress"
+					},
+					"postnummer": {
+						"type": "string",
+						"title": "Postnummer",
+						"pattern": "^\\d{3}\\s?\\d{2}$"
+					},
+					"postort": {
+						"type": "string",
+						"title": "Postort"
+					}
+				},
+				"required": [
+					"utdelningsadress",
+					"postnummer",
+					"postort"
+				],
+				"title": "Fakturamottagare"
+			},
+			"fakturareferens": {
+				"type": "string",
+				"title": "Fakturareferens",
+				"description": "Ange här om du vill att fakturan ska ha någon specifik märkning, exempelvis ett namn eller nummer."
+			},
+			"verksamhetsbeskrivningsval": {
+				"type": "string",
+				"oneOf": [
+					{
+						"const": "JAG_VILL_SKRIVA_VERKSAMHETSBESKRIVNINGEN_I",
+						"title": "Jag vill skriva verksamhetsbeskrivningen i formuläret"
+					},
+					{
+						"const": "JAG_VILL_BIFOGA_VERKSAMHETSBESKRIVNINGEN_SOM",
+						"title": "Jag vill bifoga verksamhetsbeskrivningen som fil"
+					}
+				],
+				"title": "Verksamhetsbeskrivning",
+				"description": "Du måste lämna en detaljerad beskrivning av företagets verksamhet.\n\nHur vill du lämna verksamhetsbeskrivningen?"
+			},
+			"verksamhetsbeskrivning": {
+				"type": "string",
+				"title": "Verksamhetsbeskrivning"
+			},
+			"stadigvarandeForsaljningAvLivsmedel": {
+				"type": "string",
+				"oneOf": [
+					{
+						"const": "JA",
+						"title": "Ja"
+					},
+					{
+						"const": "NEJ",
+						"title": "Nej"
+					}
+				],
+				"title": "Kommer du att ha stadigvarande försäljning av livsmedel?",
+				"description": "Exempelvis mejerivaror, grönsaker och frukt."
+			},
+			"tillverkarFolkolPaForsaljningsstallet": {
+				"type": "string",
+				"oneOf": [
+					{
+						"const": "JA",
+						"title": "Ja"
+					},
+					{
+						"const": "NEJ",
+						"title": "Nej"
+					}
+				],
+				"title": "Kommer du att tillverka folköl på försäljningsstället?"
+			},
+			"dokumentationKanVisasVidTillsyn": {
+				"type": "array",
+				"uniqueItems": true,
+				"minItems": 1,
+				"items": {
+					"type": "string",
+					"oneOf": [
+						{
+							"const": "JAG_KAN_VISA_DOKUMENTATION",
+							"title": "Jag kan visa dokumentation om detta vid tillsyn"
+						}
+					]
+				},
+				"title": "Dokumentation vid tillsyn"
+			},
+			"egenkontrollprogramFolkol": {
+				"type": "string",
+				"oneOf": [
+					{
+						"const": "JA",
+						"title": "Ja"
+					},
+					{
+						"const": "NEJ_JAG_FYLLER_I_DOKUMENTET",
+						"title": "Nej, det finns ett egenkontrollprogram och det kan visas vid tillsyn"
+					}
+				],
+				"title": "Egenkontrollprogram vid försäljning av folköl (klass 2)",
+				"description": "Din verksamhet behöver ha ett så kallat \"egenkontrollprogram\".\n\nEtt egenkontrollprogram fungerar som ett stöd för dig som näringsidkare i egenkontrollen och är ett viktigt underlag för kommunen när det blir tillsyn.\n\nOm du och din verksamhet inte följer alkohollagens bestämmelser kan kommunen ge dig försäljningsförbud eller en varning. Det gäller också om din verksamhet inte har ett egenkontrollprogram.\n\nVill du bifoga ifyllt egenkontrollprogram i denna anmälan?"
+			},
+			"serveringsstalletsNamn": {
+				"type": "string",
+				"title": "Försäljningsställets namn",
+				"description": "Det namn som du skyltar med till kund."
+			},
+			"besoksadressSammaSomArendeagare": {
+				"type": "string",
+				"oneOf": [
+					{
+						"const": "JA",
+						"title": "Ja"
+					},
+					{
+						"const": "NEJ",
+						"title": "Nej"
+					}
+				],
+				"title": "Är försäljningsställets besöksadress samma som företagets adress?"
+			},
+			"besoksadress": {
+				"type": "object",
+				"properties": {
+					"gatuadress": {
+						"type": "string",
+						"title": "Gatuadress"
+					},
+					"postnummer": {
+						"type": "string",
+						"title": "Postnummer",
+						"pattern": "^\\d{3}\\s?\\d{2}$"
+					},
+					"postort": {
+						"type": "string",
+						"title": "Postort"
+					}
+				},
+				"required": [
+					"gatuadress",
+					"postnummer",
+					"postort"
+				],
+				"title": "Försäljningsställets besöksadress"
+			},
+			"kontaktuppgifterTillServeringsstallet": {
+				"type": "object",
+				"properties": {
+					"telefonnummer": {
+						"type": "string",
+						"title": "Telefonnummer"
+					},
+					"ePostadress": {
+						"type": "string",
+						"title": "E-postadress",
+						"format": "email"
+					},
+					"hemsida": {
+						"type": "string",
+						"title": "Hemsida"
+					}
+				},
+				"title": "Kontaktuppgifter till försäljningsstället"
+			}
+		},
+		"required": [
+			"arDuFirmatecknare",
+			"verksamhetsbeskrivningsval",
+			"fakturaadressSammaSomForetaget",
+			"serveringsstalletsNamn",
+			"besoksadressSammaSomArendeagare",
+			"stadigvarandeForsaljningAvLivsmedel",
+			"tillverkarFolkolPaForsaljningsstallet",
+			"egenkontrollprogramFolkol"
+		],
+		"allOf": [
+			{
+				"if": {
+					"properties": {
+						"fakturaadressSammaSomForetaget": {
+							"const": "NEJ"
+						}
+					},
+					"required": [
+						"fakturaadressSammaSomForetaget"
+					]
+				},
+				"then": {
+					"properties": {
+						"fakturamottagare": true
+					}
+				}
+			},
+			{
+				"if": {
+					"properties": {
+						"verksamhetsbeskrivningsval": {
+							"const": "JAG_VILL_SKRIVA_VERKSAMHETSBESKRIVNINGEN_I"
+						}
+					},
+					"required": [
+						"verksamhetsbeskrivningsval"
+					]
+				},
+				"then": {
+					"required": [
+						"verksamhetsbeskrivning"
+					]
+				}
+			},
+			{
+				"if": {
+					"properties": {
+						"besoksadressSammaSomArendeagare": {
+							"const": "NEJ"
+						}
+					},
+					"required": [
+						"besoksadressSammaSomArendeagare"
+					]
+				},
+				"then": {
+					"required": [
+						"besoksadress"
+					]
+				}
+			},
+			{
+				"if": {
+					"properties": {
+						"stadigvarandeForsaljningAvLivsmedel": {
+							"const": "JA"
+						}
+					},
+					"required": [
+						"stadigvarandeForsaljningAvLivsmedel"
+					]
+				},
+				"then": {
+					"required": [
+						"dokumentationKanVisasVidTillsyn"
+					]
+				}
+			},
+			{
+				"if": {
+					"properties": {
+						"tillverkarFolkolPaForsaljningsstallet": {
+							"const": "JA"
+						}
+					},
+					"required": [
+						"tillverkarFolkolPaForsaljningsstallet"
+					]
+				},
+				"then": {
+					"required": [
+						"dokumentationKanVisasVidTillsyn"
+					]
+				}
+			}
+		],
+		"x-attachments": [
+			{
+				"key": "POWER_OF_ATTORNEY",
+				"label": "Fullmakt",
+				"requiredWhen": {
+					"properties": {
+						"arDuFirmatecknare": {
+							"const": "NEJ"
+						}
+					},
+					"required": [
+						"arDuFirmatecknare"
+					]
+				}
+			},
+			{
+				"key": "BUSINESS_DESCRIPTION",
+				"label": "Verksamhetsbeskrivning",
+				"requiredWhen": {
+					"properties": {
+						"verksamhetsbeskrivningsval": {
+							"const": "JAG_VILL_BIFOGA_VERKSAMHETSBESKRIVNINGEN_SOM"
+						}
+					},
+					"required": [
+						"verksamhetsbeskrivningsval"
+					]
+				}
+			},
+			{
+				"key": "SELF_MONITORING_PROGRAM",
+				"label": "Egenkontrollprogram",
+				"requiredWhen": {
+					"properties": {
+						"egenkontrollprogramFolkol": {
+							"const": "JA"
+						}
+					},
+					"required": [
+						"egenkontrollprogramFolkol"
+					]
+				}
+			},
+			{
+				"key": "FOOD_BUSINESS_REGISTRATION",
+				"label": "Livsmedelsregistrering från miljökontoret"
+			}
+		],
+		"x-stops": [
+			{
+				"when": {
+					"properties": {
+						"stadigvarandeForsaljningAvLivsmedel": {
+							"const": "NEJ"
+						},
+						"tillverkarFolkolPaForsaljningsstallet": {
+							"const": "NEJ"
+						}
+					},
+					"required": [
+						"stadigvarandeForsaljningAvLivsmedel",
+						"tillverkarFolkolPaForsaljningsstallet"
+					]
+				},
+				"text": "[TEXT SAKNAS: varför anmälan inte kan göras utan stadigvarande försäljning av livsmedel eller egen tillverkning av folköl]"
+			}
+		]
+	},
+	"version": "0.11"
 }
