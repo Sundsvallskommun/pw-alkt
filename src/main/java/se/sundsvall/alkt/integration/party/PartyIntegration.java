@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.integration.party;
 
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.exception.NonRetryableException;
 
@@ -16,5 +17,9 @@ public class PartyIntegration {
 	public String getLegalId(final String municipalityId, final String partyId) {
 		return partyClient.getLegalId(municipalityId, partyId)
 			.orElseThrow(() -> new NonRetryableException("Party '%s' has no legal id".formatted(partyId)));
+	}
+
+	public Optional<String> findLegalId(final String municipalityId, final String partyId) {
+		return partyClient.getLegalId(municipalityId, partyId);
 	}
 }

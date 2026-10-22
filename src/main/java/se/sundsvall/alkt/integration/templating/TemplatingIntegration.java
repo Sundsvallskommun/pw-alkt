@@ -26,9 +26,13 @@ public class TemplatingIntegration {
 
 	/** A 400 means the parameters do not fill the template, which no retry fixes. */
 	public byte[] renderPdf(final String municipalityId, final String templateId, final Map<String, Object> parameters) {
+		return renderPdf(municipalityId, templateId, null, parameters);
+	}
+
+	public byte[] renderPdf(final String municipalityId, final String templateId, final String version, final Map<String, Object> parameters) {
 		final ResponseEntity<RenderResponse> response;
 		try {
-			response = templatingClient.renderPdf(municipalityId, new RenderRequest().identifier(templateId).parameters(parameters));
+			response = templatingClient.renderPdf(municipalityId, new RenderRequest().identifier(templateId).version(version).parameters(parameters));
 		} catch (final ClientProblem e) {
 			if (BAD_REQUEST.equals(e.getStatus())) {
 				throw new NonRetryableException("Template '%s' cannot be rendered from the given parameters: %s".formatted(templateId, describe(e)), e);

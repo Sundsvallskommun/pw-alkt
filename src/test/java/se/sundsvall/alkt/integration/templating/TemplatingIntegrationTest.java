@@ -77,6 +77,24 @@ class TemplatingIntegrationTest {
 		assertThatThrownBy(() -> templatingIntegration.renderPdf(MUNICIPALITY_ID, TEMPLATE_ID, PARAMETERS)).isSameAs(notFound);
 	}
 
+
+	@Test
+	void renderPdfOfAVersionAsksForThatVersionOfTheTemplate() {
+		final var pdf = "%PDF-1.7".getBytes();
+		when(templatingClientMock.renderPdf(MUNICIPALITY_ID, new RenderRequest().identifier("alkt.form-pdf").version("1.0").parameters(PARAMETERS)))
+			.thenReturn(ResponseEntity.ok(new RenderResponse().output(Base64.getEncoder().encodeToString(pdf))));
+
+		assertThat(templatingIntegration.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", PARAMETERS)).isEqualTo(pdf);
+	}
+
+	@Test
+	void renderPdfOfAVersionFailsWithoutRetryWhenTheParametersDoNotFillTheTemplate() {
+		when(templatingClientMock.renderPdf(MUNICIPALITY_ID, new RenderRequest().identifier("alkt.form-pdf").version("1.0").parameters(PARAMETERS)))
+			.thenThrow(new ClientProblem(BAD_REQUEST, "Bad"));
+
+		assertThatThrownBy(() -> templatingIntegration.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", PARAMETERS))
+			.isInstanceOf(NonRetryableException.class);
+	}
 	private static RenderRequest renderRequest() {
 		return new RenderRequest().identifier(TEMPLATE_ID).parameters(PARAMETERS);
 	}
