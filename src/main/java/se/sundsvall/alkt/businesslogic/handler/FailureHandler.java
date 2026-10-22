@@ -94,6 +94,19 @@ public class FailureHandler {
 		return true;
 	}
 
+
+	/**
+	 * For a step with nothing to do for this errand: the error is thrown into the model, where a boundary event takes the
+	 * process past the step. Nothing failed, so there is no alert. Returns true when it was thrown.
+	 */
+	public boolean handleSkipped(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String description) {
+		final var message = "%s, x-request-id %s".formatted(description, RequestId.get());
+		if (!tellEngine(externalTask, () -> externalTaskService.handleBpmnError(externalTask, BPMN_ERROR_STEP_SKIPPED, message))) {
+			return false;
+		}
+		reportFailure(externalTask, ProcessStateReport.running(null, null), Outcome.SKIPPED, message);
+		return true;
+	}
 	private void handleFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final int retries) {
 		if (!tellEngine(externalTask, () -> externalTaskService.handleFailure(externalTask.getId(),
 			message, // errorMessage - surfaces as the incident message

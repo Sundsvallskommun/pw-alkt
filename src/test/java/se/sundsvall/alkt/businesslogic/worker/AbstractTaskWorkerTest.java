@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.Constants;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.exception.StepSkippedException;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
@@ -381,6 +382,38 @@ class AbstractTaskWorkerTest {
 			@Override
 			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
 				return ProcessStateReport.running("external_task_check_phase", null);
+			}
+		};
+	}
+
+	@Test
+	void aSkippedStepIsTakenPastWithoutCompletingAndThenReportsTheWaitState() {
+		when(failureHandlerMock.handleSkipped(externalTaskServiceMock, externalTaskMock, "Nothing to do")).thenReturn(true);
+
+		skippingWorker().execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(failureHandlerMock).handleSkipped(externalTaskServiceMock, externalTaskMock, "Nothing to do");
+		verify(externalTaskServiceMock, never()).complete(any(), any());
+		verify(failureHandlerMock, never()).handleException(any(), any(), any());
+		verify(failureHandlerMock, never()).handleIncident(any(), any(), any());
+		verify(processReportServiceMock).reportWaitState(any(), any());
+	}
+
+	@Test
+	void aSkippedStepThatIsGoneReportsNoWaitState() {
+		when(failureHandlerMock.handleSkipped(externalTaskServiceMock, externalTaskMock, "Nothing to do")).thenReturn(false);
+
+		skippingWorker().execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(externalTaskServiceMock, never()).complete(any(), any());
+		verify(processReportServiceMock, never()).reportWaitState(any(), any());
+	}
+
+	private AbstractTaskWorker skippingWorker() {
+		return new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+			@Override
+			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+				throw new StepSkippedException("Nothing to do");
 			}
 		};
 	}

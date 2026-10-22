@@ -37,6 +37,7 @@ class ProcessLogPropertiesTest {
 	@Test
 	void testProperties() {
 		assertThat(properties.steps()).containsOnlyKeys(
+			"external_task_create_submission_pdf",
 			"external_task_notify_processing_started",
 			"external_task_check_decision",
 			"external_task_create_decision",
@@ -56,6 +57,7 @@ class ProcessLogPropertiesTest {
 		assertThat(properties.steps().get("external_task_create_asset").skipped()).isNull();
 		assertThat(properties.steps().get("external_task_create_asset").rejected()).isNull();
 		assertThat(properties.steps().get("external_task_notify_processing_started").skipped()).isNotBlank();
+		assertThat(properties.steps().get("external_task_create_submission_pdf").skipped()).isNotBlank();
 		assertThat(properties.steps().get("external_task_create_action_errand").rejected()).isNotBlank();
 		assertThat(properties.phases()).containsOnlyKeys(
 			"registration_phase",
