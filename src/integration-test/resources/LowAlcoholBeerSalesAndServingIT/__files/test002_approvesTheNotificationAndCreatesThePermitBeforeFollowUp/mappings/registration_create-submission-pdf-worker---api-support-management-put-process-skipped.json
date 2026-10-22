@@ -1,0 +1,34 @@
+{
+	"name": "registration_create-submission-pdf-worker---api-support-management-put-process-skipped",
+	"metadata": {
+		"comment": "The errand has no JSON parameters, so the step is skipped and logged as such. Higher priority than the plain RUNNING report of the step."
+	},
+	"priority": 1,
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/16fee0b4-7c49-403b-9887-ed1b2f1d1230/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_create_submission_pdf"
+				}
+			},
+			{
+				"matchesJsonPath": "$.activities[?(@.activityType == 'TASK' && @.errorCode == 'SKIPPED')]"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

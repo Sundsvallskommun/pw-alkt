@@ -1,0 +1,76 @@
+{
+	"name": "registration_api-templating-post-render-pdf",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-templating/2281/render/pdf",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"equalToJson": {
+					"identifier": "alkt.form-pdf",
+					"version": "1.0",
+					"metadata": [],
+					"parameters": {
+						"title": "Inkommen anmälan ALKT-2026-000123",
+						"sections": [
+							{
+								"title": "Ärende",
+								"fields": [
+									{"label": "Ärendenummer", "type": "value", "value": "ALKT-2026-000123"},
+									{"label": "Inkomstdatum", "type": "value", "value": "2026-10-21"}
+								]
+							},
+							{
+								"title": "Företag och fakturering",
+								"fields": [
+									{"label": "Är du firmatecknare?", "type": "value", "value": "Ja"},
+									{"label": "Fakturareferens", "type": "html", "html": "<p>Ref 123</p>"}
+								]
+							},
+							{
+								"title": "Försäljning av folköl (klass 2)",
+								"fields": [
+									{"label": "Försäljningsställets namn", "type": "value", "value": "Kiosken"},
+									{"label": "Kontaktuppgifter till försäljningsstället", "type": "group", "fields": [
+										{"label": "Telefonnummer", "value": "060-123456"},
+										{"label": "E-postadress", "value": "kiosk@example.com"}
+									]}
+								]
+							},
+							{
+								"title": "Intressenter",
+								"fields": [
+									{"label": "PRIMARY", "type": "group", "fields": [
+										{"label": "Namn", "value": "Kiosken AB"},
+										{"label": "Organisationsnummer", "value": "5566124144"},
+										{"label": "EMAIL", "value": "kiosk@example.com"}
+									]}
+								]
+							},
+							{
+								"title": "Bilagor",
+								"fields": [
+									{"label": "Bilagor", "type": "table", "columns": ["Filnamn", "Typ"], "rows": [["fullmakt.pdf", "Fullmakt"]]}
+								]
+							}
+						]
+					}
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/problem+json"
+		},
+		"jsonBody": {
+			"title": "Bad Gateway",
+			"status": 502
+		},
+		"status": 502
+	}
+}
