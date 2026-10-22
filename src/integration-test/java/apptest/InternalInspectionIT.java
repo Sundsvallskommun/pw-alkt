@@ -9,6 +9,8 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
@@ -49,6 +51,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 
 		// Verify mocked stubs
 		verifyAllStubs();
+		wiremock.verify(0, postRequestedFor(urlPathMatching(".*/communication/conversations.*")));
 
 		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
