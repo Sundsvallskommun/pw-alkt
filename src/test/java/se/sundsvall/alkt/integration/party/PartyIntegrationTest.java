@@ -62,6 +62,8 @@ class PartyIntegrationTest {
 		when(partyClientMock.getLegalId(MUNICIPALITY_ID, "party-1")).thenReturn(Optional.of("5566124144"));
 
 		assertThat(partyIntegration.findLegalId(MUNICIPALITY_ID, "party-1")).contains("5566124144");
+
+		verify(partyClientMock).getLegalId(MUNICIPALITY_ID, "party-1");
 	}
 
 	@Test
@@ -69,6 +71,8 @@ class PartyIntegrationTest {
 		when(partyClientMock.getLegalId(MUNICIPALITY_ID, "party-1")).thenReturn(Optional.empty());
 
 		assertThat(partyIntegration.findLegalId(MUNICIPALITY_ID, "party-1")).isEmpty();
+
+		verify(partyClientMock).getLegalId(MUNICIPALITY_ID, "party-1");
 	}
 
 	@Test
@@ -76,5 +80,7 @@ class PartyIntegrationTest {
 		when(partyClientMock.getLegalId(MUNICIPALITY_ID, "party-1")).thenThrow(new ClientProblem(BAD_GATEWAY, "Party is down"));
 
 		assertThatThrownBy(() -> partyIntegration.findLegalId(MUNICIPALITY_ID, "party-1")).isInstanceOf(ClientProblem.class);
+
+		verify(partyClientMock).getLegalId(MUNICIPALITY_ID, "party-1");
 	}
 }

@@ -2,6 +2,7 @@ package se.sundsvall.alkt.integration.jsonschema;
 
 import generated.se.sundsvall.jsonschema.JsonSchema;
 import generated.se.sundsvall.jsonschema.UiSchema;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -31,6 +33,11 @@ class JsonSchemaIntegrationTest {
 
 	@InjectMocks
 	private JsonSchemaIntegration jsonSchemaIntegration;
+
+	@AfterEach
+	void verifyNoUnexpectedInteractions() {
+		verifyNoMoreInteractions(jsonSchemaClientMock);
+	}
 
 	@Test
 	void getSchemaAnswersWithTheValueOfTheSchemaOfThatId() {
@@ -60,6 +67,8 @@ class JsonSchemaIntegrationTest {
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(SCHEMA_ID)
 			.hasMessageContaining("does not exist");
+
+		verify(jsonSchemaClientMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
 	}
 
 	@Test
@@ -70,6 +79,8 @@ class JsonSchemaIntegrationTest {
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(SCHEMA_ID)
 			.hasMessageContaining("does not exist");
+
+		verify(jsonSchemaClientMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
 	}
 
 	@Test
@@ -78,6 +89,8 @@ class JsonSchemaIntegrationTest {
 		when(jsonSchemaClientMock.getSchema(MUNICIPALITY_ID, SCHEMA_ID)).thenThrow(problem);
 
 		assertThatThrownBy(() -> jsonSchemaIntegration.getSchema(MUNICIPALITY_ID, SCHEMA_ID)).isSameAs(problem);
+
+		verify(jsonSchemaClientMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
 	}
 
 	@Test
@@ -86,6 +99,8 @@ class JsonSchemaIntegrationTest {
 		when(jsonSchemaClientMock.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID)).thenThrow(problem);
 
 		assertThatThrownBy(() -> jsonSchemaIntegration.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID)).isSameAs(problem);
+
+		verify(jsonSchemaClientMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
 	}
 
 	@Test
@@ -97,6 +112,8 @@ class JsonSchemaIntegrationTest {
 			.isNotInstanceOf(NonRetryableException.class)
 			.hasMessageContaining(SCHEMA_ID)
 			.hasMessageContaining("without content");
+
+		verify(jsonSchemaClientMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
 	}
 
 	@Test
@@ -106,6 +123,8 @@ class JsonSchemaIntegrationTest {
 		assertThatThrownBy(() -> jsonSchemaIntegration.getSchema(MUNICIPALITY_ID, SCHEMA_ID))
 			.isInstanceOf(ThrowableProblem.class)
 			.hasMessageContaining("without content");
+
+		verify(jsonSchemaClientMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
 	}
 
 	@Test
@@ -116,6 +135,8 @@ class JsonSchemaIntegrationTest {
 			.isInstanceOf(ThrowableProblem.class)
 			.hasMessageContaining(SCHEMA_ID)
 			.hasMessageContaining("without content");
+
+		verify(jsonSchemaClientMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
 	}
 
 	@Test
@@ -125,5 +146,7 @@ class JsonSchemaIntegrationTest {
 		assertThatThrownBy(() -> jsonSchemaIntegration.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID))
 			.isInstanceOf(ThrowableProblem.class)
 			.hasMessageContaining("without content");
+
+		verify(jsonSchemaClientMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
 	}
 }

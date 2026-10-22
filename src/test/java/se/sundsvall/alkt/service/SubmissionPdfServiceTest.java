@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -74,6 +75,11 @@ class SubmissionPdfServiceTest {
 	@InjectMocks
 	private SubmissionPdfService submissionPdfService;
 
+	@AfterEach
+	void verifyNoUnexpectedInteractions() {
+		verifyNoMoreInteractions(supportManagementIntegrationMock, jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
+	}
+
 	private static Errand errand() {
 		return new Errand()
 			.id(ERRAND_ID)
@@ -107,10 +113,13 @@ class SubmissionPdfServiceTest {
 
 		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.CREATED);
 
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
 		verify(jsonSchemaIntegrationMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(partyIntegrationMock).findLegalId(MUNICIPALITY_ID, "party-1");
+		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", expectedParameters);
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf);
-		verifyNoMoreInteractions(jsonSchemaIntegrationMock);
 	}
 
 	@Test
@@ -119,6 +128,7 @@ class SubmissionPdfServiceTest {
 
 		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.SKIPPED);
 
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
 		verify(supportManagementIntegrationMock, never()).createPdfAttachment(anyString(), anyString(), anyString(), anyString(), any());
 	}
@@ -129,6 +139,7 @@ class SubmissionPdfServiceTest {
 
 		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.SKIPPED);
 
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
 	}
 
@@ -139,7 +150,9 @@ class SubmissionPdfServiceTest {
 
 		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.ALREADY_EXISTS);
 
-		verifyNoInteractions(templatingIntegrationMock);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoInteractions(templatingIntegrationMock, jsonSchemaIntegrationMock, partyIntegrationMock);
 		verify(supportManagementIntegrationMock, never()).createPdfAttachment(anyString(), anyString(), anyString(), anyString(), any());
 	}
 
@@ -160,6 +173,14 @@ class SubmissionPdfServiceTest {
 		when(supportManagementIntegrationMock.createPdfAttachment(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(FILE_NAME), any())).thenReturn("attachment-1");
 
 		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.CREATED);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(jsonSchemaIntegrationMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(partyIntegrationMock).findLegalId(MUNICIPALITY_ID, "party-1");
+		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", expectedParameters);
+		verify(supportManagementIntegrationMock).createPdfAttachment(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(FILE_NAME), any());
 	}
 
 	@Test
@@ -174,6 +195,12 @@ class SubmissionPdfServiceTest {
 
 		assertThatThrownBy(() -> submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(problem);
 
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(jsonSchemaIntegrationMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(partyIntegrationMock).findLegalId(MUNICIPALITY_ID, "party-1");
+		verify(templatingIntegrationMock).renderPdf(eq(MUNICIPALITY_ID), eq("alkt.form-pdf"), eq("1.0"), anyMap());
 		verify(supportManagementIntegrationMock, never()).createPdfAttachment(anyString(), anyString(), anyString(), anyString(), any());
 	}
 
@@ -183,6 +210,8 @@ class SubmissionPdfServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
 
 		assertThatThrownBy(() -> submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(problem);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
 	@Test
@@ -196,5 +225,12 @@ class SubmissionPdfServiceTest {
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq("alkt.form-pdf"), eq("1.0"), anyMap())).thenThrow(refused);
 
 		assertThatThrownBy(() -> submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(refused);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(jsonSchemaIntegrationMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(partyIntegrationMock).findLegalId(MUNICIPALITY_ID, "party-1");
+		verify(templatingIntegrationMock).renderPdf(eq(MUNICIPALITY_ID), eq("alkt.form-pdf"), eq("1.0"), anyMap());
 	}
 }

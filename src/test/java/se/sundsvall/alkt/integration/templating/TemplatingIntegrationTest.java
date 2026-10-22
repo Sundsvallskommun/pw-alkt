@@ -16,6 +16,7 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -84,6 +85,8 @@ class TemplatingIntegrationTest {
 			.thenReturn(ResponseEntity.ok(new RenderResponse().output(Base64.getEncoder().encodeToString(pdf))));
 
 		assertThat(templatingIntegration.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", PARAMETERS)).isEqualTo(pdf);
+
+		verify(templatingClientMock).renderPdf(MUNICIPALITY_ID, new RenderRequest().identifier("alkt.form-pdf").version("1.0").parameters(PARAMETERS));
 	}
 
 	@Test
@@ -93,6 +96,8 @@ class TemplatingIntegrationTest {
 
 		assertThatThrownBy(() -> templatingIntegration.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", PARAMETERS))
 			.isInstanceOf(NonRetryableException.class);
+
+		verify(templatingClientMock).renderPdf(MUNICIPALITY_ID, new RenderRequest().identifier("alkt.form-pdf").version("1.0").parameters(PARAMETERS));
 	}
 
 	private static RenderRequest renderRequest() {

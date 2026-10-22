@@ -2,6 +2,7 @@ package se.sundsvall.alkt.businesslogic.worker;
 
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
@@ -58,6 +60,11 @@ class CreateSubmissionPdfWorkerTest {
 	@InjectMocks
 	private CreateSubmissionPdfWorker worker;
 
+	@AfterEach
+	void verifyNoUnexpectedInteractions() {
+		verifyNoMoreInteractions(submissionPdfServiceMock, failureHandlerMock);
+	}
+
 	private void givenTheErrand() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
@@ -73,6 +80,7 @@ class CreateSubmissionPdfWorkerTest {
 		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock))
 			.isEqualTo(ProcessStateReport.running(ACTIVITY_ID, null).withLogMessage("Submission PDF created and attached to the errand"));
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
+		verify(submissionPdfServiceMock).createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
 	@Test
@@ -83,6 +91,7 @@ class CreateSubmissionPdfWorkerTest {
 
 		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock))
 			.isEqualTo(ProcessStateReport.running(ACTIVITY_ID, null).withLogMessage("Submission PDF already on the errand, not created again"));
+		verify(submissionPdfServiceMock).createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
 	@Test
@@ -93,6 +102,7 @@ class CreateSubmissionPdfWorkerTest {
 		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock))
 			.isInstanceOf(StepSkippedException.class)
 			.hasMessage("Errand 'errand-id' has no JSON parameters, so there is no submission to make a PDF of");
+		verify(submissionPdfServiceMock).createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
 	@Test
@@ -108,6 +118,7 @@ class CreateSubmissionPdfWorkerTest {
 		verify(failureHandlerMock, never()).handleIncident(any(), any(), anyString());
 		verify(failureHandlerMock, never()).handleException(any(), any(), anyString());
 		verify(externalTaskServiceMock, never()).complete(any(), any());
+		verify(submissionPdfServiceMock).createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
 	@Test
@@ -121,6 +132,7 @@ class CreateSubmissionPdfWorkerTest {
 		verify(failureHandlerMock).handleException(eq(externalTaskServiceMock), eq(externalTaskMock), anyString());
 		verify(failureHandlerMock, never()).handleIncident(any(), any(), anyString());
 		verify(externalTaskServiceMock, never()).complete(any(), any());
+		verify(submissionPdfServiceMock).createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
 	@Test
@@ -133,5 +145,6 @@ class CreateSubmissionPdfWorkerTest {
 
 		verify(failureHandlerMock).handleIncident(eq(externalTaskServiceMock), eq(externalTaskMock), contains("Schema 'x' does not exist"));
 		verify(failureHandlerMock, never()).handleException(any(), any(), anyString());
+		verify(submissionPdfServiceMock).createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 }
