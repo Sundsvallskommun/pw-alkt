@@ -1,5 +1,5 @@
 {
-	"name": "review_api-support-management-get-errand",
+	"name": "decision_api-support-management-get-errand",
 	"request": {
 		"method": "GET",
 		"urlPath": "/api-support-management/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7",
