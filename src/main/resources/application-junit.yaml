@@ -112,6 +112,11 @@ config:
     token-uri: token.url
     client-id: client.id
     client-secret: client.secret
+  json-schema:
+    base-url: json-schema.base.url
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
   licensed-business:
     base-url: licensed-business.base.url
     token-uri: ${config.common.token-uri}

@@ -98,6 +98,11 @@ config:
     token-uri: http://localhost:${wiremock.server.port}/api-gateway/token
     client-id: the-client-id
     client-secret: the-client-secret
+  json-schema:
+    base-url: http://localhost:${wiremock.server.port}/api-json-schema
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
   licensed-business:
     base-url: http://localhost:${wiremock.server.port}/api-licensed-business
     token-uri: ${config.common.token-uri}
