@@ -1,0 +1,28 @@
+{
+	"name": "registration_api-json-schema-get-ui-schema",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-json-schema/2281/schemas/2281_aot_alcohol_folkol_sales_notification_0.11/ui-schema"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "ad1b5b4e-4c0d-47bd-be33-5029a57ba1a9",
+			"value": {
+				"ui:sections": [
+					{
+						"id": "ansokan",
+						"title": "Försäljning av folköl (klass 2)",
+						"fields": [
+							"arDuFirmatecknare",
+							"serveringsstalletsNamn"
+						]
+					}
+				]
+			}
+		},
+		"status": 200
+	}
+}

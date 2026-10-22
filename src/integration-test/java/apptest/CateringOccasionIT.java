@@ -7,9 +7,13 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
-
+import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -46,6 +50,12 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 		// Verify mocked stubs
 		verifyAllStubs();
 
+		// The PDF of the submission was put on the errand in the registration, which then ended without waiting
+		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/attachments".formatted(ERRAND_ID)))
+			.withAnyRequestBodyPart(aMultipart().withHeader("Content-Disposition", containing("filename=\"Inkommen anmälan ALKT-2026-000002.pdf\""))));
+		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
+			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_submission_pdf#done')]")));
+
 		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
@@ -56,7 +66,6 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
-				tuple("No submission", "boundary_create_submission_pdf_skipped"),
 				tuple("End registration phase", "end_registration_phase"),
 
 				// Review - no catch event
@@ -160,26 +169,26 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Create submission PDF", "external_task_create_submission_pdf"),
-				tuple("No submission", "boundary_create_submission_pdf_skipped"),
-				tuple("End registration phase", "end_registration_phase"),
-				tuple("Review", "review_phase"),
-				tuple("Start review phase", "start_review_phase"),
-				tuple("End review phase", "end_review_phase"),
-				tuple("Investigation", "investigation_phase"),
-				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("End investigation phase", "end_investigation_phase"),
-				tuple("Decision", "decision_phase"),
-				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Create decision", "external_task_create_decision"),
-				tuple("Create asset", "external_task_create_asset"),
-				tuple("End decision phase", "end_decision_phase"),
-				tuple("Follow up", "follow_up_phase"),
-				tuple("Start follow up phase", "start_follow_up_phase"),
-				tuple("Follow up completed", "await_follow_up_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("End registration phase", "end_registration_phase"),
+			tuple("Review", "review_phase"),
+			tuple("Start review phase", "start_review_phase"),
+			tuple("End review phase", "end_review_phase"),
+			tuple("Investigation", "investigation_phase"),
+			tuple("Start investigation phase", "start_investigation_phase"),
+			tuple("End investigation phase", "end_investigation_phase"),
+			tuple("Decision", "decision_phase"),
+			tuple("Start decision phase", "start_decision_phase"),
+			tuple("Create decision", "external_task_create_decision"),
+			tuple("Create asset", "external_task_create_asset"),
+			tuple("End decision phase", "end_decision_phase"),
+			tuple("Follow up", "follow_up_phase"),
+			tuple("Start follow up phase", "start_follow_up_phase"),
+			tuple("Follow up completed", "await_follow_up_completed"));
 	}
 
 	@Test

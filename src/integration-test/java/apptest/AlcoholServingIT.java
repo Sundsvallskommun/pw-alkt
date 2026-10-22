@@ -8,6 +8,7 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
@@ -43,6 +44,11 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
+		// The PDF of the submission is on the errand before the registration waits
+		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/attachments".formatted(ERRAND_ID)))
+			.withAnyRequestBodyPart(aMultipart().withHeader("Content-Disposition", containing("filename=\"Inkommen anmälan ALKT-2026-000001.pdf\""))));
+
 		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
@@ -62,6 +68,8 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'PHASE' && @.activityId == 'registration_phase')].activityName",
 				containing("Registrering har påbörjats"))));
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
+			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_submission_pdf#done')]")));
+		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_notify_processing_started#done')].activityName",
 				containing("Kunden har fått besked om att handläggningen har börjat"))));
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
@@ -78,7 +86,6 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
-				tuple("No submission", "boundary_create_submission_pdf_skipped"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 

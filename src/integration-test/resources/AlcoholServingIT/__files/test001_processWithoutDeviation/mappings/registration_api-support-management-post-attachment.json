@@ -1,0 +1,36 @@
+{
+	"name": "registration_api-support-management-post-attachment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ALL",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "filename=\"Inkommen anmälan ALKT-2026-000001.pdf\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalTo": "%PDF-1.7 inkommen anmälan"
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/attachments/1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b"
+		},
+		"status": 201
+	}
+}
