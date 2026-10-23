@@ -3,9 +3,11 @@ package se.sundsvall.alkt.integration.operaton;
 import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.EventSubscriptionDto;
 import generated.se.sundsvall.operaton.ExecutionDto;
+import generated.se.sundsvall.operaton.ExternalTaskDto;
 import generated.se.sundsvall.operaton.MessageCorrelationResultWithVariableDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
+import generated.se.sundsvall.operaton.RetriesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import generated.se.sundsvall.operaton.VariableValueDto;
 import java.util.List;
@@ -36,8 +38,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -511,6 +515,77 @@ class OperatonIntegrationTest {
 		assertThat(operatonIntegration.phaseOf(DEFINITION_ID, "external_task_complete_process")).isEmpty();
 		assertThat(operatonIntegration.labelOf(DEFINITION_ID, "external_task_create_asset")).isEqualTo("Create asset");
 		assertThat(operatonIntegration.labelOf(DEFINITION_ID, "external_task_complete_process")).isNull();
+	}
+
+	@Test
+	void retryStuckExternalTasksGivesEachStuckTaskOneRetryAndReturnsThem() {
+		final var processInstanceId = randomUUID().toString();
+		final var first = new ExternalTaskDto().id("task-1").activityId("external_task_create_asset").processInstanceId(processInstanceId).retries(0);
+		final var second = new ExternalTaskDto().id("task-2").activityId("external_task_check_decision").processInstanceId(processInstanceId).retries(0);
+		when(operatonClientMock.findExternalTasks(processInstanceId, true)).thenReturn(List.of(first, second));
+
+		final var result = operatonIntegration.retryStuckExternalTasks(processInstanceId);
+
+		assertThat(result).extracting(ExternalTaskDto::getId, ExternalTaskDto::getActivityId)
+			.containsExactly(tuple("task-1", "external_task_create_asset"), tuple("task-2", "external_task_check_decision"));
+		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
+		verify(operatonClientMock).setExternalTaskRetries("task-1", new RetriesDto().retries(1));
+		verify(operatonClientMock).setExternalTaskRetries("task-2", new RetriesDto().retries(1));
+		verifyNoMoreInteractions(operatonClientMock);
+	}
+
+	@Test
+	void retryStuckExternalTasksDoesNothingWithoutStuckTasks() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.findExternalTasks(processInstanceId, true)).thenReturn(List.of());
+
+		assertThat(operatonIntegration.retryStuckExternalTasks(processInstanceId)).isEmpty();
+
+		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
+		verify(operatonClientMock, never()).setExternalTaskRetries(any(), any());
+		verifyNoMoreInteractions(operatonClientMock);
+	}
+
+	@Test
+	void retryStuckExternalTasksLetsAFailedLookupThrough() {
+		final var processInstanceId = randomUUID().toString();
+		final var failure = new ClientProblem(HttpStatus.BAD_GATEWAY, "Operaton is down");
+		when(operatonClientMock.findExternalTasks(processInstanceId, true)).thenThrow(failure);
+
+		assertThatThrownBy(() -> operatonIntegration.retryStuckExternalTasks(processInstanceId)).isSameAs(failure);
+
+		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
+		verify(operatonClientMock, never()).setExternalTaskRetries(any(), any());
+		verifyNoMoreInteractions(operatonClientMock);
+	}
+
+	@Test
+	void retryStuckExternalTasksLetsAFailedRetryThrough() {
+		final var processInstanceId = randomUUID().toString();
+		final var failure = new ClientProblem(HttpStatus.SERVICE_UNAVAILABLE, "Operaton is down");
+		when(operatonClientMock.findExternalTasks(processInstanceId, true)).thenReturn(List.of(new ExternalTaskDto().id("task-1").activityId("external_task_create_asset")));
+		doThrow(failure).when(operatonClientMock).setExternalTaskRetries("task-1", new RetriesDto().retries(1));
+
+		assertThatThrownBy(() -> operatonIntegration.retryStuckExternalTasks(processInstanceId)).isSameAs(failure);
+
+		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
+		verify(operatonClientMock).setExternalTaskRetries("task-1", new RetriesDto().retries(1));
+		verifyNoMoreInteractions(operatonClientMock);
+	}
+
+	@Test
+	void retryStuckExternalTasksTurnsA400IntoAGatewayFault() {
+		final var processInstanceId = randomUUID().toString();
+		when(operatonClientMock.findExternalTasks(processInstanceId, true)).thenReturn(List.of(new ExternalTaskDto().id("task-1").activityId("external_task_create_asset")));
+		doThrow(new ClientProblem(HttpStatus.BAD_REQUEST, "Task is not active")).when(operatonClientMock).setExternalTaskRetries("task-1", new RetriesDto().retries(1));
+
+		assertThatThrownBy(() -> operatonIntegration.retryStuckExternalTasks(processInstanceId))
+			.isInstanceOfSatisfying(Problem.class, problem -> assertThat(problem.getStatus()).isEqualTo(HttpStatus.BAD_GATEWAY))
+			.hasMessageContaining("Task is not active");
+
+		verify(operatonClientMock).findExternalTasks(processInstanceId, true);
+		verify(operatonClientMock).setExternalTaskRetries("task-1", new RetriesDto().retries(1));
+		verifyNoMoreInteractions(operatonClientMock);
 	}
 
 	private static EventSubscriptionDto subscription(final String activityId, final String eventName) {

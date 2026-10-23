@@ -89,6 +89,10 @@ process-log:
       done: Processen är avbruten
       retry: Processen kunde inte avbrytas just nu, ett nytt försök görs automatiskt
       failed: Processen kunde inte avbrytas. Felet behöver åtgärdas
+    "[external_task_set_complete_at]":
+      done: Datumet då ansökan blev komplett har registrerats i ärendet
+      retry: Datumet då ansökan blev komplett kunde inte registreras just nu, ett nytt försök görs automatiskt
+      failed: Datumet då ansökan blev komplett kunde inte registreras. Processen har stannat och felet behöver åtgärdas
   phases:
     "[registration_phase]":
       entered: Registrering har påbörjats

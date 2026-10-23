@@ -1,0 +1,41 @@
+{
+	"name": "investigation_api-support-management-patch-errand-parameters",
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-support-management/2281/ALKT/errands/2c84f70a-6e95-4b31-8d6f-1a7b3c9e50d4/parameters",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"equalToJson": [
+					{
+						"key": "assetId",
+						"values": [
+							"9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d"
+						]
+					},
+					{
+						"key": "completeAt",
+						"values": [
+							"${json-unit.regex}^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+						]
+					}
+				],
+				"ignoreExtraElements": true
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "[]",
+		"status": 200
+	}
+}

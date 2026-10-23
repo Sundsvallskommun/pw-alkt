@@ -90,6 +90,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				// Investigation
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
+				tuple("Set complete at", "external_task_set_complete_at"),
 				tuple("Investigation completed", "await_investigation_completed"),
 				tuple("End investigation phase", "end_investigation_phase"),
 
@@ -236,6 +237,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
+				tuple("Set complete at", "external_task_set_complete_at"),
 				tuple("Investigation completed", "await_investigation_completed"));
 	}
 
@@ -277,6 +279,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
+				tuple("Set complete at", "external_task_set_complete_at"),
 				tuple("Investigation completed", "await_investigation_completed"),
 				tuple("End investigation phase", "end_investigation_phase"),
 				tuple("Decision", "decision_phase"),
@@ -344,7 +347,10 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
 	}
 
-	/** An owner change: the case worker picks the number the premises already has, and it is assigned to the new holder. */
+	/**
+	 * An owner change: the case worker picks the number the premises already has and has ended the earlier holder's
+	 * assignment, and it is assigned to the new holder.
+	 */
 	@Test
 	void test009_chosenRestaurantNumberOfAnOwnerChangeIsAssigned() throws JacksonException {
 		runThroughAnApproval();
@@ -361,10 +367,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		wiremock.verify(1, postRequestedFor(urlPathMatching("/api-licensed-business/2281/restaurant-numbers")));
 	}
 
-	/**
-	 * The number was free when it was chosen, but another errand assigned it before this one could, so the process stops
-	 * instead of ending the other holder's assignment.
-	 */
+	/** The number was free when it was chosen, but another errand assigned it before this one could. */
 	@Test
 	void test011_anotherErrandAssignedTheNumberFirstLeavesAnIncident() throws JacksonException {
 		setupCall()

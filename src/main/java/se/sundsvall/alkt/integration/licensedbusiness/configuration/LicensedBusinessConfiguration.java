@@ -21,7 +21,6 @@ public class LicensedBusinessConfiguration {
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, LicensedBusinessProperties properties) {
 		return FeignMultiCustomizer.create()
-			// 409 on a create means the address or the number is already there, which is an answer and not a fault
 			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID, List.of(NOT_FOUND.value(), CONFLICT.value())))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))

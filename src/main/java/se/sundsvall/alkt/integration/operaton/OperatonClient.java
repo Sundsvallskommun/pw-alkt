@@ -6,6 +6,7 @@ import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.DeploymentDto;
 import generated.se.sundsvall.operaton.DeploymentWithDefinitionsDto;
 import generated.se.sundsvall.operaton.EventSubscriptionDto;
+import generated.se.sundsvall.operaton.ExternalTaskDto;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
@@ -14,6 +15,7 @@ import generated.se.sundsvall.operaton.MessageCorrelationResultWithVariableDto;
 import generated.se.sundsvall.operaton.ProcessDefinitionDiagramDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
+import generated.se.sundsvall.operaton.RetriesDto;
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.time.OffsetDateTime;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import se.sundsvall.alkt.integration.operaton.configuration.OperatonConfiguration;
 
@@ -101,4 +104,10 @@ public interface OperatonClient {
 	/** Works for running and finished instances alike, unlike the runtime variables of an instance. */
 	@GetMapping(path = "history/variable-instance", produces = APPLICATION_JSON_VALUE)
 	List<HistoricVariableInstanceDto> getHistoricVariableInstances(@RequestParam("processInstanceId") String processInstanceId);
+
+	@GetMapping(path = "external-task", produces = APPLICATION_JSON_VALUE)
+	List<ExternalTaskDto> findExternalTasks(@RequestParam("processInstanceId") String processInstanceId, @RequestParam("noRetriesLeft") boolean noRetriesLeft);
+
+	@PutMapping(path = "external-task/{id}/retries", consumes = APPLICATION_JSON_VALUE)
+	void setExternalTaskRetries(@PathVariable String id, RetriesDto retriesDto);
 }
