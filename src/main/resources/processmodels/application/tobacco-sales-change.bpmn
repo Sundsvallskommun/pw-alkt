@@ -21,12 +21,25 @@
       <bpmn:incoming>flow_start_process_to_registration</bpmn:incoming>
       <bpmn:outgoing>flow_registration_to_review</bpmn:outgoing>
       <bpmn:startEvent id="start_registration_phase" name="Start registration phase">
-        <bpmn:outgoing>flow_registration_start_to_create_change_draft</bpmn:outgoing>
+        <bpmn:outgoing>flow_registration_start_to_create_submission_pdf</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_registration_start_to_create_change_draft" sourceRef="start_registration_phase" targetRef="external_task_create_change_draft" />
+      <bpmn:sequenceFlow id="flow_registration_start_to_create_submission_pdf" sourceRef="start_registration_phase" targetRef="external_task_create_submission_pdf" />
+      <bpmn:serviceTask id="external_task_create_submission_pdf" name="Create submission PDF" camunda:type="external" camunda:topic="CreateSubmissionPdfTask">
+        <bpmn:documentation>Saves the submission the errand came in with as a PDF on the errand, so it can be entered in the records. The form comes from the first JSON parameter of the errand and its schema in json-schema. An errand without JSON parameters has no submission, and the step is skipped.</bpmn:documentation>
+        <bpmn:incoming>flow_registration_start_to_create_submission_pdf</bpmn:incoming>
+        <bpmn:outgoing>flow_registration_create_submission_pdf_to_create_change_draft</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_registration_create_submission_pdf_to_create_change_draft" sourceRef="external_task_create_submission_pdf" targetRef="external_task_create_change_draft" />
+      <bpmn:boundaryEvent id="boundary_create_submission_pdf_skipped" name="No submission" attachedToRef="external_task_create_submission_pdf">
+        <bpmn:documentation>Takes the process past the step for an errand without a submission to make a PDF of.</bpmn:documentation>
+        <bpmn:outgoing>flow_registration_submission_pdf_skipped_to_create_change_draft</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="errordef_create_submission_pdf_skipped" errorRef="error_step_skipped" />
+      </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="flow_registration_submission_pdf_skipped_to_create_change_draft" sourceRef="boundary_create_submission_pdf_skipped" targetRef="external_task_create_change_draft" />
       <bpmn:serviceTask id="external_task_create_change_draft" name="Create change draft" camunda:type="external" camunda:topic="CreateChangeDraftTask">
         <bpmn:documentation>Checks the permit the errand names and drafts the decision in Support Management from the change the customer asks for, so the case worker sees it from the review on. The case worker completes the draft.</bpmn:documentation>
-        <bpmn:incoming>flow_registration_start_to_create_change_draft</bpmn:incoming>
+        <bpmn:incoming>flow_registration_create_submission_pdf_to_create_change_draft</bpmn:incoming>
+        <bpmn:incoming>flow_registration_submission_pdf_skipped_to_create_change_draft</bpmn:incoming>
         <bpmn:outgoing>flow_registration_create_change_draft_to_await</bpmn:outgoing>
       </bpmn:serviceTask>
       <bpmn:sequenceFlow id="flow_registration_create_change_draft_to_await" sourceRef="external_task_create_change_draft" targetRef="await_registration_completed" />
@@ -315,9 +328,9 @@
   <bpmndi:BPMNDiagram id="BPMNDiagram_registration_phase">
     <bpmndi:BPMNPlane id="BPMNPlane_registration_phase" bpmnElement="registration_phase">
       <bpmndi:BPMNShape id="BPMNShape_start_registration_phase" bpmnElement="start_registration_phase">
-        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <dc:Bounds x="40" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="155" y="225" width="86" height="27" />
+          <dc:Bounds x="15" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_external_task_create_change_draft" bpmnElement="external_task_create_change_draft">
@@ -335,8 +348,24 @@
           <dc:Bounds x="491" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_start_to_create_change_draft" bpmnElement="flow_registration_start_to_create_change_draft">
-        <di:waypoint x="216" y="200" />
+      <bpmndi:BPMNShape id="BPMNShape_external_task_create_submission_pdf" bpmnElement="external_task_create_submission_pdf">
+        <dc:Bounds x="96" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_boundary_create_submission_pdf_skipped" bpmnElement="boundary_create_submission_pdf_skipped">
+        <dc:Bounds x="128" y="222" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_start_to_create_submission_pdf" bpmnElement="flow_registration_start_to_create_submission_pdf">
+        <di:waypoint x="76" y="200" />
+        <di:waypoint x="96" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_submission_pdf_skipped_to_create_change_draft" bpmnElement="flow_registration_submission_pdf_skipped_to_create_change_draft">
+        <di:waypoint x="146" y="258" />
+        <di:waypoint x="146" y="280" />
+        <di:waypoint x="284" y="280" />
+        <di:waypoint x="284" y="218" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_create_submission_pdf_to_create_change_draft" bpmnElement="flow_registration_create_submission_pdf_to_create_change_draft">
+        <di:waypoint x="196" y="200" />
         <di:waypoint x="266" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_create_change_draft_to_await" bpmnElement="flow_registration_create_change_draft_to_await">

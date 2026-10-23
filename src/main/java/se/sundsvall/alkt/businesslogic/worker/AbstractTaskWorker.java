@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.exception.StepSkippedException;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ProcessStatus;
@@ -66,6 +67,12 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 				// the lock ran out. There is nothing to retry, and a result already reported stands.
 				logInfo(LOG_TASK_GONE, sanitizeForLogging(externalTask.getId()),
 					sanitizeForLogging(externalTask.getProcessInstanceId()));
+				return;
+			} catch (final StepSkippedException e) {
+				logInfo("Task {} skipped: {}", sanitizeForLogging(externalTask.getId()), sanitizeForLogging(e.getMessage()));
+				if (failureHandler.handleSkipped(externalTaskService, externalTask, e.getMessage())) {
+					reportWaitState(externalTask);
+				}
 				return;
 			} catch (final NonRetryableException e) {
 				logException(externalTask, e);

@@ -55,6 +55,8 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 				// Registration - no catch event, so the phase walks straight through
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("No submission", "boundary_create_submission_pdf_skipped"),
 				tuple("End registration phase", "end_registration_phase"),
 
 				// Review - no catch event
@@ -118,6 +120,8 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 				// No case worker before follow up: three phases pass straight through, the decision phase runs its two steps
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("No submission", "boundary_create_submission_pdf_skipped"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
@@ -159,6 +163,8 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 				tuple("Start process", "start_process"),
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("No submission", "boundary_create_submission_pdf_skipped"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),

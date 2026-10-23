@@ -312,4 +312,26 @@ class FailureHandlerTest {
 		verify(externalTaskServiceMock).handleFailure(id, "message. Attempt 4 of 4, x-request-id request-id", null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verifyNoMoreInteractions(externalTaskServiceMock);
 	}
+
+	@Test
+	void handleSkippedTakesTheProcessPastTheStepAndLogsItAsSkippedWithoutAnAlert() {
+		final var expected = "Errand has no JSON parameters, x-request-id request-id";
+
+		assertThat(failureHandler.handleSkipped(externalTaskServiceMock, externalTaskMock, "Errand has no JSON parameters")).isTrue();
+
+		verify(externalTaskServiceMock).handleBpmnError(externalTaskMock, BPMN_ERROR_STEP_SKIPPED, expected);
+		verify(externalTaskServiceMock, never()).handleFailure(nullable(String.class), any(), any(), anyInt(), anyLong());
+		verify(processLogMock).taskFailed(externalTaskMock, Outcome.SKIPPED, expected);
+		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null).withActivities(List.of(ACTIVITY)));
+		verifyNoInteractions(messagingIntegrationMock);
+	}
+
+	@Test
+	void handleSkippedLeavesATaskThatIsGoneWithoutAReport() {
+		doThrow(mock(NotFoundException.class)).when(externalTaskServiceMock).handleBpmnError(eq(externalTaskMock), eq(BPMN_ERROR_STEP_SKIPPED), anyString());
+
+		assertThat(failureHandler.handleSkipped(externalTaskServiceMock, externalTaskMock, "message")).isFalse();
+
+		verifyNoInteractions(processReportServiceMock, messagingIntegrationMock);
+	}
 }

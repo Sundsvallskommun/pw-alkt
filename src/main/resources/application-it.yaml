@@ -13,6 +13,11 @@ customer-message:
     processing-started: "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
 process-log:
   steps:
+    "[external_task_create_submission_pdf]":
+      done: Den inkomna anmälan har sparats som PDF i ärendet
+      retry: Den inkomna anmälan kunde inte sparas som PDF just nu, ett nytt försök görs automatiskt
+      failed: Den inkomna anmälan kunde inte sparas som PDF. Processen har stannat och felet behöver åtgärdas
+      skipped: Ärendet har ingen inkommen anmälan från formuläret, så ingen PDF har skapats
     "[external_task_notify_processing_started]":
       done: Kunden har fått besked om att handläggningen har börjat
       retry: Beskedet till kunden kunde inte skickas just nu, ett nytt försök görs automatiskt
@@ -102,6 +107,11 @@ config:
     token-uri: http://localhost:${wiremock.server.port}/api-gateway/token
     client-id: the-client-id
     client-secret: the-client-secret
+  json-schema:
+    base-url: http://localhost:${wiremock.server.port}/api-json-schema
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
   licensed-business:
     base-url: http://localhost:${wiremock.server.port}/api-licensed-business
     token-uri: ${config.common.token-uri}

@@ -1,0 +1,44 @@
+{
+	"name": "registration_api-templating-post-render-pdf",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-templating/2281/render/pdf",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.identifier",
+					"equalTo": "alkt.form-pdf"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.version",
+					"equalTo": "1.0"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.title",
+					"equalTo": "Inkommen anmälan ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": "$.parameters.sections[?(@.title == 'Försäljning av folköl (klass 2)')].fields[?(@.label == 'Är du firmatecknare?' && @.value == 'Ja')]"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"output": "JVBERi0xLjcgaW5rb21tZW4gYW5tw6RsYW4="
+		},
+		"status": 200
+	}
+}
