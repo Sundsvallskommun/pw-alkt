@@ -1,6 +1,8 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Date;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.Test;
@@ -51,13 +53,14 @@ class SetCompleteAtWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
+		when(externalTaskMock.getCreateTime()).thenReturn(Date.from(Instant.parse("2026-10-19T22:30:00Z")));
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_set_complete_at");
-		when(errandServiceMock.setCompleteAt(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(LocalDate.of(2026, 10, 20));
+		when(errandServiceMock.setCompleteAt(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, Instant.parse("2026-10-19T22:30:00Z"))).thenReturn(LocalDate.of(2026, 10, 20));
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_set_complete_at", null).withLogMessage("Complete at 2026-10-20"));
-		verify(errandServiceMock).setCompleteAt(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(errandServiceMock).setCompleteAt(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, Instant.parse("2026-10-19T22:30:00Z"));
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }

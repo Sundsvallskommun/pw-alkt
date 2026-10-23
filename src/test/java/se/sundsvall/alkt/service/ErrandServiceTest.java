@@ -24,20 +24,22 @@ class ErrandServiceTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
+	// Days after the step was reached, as on a retry after an incident.
+	private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-23T08:00:00Z"), ZoneId.of("Europe/Stockholm"));
 	// Past midnight in Sweden but not in UTC, so the day must be the Swedish one.
-	private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-19T22:30:00Z"), ZoneId.of("Europe/Stockholm"));
+	private static final Instant REACHED_AT = Instant.parse("2026-10-19T22:30:00Z");
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
 
 	@Test
-	void setCompleteAtWritesTodayBesideTheOtherParametersOfTheErrand() {
+	void setCompleteAtWritesTheDayTheStepWasReachedBesideTheOtherParametersOfTheErrand() {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand()
 			.version(7L)
 			.parameters(List.of(new Parameter().key("premisesName").values(List.of("Runt Hörnet")))));
 
-		final var completeAt = errandService.setCompleteAt(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		final var completeAt = errandService.setCompleteAt(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, REACHED_AT);
 
 		assertThat(completeAt).isEqualTo(LocalDate.of(2026, 10, 20));
 		verify(supportManagementIntegrationMock).updateErrandParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, 7L, List.of(

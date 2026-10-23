@@ -24,7 +24,8 @@ public class SetCompleteAtWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final var completeAt = errandService.setCompleteAt(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask));
+		final var completeAt = errandService.setCompleteAt(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
+			externalTask.getCreateTime().toInstant());
 
 		logInfo("Errand {} was complete at {}", sanitizeForLogging(getErrandId(externalTask)), completeAt);
 

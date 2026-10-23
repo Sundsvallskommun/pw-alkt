@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.service;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
@@ -21,11 +22,13 @@ public class ErrandService {
 	}
 
 	/**
-	 * Today, the day the application was complete and the investigation could start. Every other parameter is sent back as
-	 * read, and a change to the errand since the read makes the step rerun on a fresh one.
+	 * The day the process reached the step, which is the day the application was complete and the investigation could
+	 * start,
+	 * also when the step succeeds only on a later retry. Every other parameter is sent back as read, and a change to the
+	 * errand since the read makes the step rerun on a fresh one.
 	 */
-	public LocalDate setCompleteAt(final String municipalityId, final String namespace, final String errandId) {
-		final var completeAt = LocalDate.now(clock);
+	public LocalDate setCompleteAt(final String municipalityId, final String namespace, final String errandId, final Instant reachedAt) {
+		final var completeAt = LocalDate.ofInstant(reachedAt, clock.getZone());
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		supportManagementIntegration.updateErrandParameters(municipalityId, namespace, errandId, errand.getVersion(),
 			withParameter(errand.getParameters(), ERRAND_PARAMETER_COMPLETE_AT, completeAt.toString()));
