@@ -15,7 +15,7 @@ public record Field(
 	String html,
 	List<GroupField> fields,
 	List<String> columns,
-	List<List<String>> rows) {
+	List<Row> rows) {
 
 	public static Field value(final String label, final String value) {
 		return new Field(label, "value", value, null, null, null, null, null);
@@ -33,7 +33,7 @@ public record Field(
 		return new Field(label, "group", null, null, null, fields, null, null);
 	}
 
-	public static Field table(final String label, final List<String> columns, final List<List<String>> rows) {
+	public static Field table(final String label, final List<String> columns, final List<Row> rows) {
 		return new Field(label, "table", null, null, null, null, columns, rows);
 	}
 }

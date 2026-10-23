@@ -19,10 +19,10 @@ import se.sundsvall.alkt.integration.templating.model.Section;
 import se.sundsvall.alkt.service.model.SubmissionPdfOutcome;
 
 import static java.util.Collections.emptyList;
+import static se.sundsvall.alkt.integration.templating.mapper.FormSectionMapper.toSections;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toAttachmentSection;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toErrandSection;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toFileName;
-import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toSections;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toStakeholderSection;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toTitle;
 

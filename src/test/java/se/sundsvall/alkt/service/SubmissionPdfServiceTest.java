@@ -22,6 +22,7 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.alkt.integration.templating.model.Field;
 import se.sundsvall.alkt.integration.templating.model.GroupField;
+import se.sundsvall.alkt.integration.templating.model.Row;
 import se.sundsvall.alkt.integration.templating.model.Section;
 import se.sundsvall.alkt.service.model.SubmissionPdfOutcome;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -107,7 +108,7 @@ class SubmissionPdfServiceTest {
 				new Section("Försäljning", List.of(Field.value("Namn på stället", "Kiosken"))),
 				new Section("Intressenter", List.of(Field.group("PRIMARY", List.of(
 					new GroupField("Namn", "Kiosken AB"), new GroupField("Organisationsnummer", "5566124144"))))),
-				new Section("Bilagor", List.of(Field.table("Bilagor", List.of("Filnamn", "Typ"), List.of(List.of("fullmakt.pdf", "Fullmakt")))))));
+				new Section("Bilagor", List.of(Field.table("Bilagor", List.of("Filnamn", "Typ"), List.of(Row.of("fullmakt.pdf", "Fullmakt")))))));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", expectedParameters)).thenReturn(pdf);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf)).thenReturn("attachment-1");
 
