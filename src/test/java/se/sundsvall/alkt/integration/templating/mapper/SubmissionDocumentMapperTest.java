@@ -20,6 +20,7 @@ import tools.jackson.databind.json.JsonMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toAttachmentSection;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toErrandSection;
+import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toFileName;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toSections;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toStakeholderSection;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toTitle;
@@ -87,6 +88,59 @@ class SubmissionDocumentMapperTest {
 
 		assertThat(toSections(schema, uiSchema, json("{\"b\": \"x\"}"))).containsExactly(
 			new Section("Full", List.of(Field.value("B", "x"))));
+	}
+
+	@Test
+	void answeredFieldsNoSectionListsEndUpInALastSectionWithoutATitle() {
+		final var schema = json("""
+			{"properties": {
+			  "a": {"type": "string", "title": "A"},
+			  "b": {"type": "string", "title": "B"},
+			  "c": {"type": "string", "title": "C"},
+			  "d": {"type": "string", "title": "D"}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:order": ["d", "*"], "ui:sections": [{"title": "Första", "fields": ["a"]}]}
+			""");
+		final var answers = json("""
+			{"a": "1", "b": "2", "c": "", "d": "4"}
+			""");
+
+		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
+			new Section("Första", List.of(Field.value("A", "1"))),
+			new Section("", List.of(Field.value("D", "4"), Field.value("B", "2"))));
+	}
+
+	@Test
+	void withoutUiSectionsEveryAnsweredFieldEndsUpInOneSectionWithoutATitleInTheUiOrder() {
+		final var schema = json("""
+			{"properties": {
+			  "a": {"type": "string", "title": "A"},
+			  "b": {"type": "string", "title": "B"},
+			  "c": {"type": "string", "title": "C"}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:order": ["c", "a"]}
+			""");
+		final var answers = json("""
+			{"a": "1", "b": "2", "c": "3"}
+			""");
+
+		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
+			new Section("", List.of(Field.value("C", "3"), Field.value("A", "1"), Field.value("B", "2"))));
+	}
+
+	@Test
+	void noSectionWithoutATitleIsAddedWhenTheSectionsListEveryAnsweredField() {
+		final var schema = json("""
+			{"properties": {"a": {"type": "string", "title": "A"}, "b": {"type": "string", "title": "B"}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:order": ["b", "a"], "ui:sections": [{"title": "Första", "fields": ["a"]}]}
+			""");
+
+		assertThat(toSections(schema, uiSchema, json("{\"a\": \"1\"}"))).containsExactly(
+			new Section("Första", List.of(Field.value("A", "1"))));
 	}
 
 	@Test
@@ -398,6 +452,11 @@ class SubmissionDocumentMapperTest {
 	@Test
 	void theTitleNamesTheErrandNumber() {
 		assertThat(toTitle(new Errand().errandNumber("ALKT-2026-000123"))).isEqualTo("Inkommen anmälan ALKT-2026-000123");
+	}
+
+	@Test
+	void theFileNameIsTheTitleAsAPdf() {
+		assertThat(toFileName(new Errand().errandNumber("ALKT-2026-000123"))).isEqualTo("Inkommen anmälan ALKT-2026-000123.pdf");
 	}
 
 	@Test

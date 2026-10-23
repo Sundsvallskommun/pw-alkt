@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.util.StringUtils;
 import se.sundsvall.alkt.integration.templating.model.Field;
 import se.sundsvall.alkt.integration.templating.model.GroupField;
@@ -51,6 +52,10 @@ public final class SubmissionDocumentMapper {
 
 	public static String toTitle(final Errand errand) {
 		return "Inkommen anmälan " + errand.getErrandNumber();
+	}
+
+	public static String toFileName(final Errand errand) {
+		return toTitle(errand) + ".pdf";
 	}
 
 	public static Section toErrandSection(final Errand errand) {
@@ -115,14 +120,25 @@ public final class SubmissionDocumentMapper {
 		return Arrays.stream(parts).filter(StringUtils::hasText).collect(Collectors.joining(separator));
 	}
 
+	/** The sections of the UI schema, then a last section without a title for the answered fields no section lists. */
 	public static List<Section> toSections(final JsonNode schema, final JsonNode uiSchema, final JsonNode answers) {
-		return uiSchema.path("ui:sections").values().stream()
-			.map(section -> new Section(section.path("title").asString(""), section.path("fields").values().stream()
-				.map(JsonNode::asString)
-				.map(name -> toField(name, schema.path("properties").path(name), uiSchema.path(name), answers.path(name)))
-				.flatMap(Optional::stream)
-				.toList()))
+		final var sections = uiSchema.path("ui:sections").values().stream()
+			.map(section -> new Section(section.path("title").asString(""),
+				toFields(section.path("fields").values().stream().map(JsonNode::asString).toList(), schema, uiSchema, answers)));
+		final var listed = uiSchema.path("ui:sections").values().stream()
+			.flatMap(section -> section.path("fields").values().stream())
+			.map(JsonNode::asString)
+			.collect(Collectors.toSet());
+		final var leftover = new Section("", toFields(orderOf(schema, uiSchema, null).stream().filter(not(listed::contains)).toList(), schema, uiSchema, answers));
+		return Stream.concat(sections, Stream.of(leftover))
 			.filter(section -> !section.fields().isEmpty())
+			.toList();
+	}
+
+	private static List<Field> toFields(final List<String> names, final JsonNode schema, final JsonNode uiSchema, final JsonNode answers) {
+		return names.stream()
+			.map(name -> toField(name, schema.path("properties").path(name), uiSchema.path(name), answers.path(name)))
+			.flatMap(Optional::stream)
 			.toList();
 	}
 

@@ -21,6 +21,7 @@ import se.sundsvall.alkt.service.model.SubmissionPdfOutcome;
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toAttachmentSection;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toErrandSection;
+import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toFileName;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toSections;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toStakeholderSection;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toTitle;
@@ -56,7 +57,7 @@ public class SubmissionPdfService {
 			return SubmissionPdfOutcome.SKIPPED;
 		}
 
-		final var fileName = toTitle(errand) + ".pdf";
+		final var fileName = toFileName(errand);
 		final var attachments = supportManagementIntegration.getAttachments(municipalityId, namespace, errandId);
 		if (attachments.stream().anyMatch(attachment -> fileName.equals(attachment.getFileName()))) {
 			return SubmissionPdfOutcome.ALREADY_EXISTS;
