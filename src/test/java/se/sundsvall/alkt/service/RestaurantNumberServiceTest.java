@@ -343,7 +343,7 @@ class RestaurantNumberServiceTest {
 
 		verifyAssignmentRead();
 		verify(licensedBusinessIntegrationMock).getRestaurantNumberId(MUNICIPALITY_ID, NUMBER);
-		verify(licensedBusinessIntegrationMock).createAssignment(eq(MUNICIPALITY_ID), assignmentCaptor.capture());
+		verify(licensedBusinessIntegrationMock).createAssignment(eq(MUNICIPALITY_ID), eq(NUMBER), assignmentCaptor.capture());
 		assertThat(assignmentCaptor.getValue().getRestaurantNumberId()).isEqualTo(NUMBER_ID);
 		assertThat(assignmentCaptor.getValue().getAddressId()).isEqualTo(ADDRESS_ID);
 		assertThat(assignmentCaptor.getValue().getOrgNumber()).isEqualTo(ORG_NUMBER);
@@ -353,8 +353,7 @@ class RestaurantNumberServiceTest {
 	}
 
 	/**
-	 * An owner change: the number was held by the earlier owner when it was chosen, and licensed business ends that
-	 * assignment.
+	 * An owner change: the case worker ended the assignment of the earlier owner, which is still the latest on the number.
 	 */
 	@Test
 	void assignAssignsANumberAnotherHolderHasNow() {
@@ -367,7 +366,7 @@ class RestaurantNumberServiceTest {
 
 		verifyAssignmentRead();
 		verify(licensedBusinessIntegrationMock).getRestaurantNumberId(MUNICIPALITY_ID, NUMBER);
-		verify(licensedBusinessIntegrationMock).createAssignment(eq(MUNICIPALITY_ID), any());
+		verify(licensedBusinessIntegrationMock).createAssignment(eq(MUNICIPALITY_ID), eq(NUMBER), any());
 	}
 
 	/** Another errand chose the number in the meantime and assigned it first, whether it was free or held when chosen. */
@@ -463,7 +462,7 @@ class RestaurantNumberServiceTest {
 	}
 
 	private static Assignment assignmentOfAnotherHolder(final String id) {
-		return new Assignment().id(id).licenseHolder(new LicenseHolder().orgNumber("5590001111")).validFrom(LocalDate.of(2020, 1, 1));
+		return new Assignment().id(id).licenseHolder(new LicenseHolder().orgNumber("5590001111")).validFrom(LocalDate.of(2020, 1, 1)).validTo(LocalDate.of(2026, 2, 28));
 	}
 
 	private static Assignment activeAssignmentOf(final String orgNumber) {

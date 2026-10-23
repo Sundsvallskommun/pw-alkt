@@ -11,6 +11,7 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -52,6 +53,26 @@ class SupportManagementIntegrationTest {
 
 	@InjectMocks
 	private SupportManagementIntegration supportManagementIntegration;
+
+	@Test
+	void updateErrandParametersWritesTheParametersAtTheVersionWithoutWakingTheProcess() {
+		final var parameters = List.of(new Parameter().key("completeAt").values(List.of("2026-10-20")));
+
+		supportManagementIntegration.updateErrandParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, 7L, parameters);
+
+		verify(supportManagementClientMock).updateErrandParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "\"7\"", false, parameters);
+		verifyNoMoreInteractions(supportManagementClientMock);
+	}
+
+	@Test
+	void updateErrandParametersSkipsTheVersionCheckWithoutAVersion() {
+		final var parameters = List.of(new Parameter().key("completeAt").values(List.of("2026-10-20")));
+
+		supportManagementIntegration.updateErrandParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, parameters);
+
+		verify(supportManagementClientMock).updateErrandParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, false, parameters);
+		verifyNoMoreInteractions(supportManagementClientMock);
+	}
 
 	@Test
 	void reportProcessSendsTheReport() {

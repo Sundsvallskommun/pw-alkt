@@ -1,14 +1,19 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.operaton.ExternalTaskDto;
 import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import generated.se.sundsvall.operaton.ProcessInstanceWithVariablesDto;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
 import se.sundsvall.alkt.service.model.ReportTarget;
@@ -22,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -463,6 +469,314 @@ class ProcessServiceTest {
 
 		// Act & Assert
 		assertThatNoException().isThrownBy(() -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesStuckTasksAfterCorrelatingAnErrandChange() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.empty());
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		final var inOrder = inOrder(operatonIntegrationMock);
+		inOrder.verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		inOrder.verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		inOrder.verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	/** Support Management's casing of eventSubType is not guaranteed. */
+	@Test
+	void retriesStuckTasksForAnErrandChangeRegardlessOfCase() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType("errand");
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	/** Some incidents are fixed in the decision rather than in the errand. */
+	@Test
+	void retriesStuckTasksAfterCorrelatingADecisionChange() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType("DECISION");
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		when(operatonIntegrationMock.correlateMessage("decision_updated", errandId, TENANT_ID)).thenReturn(Optional.empty());
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		final var inOrder = inOrder(operatonIntegrationMock);
+		inOrder.verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		inOrder.verify(operatonIntegrationMock).correlateMessage("decision_updated", errandId, TENANT_ID);
+		inOrder.verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesStuckTasksInEveryInstanceOfTheErrandWithTheKeyOfTheEvent() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var first = randomUUID().toString();
+		final var second = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(first), runningInstance(second)));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.empty());
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(first);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(second);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesStuckTasksEvenWhenTheCorrelationMatchesNoWaitState() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		doThrow(new ClientProblem(BAD_REQUEST, "No matching wait state")).when(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesStuckTasksEvenWhenTheCorrelationReachedAWaitState() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.of(processInstanceId));
+		when(operatonIntegrationMock.findProcessInstance(processInstanceId)).thenReturn(Optional.of(runningInstance(processInstanceId)));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).findProcessInstance(processInstanceId);
+		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, PROCESS_KEY, null), DEFINITION_ID);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock, processReportServiceMock);
+	}
+
+	@Test
+	@ExtendWith(OutputCaptureExtension.class)
+	void logsEveryTaskThatGetsANewAttempt(final CapturedOutput output) {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.empty());
+		when(operatonIntegrationMock.retryStuckExternalTasks(processInstanceId)).thenReturn(List.of(
+			new ExternalTaskDto().id("task-1").activityId("external_task_create_asset"),
+			new ExternalTaskDto().id("task-2").activityId("external_task_check_decision")));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		assertThat(output.getOut().lines().filter(line -> line.contains("INFO") && line.contains(errandId) && line.contains(processInstanceId)).toList())
+			.hasSize(2)
+			.anySatisfy(line -> assertThat(line).contains("external_task_create_asset"))
+			.anySatisfy(line -> assertThat(line).contains("external_task_check_decision"));
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"MESSAGE", "ATTACHMENT", "NOTE", "PROCESS"
+	})
+	void retriesNothingForAnotherKindOfChange(final String eventSubType) {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType(eventSubType);
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage(any(), eq(errandId), eq(TENANT_ID));
+		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesNothingForASignal() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType("SIGNAL");
+		errandEvent.setSignalName("review_completed");
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("review_completed", errandId, TENANT_ID);
+		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesNothingForADeletedErrand() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, null, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(DELETE, errandId, PROCESS_KEY, false));
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, null, TENANT_ID);
+		verify(operatonIntegrationMock).deleteProcessInstance(processInstanceId);
+		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesNothingForACreateOfAnErrandThatAlreadyHasAProcess() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(CREATE, errandId, PROCESS_KEY, true));
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesNothingWhenAnErrandChangeStartsTheProcess() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of());
+		when(operatonIntegrationMock.startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID)).thenReturn(instance(processInstanceId));
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, true));
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).startProcess(MUNICIPALITY_ID, NAMESPACE, errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verify(processReportServiceMock).reportWaitState(new ReportTarget(MUNICIPALITY_ID, NAMESPACE, errandId, processInstanceId, PROCESS_KEY, null), DEFINITION_ID);
+		verifyNoMoreInteractions(operatonIntegrationMock, processReportServiceMock);
+	}
+
+	/**
+	 * Logged rather than thrown: the message is already correlated, and an event Support Management delivers again holds
+	 * back every later event of the errand.
+	 */
+	@Test
+	@ExtendWith(OutputCaptureExtension.class)
+	void aFailedRetryCostsTheRetryOfThatInstanceButNotTheEvent(final CapturedOutput output) {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var failing = randomUUID().toString();
+		final var other = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(failing), runningInstance(other)));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.empty());
+		when(operatonIntegrationMock.retryStuckExternalTasks(failing)).thenThrow(new ClientProblem(BAD_GATEWAY, "Operaton is down"));
+
+		// Act
+		assertThatNoException().isThrownBy(() -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
+
+		// Assert
+		assertThat(output.getOut()).contains("Could not give the stuck tasks of process instance %s of errand %s a new attempt".formatted(failing, errandId));
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(failing);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(other);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
+	@Test
+	void retriesNothingWhenTheCorrelationFailsWithAFault() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(randomUUID().toString())));
+		doThrow(new ClientProblem(BAD_GATEWAY, "Forbidden")).when(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+
+		// Act
+		assertThrows(ClientProblem.class, () -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
+
+		// Assert
+		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		verify(operatonIntegrationMock, never()).retryStuckExternalTasks(any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
 		verifyNoInteractions(processReportServiceMock);
 	}
 }

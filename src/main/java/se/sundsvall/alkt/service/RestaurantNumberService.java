@@ -79,11 +79,6 @@ public class RestaurantNumberService {
 			.orElseGet(() -> findTheOnlyNumberHeldBy(municipalityId, addressId, orgNumber, errandId));
 	}
 
-	/**
-	 * Assigns the number to the permit holder from the day the permit is issued, at the address it was chosen at. Licensed
-	 * business ends an active one on the number, which is how an owner change at the premises works. Answers false when it
-	 * was already assigned, and throws when another errand assigned the number after this one chose it.
-	 */
 	public boolean assignRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final String restaurantNumber, final String addressId,
 		final String latestAssignmentIdSeen) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
@@ -95,13 +90,9 @@ public class RestaurantNumberService {
 		final var validFrom = toValidFrom(decision);
 
 		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(municipalityId, restaurantNumber);
-		// Why: a step that failed after creating the assignment finds it on its rerun as the number's latest assignment.
-		// Creating it again would end the one already made, since licensed business ends the active one on a new assignment.
 		if (latestAssignment.filter(assignment -> isAssignedTo(assignment, orgNumber, validFrom)).isPresent()) {
 			return false;
 		}
-		// Why: licensed business cannot reserve a number, so another errand may have assigned the same number after this one
-		// chose it. Assigning it now would end that errand's assignment.
 		if (!toAssignmentId(latestAssignment).equals(Optional.ofNullable(latestAssignmentIdSeen).orElse(""))) {
 			throw new NonRetryableException("Restaurant number '%s' was assigned by another errand after errand '%s' chose it, so two errands chose the same number"
 				.formatted(restaurantNumber, errandId));
@@ -110,7 +101,7 @@ public class RestaurantNumberService {
 		final var parameters = toParameterValues(errand.getParameters());
 		final var restaurantNumberId = licensedBusinessIntegration.getRestaurantNumberId(municipalityId, restaurantNumber);
 		final var request = toAssignmentCreateRequest(restaurantNumberId, addressId, orgNumber, holderName, parameters, decision);
-		licensedBusinessIntegration.createAssignment(municipalityId, request);
+		licensedBusinessIntegration.createAssignment(municipalityId, restaurantNumber, request);
 		return true;
 	}
 
