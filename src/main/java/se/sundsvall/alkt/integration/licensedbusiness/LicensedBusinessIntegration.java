@@ -81,7 +81,7 @@ public class LicensedBusinessIntegration {
 				throw e;
 			}
 			throw new NonRetryableException("Restaurant number '%s' has an assignment that overlaps the one from %s. End it in licensed business, then update the errand to try again"
-				.formatted(restaurantNumber, assignment.getValidFrom()));
+				.formatted(restaurantNumber, assignment.getValidFrom()), e);
 		}
 	}
 

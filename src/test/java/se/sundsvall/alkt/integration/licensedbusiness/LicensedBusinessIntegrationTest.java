@@ -189,11 +189,13 @@ class LicensedBusinessIntegrationTest {
 	@Test
 	void failsWithoutRetryWhenTheAssignmentOverlapsAnother() {
 		final var assignment = new AssignmentCreateRequest().orgNumber("5566124144").validFrom(LocalDate.of(2026, 1, 1));
-		when(licensedBusinessClientMock.createAssignment(MUNICIPALITY_ID, assignment)).thenThrow(new ClientProblem(CONFLICT, "The period overlaps assignment 42"));
+		final var conflict = new ClientProblem(CONFLICT, "The period overlaps assignment 42");
+		when(licensedBusinessClientMock.createAssignment(MUNICIPALITY_ID, assignment)).thenThrow(conflict);
 
 		assertThatThrownBy(() -> licensedBusinessIntegration.createAssignment(MUNICIPALITY_ID, "22810001", assignment))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Restaurant number '22810001' has an assignment that overlaps the one from 2026-01-01. End it in licensed business, then update the errand to try again");
+			.hasMessage("Restaurant number '22810001' has an assignment that overlaps the one from 2026-01-01. End it in licensed business, then update the errand to try again")
+			.hasCause(conflict);
 	}
 
 	@Test
