@@ -12,7 +12,7 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
-@ExternalTaskSubscription("SetCompleteAtTask")
+@ExternalTaskSubscription(topicName = "SetCompleteAtTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class SetCompleteAtWorker extends AbstractTaskWorker {
 
 	private final ErrandService errandService;
