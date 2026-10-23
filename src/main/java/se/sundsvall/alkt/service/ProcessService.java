@@ -48,17 +48,27 @@ public class ProcessService {
 			startProcess(municipalityId, namespace, errandEvent);
 		} else {
 			correlateMessage(municipalityId, namespace, errandEvent);
-			if (errandEvent.getEventType() == ErrandEvent.EventType.UPDATE && SUB_TYPE_ERRAND.equalsIgnoreCase(errandEvent.getEventSubType())) {
+			if (errandEvent.getEventType() == ErrandEvent.EventType.UPDATE && isCorrection(errandEvent.getEventSubType())) {
 				instances.forEach(instance -> retryStuckTasks(errandEvent, instance.getId()));
 			}
 		}
 	}
 
-	// A case worker who corrected the errand gets the step that stood on an incident tried once more.
+	private static boolean isCorrection(final String eventSubType) {
+		return SUB_TYPE_ERRAND.equalsIgnoreCase(eventSubType) || SUB_TYPE_DECISION.equalsIgnoreCase(eventSubType);
+	}
+
+	// A case worker who corrected the errand or its decision gets the step that stood on an incident tried once more. The
+	// message is already correlated, so a failure here must cost the retry rather than the event.
 	private void retryStuckTasks(final ErrandEvent errandEvent, final String processInstanceId) {
-		operatonIntegration.retryStuckExternalTasks(processInstanceId)
-			.forEach(task -> LOG.info("Gave task {} at activity {} of process instance {} of errand {} a new attempt", sanitizeForLogging(task.getId()),
-				sanitizeForLogging(task.getActivityId()), sanitizeForLogging(processInstanceId), sanitizeForLogging(errandEvent.getErrandId())));
+		try {
+			operatonIntegration.retryStuckExternalTasks(processInstanceId)
+				.forEach(task -> LOG.info("Gave task {} at activity {} of process instance {} of errand {} a new attempt", sanitizeForLogging(task.getId()),
+					sanitizeForLogging(task.getActivityId()), sanitizeForLogging(processInstanceId), sanitizeForLogging(errandEvent.getErrandId())));
+		} catch (final Exception e) {
+			LOG.error("Could not give the stuck tasks of process instance {} of errand {} a new attempt", sanitizeForLogging(processInstanceId),
+				sanitizeForLogging(errandEvent.getErrandId()), e);
+		}
 	}
 
 	private void deleteProcess(final ErrandEvent errandEvent) {

@@ -515,6 +515,30 @@ class ProcessServiceTest {
 		verifyNoInteractions(processReportServiceMock);
 	}
 
+	/** Some incidents are fixed in the decision rather than in the errand. */
+	@Test
+	void retriesStuckTasksAfterCorrelatingADecisionChange() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, false);
+		errandEvent.setEventSubType("DECISION");
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		when(operatonIntegrationMock.correlateMessage("decision_updated", errandId, TENANT_ID)).thenReturn(Optional.empty());
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		final var inOrder = inOrder(operatonIntegrationMock);
+		inOrder.verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		inOrder.verify(operatonIntegrationMock).correlateMessage("decision_updated", errandId, TENANT_ID);
+		inOrder.verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
 	@Test
 	void retriesStuckTasksInEveryInstanceOfTheErrandWithTheKeyOfTheEvent() {
 
@@ -609,7 +633,7 @@ class ProcessServiceTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = {
-		"DECISION", "MESSAGE", "ATTACHMENT", "NOTE", "PROCESS"
+		"MESSAGE", "ATTACHMENT", "NOTE", "PROCESS"
 	})
 	void retriesNothingForAnotherKindOfChange(final String eventSubType) {
 
@@ -708,26 +732,31 @@ class ProcessServiceTest {
 		verifyNoMoreInteractions(operatonIntegrationMock, processReportServiceMock);
 	}
 
-	/** Thrown on, so that Support Management delivers the event again. */
+	/**
+	 * Logged rather than thrown: the message is already correlated, and an event Support Management delivers again holds
+	 * back every later event of the errand.
+	 */
 	@Test
-	void propagatesAFailedRetry() {
+	@ExtendWith(OutputCaptureExtension.class)
+	void aFailedRetryCostsTheRetryOfThatInstanceButNotTheEvent(final CapturedOutput output) {
 
 		// Arrange
 		final var errandId = randomUUID().toString();
-		final var processInstanceId = randomUUID().toString();
-		final var failure = new ClientProblem(BAD_GATEWAY, "Operaton is down");
-		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		final var failing = randomUUID().toString();
+		final var other = randomUUID().toString();
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(failing), runningInstance(other)));
 		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.empty());
-		when(operatonIntegrationMock.retryStuckExternalTasks(processInstanceId)).thenThrow(failure);
+		when(operatonIntegrationMock.retryStuckExternalTasks(failing)).thenThrow(new ClientProblem(BAD_GATEWAY, "Operaton is down"));
 
 		// Act
-		final var thrown = assertThrows(ClientProblem.class, () -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
+		assertThatNoException().isThrownBy(() -> processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, event(UPDATE, errandId, PROCESS_KEY, false)));
 
 		// Assert
-		assertThat(thrown).isSameAs(failure);
+		assertThat(output.getOut()).contains("Could not give the stuck tasks of process instance %s of errand %s a new attempt".formatted(failing, errandId));
 		verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
 		verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
-		verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(failing);
+		verify(operatonIntegrationMock).retryStuckExternalTasks(other);
 		verifyNoMoreInteractions(operatonIntegrationMock);
 		verifyNoInteractions(processReportServiceMock);
 	}
