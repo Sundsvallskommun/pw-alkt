@@ -232,10 +232,19 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
-	void withParameterReplacesTheParameterOfTheKey() {
+	void withParameterReplacesTheValuesOfTheParameterOfTheKeyAndKeepsItsLabelAndGroup() {
 		final var parameters = List.of(
-			new Parameter().key("completeAt").values(List.of("2026-10-01")),
+			new Parameter().key("completeAt").displayName("Komplett").group("Handläggning").values(List.of("2026-10-01")),
 			new Parameter().key("premisesName").values(List.of("Runt Hörnet")));
+
+		assertThat(SupportManagementMapper.withParameter(parameters, "completeAt", "2026-10-20")).containsExactly(
+			new Parameter().key("completeAt").displayName("Komplett").group("Handläggning").values(List.of("2026-10-20")),
+			new Parameter().key("premisesName").values(List.of("Runt Hörnet")));
+	}
+
+	@Test
+	void withParameterAddsTheParameterLastWhenTheErrandHasNone() {
+		final var parameters = List.of(new Parameter().key("premisesName").values(List.of("Runt Hörnet")));
 
 		assertThat(SupportManagementMapper.withParameter(parameters, "completeAt", "2026-10-20")).containsExactly(
 			new Parameter().key("premisesName").values(List.of("Runt Hörnet")),

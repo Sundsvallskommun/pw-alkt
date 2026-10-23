@@ -160,11 +160,19 @@ public final class SupportManagementMapper {
 		return parameterValues;
 	}
 
-	/** The parameters with the one of the key set to the value, added last when there is none. */
+	/**
+	 * The parameters with the values of the one of the key set to the value, keeping its label and group; added last when
+	 * there is none.
+	 */
 	public static List<Parameter> withParameter(final List<Parameter> parameters, final String key, final String value) {
-		return Stream.concat(
-			Optional.ofNullable(parameters).orElse(emptyList()).stream().filter(parameter -> !key.equals(parameter.getKey())),
-			Stream.of(new Parameter().key(key).values(List.of(value))))
+		final var current = Optional.ofNullable(parameters).orElse(emptyList());
+		if (current.stream().noneMatch(parameter -> key.equals(parameter.getKey()))) {
+			return Stream.concat(current.stream(), Stream.of(new Parameter().key(key).values(List.of(value)))).toList();
+		}
+		return current.stream()
+			.map(parameter -> key.equals(parameter.getKey())
+				? new Parameter().key(key).displayName(parameter.getDisplayName()).group(parameter.getGroup()).values(List.of(value))
+				: parameter)
 			.toList();
 	}
 
