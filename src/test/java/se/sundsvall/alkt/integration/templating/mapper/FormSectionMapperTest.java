@@ -4,10 +4,14 @@ import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
-import se.sundsvall.alkt.integration.templating.model.Field;
+import se.sundsvall.alkt.integration.templating.model.GroupEntry;
 import se.sundsvall.alkt.integration.templating.model.GroupField;
-import se.sundsvall.alkt.integration.templating.model.Row;
+import se.sundsvall.alkt.integration.templating.model.HtmlField;
+import se.sundsvall.alkt.integration.templating.model.ListField;
 import se.sundsvall.alkt.integration.templating.model.Section;
+import se.sundsvall.alkt.integration.templating.model.TableField;
+import se.sundsvall.alkt.integration.templating.model.TableField.Row;
+import se.sundsvall.alkt.integration.templating.model.ValueField;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -26,22 +30,22 @@ class FormSectionMapperTest {
 	void sectionsFollowTheUiSectionsWithTheFieldsInTheirOrder() {
 		final var schema = json("""
 			{"properties": {
-			  "a": {"type": "string", "title": "A"},
-			  "b": {"type": "string", "title": "B"},
-			  "c": {"type": "string", "title": "C"}}}
+			  "namn": {"type": "string", "title": "Namn"},
+			  "telefon": {"type": "string", "title": "Telefon"},
+			  "ort": {"type": "string", "title": "Ort"}}}
 			""");
 		final var uiSchema = json("""
 			{"ui:sections": [
-			  {"id": "one", "title": "Första", "fields": ["b", "a"]},
-			  {"id": "two", "title": "Andra", "fields": ["c"]}]}
+			  {"id": "foretaget", "title": "Företaget", "fields": ["telefon", "namn"]},
+			  {"id": "forsaljningsstallet", "title": "Försäljningsstället", "fields": ["ort"]}]}
 			""");
 		final var answers = json("""
-			{"a": "1", "b": "2", "c": "3"}
+			{"namn": "Kiosken", "telefon": "060-123456", "ort": "Sundsvall"}
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("Första", List.of(Field.value("B", "2"), Field.value("A", "1"))),
-			new Section("Andra", List.of(Field.value("C", "3"))));
+			new Section("Företaget", List.of(new ValueField("Telefon", "060-123456"), new ValueField("Namn", "Kiosken"))),
+			new Section("Försäljningsstället", List.of(new ValueField("Ort", "Sundsvall"))));
 	}
 
 	@Test
@@ -52,18 +56,18 @@ class FormSectionMapperTest {
 			  "nullValue": {"type": "string", "title": "Null"},
 			  "emptyText": {"type": "string", "title": "Empty text"},
 			  "emptyArray": {"type": "array", "title": "Empty array", "items": {"type": "string"}},
-			  "emptyObject": {"type": "object", "title": "Empty object", "properties": {"x": {"type": "string"}}},
+			  "emptyObject": {"type": "object", "title": "Empty object", "properties": {"namn": {"type": "string"}}},
 			  "answered": {"type": "string", "title": "Answered"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["missing", "nullValue", "emptyText", "emptyArray", "emptyObject", "answered"]}]}
+			{"ui:sections": [{"title": "Företaget", "fields": ["missing", "nullValue", "emptyText", "emptyArray", "emptyObject", "answered"]}]}
 			""");
 		final var answers = json("""
 			{"nullValue": null, "emptyText": "", "emptyArray": [], "emptyObject": {}, "answered": "yes"}
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("S", List.of(Field.value("Answered", "yes"))));
+			new Section("Företaget", List.of(new ValueField("Answered", "yes"))));
 	}
 
 	@Test
@@ -76,80 +80,97 @@ class FormSectionMapperTest {
 			  "answered": {"type": "string", "title": "Answered"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["contact", "answered"]}]}
+			{"ui:sections": [{"title": "Företaget", "fields": ["contact", "answered"]}]}
 			""");
 		final var answers = json("""
 			{"contact": {"name": "", "address": {"street": null}}, "answered": "yes"}
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("S", List.of(Field.value("Answered", "yes"))));
+			new Section("Företaget", List.of(new ValueField("Answered", "yes"))));
 	}
 
 	@Test
 	void aSectionWithoutAnyAnsweredFieldIsLeftOut() {
 		final var schema = json("""
-			{"properties": {"a": {"type": "string", "title": "A"}, "b": {"type": "string", "title": "B"}}}
+			{"properties": {"namn": {"type": "string", "title": "Namn"}, "telefon": {"type": "string", "title": "Telefon"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "Empty", "fields": ["a"]}, {"title": "Full", "fields": ["b"]}]}
+			{"ui:sections": [{"title": "Empty", "fields": ["namn"]}, {"title": "Full", "fields": ["telefon"]}]}
 			""");
 
-		assertThat(toSections(schema, uiSchema, json("{\"b\": \"x\"}"))).containsExactly(
-			new Section("Full", List.of(Field.value("B", "x"))));
+		assertThat(toSections(schema, uiSchema, json("{\"telefon\": \"060-123456\"}"))).containsExactly(
+			new Section("Full", List.of(new ValueField("Telefon", "060-123456"))));
 	}
 
 	@Test
 	void answeredFieldsNoSectionListsEndUpInALastSectionWithoutATitle() {
 		final var schema = json("""
 			{"properties": {
-			  "a": {"type": "string", "title": "A"},
-			  "b": {"type": "string", "title": "B"},
-			  "c": {"type": "string", "title": "C"},
-			  "d": {"type": "string", "title": "D"}}}
+			  "namn": {"type": "string", "title": "Namn"},
+			  "telefon": {"type": "string", "title": "Telefon"},
+			  "epost": {"type": "string", "title": "E-post"},
+			  "ort": {"type": "string", "title": "Ort"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:order": ["d", "*"], "ui:sections": [{"title": "Första", "fields": ["a"]}]}
+			{"ui:order": ["ort", "*"], "ui:sections": [{"title": "Företaget", "fields": ["namn"]}]}
 			""");
 		final var answers = json("""
-			{"a": "1", "b": "2", "c": "", "d": "4"}
+			{"namn": "Kiosken", "telefon": "060-123456", "epost": "", "ort": "Sundsvall"}
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("Första", List.of(Field.value("A", "1"))),
-			new Section("", List.of(Field.value("D", "4"), Field.value("B", "2"))));
+			new Section("Företaget", List.of(new ValueField("Namn", "Kiosken"))),
+			new Section("", List.of(new ValueField("Ort", "Sundsvall"), new ValueField("Telefon", "060-123456"))));
+	}
+
+	@Test
+	void anAnswerMissingFromTheSchemaEndsUpInTheLastSectionLabelledByItsKey() {
+		final var schema = json("""
+			{"properties": {"namn": {"type": "string", "title": "Namn"}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:sections": [{"title": "Företaget", "fields": ["namn"]}]}
+			""");
+		final var answers = json("""
+			{"namn": "Kiosken", "undeclared": "Svar utanför schemat"}
+			""");
+
+		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
+			new Section("Företaget", List.of(new ValueField("Namn", "Kiosken"))),
+			new Section("", List.of(new ValueField("undeclared", "Svar utanför schemat"))));
 	}
 
 	@Test
 	void withoutUiSectionsEveryAnsweredFieldEndsUpInOneSectionWithoutATitleInTheUiOrder() {
 		final var schema = json("""
 			{"properties": {
-			  "a": {"type": "string", "title": "A"},
-			  "b": {"type": "string", "title": "B"},
-			  "c": {"type": "string", "title": "C"}}}
+			  "namn": {"type": "string", "title": "Namn"},
+			  "telefon": {"type": "string", "title": "Telefon"},
+			  "ort": {"type": "string", "title": "Ort"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:order": ["c", "a"]}
+			{"ui:order": ["ort", "namn"]}
 			""");
 		final var answers = json("""
-			{"a": "1", "b": "2", "c": "3"}
+			{"namn": "Kiosken", "telefon": "060-123456", "ort": "Sundsvall"}
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("", List.of(Field.value("C", "3"), Field.value("A", "1"), Field.value("B", "2"))));
+			new Section("", List.of(new ValueField("Ort", "Sundsvall"), new ValueField("Namn", "Kiosken"), new ValueField("Telefon", "060-123456"))));
 	}
 
 	@Test
 	void noSectionWithoutATitleIsAddedWhenTheSectionsListEveryAnsweredField() {
 		final var schema = json("""
-			{"properties": {"a": {"type": "string", "title": "A"}, "b": {"type": "string", "title": "B"}}}
+			{"properties": {"namn": {"type": "string", "title": "Namn"}, "telefon": {"type": "string", "title": "Telefon"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:order": ["b", "a"], "ui:sections": [{"title": "Första", "fields": ["a"]}]}
+			{"ui:order": ["telefon", "namn"], "ui:sections": [{"title": "Företaget", "fields": ["namn"]}]}
 			""");
 
-		assertThat(toSections(schema, uiSchema, json("{\"a\": \"1\"}"))).containsExactly(
-			new Section("Första", List.of(Field.value("A", "1"))));
+		assertThat(toSections(schema, uiSchema, json("{\"namn\": \"Kiosken\"}"))).containsExactly(
+			new Section("Företaget", List.of(new ValueField("Namn", "Kiosken"))));
 	}
 
 	@Test
@@ -158,11 +179,30 @@ class FormSectionMapperTest {
 			{"properties": {"serveringsstalletsNamn": {"type": "string", "title": "Försäljningsställets namn"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["serveringsstalletsNamn"]}]}
+			{"ui:sections": [{"title": "Försäljningsstället", "fields": ["serveringsstalletsNamn"]}]}
 			""");
 
 		assertThat(toSections(schema, uiSchema, json("{\"serveringsstalletsNamn\": \"Kiosken\"}"))).containsExactly(
-			new Section("S", List.of(Field.value("Försäljningsställets namn", "Kiosken"))));
+			new Section("Försäljningsstället", List.of(new ValueField("Försäljningsställets namn", "Kiosken"))));
+	}
+
+	@Test
+	void aFieldWithoutATitleOrMissingFromTheSchemaInAGroupIsLabelledByItsKey() {
+		final var schema = json("""
+			{"properties": {"contact": {"type": "object", "title": "Kontakt", "properties": {
+			  "namn": {"type": "string"}}}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:sections": [{"title": "Företaget", "fields": ["contact"]}]}
+			""");
+		final var answers = json("""
+			{"contact": {"namn": "Anna", "telefon": "060-123456"}}
+			""");
+
+		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
+			new Section("Företaget", List.of(new GroupField("Kontakt", List.of(
+				new GroupEntry("namn", "Anna"),
+				new GroupEntry("telefon", "060-123456"))))));
 	}
 
 	@Test
@@ -172,13 +212,13 @@ class FormSectionMapperTest {
 			  "oneOf": [{"const": "JA", "title": "Ja"}, {"const": "NEJ", "title": "Nej"}]}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["firmatecknare"]}]}
+			{"ui:sections": [{"title": "Företaget", "fields": ["firmatecknare"]}]}
 			""");
 
 		assertThat(toSections(schema, uiSchema, json("{\"firmatecknare\": \"JA\"}"))).containsExactly(
-			new Section("S", List.of(Field.value("Är du firmatecknare?", "Ja"))));
+			new Section("Företaget", List.of(new ValueField("Är du firmatecknare?", "Ja"))));
 		assertThat(toSections(schema, uiSchema, json("{\"firmatecknare\": \"NEJ\"}"))).containsExactly(
-			new Section("S", List.of(Field.value("Är du firmatecknare?", "Nej"))));
+			new Section("Företaget", List.of(new ValueField("Är du firmatecknare?", "Nej"))));
 	}
 
 	@Test
@@ -187,11 +227,11 @@ class FormSectionMapperTest {
 			{"properties": {"choice": {"type": "string", "title": "Choice", "oneOf": [{"const": "JA", "title": "Ja"}]}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["choice"]}]}
+			{"ui:sections": [{"title": "Företaget", "fields": ["choice"]}]}
 			""");
 
 		assertThat(toSections(schema, uiSchema, json("{\"choice\": \"KANSKE\"}"))).containsExactly(
-			new Section("S", List.of(Field.value("Choice", "KANSKE"))));
+			new Section("Företaget", List.of(new ValueField("Choice", "KANSKE"))));
 	}
 
 	@Test
@@ -199,14 +239,16 @@ class FormSectionMapperTest {
 		final var schema = json("""
 			{"properties": {"docs": {"type": "array", "title": "Dokumentation",
 			  "items": {"type": "string", "oneOf": [
-			    {"const": "A", "title": "Alfa"}, {"const": "B", "title": "Beta"}, {"const": "C", "title": "Gamma"}]}}}}
+			    {"const": "EGENKONTROLLPROGRAM", "title": "Egenkontrollprogram"},
+			    {"const": "UTBILDNINGSBEVIS", "title": "Utbildningsbevis"},
+			    {"const": "INKOPSKVITTON", "title": "Inköpskvitton"}]}}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["docs"]}]}
+			{"ui:sections": [{"title": "Försäljningsstället", "fields": ["docs"]}]}
 			""");
 
-		assertThat(toSections(schema, uiSchema, json("{\"docs\": [\"C\", \"A\"]}"))).containsExactly(
-			new Section("S", List.of(Field.list("Dokumentation", List.of("Gamma", "Alfa")))));
+		assertThat(toSections(schema, uiSchema, json("{\"docs\": [\"INKOPSKVITTON\", \"EGENKONTROLLPROGRAM\"]}"))).containsExactly(
+			new Section("Försäljningsstället", List.of(new ListField("Dokumentation", List.of("Inköpskvitton", "Egenkontrollprogram")))));
 	}
 
 	@Test
@@ -219,7 +261,7 @@ class FormSectionMapperTest {
 			    "kind": {"type": "string", "title": "Typ", "oneOf": [{"const": "INNE", "title": "Inomhus"}, {"const": "UTE", "title": "Utomhus"}]}}}}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["occasions"]}],
+			{"ui:sections": [{"title": "Försäljningsstället", "fields": ["occasions"]}],
 			 "occasions": {"items": {"ui:order": ["place", "kind", "date"]}}}
 			""");
 		final var answers = json("""
@@ -229,7 +271,7 @@ class FormSectionMapperTest {
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("S", List.of(Field.table("Tillfällen", List.of("Plats", "Typ", "Datum"), List.of(
+			new Section("Försäljningsstället", List.of(new TableField("Tillfällen", List.of("Plats", "Typ", "Datum"), List.of(
 				Row.of("Torget", "Utomhus", "2026-06-01"),
 				Row.of("", "Inomhus", "2026-06-02"))))));
 	}
@@ -244,7 +286,7 @@ class FormSectionMapperTest {
 			  "postort": {"type": "string", "title": "Postort"}}}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["fakturamottagare"]}],
+			{"ui:sections": [{"title": "Företaget", "fields": ["fakturamottagare"]}],
 			 "fakturamottagare": {"ui:order": ["cO", "utdelningsadress", "postnummer", "postort"]}}
 			""");
 		final var answers = json("""
@@ -252,10 +294,10 @@ class FormSectionMapperTest {
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("S", List.of(Field.group("Fakturamottagare", List.of(
-				new GroupField("Utdelningsadress", "Storgatan 1"),
-				new GroupField("Postnummer", "851 85"),
-				new GroupField("Postort", "Sundsvall"))))));
+			new Section("Företaget", List.of(new GroupField("Fakturamottagare", List.of(
+				new GroupEntry("Utdelningsadress", "Storgatan 1"),
+				new GroupEntry("Postnummer", "851 85"),
+				new GroupEntry("Postort", "Sundsvall"))))));
 	}
 
 	@Test
@@ -268,17 +310,17 @@ class FormSectionMapperTest {
 			    "city": {"type": "string", "title": "Ort"}}}}}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["contact"]}]}
+			{"ui:sections": [{"title": "Företaget", "fields": ["contact"]}]}
 			""");
 		final var answers = json("""
 			{"contact": {"name": "Anna", "address": {"street": "Storgatan 1", "city": "Sundsvall"}}}
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("S", List.of(Field.group("Kontakt", List.of(
-				new GroupField("Namn", "Anna"),
-				new GroupField("Gata", "Storgatan 1"),
-				new GroupField("Ort", "Sundsvall"))))));
+			new Section("Företaget", List.of(new GroupField("Kontakt", List.of(
+				new GroupEntry("Namn", "Anna"),
+				new GroupEntry("Gata", "Storgatan 1"),
+				new GroupEntry("Ort", "Sundsvall"))))));
 	}
 
 	@Test
@@ -289,11 +331,11 @@ class FormSectionMapperTest {
 			  "hemsida": {"type": "string", "title": "Hemsida"}}}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["kontakt"]}]}
+			{"ui:sections": [{"title": "Försäljningsstället", "fields": ["kontakt"]}]}
 			""");
 
 		assertThat(toSections(schema, uiSchema, json("{\"kontakt\": {\"telefonnummer\": \"060-123456\"}}"))).containsExactly(
-			new Section("S", List.of(Field.value("Kontaktuppgifter", "060-123456"))));
+			new Section("Försäljningsstället", List.of(new ValueField("Kontaktuppgifter", "060-123456"))));
 	}
 
 	@Test
@@ -309,7 +351,7 @@ class FormSectionMapperTest {
 			    "time": {"type": "string", "title": "Tid", "format": "time"}}}}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["start", "opening", "occasions"]}]}
+			{"ui:sections": [{"title": "Försäljningsstället", "fields": ["start", "opening", "occasions"]}]}
 			""");
 		final var answers = json("""
 			{"start": "12:12:00+02:00",
@@ -318,10 +360,10 @@ class FormSectionMapperTest {
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("S", List.of(
-				Field.value("Start", "12:12"),
-				Field.group("Öppettider", List.of(new GroupField("Från", "08:05"), new GroupField("Till", "17:30"))),
-				Field.table("Tillfällen", List.of("Dag", "Tid"), List.of(Row.of("Måndag", "23:59"))))));
+			new Section("Försäljningsstället", List.of(
+				new ValueField("Start", "12:12"),
+				new GroupField("Öppettider", List.of(new GroupEntry("Från", "08:05"), new GroupEntry("Till", "17:30"))),
+				new TableField("Tillfällen", List.of("Dag", "Tid"), List.of(Row.of("Måndag", "23:59"))))));
 	}
 
 	@Test
@@ -330,11 +372,11 @@ class FormSectionMapperTest {
 			{"properties": {"start": {"type": "string", "title": "Start"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["start"]}]}
+			{"ui:sections": [{"title": "Försäljningsstället", "fields": ["start"]}]}
 			""");
 
 		assertThat(toSections(schema, uiSchema, json("{\"start\": \"12:12:00+02:00\"}"))).containsExactly(
-			new Section("S", List.of(Field.value("Start", "12:12"))));
+			new Section("Försäljningsstället", List.of(new ValueField("Start", "12:12"))));
 	}
 
 	@Test
@@ -343,12 +385,38 @@ class FormSectionMapperTest {
 			{"properties": {"beskrivning": {"type": "string", "title": "Verksamhetsbeskrivning"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["beskrivning"]}],
+			{"ui:sections": [{"title": "Företaget", "fields": ["beskrivning"]}],
 			 "beskrivning": {"ui:widget": "TexteditorWidget"}}
 			""");
 
 		assertThat(toSections(schema, uiSchema, json("{\"beskrivning\": \"<p>Vi säljer <strong>folköl</strong></p>\"}"))).containsExactly(
-			new Section("S", List.of(Field.html("Verksamhetsbeskrivning", "<p>Vi säljer <strong>folköl</strong></p>"))));
+			new Section("Företaget", List.of(new HtmlField("Verksamhetsbeskrivning", "<p>Vi säljer <strong>folköl</strong></p>"))));
+	}
+
+	@Test
+	void aFieldWithTheTexteditorWidgetInAGroupOrATableStaysAPlainValue() {
+		final var schema = json("""
+			{"properties": {
+			  "contact": {"type": "object", "title": "Kontakt", "properties": {
+			    "name": {"type": "string", "title": "Namn"},
+			    "comment": {"type": "string", "title": "Kommentar"}}},
+			  "occasions": {"type": "array", "title": "Tillfällen", "items": {"type": "object", "properties": {
+			    "comment": {"type": "string", "title": "Kommentar"}}}}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:sections": [{"title": "Försäljningsstället", "fields": ["contact", "occasions"]}],
+			 "contact": {"comment": {"ui:widget": "TexteditorWidget"}},
+			 "occasions": {"items": {"comment": {"ui:widget": "TexteditorWidget"}}}}
+			""");
+		final var answers = json("""
+			{"contact": {"name": "Anna", "comment": "<p>Ref <strong>1</strong></p>"},
+			 "occasions": [{"comment": "<p>Ref <strong>2</strong></p>"}]}
+			""");
+
+		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
+			new Section("Försäljningsstället", List.of(
+				new GroupField("Kontakt", List.of(new GroupEntry("Namn", "Anna"), new GroupEntry("Kommentar", "<p>Ref <strong>1</strong></p>"))),
+				new TableField("Tillfällen", List.of("Kommentar"), List.of(Row.of("<p>Ref <strong>2</strong></p>"))))));
 	}
 
 	@Test
@@ -357,13 +425,13 @@ class FormSectionMapperTest {
 			{"properties": {"beskrivning": {"type": "string", "title": "Beskrivning"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["beskrivning"]}],
+			{"ui:sections": [{"title": "Företaget", "fields": ["beskrivning"]}],
 			 "beskrivning": {"ui:widget": "TexteditorWidget"}}
 			""");
 		final var answers = JSON.createObjectNode().put("beskrivning",
-			"<style>p { background: url(http://evil.example/x) }</style>"
-				+ "<p class=\"x\" style=\"background:url(http://evil.example/y)\" onclick=\"alert(1)\">Hej <em>du</em></p>"
-				+ "<img src=\"http://evil.example/z.png\">"
+			"<style>p { background: url(http://evil.example/style.png) }</style>"
+				+ "<p class=\"rubrik\" style=\"background:url(http://evil.example/background.png)\" onclick=\"alert(1)\">Hej <em>du</em></p>"
+				+ "<img src=\"http://evil.example/bild.png\">"
 				+ "<ul><li><a href=\"http://evil.example/\">länk</a></li></ul>"
 				+ "<script>alert(1)</script>"
 				+ "<p>1 &lt; 2 &amp; 3 > 2<br>rad</p>");
@@ -371,8 +439,8 @@ class FormSectionMapperTest {
 		final var sections = toSections(schema, uiSchema, answers);
 
 		assertThat(sections).containsExactly(
-			new Section("S", List.of(Field.html("Beskrivning", "<p>Hej <em>du</em></p><ul><li>länk</li></ul><p>1 &lt; 2 &amp; 3 &gt; 2<br/>rad</p>"))));
-		final var html = sections.getFirst().fields().getFirst().html();
+			new Section("Företaget", List.of(new HtmlField("Beskrivning", "<p>Hej <em>du</em></p><ul><li>länk</li></ul><p>1 &lt; 2 &amp; 3 &gt; 2<br/>rad</p>"))));
+		final var html = ((HtmlField) sections.getFirst().fields().getFirst()).html();
 		assertThat(html).doesNotContain("evil", "<img", "<a", "<style", "<script", "class=", "style=", "onclick", "alert");
 	}
 
@@ -382,13 +450,13 @@ class FormSectionMapperTest {
 			{"properties": {"beskrivning": {"type": "string", "title": "Beskrivning"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["beskrivning"]}],
+			{"ui:sections": [{"title": "Företaget", "fields": ["beskrivning"]}],
 			 "beskrivning": {"ui:widget": "TexteditorWidget"}}
 			""");
-		final var answers = JSON.createObjectNode().put("beskrivning", "<p>a < b & c</p><!-- <img src=x> --><p data-x=\"1\">d</p>");
+		final var answers = JSON.createObjectNode().put("beskrivning", "<p>1 < 2 & 3</p><!-- <img src=bild.png> --><p data-id=\"1\">Hej</p>");
 
-		assertThat(toSections(schema, uiSchema, answers).getFirst().fields().getFirst().html())
-			.isEqualTo("<p>a &lt; b &amp; c</p>&lt;!--  --&gt;<p>d</p>");
+		assertThat(((HtmlField) toSections(schema, uiSchema, answers).getFirst().fields().getFirst()).html())
+			.isEqualTo("<p>1 &lt; 2 &amp; 3</p>&lt;!--  --&gt;<p>Hej</p>");
 	}
 
 	@Test
@@ -397,14 +465,13 @@ class FormSectionMapperTest {
 			{"properties": {"namn": {"type": "string", "title": "Namn"}}}
 			""");
 		final var uiSchema = json("""
-			{"ui:sections": [{"title": "S", "fields": ["namn"]}],
+			{"ui:sections": [{"title": "Företaget", "fields": ["namn"]}],
 			 "namn": {"ui:widget": "TextWidget"}}
 			""");
-		final var answers = JSON.createObjectNode().put("namn", "<b>Kiosk & Co</b> <img src=x>");
+		final var answers = JSON.createObjectNode().put("namn", "<b>Kiosk & Co</b> <img src=bild.png>");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
-			new Section("S", List.of(Field.value("Namn", "<b>Kiosk & Co</b> <img src=x>"))));
-		assertThat(toSections(schema, uiSchema, answers).getFirst().fields().getFirst().html()).isNull();
+			new Section("Företaget", List.of(new ValueField("Namn", "<b>Kiosk & Co</b> <img src=bild.png>"))));
 	}
 
 	@Test
@@ -431,25 +498,25 @@ class FormSectionMapperTest {
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
 			new Section("Företag och fakturering", List.of(
-				Field.value("Är du firmatecknare?", "Ja"),
-				Field.value("Är fakturaadressen samma som företagets adress?", "Nej"),
-				Field.group("Fakturamottagare", List.of(
-					new GroupField("Utdelningsadress", "Storgatan 1"),
-					new GroupField("Postnummer", "851 85"),
-					new GroupField("Postort", "Sundsvall"))),
-				Field.html("Fakturareferens", "<p>Ref <strong>123</strong></p>"),
-				Field.value("Verksamhetsbeskrivning", "Jag vill skriva verksamhetsbeskrivningen i formuläret"),
-				Field.html("Verksamhetsbeskrivning", "<p>Vi säljer folköl</p>"))),
+				new ValueField("Är du firmatecknare?", "Ja"),
+				new ValueField("Är fakturaadressen samma som företagets adress?", "Nej"),
+				new GroupField("Fakturamottagare", List.of(
+					new GroupEntry("Utdelningsadress", "Storgatan 1"),
+					new GroupEntry("Postnummer", "851 85"),
+					new GroupEntry("Postort", "Sundsvall"))),
+				new HtmlField("Fakturareferens", "<p>Ref <strong>123</strong></p>"),
+				new ValueField("Verksamhetsbeskrivning", "Jag vill skriva verksamhetsbeskrivningen i formuläret"),
+				new HtmlField("Verksamhetsbeskrivning", "<p>Vi säljer folköl</p>"))),
 			new Section("Försäljning av folköl (klass 2)", List.of(
-				Field.value("Kommer du att ha stadigvarande försäljning av livsmedel?", "Ja"),
-				Field.value("Kommer du att tillverka folköl på försäljningsstället?", "Nej"),
-				Field.list("Dokumentation vid tillsyn", List.of("Jag kan visa dokumentation om detta vid tillsyn")),
-				Field.value("Egenkontrollprogram vid försäljning av folköl (klass 2)", "Nej, det finns ett egenkontrollprogram och det kan visas vid tillsyn"),
-				Field.value("Försäljningsställets namn", "Kiosken"),
-				Field.value("Är försäljningsställets besöksadress samma som företagets adress?", "Ja"),
-				Field.group("Kontaktuppgifter till försäljningsstället", List.of(
-					new GroupField("Telefonnummer", "060-123456"),
-					new GroupField("E-postadress", "kiosk@example.com"))))));
+				new ValueField("Kommer du att ha stadigvarande försäljning av livsmedel?", "Ja"),
+				new ValueField("Kommer du att tillverka folköl på försäljningsstället?", "Nej"),
+				new ListField("Dokumentation vid tillsyn", List.of("Jag kan visa dokumentation om detta vid tillsyn")),
+				new ValueField("Egenkontrollprogram vid försäljning av folköl (klass 2)", "Nej, det finns ett egenkontrollprogram och det kan visas vid tillsyn"),
+				new ValueField("Försäljningsställets namn", "Kiosken"),
+				new ValueField("Är försäljningsställets besöksadress samma som företagets adress?", "Ja"),
+				new GroupField("Kontaktuppgifter till försäljningsstället", List.of(
+					new GroupEntry("Telefonnummer", "060-123456"),
+					new GroupEntry("E-postadress", "kiosk@example.com"))))));
 	}
 
 	private static JsonNode readFixture(final String name) throws IOException {

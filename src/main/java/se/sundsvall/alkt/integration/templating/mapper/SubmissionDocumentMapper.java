@@ -12,11 +12,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.util.StringUtils;
 import se.sundsvall.alkt.integration.templating.model.Field;
+import se.sundsvall.alkt.integration.templating.model.GroupEntry;
 import se.sundsvall.alkt.integration.templating.model.GroupField;
-import se.sundsvall.alkt.integration.templating.model.Row;
 import se.sundsvall.alkt.integration.templating.model.Section;
+import se.sundsvall.alkt.integration.templating.model.TableField;
+import se.sundsvall.alkt.integration.templating.model.TableField.Row;
+import se.sundsvall.alkt.integration.templating.model.ValueField;
 import tools.jackson.databind.JsonNode;
 
 import static java.util.Collections.emptyList;
@@ -43,17 +47,18 @@ public final class SubmissionDocumentMapper {
 
 	public static Section toErrandSection(final Errand errand) {
 		final var fields = new ArrayList<Field>();
-		fields.add(Field.value("Ärendenummer", errand.getErrandNumber()));
+		fields.add(new ValueField("Ärendenummer", errand.getErrandNumber()));
 		Optional.ofNullable(errand.getCreated())
 			.map(created -> created.atZoneSameInstant(SWEDISH_TIME).format(DateTimeFormatter.ISO_LOCAL_DATE))
-			.ifPresent(date -> fields.add(Field.value("Inkomstdatum", date)));
+			.ifPresent(date -> fields.add(new ValueField("Inkomstdatum", date)));
 		return new Section("Ärende", fields);
 	}
 
 	public static Optional<Section> toStakeholderSection(final List<Stakeholder> stakeholders, final Map<String, String> legalIds) {
 		final var fields = stakeholders.stream()
-			.map(stakeholder -> Field.group(Optional.ofNullable(stakeholder.getRole()).orElse(""), toStakeholderFields(stakeholder, legalIds)))
+			.map(stakeholder -> new GroupField(Optional.ofNullable(stakeholder.getRole()).orElse(""), toStakeholderFields(stakeholder, legalIds)))
 			.filter(field -> !field.fields().isEmpty())
+			.map(Field.class::cast)
 			.toList();
 		return Optional.of(fields).filter(not(List::isEmpty)).map(list -> new Section("Intressenter", list));
 	}
@@ -65,7 +70,7 @@ public final class SubmissionDocumentMapper {
 		final var rows = attachments.stream()
 			.map(attachment -> Row.of(Optional.ofNullable(attachment.getFileName()).orElse(""), typeOf(attachment, schema)))
 			.toList();
-		return Optional.of(new Section("Bilagor", List.of(Field.table("Bilagor", List.of("Filnamn", "Typ"), rows))));
+		return Optional.of(new Section("Bilagor", List.of(new TableField("Bilagor", List.of("Filnamn", "Typ"), rows))));
 	}
 
 	private static String typeOf(final ErrandAttachment attachment, final JsonNode schema) {
@@ -80,23 +85,20 @@ public final class SubmissionDocumentMapper {
 			.orElse("");
 	}
 
-	private static List<GroupField> toStakeholderFields(final Stakeholder stakeholder, final Map<String, String> legalIds) {
-		final var fields = new ArrayList<GroupField>();
+	private static List<GroupEntry> toStakeholderFields(final Stakeholder stakeholder, final Map<String, String> legalIds) {
 		final var name = Optional.ofNullable(stakeholder.getOrganizationName()).filter(not(String::isBlank))
 			.orElseGet(() -> joinNonBlank(" ", stakeholder.getFirstName(), stakeholder.getLastName()));
-		addIfPresent(fields, "Namn", name);
-		Optional.ofNullable(stakeholder.getExternalId()).map(legalIds::get)
-			.ifPresent(legalId -> addIfPresent(fields, STAKEHOLDER_TYPE_PRIVATE.equals(stakeholder.getExternalIdType()) ? "Personnummer" : "Organisationsnummer", legalId));
-		addIfPresent(fields, "Adress", joinNonBlank(SEPARATOR, stakeholder.getCareOf(), stakeholder.getAddress(), joinNonBlank(" ", stakeholder.getZipCode(), stakeholder.getCity())));
-		Optional.ofNullable(stakeholder.getContactChannels()).orElse(emptyList())
-			.forEach(channel -> addIfPresent(fields, Optional.ofNullable(channel.getType()).orElse(""), channel.getValue()));
-		return fields;
-	}
+		final var nameEntry = new GroupEntry("Namn", name);
+		final var legalIdEntry = new GroupEntry(STAKEHOLDER_TYPE_PRIVATE.equals(stakeholder.getExternalIdType()) ? "Personnummer" : "Organisationsnummer",
+			Optional.ofNullable(stakeholder.getExternalId()).map(legalIds::get).orElse(null));
+		final var addressEntry = new GroupEntry("Adress",
+			joinNonBlank(SEPARATOR, stakeholder.getCareOf(), stakeholder.getAddress(), joinNonBlank(" ", stakeholder.getZipCode(), stakeholder.getCity())));
+		final var channelEntries = Optional.ofNullable(stakeholder.getContactChannels()).orElse(emptyList()).stream()
+			.map(channel -> new GroupEntry(Optional.ofNullable(channel.getType()).orElse(""), channel.getValue()));
 
-	private static void addIfPresent(final List<GroupField> fields, final String label, final String value) {
-		if (StringUtils.hasText(value)) {
-			fields.add(new GroupField(label, value));
-		}
+		return Stream.concat(Stream.of(nameEntry, legalIdEntry, addressEntry), channelEntries)
+			.filter(entry -> StringUtils.hasText(entry.value()))
+			.toList();
 	}
 
 	private static String joinNonBlank(final String separator, final String... parts) {

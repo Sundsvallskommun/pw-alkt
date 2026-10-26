@@ -28,7 +28,7 @@
 				}
 			},
 			{
-				"matchesJsonPath": "$.parameters.sections[?(@.title == 'Försäljning av folköl (klass 2)')].fields[?(@.label == 'Är du firmatecknare?' && @.value == 'Ja')]"
+				"matchesJsonPath": "$.parameters.sections[?(@.title == 'Försäljning av folköl (klass 2)')].fields[?(@.type == 'value' && @.label == 'Är du firmatecknare?' && @.value == 'Ja')]"
 			}
 		]
 	},

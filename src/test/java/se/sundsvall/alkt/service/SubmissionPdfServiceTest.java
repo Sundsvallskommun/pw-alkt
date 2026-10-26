@@ -20,10 +20,12 @@ import se.sundsvall.alkt.integration.jsonschema.JsonSchemaIntegration;
 import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
-import se.sundsvall.alkt.integration.templating.model.Field;
+import se.sundsvall.alkt.integration.templating.model.GroupEntry;
 import se.sundsvall.alkt.integration.templating.model.GroupField;
-import se.sundsvall.alkt.integration.templating.model.Row;
 import se.sundsvall.alkt.integration.templating.model.Section;
+import se.sundsvall.alkt.integration.templating.model.TableField;
+import se.sundsvall.alkt.integration.templating.model.TableField.Row;
+import se.sundsvall.alkt.integration.templating.model.ValueField;
 import se.sundsvall.alkt.service.model.SubmissionPdfOutcome;
 import se.sundsvall.dept44.exception.ClientProblem;
 import tools.jackson.databind.JsonNode;
@@ -88,7 +90,7 @@ class SubmissionPdfServiceTest {
 			.created(OffsetDateTime.parse("2026-10-21T08:00:00Z"))
 			.jsonParameters(List.of(
 				new JsonParameter().key("form").schemaId(SCHEMA_ID).value(JSON.readTree("{\"namn\": \"Kiosken\"}")),
-				new JsonParameter().key("other").schemaId("2281_other_1.0").value(JSON.readTree("{\"x\": \"y\"}"))))
+				new JsonParameter().key("other").schemaId("2281_other_1.0").value(JSON.readTree("{\"annat\": \"svar\"}"))))
 			.stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-1").externalIdType("COMPANY").organizationName("Kiosken AB")));
 	}
 
@@ -104,11 +106,11 @@ class SubmissionPdfServiceTest {
 		final Map<String, Object> expectedParameters = Map.of(
 			"title", "Inkommen anmälan ALKT-2026-000123",
 			"sections", List.of(
-				new Section("Ärende", List.of(Field.value("Ärendenummer", ERRAND_NUMBER), Field.value("Inkomstdatum", "2026-10-21"))),
-				new Section("Försäljning", List.of(Field.value("Namn på stället", "Kiosken"))),
-				new Section("Intressenter", List.of(Field.group("PRIMARY", List.of(
-					new GroupField("Namn", "Kiosken AB"), new GroupField("Organisationsnummer", "5566124144"))))),
-				new Section("Bilagor", List.of(Field.table("Bilagor", List.of("Filnamn", "Typ"), List.of(Row.of("fullmakt.pdf", "Fullmakt")))))));
+				new Section("Ärende", List.of(new ValueField("Ärendenummer", ERRAND_NUMBER), new ValueField("Inkomstdatum", "2026-10-21"))),
+				new Section("Försäljning", List.of(new ValueField("Namn på stället", "Kiosken"))),
+				new Section("Intressenter", List.of(new GroupField("PRIMARY", List.of(
+					new GroupEntry("Namn", "Kiosken AB"), new GroupEntry("Organisationsnummer", "5566124144"))))),
+				new Section("Bilagor", List.of(new TableField("Bilagor", List.of("Filnamn", "Typ"), List.of(Row.of("fullmakt.pdf", "Fullmakt")))))));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", expectedParameters)).thenReturn(pdf);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf)).thenReturn("attachment-1");
 
@@ -167,9 +169,9 @@ class SubmissionPdfServiceTest {
 		final Map<String, Object> expectedParameters = Map.of(
 			"title", "Inkommen anmälan ALKT-2026-000123",
 			"sections", List.of(
-				new Section("Ärende", List.of(Field.value("Ärendenummer", ERRAND_NUMBER), Field.value("Inkomstdatum", "2026-10-21"))),
-				new Section("Försäljning", List.of(Field.value("Namn på stället", "Kiosken"))),
-				new Section("Intressenter", List.of(Field.group("PRIMARY", List.of(new GroupField("Namn", "Kiosken AB")))))));
+				new Section("Ärende", List.of(new ValueField("Ärendenummer", ERRAND_NUMBER), new ValueField("Inkomstdatum", "2026-10-21"))),
+				new Section("Försäljning", List.of(new ValueField("Namn på stället", "Kiosken"))),
+				new Section("Intressenter", List.of(new GroupField("PRIMARY", List.of(new GroupEntry("Namn", "Kiosken AB")))))));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", expectedParameters)).thenReturn("%PDF".getBytes());
 		when(supportManagementIntegrationMock.createPdfAttachment(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(FILE_NAME), any())).thenReturn("attachment-1");
 

@@ -1,4 +1,10 @@
 package se.sundsvall.alkt.integration.templating.model;
 
-public record GroupField(String label, String value) {
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import java.util.List;
+
+@JsonTypeName("group")
+public record GroupField(String label, List<GroupEntry> fields)
+	implements
+	Field {
 }

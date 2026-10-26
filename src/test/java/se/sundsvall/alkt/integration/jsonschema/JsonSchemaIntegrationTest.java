@@ -51,7 +51,7 @@ class JsonSchemaIntegrationTest {
 
 	@Test
 	void getUiSchemaAnswersWithTheValueOfTheUiSchemaOfThatId() {
-		final var value = JsonMapper.builder().build().readTree("{\"ui:order\":[\"a\",\"b\"]}");
+		final var value = JsonMapper.builder().build().readTree("{\"ui:order\":[\"namn\",\"telefon\"]}");
 		when(jsonSchemaClientMock.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID)).thenReturn(ResponseEntity.ok(new UiSchema().value(value)));
 
 		assertThat(jsonSchemaIntegration.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID)).isEqualTo(value);

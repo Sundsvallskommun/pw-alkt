@@ -11,9 +11,14 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import se.sundsvall.alkt.integration.templating.model.Field;
+import se.sundsvall.alkt.integration.templating.model.GroupEntry;
 import se.sundsvall.alkt.integration.templating.model.GroupField;
-import se.sundsvall.alkt.integration.templating.model.Row;
+import se.sundsvall.alkt.integration.templating.model.HtmlField;
+import se.sundsvall.alkt.integration.templating.model.ListField;
 import se.sundsvall.alkt.integration.templating.model.Section;
+import se.sundsvall.alkt.integration.templating.model.TableField;
+import se.sundsvall.alkt.integration.templating.model.TableField.Row;
+import se.sundsvall.alkt.integration.templating.model.ValueField;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.MissingNode;
 
@@ -42,7 +47,7 @@ public final class FormSectionMapper {
 		final var listed = uiSections.stream()
 			.flatMap(section -> fieldNamesOf(section).stream())
 			.collect(Collectors.toSet());
-		final var unlisted = form.schemaKeys().stream().filter(not(listed::contains)).toList();
+		final var unlisted = form.schemaAndAnswerKeys().stream().filter(not(listed::contains)).toList();
 
 		return Stream.concat(
 			uiSections.stream().map(section -> Map.entry(section.path(TITLE).asString(""), fieldNamesOf(section))),
@@ -71,19 +76,19 @@ public final class FormSectionMapper {
 			return toGroup(node);
 		}
 		if (node.isRichText()) {
-			return Field.html(node.label(), sanitize(node.answer().asString()));
+			return new HtmlField(node.label(), sanitize(node.answer().asString()));
 		}
-		return Field.value(node.label(), toText(node.answer(), node.schema()));
+		return new ValueField(node.label(), toText(node.answer(), node.schema()));
 	}
 
 	private static Field toList(final FormNode node) {
-		return Field.list(node.label(), answeredValues(node.answer()).stream().map(item -> toText(item, node.items().schema())).toList());
+		return new ListField(node.label(), answeredValues(node.answer()).stream().map(item -> toText(item, node.items().schema())).toList());
 	}
 
 	private static Field toTable(final FormNode node) {
 		final var item = node.items();
 		final var columns = item.schemaKeys();
-		return Field.table(node.label(),
+		return new TableField(node.label(),
 			columns.stream().map(column -> item.child(column).label()).toList(),
 			answeredValues(node.answer()).stream()
 				.map(row -> new Row(columns.stream()
@@ -95,25 +100,25 @@ public final class FormSectionMapper {
 	}
 
 	private static Field toGroup(final FormNode node) {
-		final var fields = toGroupFields(node);
+		final var fields = toGroupEntries(node);
 		if (fields.size() == 1) {
-			return Field.value(node.label(), fields.getFirst().value());
+			return new ValueField(node.label(), fields.getFirst().value());
 		}
-		return Field.group(node.label(), fields);
+		return new GroupField(node.label(), fields);
 	}
 
 	// Why: the template shows one level of fields in a group, so a deeper object is flattened into the group.
-	private static List<GroupField> toGroupFields(final FormNode node) {
-		final var fields = new ArrayList<GroupField>();
+	private static List<GroupEntry> toGroupEntries(final FormNode node) {
+		final var fields = new ArrayList<GroupEntry>();
 		for (final var key : node.schemaAndAnswerKeys()) {
 			final var child = node.child(key);
 			if (isEmpty(child.answer())) {
 				continue;
 			}
 			if (child.answer().isObject()) {
-				fields.addAll(toGroupFields(child));
+				fields.addAll(toGroupEntries(child));
 			} else {
-				fields.add(new GroupField(child.label(), toText(child.answer(), child.schema())));
+				fields.add(new GroupEntry(child.label(), toText(child.answer(), child.schema())));
 			}
 		}
 		return fields;
@@ -124,7 +129,7 @@ public final class FormSectionMapper {
 			return answeredValues(value).stream().map(item -> toText(item, schema.path(ITEMS))).collect(Collectors.joining(SEPARATOR));
 		}
 		if (value.isObject()) {
-			return toGroupFields(new FormNode("", schema, MissingNode.getInstance(), value)).stream().map(GroupField::value).collect(Collectors.joining(SEPARATOR));
+			return toGroupEntries(new FormNode("", schema, MissingNode.getInstance(), value)).stream().map(GroupEntry::value).collect(Collectors.joining(SEPARATOR));
 		}
 		return schema.path("oneOf").values().stream()
 			.filter(option -> value.equals(option.path("const")))

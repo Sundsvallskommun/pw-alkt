@@ -1,39 +1,17 @@
 package se.sundsvall.alkt.integration.templating.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.annotation.JsonTypeInfo.Id.NAME;
 
-/** A field of the template alkt.form-pdf: type says which of the other parts it fills. */
+/**
+ * A field of the template alkt.form-pdf. Its type, from the type name of the record, tells the template how to draw it.
+ */
 @JsonInclude(NON_NULL)
-public record Field(
-	String label,
-	String type,
-	String value,
-	List<String> values,
-	String html,
-	List<GroupField> fields,
-	List<String> columns,
-	List<Row> rows) {
+@JsonTypeInfo(use = NAME, property = "type")
+public interface Field {
 
-	public static Field value(final String label, final String value) {
-		return new Field(label, "value", value, null, null, null, null, null);
-	}
-
-	public static Field list(final String label, final List<String> values) {
-		return new Field(label, "list", null, values, null, null, null, null);
-	}
-
-	public static Field html(final String label, final String html) {
-		return new Field(label, "html", null, null, html, null, null, null);
-	}
-
-	public static Field group(final String label, final List<GroupField> fields) {
-		return new Field(label, "group", null, null, null, fields, null, null);
-	}
-
-	public static Field table(final String label, final List<String> columns, final List<Row> rows) {
-		return new Field(label, "table", null, null, null, null, columns, rows);
-	}
+	String label();
 }
