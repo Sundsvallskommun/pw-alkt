@@ -123,6 +123,7 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.getKey());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("registration_phase");
 
 		// The WAITING report is asserted by its mapping: the phase, its name and the signal the button carries
 		verifyAllStubs();
@@ -220,6 +221,7 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("follow_up_phase");
 
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));

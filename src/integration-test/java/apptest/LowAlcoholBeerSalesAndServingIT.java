@@ -104,6 +104,7 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES_AND_SERVING.getKey());
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("follow_up_phase");
 
 		// The mappings assert every call: the decision written as a draft, linked to the attachment and completed, the permit
 		// created from it and activated, and the WAITING report of follow up with the signal its button carries

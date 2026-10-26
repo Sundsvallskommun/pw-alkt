@@ -189,6 +189,13 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 				.withRequestBody(matchingJsonPath("$[?(@.currentActivityId == '%s')]".formatted(activityId)))).isEmpty());
 	}
 
+	/** A worker reports the wait state only after the engine reaches it, so a signal sent before the report overtakes it. */
+	protected void awaitWaitingReportAt(String activityId) {
+		await()
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
+			.until(() -> countReports("$[?(@.currentActivityId == '%s' && @.processStatus == 'WAITING')]".formatted(activityId)) > 0);
+	}
+
 	/** For a process that comes back to where it already reported: count the reports before, then await more than that. */
 	protected void awaitReportsAt(String activityId, int count) {
 		await()
@@ -234,12 +241,14 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 
 	protected void completePhase(String errandId, String processInstanceId, String processKey, String phase) {
 		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("%s_phase".formatted(phase));
 
 		sendSignal(errandId, processKey, "%s_completed".formatted(phase));
 	}
 
 	protected void cancelProcess(String errandId, String processInstanceId, String processKey, String phase) {
 		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("%s_phase".formatted(phase));
 
 		sendSignal(errandId, processKey, "process_cancelled");
 	}
@@ -256,6 +265,7 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 
 	protected void completeDecision(String errandId, String processInstanceId, String processKey) {
 		awaitProcessState(processInstanceId, "await_decision_updated", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("decision_phase");
 
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
