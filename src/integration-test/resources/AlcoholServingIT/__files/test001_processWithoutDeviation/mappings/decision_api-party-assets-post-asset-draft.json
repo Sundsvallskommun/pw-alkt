@@ -46,6 +46,12 @@
 			},
 			{
 				"matchesJsonPath": {
+					"expression": "$.description",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
 					"expression": "$.title",
 					"equalTo": "Beslut om serveringstillstånd"
 				}
