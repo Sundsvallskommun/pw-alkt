@@ -30,12 +30,12 @@ class SubmissionDocumentMapperTest {
 
 	@Test
 	void theTitleNamesTheErrandNumber() {
-		assertThat(toTitle(new Errand().errandNumber("ALKT-2026-000123"))).isEqualTo("Inkommen anmälan ALKT-2026-000123");
+		assertThat(toTitle(new Errand().errandNumber("ALKT-2026-000123"))).isEqualTo("Inkommet ärende ALKT-2026-000123");
 	}
 
 	@Test
 	void theFileNameIsTheTitleAsAPdf() {
-		assertThat(toFileName(new Errand().errandNumber("ALKT-2026-000123"))).isEqualTo("Inkommen anmälan ALKT-2026-000123.pdf");
+		assertThat(toFileName(new Errand().errandNumber("ALKT-2026-000123"))).isEqualTo("Inkommet ärende ALKT-2026-000123.pdf");
 	}
 
 	@Test

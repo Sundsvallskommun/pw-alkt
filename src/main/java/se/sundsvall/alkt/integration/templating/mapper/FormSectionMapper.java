@@ -24,6 +24,7 @@ import tools.jackson.databind.node.MissingNode;
 
 import static java.util.function.Predicate.not;
 import static se.sundsvall.alkt.integration.templating.mapper.HtmlSanitizer.sanitize;
+import static se.sundsvall.alkt.integration.templating.mapper.HtmlSanitizer.toPlainText;
 
 /**
  * Turns the answers of a form into the sections of the template alkt.form-pdf, laid out as the UI schema lays out the
@@ -87,14 +88,16 @@ public final class FormSectionMapper {
 
 	private static Field toTable(final FormNode node) {
 		final var item = node.items();
-		final var columns = item.schemaKeys();
+		final var rows = answeredValues(node.answer()).stream().map(item::withAnswer).toList();
+		final var columns = Stream.concat(item.schemaKeys().stream(), rows.stream().flatMap(row -> row.answer().propertyNames().stream()))
+			.distinct()
+			.toList();
 		return new TableField(node.label(),
 			columns.stream().map(column -> item.child(column).label()).toList(),
-			answeredValues(node.answer()).stream()
+			rows.stream()
 				.map(row -> new Row(columns.stream()
-					.map(column -> Optional.of(row.path(column)).filter(not(FormSectionMapper::isEmpty))
-						.map(value -> toText(value, item.child(column).schema()))
-						.orElse(""))
+					.map(row::child)
+					.map(cell -> Optional.of(cell).filter(not(FormNode::isUnanswered)).map(FormSectionMapper::toText).orElse(""))
 					.toList()))
 				.toList());
 	}
@@ -112,16 +115,24 @@ public final class FormSectionMapper {
 		final var fields = new ArrayList<GroupEntry>();
 		for (final var key : node.schemaAndAnswerKeys()) {
 			final var child = node.child(key);
-			if (isEmpty(child.answer())) {
+			if (child.isUnanswered()) {
 				continue;
 			}
 			if (child.answer().isObject()) {
 				fields.addAll(toGroupEntries(child));
 			} else {
-				fields.add(new GroupEntry(child.label(), toText(child.answer(), child.schema())));
+				fields.add(new GroupEntry(child.label(), toText(child)));
 			}
 		}
 		return fields;
+	}
+
+	// Why: a group entry or a table cell is a plain value in the template, so rich text there is reduced to its text.
+	private static String toText(final FormNode node) {
+		if (node.isRichText()) {
+			return toPlainText(node.answer().asString());
+		}
+		return toText(node.answer(), node.schema());
 	}
 
 	private static String toText(final JsonNode value, final JsonNode schema) {
@@ -143,8 +154,10 @@ public final class FormSectionMapper {
 		return container.values().stream().filter(not(FormSectionMapper::isEmpty)).toList();
 	}
 
+	/** True also for an array or object whose values, at any depth, are all empty. */
 	private static boolean isEmpty(final JsonNode value) {
-		return value.isMissingNode() || value.isNull() || (value.isString() && value.asString().isBlank()) || (value.isContainer() && value.isEmpty());
+		return value.isMissingNode() || value.isNull() || (value.isString() && value.asString().isBlank())
+			|| (value.isContainer() && value.values().stream().allMatch(FormSectionMapper::isEmpty));
 	}
 
 	/** A field of the form, with its schema, UI schema and answer walked together. */
@@ -158,13 +171,16 @@ public final class FormSectionMapper {
 			return new FormNode(key, schema.path(ITEMS), uiSchema.path(ITEMS), MissingNode.getInstance());
 		}
 
+		FormNode withAnswer(final JsonNode newAnswer) {
+			return new FormNode(key, schema, uiSchema, newAnswer);
+		}
+
 		String label() {
 			return schema.path(TITLE).asString(key);
 		}
 
-		/** True also for an object whose fields, at any depth, are all unanswered. */
 		boolean isUnanswered() {
-			return isEmpty(answer) || (isGroup() && schemaAndAnswerKeys().stream().map(this::child).allMatch(FormNode::isUnanswered));
+			return isEmpty(answer);
 		}
 
 		boolean isTable() {

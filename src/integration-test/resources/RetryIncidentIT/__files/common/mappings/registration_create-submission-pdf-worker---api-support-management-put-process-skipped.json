@@ -1,7 +1,7 @@
 {
 	"name": "registration_create-submission-pdf-worker---api-support-management-put-process-skipped",
 	"metadata": {
-		"comment": "The errand has no JSON parameters, so the step is skipped and logged as such. Higher priority than the plain RUNNING report of the step."
+		"comment": "The errand did not come in through the e-service, so the step is skipped and logged as such. Higher priority than the plain RUNNING report of the step."
 	},
 	"priority": 1,
 	"request": {

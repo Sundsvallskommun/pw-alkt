@@ -52,7 +52,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 
 		// The PDF of the submission was put on the errand in the registration, which then ended without waiting
 		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/attachments".formatted(ERRAND_ID)))
-			.withAnyRequestBodyPart(aMultipart().withHeader("Content-Disposition", containing("filename=\"Inkommen anmälan ALKT-2026-000002.pdf\""))));
+			.withAnyRequestBodyPart(aMultipart().withHeader("Content-Disposition", containing("filename=\"Inkommet ärende ALKT-2026-000002.pdf\""))));
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_submission_pdf#done')]")));
 

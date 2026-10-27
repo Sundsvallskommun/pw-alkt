@@ -14,10 +14,10 @@ customer-message:
 process-log:
   steps:
     "[external_task_create_submission_pdf]":
-      done: Den inkomna anmälan har sparats som PDF i ärendet
-      retry: Den inkomna anmälan kunde inte sparas som PDF just nu, ett nytt försök görs automatiskt
-      failed: Den inkomna anmälan kunde inte sparas som PDF. Processen har stannat och felet behöver åtgärdas
-      skipped: Ärendet har ingen inkommen anmälan från formuläret, så ingen PDF har skapats
+      done: Det inkomna ärendet har sparats som PDF i ärendet
+      retry: Det inkomna ärendet kunde inte sparas som PDF just nu, ett nytt försök görs automatiskt
+      failed: Det inkomna ärendet kunde inte sparas som PDF. Processen har stannat och felet behöver åtgärdas
+      skipped: Ärendet har inte kommit in via e-tjänsten, så ingen PDF har skapats
     "[external_task_notify_processing_started]":
       done: Kunden har fått besked om att handläggningen har börjat
       retry: Beskedet till kunden kunde inte skickas just nu, ett nytt försök görs automatiskt

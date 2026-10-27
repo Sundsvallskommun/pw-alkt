@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.templating.mapper;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -16,6 +17,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static se.sundsvall.alkt.integration.templating.mapper.FormSectionMapper.toSections;
 
 class FormSectionMapperTest {
@@ -394,7 +396,7 @@ class FormSectionMapperTest {
 	}
 
 	@Test
-	void aFieldWithTheTexteditorWidgetInAGroupOrATableStaysAPlainValue() {
+	void aFieldWithTheTexteditorWidgetInAGroupOrATableBecomesItsTextWithoutTags() {
 		final var schema = json("""
 			{"properties": {
 			  "contact": {"type": "object", "title": "Kontakt", "properties": {
@@ -409,14 +411,64 @@ class FormSectionMapperTest {
 			 "occasions": {"items": {"comment": {"ui:widget": "TexteditorWidget"}}}}
 			""");
 		final var answers = json("""
-			{"contact": {"name": "Anna", "comment": "<p>Ref <strong>1</strong></p>"},
+			{"contact": {"name": "Anna", "comment": "<p>Ref <strong>1</strong> &amp; Co</p><p>rad 2<script>alert(1)</script></p>"},
 			 "occasions": [{"comment": "<p>Ref <strong>2</strong></p>"}]}
 			""");
 
 		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
 			new Section("Försäljningsstället", List.of(
-				new GroupField("Kontakt", List.of(new GroupEntry("Namn", "Anna"), new GroupEntry("Kommentar", "<p>Ref <strong>1</strong></p>"))),
-				new TableField("Tillfällen", List.of("Kommentar"), List.of(Row.of("<p>Ref <strong>2</strong></p>"))))));
+				new GroupField("Kontakt", List.of(new GroupEntry("Namn", "Anna"), new GroupEntry("Kommentar", "Ref 1 & Co rad 2"))),
+				new TableField("Tillfällen", List.of("Kommentar"), List.of(Row.of("Ref 2"))))));
+	}
+
+	@Test
+	void aRowKeyMissingFromTheItemsSchemaBecomesAColumnLabelledByItsKey() {
+		final var schema = json("""
+			{"properties": {
+			  "occasions": {"type": "array", "title": "Tillfällen", "items": {"type": "object", "properties": {
+			    "date": {"type": "string", "title": "Datum"}}}},
+			  "undeclared": {"type": "array"}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:sections": [{"title": "Försäljningsstället", "fields": ["occasions", "undeclared"]}]}
+			""");
+		final var answers = json("""
+			{"occasions": [{"date": "2026-06-01", "place": "Torget"}, {"date": "2026-06-02"}],
+			 "undeclared": [{"namn": "Anna"}]}
+			""");
+
+		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
+			new Section("Försäljningsstället", List.of(
+				new TableField("Tillfällen", List.of("Datum", "place"), List.of(Row.of("2026-06-01", "Torget"), Row.of("2026-06-02", ""))),
+				new TableField("undeclared", List.of("namn"), List.of(Row.of("Anna"))))));
+	}
+
+	@Test
+	void anArrayWhoseItemsAreAllEmptyIsLeftOutAndAnEmptyRowIsDropped() {
+		final var schema = json("""
+			{"properties": {
+			  "emptyRows": {"type": "array", "title": "Tomma rader", "items": {"type": "object", "properties": {"namn": {"type": "string"}}}},
+			  "blankRows": {"type": "array", "title": "Blanka rader", "items": {"type": "object", "properties": {"namn": {"type": "string"}}}},
+			  "nullItems": {"type": "array", "title": "Null", "items": {"type": "string"}},
+			  "blankItems": {"type": "array", "title": "Blanka", "items": {"type": "string"}},
+			  "contact": {"type": "object", "title": "Kontakt", "properties": {
+			    "name": {"type": "string", "title": "Namn"},
+			    "phones": {"type": "array", "title": "Telefon", "items": {"type": "string"}}}},
+			  "occasions": {"type": "array", "title": "Tillfällen", "items": {"type": "object", "properties": {"namn": {"type": "string", "title": "Namn"}}}}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:sections": [{"title": "Företaget", "fields": ["emptyRows", "blankRows", "nullItems", "blankItems", "contact", "occasions"]}]}
+			""");
+		final var answers = json("""
+			{"emptyRows": [{}], "blankRows": [{"namn": ""}], "nullItems": [null], "blankItems": [""],
+			 "contact": {"name": "Anna", "phones": [""]},
+			 "occasions": [{"namn": ""}, {"namn": "Midsommar"}]}
+			""");
+
+		assertThat(toSections(schema, uiSchema, answers)).containsExactly(
+			new Section("Företaget", List.of(
+				new ValueField("Kontakt", "Anna"),
+				new TableField("Tillfällen", List.of("Namn"), List.of(Row.of("Midsommar"))))));
 	}
 
 	@Test
@@ -457,6 +509,38 @@ class FormSectionMapperTest {
 
 		assertThat(((HtmlField) toSections(schema, uiSchema, answers).getFirst().fields().getFirst()).html())
 			.isEqualTo("<p>1 &lt; 2 &amp; 3</p>&lt;!--  --&gt;<p>Hej</p>");
+	}
+
+	@Test
+	void aScriptOrStyleWithoutItsClosingTagDropsTheRestOfTheHtml() {
+		final var schema = json("""
+			{"properties": {"beskrivning": {"type": "string", "title": "Beskrivning"}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:sections": [{"title": "Företaget", "fields": ["beskrivning"]}],
+			 "beskrivning": {"ui:widget": "TexteditorWidget"}}
+			""");
+
+		assertThat(((HtmlField) toSections(schema, uiSchema, JSON.createObjectNode().put("beskrivning", "<p>Hej</p><script>alert(1)<p>Mer</p>"))
+			.getFirst().fields().getFirst()).html()).isEqualTo("<p>Hej</p>");
+		assertThat(((HtmlField) toSections(schema, uiSchema, JSON.createObjectNode().put("beskrivning", "<p>Hej</p><style p { color: red }"))
+			.getFirst().fields().getFirst()).html()).isEqualTo("<p>Hej</p>");
+	}
+
+	@Test
+	void manyScriptTagsWithoutClosingTagsAreStrippedInLinearTime() {
+		final var schema = json("""
+			{"properties": {"beskrivning": {"type": "string", "title": "Beskrivning"}}}
+			""");
+		final var uiSchema = json("""
+			{"ui:sections": [{"title": "Företaget", "fields": ["beskrivning"]}],
+			 "beskrivning": {"ui:widget": "TexteditorWidget"}}
+			""");
+		final var answers = JSON.createObjectNode().put("beskrivning", "<p>Hej</p>" + "<script>".repeat(50_000));
+
+		final var sections = assertTimeoutPreemptively(Duration.ofSeconds(2), () -> toSections(schema, uiSchema, answers));
+
+		assertThat(((HtmlField) sections.getFirst().fields().getFirst()).html()).isEqualTo("<p>Hej</p>");
 	}
 
 	@Test

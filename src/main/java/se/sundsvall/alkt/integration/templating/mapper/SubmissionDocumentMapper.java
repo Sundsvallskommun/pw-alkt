@@ -38,7 +38,7 @@ public final class SubmissionDocumentMapper {
 	private SubmissionDocumentMapper() {}
 
 	public static String toTitle(final Errand errand) {
-		return "Inkommen anmälan " + errand.getErrandNumber();
+		return "Inkommet ärende " + errand.getErrandNumber();
 	}
 
 	public static String toFileName(final Errand errand) {

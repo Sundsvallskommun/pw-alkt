@@ -29,7 +29,7 @@ public class CreateSubmissionPdfWorker extends AbstractTaskWorker {
 		final var logMessage = switch (submissionPdfService.createSubmissionPdf(getMunicipalityId(externalTask), getNamespace(externalTask), errandId)) {
 			case CREATED -> "Submission PDF created and attached to the errand";
 			case ALREADY_EXISTS -> "Submission PDF already on the errand, not created again";
-			case SKIPPED -> throw new StepSkippedException("Errand '%s' has no JSON parameters, so there is no submission to make a PDF of".formatted(errandId));
+			case SKIPPED -> throw new StepSkippedException("Errand '%s' did not come in through the e-service, so there is no submission to make a PDF of".formatted(errandId));
 		};
 
 		logInfo("Errand {}: {}", sanitizeForLogging(errandId), logMessage);

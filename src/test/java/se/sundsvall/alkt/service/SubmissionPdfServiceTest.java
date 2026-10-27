@@ -51,7 +51,7 @@ class SubmissionPdfServiceTest {
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-1";
 	private static final String ERRAND_NUMBER = "ALKT-2026-000123";
-	private static final String FILE_NAME = "Inkommen anmälan ALKT-2026-000123.pdf";
+	private static final String FILE_NAME = "Inkommet ärende ALKT-2026-000123.pdf";
 	private static final String SCHEMA_ID = "2281_folkol_0.11";
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -87,6 +87,7 @@ class SubmissionPdfServiceTest {
 		return new Errand()
 			.id(ERRAND_ID)
 			.errandNumber(ERRAND_NUMBER)
+			.channel("ESERVICE")
 			.created(OffsetDateTime.parse("2026-10-21T08:00:00Z"))
 			.jsonParameters(List.of(
 				new JsonParameter().key("form").schemaId(SCHEMA_ID).value(JSON.readTree("{\"namn\": \"Kiosken\"}")),
@@ -104,7 +105,7 @@ class SubmissionPdfServiceTest {
 		when(jsonSchemaIntegrationMock.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID)).thenReturn(UI_SCHEMA);
 		when(partyIntegrationMock.findLegalId(MUNICIPALITY_ID, "party-1")).thenReturn(Optional.of("5566124144"));
 		final Map<String, Object> expectedParameters = Map.of(
-			"title", "Inkommen anmälan ALKT-2026-000123",
+			"title", "Inkommet ärende ALKT-2026-000123",
 			"sections", List.of(
 				new Section("Ärende", List.of(new ValueField("Ärendenummer", ERRAND_NUMBER), new ValueField("Inkomstdatum", "2026-10-21"))),
 				new Section("Försäljning", List.of(new ValueField("Namn på stället", "Kiosken"))),
@@ -126,8 +127,8 @@ class SubmissionPdfServiceTest {
 	}
 
 	@Test
-	void anErrandWithoutJsonParametersIsSkippedWithoutFetchingRenderingOrUploading() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().jsonParameters(List.of()));
+	void anErrandACaseWorkerCreatedIsSkippedWithoutFetchingRenderingOrUploading() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().channel("WEB_UI"));
 
 		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.SKIPPED);
 
@@ -137,10 +138,34 @@ class SubmissionPdfServiceTest {
 	}
 
 	@Test
-	void anErrandWithNullJsonParametersIsSkipped() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().jsonParameters(null));
+	void anErrandWithoutChannelIsSkipped() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().channel(null));
 
 		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.SKIPPED);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
+	}
+
+	@Test
+	void anErrandFromTheEServiceWithoutJsonParametersFailsWithoutRetry() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().jsonParameters(List.of()));
+
+		assertThatThrownBy(() -> submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand from the e-service has no JSON parameters to make a submission PDF of");
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
+	}
+
+	@Test
+	void anErrandFromTheEServiceWithNullJsonParametersFailsWithoutRetry() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().jsonParameters(null));
+
+		assertThatThrownBy(() -> submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand from the e-service has no JSON parameters to make a submission PDF of");
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
@@ -167,7 +192,7 @@ class SubmissionPdfServiceTest {
 		when(jsonSchemaIntegrationMock.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID)).thenReturn(UI_SCHEMA);
 		when(partyIntegrationMock.findLegalId(MUNICIPALITY_ID, "party-1")).thenReturn(Optional.empty());
 		final Map<String, Object> expectedParameters = Map.of(
-			"title", "Inkommen anmälan ALKT-2026-000123",
+			"title", "Inkommet ärende ALKT-2026-000123",
 			"sections", List.of(
 				new Section("Ärende", List.of(new ValueField("Ärendenummer", ERRAND_NUMBER), new ValueField("Inkomstdatum", "2026-10-21"))),
 				new Section("Försäljning", List.of(new ValueField("Namn på stället", "Kiosken"))),

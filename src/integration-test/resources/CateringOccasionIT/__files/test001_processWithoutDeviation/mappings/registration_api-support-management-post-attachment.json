@@ -16,7 +16,7 @@
 				"matchingType": "ALL",
 				"headers": {
 					"Content-Disposition": {
-						"contains": "filename=\"Inkommen anmälan ALKT-2026-000002.pdf\""
+						"contains": "filename=\"Inkommet ärende ALKT-2026-000002.pdf\""
 					}
 				},
 				"bodyPatterns": [

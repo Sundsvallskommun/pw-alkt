@@ -101,7 +101,7 @@ class CreateSubmissionPdfWorkerTest {
 
 		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock))
 			.isInstanceOf(StepSkippedException.class)
-			.hasMessage("Errand 'errand-id' has no JSON parameters, so there is no submission to make a PDF of");
+			.hasMessage("Errand 'errand-id' did not come in through the e-service, so there is no submission to make a PDF of");
 		verify(submissionPdfServiceMock).createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
@@ -110,11 +110,11 @@ class CreateSubmissionPdfWorkerTest {
 		givenTheErrand();
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_REQUEST_ID)).thenReturn("request-id");
 		when(submissionPdfServiceMock.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(SubmissionPdfOutcome.SKIPPED);
-		when(failureHandlerMock.handleSkipped(eq(externalTaskServiceMock), eq(externalTaskMock), contains("no JSON parameters"))).thenReturn(true);
+		when(failureHandlerMock.handleSkipped(eq(externalTaskServiceMock), eq(externalTaskMock), contains("did not come in through the e-service"))).thenReturn(true);
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(failureHandlerMock).handleSkipped(eq(externalTaskServiceMock), eq(externalTaskMock), contains("no JSON parameters"));
+		verify(failureHandlerMock).handleSkipped(eq(externalTaskServiceMock), eq(externalTaskMock), contains("did not come in through the e-service"));
 		verify(failureHandlerMock, never()).handleIncident(any(), any(), anyString());
 		verify(failureHandlerMock, never()).handleException(any(), any(), anyString());
 		verify(externalTaskServiceMock, never()).complete(any(), any());

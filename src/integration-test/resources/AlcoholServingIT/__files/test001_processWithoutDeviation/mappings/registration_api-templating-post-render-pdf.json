@@ -24,7 +24,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.parameters.title",
-					"equalTo": "Inkommen anmälan ALKT-2026-000001"
+					"equalTo": "Inkommet ärende ALKT-2026-000001"
 				}
 			},
 			{

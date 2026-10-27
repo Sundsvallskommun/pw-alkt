@@ -1,7 +1,7 @@
 {
 	"name": "api-support-management-get-errand",
 	"metadata": {
-		"comment": "An errand without JSON parameters, so the submission PDF step is skipped. Lower priority, so a stub of the test case itself always wins."
+		"comment": "An errand that did not come in through the e-service, so the submission PDF step is skipped. Lower priority, so a stub of the test case itself always wins."
 	},
 	"priority": 10,
 	"request": {

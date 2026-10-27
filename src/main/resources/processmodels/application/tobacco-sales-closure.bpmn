@@ -25,13 +25,13 @@
       </bpmn:startEvent>
       <bpmn:sequenceFlow id="flow_registration_start_to_create_submission_pdf" sourceRef="start_registration_phase" targetRef="external_task_create_submission_pdf" />
       <bpmn:serviceTask id="external_task_create_submission_pdf" name="Create submission PDF" camunda:type="external" camunda:topic="CreateSubmissionPdfTask">
-        <bpmn:documentation>Saves the submission the errand came in with as a PDF on the errand, so it can be entered in the records. The form comes from the first JSON parameter of the errand and its schema in json-schema. An errand without JSON parameters has no submission, and the step is skipped.</bpmn:documentation>
+        <bpmn:documentation>Saves the submission the errand came in with as a PDF on the errand, so it can be entered in the records. The form comes from the first JSON parameter of the errand and its schema in json-schema. An errand that did not come in through the e-service has no submission, and the step is skipped. An errand from the e-service without JSON parameters raises an incident.</bpmn:documentation>
         <bpmn:incoming>flow_registration_start_to_create_submission_pdf</bpmn:incoming>
         <bpmn:outgoing>flow_registration_create_submission_pdf_to_check_permit</bpmn:outgoing>
       </bpmn:serviceTask>
       <bpmn:sequenceFlow id="flow_registration_create_submission_pdf_to_check_permit" sourceRef="external_task_create_submission_pdf" targetRef="external_task_check_permit" />
       <bpmn:boundaryEvent id="boundary_create_submission_pdf_skipped" name="No submission" attachedToRef="external_task_create_submission_pdf">
-        <bpmn:documentation>Takes the process past the step for an errand without a submission to make a PDF of.</bpmn:documentation>
+        <bpmn:documentation>Takes the process past the step for an errand that did not come in through the e-service.</bpmn:documentation>
         <bpmn:outgoing>flow_registration_submission_pdf_skipped_to_check_permit</bpmn:outgoing>
         <bpmn:errorEventDefinition id="errordef_create_submission_pdf_skipped" errorRef="error_step_skipped" />
       </bpmn:boundaryEvent>

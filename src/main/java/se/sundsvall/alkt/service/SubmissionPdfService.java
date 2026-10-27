@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.jsonschema.JsonSchemaIntegration;
 import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
@@ -32,6 +33,7 @@ public class SubmissionPdfService {
 
 	private static final String TEMPLATE_ID = "alkt.form-pdf";
 	private static final String TEMPLATE_VERSION = "1.0";
+	private static final String CHANNEL_ESERVICE = "ESERVICE";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final JsonSchemaIntegration jsonSchemaIntegration;
@@ -47,15 +49,16 @@ public class SubmissionPdfService {
 	}
 
 	/**
-	 * The submission is the first JSON parameter of the errand; an errand without one came in some other way and has no
-	 * submission to make a PDF of. A rerun finds the PDF an earlier attempt uploaded by its file name.
+	 * Only an errand from the e-service has a submission, its first JSON parameter. An errand a case worker created has
+	 * none. A rerun finds the PDF an earlier attempt uploaded by its file name.
 	 */
 	public SubmissionPdfOutcome createSubmissionPdf(final String municipalityId, final String namespace, final String errandId) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		final var submission = Optional.ofNullable(errand.getJsonParameters()).orElse(emptyList()).stream().findFirst();
-		if (submission.isEmpty()) {
+		if (!CHANNEL_ESERVICE.equals(errand.getChannel())) {
 			return SubmissionPdfOutcome.SKIPPED;
 		}
+		final var submission = Optional.ofNullable(errand.getJsonParameters()).orElse(emptyList()).stream().findFirst()
+			.orElseThrow(() -> new NonRetryableException("Errand from the e-service has no JSON parameters to make a submission PDF of"));
 
 		final var fileName = toFileName(errand);
 		final var attachments = supportManagementIntegration.getAttachments(municipalityId, namespace, errandId);
@@ -64,7 +67,7 @@ public class SubmissionPdfService {
 		}
 
 		final var pdf = templatingIntegration.renderPdf(municipalityId, TEMPLATE_ID, TEMPLATE_VERSION,
-			toParameters(municipalityId, errand, submission.get(), attachments));
+			toParameters(municipalityId, errand, submission, attachments));
 		supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 		return SubmissionPdfOutcome.CREATED;
 	}
