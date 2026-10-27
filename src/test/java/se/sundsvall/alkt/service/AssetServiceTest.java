@@ -46,6 +46,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -435,6 +436,76 @@ class AssetServiceTest {
 			.hasMessageContaining(STAKEHOLDER_ROLE_PERMIT_HOLDER);
 
 		verifyNoInteractions(partyAssetsIntegrationMock);
+	}
+
+	@Test
+	void findOrCreateAssetOfAPremisesInTimraCreatesAndRendersThePermitInTimra() {
+		final var attachment = new ErrandAttachment().id("first").fileName("beslut.pdf").mimeType("application/pdf");
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().attachments(List.of(attachment))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
+		when(partyAssetsIntegrationMock.findAsset("2262", PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(partyAssetsIntegrationMock.createDraftAsset(eq("2262"), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).findAsset("2262", PARTY_ID, DECISION_ID);
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq("2262"), eq(NAMESPACE), eq(ERRAND_ID), any());
+		verify(partyAssetsIntegrationMock, times(2)).addAttachmentToDraft(eq("2262"), eq(ASSET_ID), any());
+		verify(templatingIntegrationMock).renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any());
+		verify(partyAssetsIntegrationMock).activateAsset("2262", ASSET_ID);
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first");
+		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
+	}
+
+	@Test
+	void findOrCreateAssetOfAPremisesInTimraRemovesTheDraftInTimraWhenTheActivationFails() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		when(partyAssetsIntegrationMock.findAsset("2262", PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(partyAssetsIntegrationMock.createDraftAsset(eq("2262"), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).activateAsset("2262", ASSET_ID);
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("removed again");
+
+		verify(partyAssetsIntegrationMock).removeDraftAsset("2262", ASSET_ID);
+		verify(partyAssetsIntegrationMock, never()).removeDraftAsset(eq(MUNICIPALITY_ID), any());
+	}
+
+	@Test
+	void findOrCreateAssetOfAPremisesInTimraAnswersWithTheExistingAssetInTimra() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		when(partyAssetsIntegrationMock.findAsset("2262", PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset().id("existing-asset-id")));
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo("existing-asset-id");
+
+		verify(partyAssetsIntegrationMock).findAsset("2262", PARTY_ID, DECISION_ID);
+		verifyNoMoreInteractions(partyAssetsIntegrationMock);
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	@Test
+	void findOrCreateAssetOfAnErrandWithoutPremisesMunicipalityCreatesThePermitInSundsvall() {
+		givenADraftFor(approval());
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+
+		assertThat(assetService.findOrCreateAsset("2281", NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).findAsset("2281", PARTY_ID, DECISION_ID);
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq("2281"), eq(NAMESPACE), eq(ERRAND_ID), any());
+		verify(partyAssetsIntegrationMock).addAttachmentToDraft(eq("2281"), eq(ASSET_ID), any());
+		verify(templatingIntegrationMock).renderPdf(eq("2281"), eq(CERTIFICATE_TEMPLATE), any());
+		verify(partyAssetsIntegrationMock).activateAsset("2281", ASSET_ID);
+		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock);
 	}
 
 	@Test

@@ -37,6 +37,7 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
 
@@ -68,17 +69,19 @@ public class AssetService {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
 		}
 
-		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
+		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+		final var partyId = toPartyId(errand)
 			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
+		final var assetMunicipalityId = toPremisesMunicipalityId(errand);
 
-		return partyAssetsIntegration.findAsset(municipalityId, partyId, decision.getId())
+		return partyAssetsIntegration.findAsset(assetMunicipalityId, partyId, decision.getId())
 			.map(asset -> {
 				requireAssetType(asset, assetType);
 				return asset.getId();
 			})
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType, restaurantNumber), assetType);
+				return createAsset(municipalityId, assetMunicipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType, restaurantNumber), assetType);
 			});
 	}
 
@@ -227,22 +230,22 @@ public class AssetService {
 	}
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
-	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
+	private String createAsset(final String municipalityId, final String assetMunicipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
 		final AssetType assetType) {
-		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, request);
+		final var assetId = partyAssetsIntegration.createDraftAsset(assetMunicipalityId, namespace, errandId, request);
 
 		try {
 			Optional.ofNullable(decision.getAttachments()).orElse(emptyList())
-				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
+				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(assetMunicipalityId, assetId,
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
 			// Why: rendered from the parameters the asset gets, as on a change, so the certificate shows the restaurant number.
-			assetType.getCertificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
-				toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
-			partyAssetsIntegration.activateAsset(municipalityId, assetId);
+			assetType.getCertificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(assetMunicipalityId, assetId,
+				toCertificateFile(templatingIntegration.renderPdf(assetMunicipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
+			partyAssetsIntegration.activateAsset(assetMunicipalityId, assetId);
 		} catch (final NonRetryableException e) {
-			throw new NonRetryableException(removeDraftAsset(municipalityId, assetId, e), e);
+			throw new NonRetryableException(removeDraftAsset(assetMunicipalityId, assetId, e), e);
 		} catch (final RuntimeException e) {
-			throw Problem.valueOf(BAD_GATEWAY, removeDraftAsset(municipalityId, assetId, e));
+			throw Problem.valueOf(BAD_GATEWAY, removeDraftAsset(assetMunicipalityId, assetId, e));
 		}
 
 		return assetId;

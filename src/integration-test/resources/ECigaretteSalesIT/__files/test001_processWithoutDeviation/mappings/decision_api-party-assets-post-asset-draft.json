@@ -2,7 +2,7 @@
 	"name": "decision_api-party-assets-post-asset-draft",
 	"request": {
 		"method": "POST",
-		"urlPath": "/api-party-assets/2281/asset-drafts",
+		"urlPath": "/api-party-assets/2262/asset-drafts",
 		"queryParameters": {
 			"sourceReference": {
 				"equalTo": "LINK|6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15;case;supportmanagement;ALKT|"
@@ -54,7 +54,7 @@
 	},
 	"response": {
 		"headers": {
-			"Location": "http://localhost/2281/asset-drafts/2c4e6a80-9b1d-4e35-a7c9-e1f3a5b7c9d2"
+			"Location": "http://localhost/2262/asset-drafts/2c4e6a80-9b1d-4e35-a7c9-e1f3a5b7c9d2"
 		},
 		"status": 201
 	}

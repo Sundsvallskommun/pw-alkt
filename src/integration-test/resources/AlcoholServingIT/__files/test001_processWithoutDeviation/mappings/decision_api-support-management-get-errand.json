@@ -38,6 +38,12 @@
 			],
 			"parameters": [
 				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2262"
+					]
+				},
+				{
 					"key": "premisesName",
 					"values": [
 						"Runt Hörnet"

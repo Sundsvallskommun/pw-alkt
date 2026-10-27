@@ -22,6 +22,14 @@
 					"externalIdType": "ENTERPRISE",
 					"externalId": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
 				}
+			],
+			"parameters": [
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2262"
+					]
+				}
 			]
 		},
 		"status": 200
