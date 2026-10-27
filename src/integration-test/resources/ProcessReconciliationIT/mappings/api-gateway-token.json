@@ -4,7 +4,7 @@
 	},
 	"request": {
 		"method": "POST",
-		"url": "/api-gateway/token"
+		"urlPath": "/api-gateway/token"
 	},
 	"response": {
 		"status": 200,

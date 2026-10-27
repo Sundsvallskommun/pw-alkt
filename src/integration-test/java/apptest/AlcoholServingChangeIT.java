@@ -7,7 +7,6 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
-
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
@@ -18,7 +17,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_CHANGE;
 
 @DirtiesContext
-@WireMockAppTestSuite(files = "classpath:/AlcoholServingChangeIT/", classes = Application.class)
+@WireMockAppTestSuite(files = "classpath:/AlcoholServingChangeIT/", classes = Application.class, sharedContext = false)
 class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";
@@ -36,7 +35,8 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_CHANGE.getKey());
 
-		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
+		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a
+		// decision event
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_CHANGE.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_CHANGE.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_CHANGE.getKey(), "investigation");
@@ -157,13 +157,13 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Create submission PDF", "external_task_create_submission_pdf"),
-				tuple("No submission", "boundary_create_submission_pdf_skipped"),
-				tuple("Create change draft", "external_task_create_change_draft"),
-				tuple("Registration completed", "await_registration_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Create change draft", "external_task_create_change_draft"),
+			tuple("Registration completed", "await_registration_completed"));
 	}
 
 	@Test
@@ -187,23 +187,23 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Create submission PDF", "external_task_create_submission_pdf"),
-				tuple("No submission", "boundary_create_submission_pdf_skipped"),
-				tuple("Create change draft", "external_task_create_change_draft"),
-				tuple("Registration completed", "await_registration_completed"),
-				tuple("End registration phase", "end_registration_phase"),
-				tuple("Review", "review_phase"),
-				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
-				tuple("Review completed", "await_review_completed"),
-				tuple("End review phase", "end_review_phase"),
-				tuple("Investigation", "investigation_phase"),
-				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("Set complete at", "external_task_set_complete_at"),
-				tuple("Investigation completed", "await_investigation_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Create change draft", "external_task_create_change_draft"),
+			tuple("Registration completed", "await_registration_completed"),
+			tuple("End registration phase", "end_registration_phase"),
+			tuple("Review", "review_phase"),
+			tuple("Start review phase", "start_review_phase"),
+			tuple("Notify customer processing started", "external_task_notify_processing_started"),
+			tuple("Review completed", "await_review_completed"),
+			tuple("End review phase", "end_review_phase"),
+			tuple("Investigation", "investigation_phase"),
+			tuple("Start investigation phase", "start_investigation_phase"),
+			tuple("Set complete at", "external_task_set_complete_at"),
+			tuple("Investigation completed", "await_investigation_completed"));
 	}
 
 	@Test

@@ -7,7 +7,6 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
-
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
@@ -18,7 +17,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
 
 @DirtiesContext
-@WireMockAppTestSuite(files = "classpath:/TobaccoFreeNicotineProductSalesIT/", classes = Application.class)
+@WireMockAppTestSuite(files = "classpath:/TobaccoFreeNicotineProductSalesIT/", classes = Application.class, sharedContext = false)
 class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";
@@ -161,26 +160,26 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Create submission PDF", "external_task_create_submission_pdf"),
-				tuple("No submission", "boundary_create_submission_pdf_skipped"),
-				tuple("End registration phase", "end_registration_phase"),
-				tuple("Review", "review_phase"),
-				tuple("Start review phase", "start_review_phase"),
-				tuple("End review phase", "end_review_phase"),
-				tuple("Investigation", "investigation_phase"),
-				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("End investigation phase", "end_investigation_phase"),
-				tuple("Decision", "decision_phase"),
-				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Create decision", "external_task_create_decision"),
-				tuple("Create asset", "external_task_create_asset"),
-				tuple("End decision phase", "end_decision_phase"),
-				tuple("Follow up", "follow_up_phase"),
-				tuple("Start follow up phase", "start_follow_up_phase"),
-				tuple("Follow up completed", "await_follow_up_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("End registration phase", "end_registration_phase"),
+			tuple("Review", "review_phase"),
+			tuple("Start review phase", "start_review_phase"),
+			tuple("End review phase", "end_review_phase"),
+			tuple("Investigation", "investigation_phase"),
+			tuple("Start investigation phase", "start_investigation_phase"),
+			tuple("End investigation phase", "end_investigation_phase"),
+			tuple("Decision", "decision_phase"),
+			tuple("Start decision phase", "start_decision_phase"),
+			tuple("Create decision", "external_task_create_decision"),
+			tuple("Create asset", "external_task_create_asset"),
+			tuple("End decision phase", "end_decision_phase"),
+			tuple("Follow up", "follow_up_phase"),
+			tuple("Start follow up phase", "start_follow_up_phase"),
+			tuple("Follow up completed", "await_follow_up_completed"));
 	}
 
 	@Test

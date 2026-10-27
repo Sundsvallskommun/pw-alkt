@@ -7,7 +7,6 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.springframework.http.HttpMethod.POST;
@@ -15,7 +14,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.ACTION_ERRAND;
 
 @DirtiesContext
-@WireMockAppTestSuite(files = "classpath:/ActionErrandIT/", classes = Application.class)
+@WireMockAppTestSuite(files = "classpath:/ActionErrandIT/", classes = Application.class, sharedContext = false)
 class ActionErrandIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";

@@ -30,7 +30,7 @@
 		]
 	},
 	"newScenarioState": "main_cancel-process-worker---api-support-management-put-process-running",
-	"requiredScenarioState": "decision_process-service---api-support-management-put-process-waiting",
+	"requiredScenarioState": "investigation_process-service---api-support-management-put-process-waiting",
 	"response": {
 		"headers": {
 			"Content-Type": "application/json",

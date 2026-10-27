@@ -24,7 +24,7 @@ import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
  * used since its first work step raises the incident at once on an errand without a permit holder.
  */
 @DirtiesContext
-@WireMockAppTestSuite(files = "classpath:/RetryIncidentIT/", classes = Application.class)
+@WireMockAppTestSuite(files = "classpath:/RetryIncidentIT/", classes = Application.class, sharedContext = false)
 class RetryIncidentIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";

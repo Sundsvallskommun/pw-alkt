@@ -47,9 +47,7 @@
 			}
 		]
 	},
-	"newScenarioState": "decision_process-service---api-support-management-put-process-waiting",
 	"priority": 1,
-	"requiredScenarioState": "investigation_process-service---api-support-management-put-process-waiting",
 	"response": {
 		"headers": {
 			"Content-Type": "application/json",

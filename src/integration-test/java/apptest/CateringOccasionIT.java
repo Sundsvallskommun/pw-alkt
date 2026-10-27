@@ -22,7 +22,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 
 @DirtiesContext
-@WireMockAppTestSuite(files = "classpath:/CateringOccasionIT/", classes = Application.class)
+@WireMockAppTestSuite(files = "classpath:/CateringOccasionIT/", classes = Application.class, sharedContext = false)
 class CateringOccasionIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";

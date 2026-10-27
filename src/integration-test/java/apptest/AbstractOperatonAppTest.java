@@ -3,6 +3,11 @@ package apptest;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.assertj.core.groups.Tuple;
 import org.camunda.bpm.client.ExternalTaskClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,18 +23,6 @@ import se.sundsvall.alkt.service.model.ProcessType;
 import se.sundsvall.dept44.test.AbstractAppTest;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Stream;
-
-import static generated.se.sundsvall.operaton.HistoricProcessInstanceDto.StateEnum.COMPLETED;
-import static java.time.Duration.ZERO;
-import static java.util.Comparator.comparing;
-import static java.util.Objects.isNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -38,6 +31,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static generated.se.sundsvall.operaton.HistoricProcessInstanceDto.StateEnum.COMPLETED;
+import static java.time.Duration.ZERO;
+import static java.util.Comparator.comparing;
+import static java.util.Objects.isNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Stream.concat;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -134,10 +133,13 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	/**
 	 * Starts the external task client, which the test properties keep from polling on its own. Its token request is
 	 * answered with a token that outlives the test class, so the client asks for a token once, here, after WireMock has
-	 * been reset for the test case, and never while WireMock is reset between test cases. Starting a running client does
-	 * nothing.
+	 * been reset for the test case, and never while WireMock is reset between test cases. The token stub is set up only
+	 * then, since a stub no later test case calls fails its verification.
 	 */
 	private void startExternalTaskClient() {
+		if (externalTaskClient.isActive()) {
+			return;
+		}
 		wiremock.stubFor(post(urlEqualTo(TOKEN_PATH))
 			.atPriority(1)
 			.withRequestBody(WireMock.equalTo(EXTERNAL_TASK_CLIENT_TOKEN_REQUEST))
@@ -189,7 +191,9 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 				.withRequestBody(matchingJsonPath("$[?(@.currentActivityId == '%s')]".formatted(activityId)))).isEmpty());
 	}
 
-	/** A worker reports the wait state only after the engine reaches it, so a signal sent before the report overtakes it. */
+	/**
+	 * A worker reports the wait state only after the engine reaches it, so a signal sent before the report overtakes it.
+	 */
 	protected void awaitWaitingReportAt(String activityId) {
 		await()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
