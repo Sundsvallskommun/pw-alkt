@@ -1,0 +1,30 @@
+{
+	"name": "investigation_api-support-management-get-errand",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345",
+			"title": "Tillsyn av serveringsställe",
+			"parameters": [
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2262"
+					]
+				}
+			]
+		},
+		"status": 200
+	}
+}
