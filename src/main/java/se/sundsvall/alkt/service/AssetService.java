@@ -93,7 +93,7 @@ public class AssetService {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
 		// Why: checked again at the decision, as the permit may have been deactivated while the errand was handled.
-		final var versioned = getPermitToChange(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, assetType);
+		final var versioned = getPermitToChange(supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, assetType);
 		final var asset = versioned.asset();
 		final var assetId = asset.getId();
 
@@ -116,7 +116,7 @@ public class AssetService {
 	 * has already ended passes, as the closure then has nothing to do.
 	 */
 	public String checkPermit(final String municipalityId, final String namespace, final String errandId, final AssetType assetType) {
-		final var asset = getPermitOfTheErrand(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, assetType).asset();
+		final var asset = getPermitOfTheErrand(supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, assetType).asset();
 		if (asset.getStatus() != EXPIRED) {
 			requireActive(asset);
 		}
@@ -126,7 +126,7 @@ public class AssetService {
 	/** Ends the permit the errand names. The permit certificate stays as it is. */
 	public String closeAsset(final String municipalityId, final String namespace, final String errandId, final AssetType assetType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
-		final var versioned = getPermitOfTheErrand(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, assetType);
+		final var versioned = getPermitOfTheErrand(supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, assetType);
 		final var asset = versioned.asset();
 		final var closure = toAssetClosureRequest(asset, decision, LocalDate.now(clock));
 
@@ -153,13 +153,13 @@ public class AssetService {
 	}
 
 	/** The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. */
-	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId, final AssetType assetType) {
-		final var versioned = getPermitOfTheErrand(municipalityId, errand, errandId, assetType);
+	public VersionedAsset getPermitToChange(final Errand errand, final String errandId, final AssetType assetType) {
+		final var versioned = getPermitOfTheErrand(errand, errandId, assetType);
 		requireActive(versioned.asset());
 		return versioned;
 	}
 
-	private VersionedAsset getPermitOfTheErrand(final String municipalityId, final Errand errand, final String errandId, final AssetType assetType) {
+	private VersionedAsset getPermitOfTheErrand(final Errand errand, final String errandId, final AssetType assetType) {
 		final var assetId = toAssetId(errand)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' names no asset to change".formatted(errandId)));
 		// Why: party-assets answers an id that is not a UUID with 400, which would be retried in vain.

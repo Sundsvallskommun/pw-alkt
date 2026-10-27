@@ -110,7 +110,7 @@ public class DecisionService {
 			.orElseGet(() -> {
 				final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 				// Why: a fault in the permit the customer chose shows now, not once the decision is locked.
-				assetService.getPermitToChange(municipalityId, errand, errandId, processType.getAssetType());
+				assetService.getPermitToChange(errand, errandId, processType.getAssetType());
 				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, title, OffsetDateTime.now(clock)));
 			});
 	}

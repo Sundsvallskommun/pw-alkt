@@ -742,7 +742,7 @@ class AssetServiceTest {
 		final var versioned = versioned(activeAsset());
 		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned);
 
-		assertThat(assetService.getPermitToChange(MUNICIPALITY_ID, errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID, ALCOHOL_SERVING_PERMIT))
+		assertThat(assetService.getPermitToChange(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isSameAs(versioned);
 		verifyNoInteractions(supportManagementIntegrationMock, templatingIntegrationMock);
 	}
@@ -1078,7 +1078,7 @@ class AssetServiceTest {
 		final var errand = errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID))));
 		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned);
 
-		assertThat(assetService.getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(versioned);
+		assertThat(assetService.getPermitToChange(errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(versioned);
 	}
 
 	@Test

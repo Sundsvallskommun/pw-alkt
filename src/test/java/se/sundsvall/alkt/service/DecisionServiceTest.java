@@ -289,7 +289,7 @@ class DecisionServiceTest {
 		assertThat(decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_CHANGE)).isEqualTo(DECISION_ID);
 
 		final InOrder inOrder = inOrder(assetServiceMock, supportManagementIntegrationMock);
-		inOrder.verify(assetServiceMock).getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
+		inOrder.verify(assetServiceMock).getPermitToChange(errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 		inOrder.verify(supportManagementIntegrationMock).createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
 		assertThat(decisionCaptor.getValue().getStatus()).isEqualTo("DRAFT");
 		assertThat(decisionCaptor.getValue().getTitle()).isEqualTo("Ändring av serveringstillstånd");
@@ -321,7 +321,7 @@ class DecisionServiceTest {
 		final var errand = new Errand();
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
-		when(assetServiceMock.getPermitToChange(MUNICIPALITY_ID, errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).thenThrow(new NonRetryableException("Errand 'errand-id' names no asset to change"));
+		when(assetServiceMock.getPermitToChange(errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).thenThrow(new NonRetryableException("Errand 'errand-id' names no asset to change"));
 
 		assertThatThrownBy(() -> decisionService.createChangeDraft(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_CHANGE))
 			.isInstanceOf(NonRetryableException.class)
