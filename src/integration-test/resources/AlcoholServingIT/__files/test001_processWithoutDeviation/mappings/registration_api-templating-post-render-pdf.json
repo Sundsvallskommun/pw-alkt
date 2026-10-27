@@ -2,7 +2,7 @@
 	"name": "registration_api-templating-post-render-pdf",
 	"request": {
 		"method": "POST",
-		"urlPath": "/api-templating/2281/render/pdf",
+		"urlPath": "/api-templating/2262/render/pdf",
 		"headers": {
 			"X-Sent-By": {
 				"equalTo": "pw-alkt; type=processEngine"

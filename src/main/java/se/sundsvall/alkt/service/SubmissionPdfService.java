@@ -20,6 +20,7 @@ import se.sundsvall.alkt.integration.templating.model.Section;
 import se.sundsvall.alkt.service.model.SubmissionPdfOutcome;
 
 import static java.util.Collections.emptyList;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.FormSectionMapper.toSections;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toAttachmentSection;
 import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toErrandSection;
@@ -66,7 +67,7 @@ public class SubmissionPdfService {
 			return SubmissionPdfOutcome.ALREADY_EXISTS;
 		}
 
-		final var pdf = templatingIntegration.renderPdf(municipalityId, TEMPLATE_ID, TEMPLATE_VERSION,
+		final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), TEMPLATE_ID, TEMPLATE_VERSION,
 			toParameters(municipalityId, errand, submission, attachments));
 		supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 		return SubmissionPdfOutcome.CREATED;

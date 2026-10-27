@@ -4,6 +4,7 @@ import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -123,6 +124,29 @@ class SubmissionPdfServiceTest {
 		verify(jsonSchemaIntegrationMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
 		verify(partyIntegrationMock).findLegalId(MUNICIPALITY_ID, "party-1");
 		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", expectedParameters);
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf);
+	}
+
+	@Test
+	void rendersThePdfInTheMunicipalityOfThePremisesAndUploadsItInTheMunicipalityOfTheCall() {
+		final var pdf = "%PDF".getBytes();
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(jsonSchemaIntegrationMock.getSchema(MUNICIPALITY_ID, SCHEMA_ID)).thenReturn(SCHEMA);
+		when(jsonSchemaIntegrationMock.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID)).thenReturn(UI_SCHEMA);
+		when(partyIntegrationMock.findLegalId(MUNICIPALITY_ID, "party-1")).thenReturn(Optional.empty());
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq("alkt.form-pdf"), eq("1.0"), anyMap())).thenReturn(pdf);
+		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf)).thenReturn("attachment-1");
+
+		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.CREATED);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(jsonSchemaIntegrationMock).getUiSchema(MUNICIPALITY_ID, SCHEMA_ID);
+		verify(partyIntegrationMock).findLegalId(MUNICIPALITY_ID, "party-1");
+		verify(templatingIntegrationMock).renderPdf(eq("2262"), eq("alkt.form-pdf"), eq("1.0"), anyMap());
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf);
 	}
 
