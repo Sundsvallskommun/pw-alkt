@@ -303,4 +303,53 @@ class SupportManagementMapperTest {
 	void toConditionsIsEmptyForADecisionWithoutTerms() {
 		assertThat(SupportManagementMapper.toConditions(new Decision().terms(null))).isEmpty();
 	}
+
+	@Test
+	void toPremisesMunicipalityIdIsTimraWhenTheErrandSaysTimra() {
+		final var errand = new Errand().parameters(List.of(
+			new Parameter().key("premisesName").values(List.of("Krogen")),
+			new Parameter().key("premisesMunicipalityId").values(List.of("2262"))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2262");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWhenTheErrandSaysSundsvall() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2281"))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWithoutTheParameter() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesName").values(List.of("Krogen"))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWhenTheParameterHasNoValues() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(null)));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWhenTheParameterHasABlankValue() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of(" "))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallForAnotherMunicipality() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2280"))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallForAnErrandWithoutParameters() {
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(new Errand().parameters(null))).isEqualTo("2281");
+	}
 }

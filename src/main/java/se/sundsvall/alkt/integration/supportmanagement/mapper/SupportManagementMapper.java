@@ -37,10 +37,13 @@ import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_AREA;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_CODE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRESS;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
+import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
@@ -59,6 +62,8 @@ public final class SupportManagementMapper {
 		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, ERRAND_PARAMETER_PREMISES_STREET_ADDRESS, ERRAND_PARAMETER_PREMISES_POSTAL_CODE,
 		ERRAND_PARAMETER_PREMISES_POSTAL_AREA, ERRAND_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER, PERMIT_PARAMETER_RESTAURANT_NUMBER);
 
+	private static final Set<String> PREMISES_MUNICIPALITY_IDS = Set.of(MUNICIPALITY_ID_SUNDSVALL, MUNICIPALITY_ID_TIMRA);
+
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
@@ -76,6 +81,15 @@ public final class SupportManagementMapper {
 	/** A permit holder is the primary stakeholder, known by its external id. */
 	public static boolean isPermitHolder(final Stakeholder stakeholder) {
 		return STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole()) && nonNull(stakeholder.getExternalId());
+	}
+
+	public static String toPremisesMunicipalityId(final Errand errand) {
+		return Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
+			.filter(parameter -> ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID.equals(parameter.getKey()))
+			.flatMap(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream())
+			.filter(PREMISES_MUNICIPALITY_IDS::contains)
+			.findFirst()
+			.orElse(MUNICIPALITY_ID_SUNDSVALL);
 	}
 
 	public static Optional<String> toPartyId(final Errand errand) {
