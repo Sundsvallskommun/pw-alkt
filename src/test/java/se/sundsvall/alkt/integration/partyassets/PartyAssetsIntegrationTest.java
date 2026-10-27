@@ -41,6 +41,7 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.PRECONDITION_FAILED;
+import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 @ExtendWith(MockitoExtension.class)
 class PartyAssetsIntegrationTest {
@@ -175,44 +176,69 @@ class PartyAssetsIntegrationTest {
 	}
 
 	@Test
-	void getAssetAnswersWithTheAssetAndItsVersion() {
+	void getAssetFindsTheAssetInSundsvallWithoutAskingTimra() {
 		final var asset = new Asset().id("asset-id");
-		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok().eTag("\"3\"").body(asset));
+		when(partyAssetsClientMock.getAsset("2281", "asset-id")).thenReturn(ResponseEntity.ok().eTag("\"3\"").body(asset));
 
-		assertThat(partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id")).isEqualTo(new VersionedAsset(asset, "\"3\""));
+		assertThat(partyAssetsIntegration.getAsset("asset-id")).isEqualTo(new VersionedAsset(asset, "\"3\"", "2281"));
+
+		verify(partyAssetsClientMock).getAsset("2281", "asset-id");
+		verifyNoMoreInteractions(partyAssetsClientMock);
+	}
+
+	@Test
+	void getAssetFindsTheAssetInTimraWhenSundsvallDoesNotHaveIt() {
+		final var asset = new Asset().id("asset-id");
+		when(partyAssetsClientMock.getAsset("2281", "asset-id")).thenThrow(new ClientProblem(NOT_FOUND, "No asset"));
+		when(partyAssetsClientMock.getAsset("2262", "asset-id")).thenReturn(ResponseEntity.ok().eTag("\"5\"").body(asset));
+
+		assertThat(partyAssetsIntegration.getAsset("asset-id")).isEqualTo(new VersionedAsset(asset, "\"5\"", "2262"));
 	}
 
 	@Test
 	void getAssetHasNoVersionWithoutAnETag() {
 		final var asset = new Asset().id("asset-id");
-		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(asset));
+		when(partyAssetsClientMock.getAsset("2281", "asset-id")).thenReturn(ResponseEntity.ok(asset));
 
-		assertThat(partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id")).isEqualTo(new VersionedAsset(asset, null));
+		assertThat(partyAssetsIntegration.getAsset("asset-id")).isEqualTo(new VersionedAsset(asset, null, "2281"));
 	}
 
 	@Test
-	void getAssetFailsWithoutRetryWhenTheIdNamesNoAsset() {
-		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenThrow(new ClientProblem(NOT_FOUND, "No asset"));
+	void getAssetFailsWithoutRetryWhenNeitherMunicipalityHasTheAsset() {
+		when(partyAssetsClientMock.getAsset("2281", "asset-id")).thenThrow(new ClientProblem(NOT_FOUND, "No asset"));
+		when(partyAssetsClientMock.getAsset("2262", "asset-id")).thenThrow(new ClientProblem(NOT_FOUND, "No asset either"));
 
-		assertThatThrownBy(() -> partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id"))
+		assertThatThrownBy(() -> partyAssetsIntegration.getAsset("asset-id"))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining("Asset 'asset-id' cannot be read")
+			.hasMessageContaining("Asset 'asset-id' cannot be read in municipality 2281 or 2262")
+			.hasMessageNotContaining("No asset")
 			.hasCauseInstanceOf(ClientProblem.class);
 	}
 
 	@Test
-	void getAssetLeavesAnyOtherFailureToBeRetried() {
-		final var problem = new ClientProblem(BAD_GATEWAY, "Party assets is down");
-		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenThrow(problem);
+	void getAssetLeavesAnyOtherFailureInSundsvallToBeRetriedWithoutAskingTimra() {
+		final var problem = new ClientProblem(SERVICE_UNAVAILABLE, "Party assets is down");
+		when(partyAssetsClientMock.getAsset("2281", "asset-id")).thenThrow(problem);
 
-		assertThatThrownBy(() -> partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id")).isSameAs(problem);
+		assertThatThrownBy(() -> partyAssetsIntegration.getAsset("asset-id")).isSameAs(problem);
+
+		verify(partyAssetsClientMock, never()).getAsset("2262", "asset-id");
+	}
+
+	@Test
+	void getAssetLeavesAnyOtherFailureInTimraToBeRetried() {
+		final var problem = new ClientProblem(BAD_GATEWAY, "Party assets is down");
+		when(partyAssetsClientMock.getAsset("2281", "asset-id")).thenThrow(new ClientProblem(NOT_FOUND, "No asset"));
+		when(partyAssetsClientMock.getAsset("2262", "asset-id")).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.getAsset("asset-id")).isSameAs(problem);
 	}
 
 	@Test
 	void getAssetFailsWithoutABody() {
-		when(partyAssetsClientMock.getAsset(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(null));
+		when(partyAssetsClientMock.getAsset("2281", "asset-id")).thenReturn(ResponseEntity.ok(null));
 
-		assertThatThrownBy(() -> partyAssetsIntegration.getAsset(MUNICIPALITY_ID, "asset-id"))
+		assertThatThrownBy(() -> partyAssetsIntegration.getAsset("asset-id"))
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("Asset 'asset-id' came back without content");
 	}

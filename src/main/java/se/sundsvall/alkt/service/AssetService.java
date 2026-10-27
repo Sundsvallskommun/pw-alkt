@@ -101,13 +101,13 @@ public class AssetService {
 		// Rendered from the parameters the asset gets, since the certificate shows the whole permit.
 		final var update = toAssetUpdateRequest(asset, decision);
 		final var certificate = assetType.getCertificateTemplate()
-			.map(template -> toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, update.getAdditionalParameters()))));
+			.map(template -> toCertificateFile(templatingIntegration.renderPdf(versioned.municipalityId(), template, toTemplateParameters(decision, update.getAdditionalParameters()))));
 
 		// Why: a rerun after the certificate failed finds the change already made, and every PATCH adds a revision.
 		if (changes(update, asset)) {
-			partyAssetsIntegration.updateAsset(municipalityId, assetId, versioned.version(), update);
+			partyAssetsIntegration.updateAsset(versioned.municipalityId(), assetId, versioned.version(), update);
 		}
-		certificate.ifPresent(file -> partyAssetsIntegration.replaceCertificate(municipalityId, assetId, file));
+		certificate.ifPresent(file -> partyAssetsIntegration.replaceCertificate(versioned.municipalityId(), assetId, file));
 		return assetId;
 	}
 
@@ -134,7 +134,7 @@ public class AssetService {
 		if (!isClosed(asset, closure)) {
 			requireActive(asset);
 			requireNotBeforeIssued(asset, closure, errandId);
-			partyAssetsIntegration.updateAsset(municipalityId, asset.getId(), versioned.version(), closure);
+			partyAssetsIntegration.updateAsset(versioned.municipalityId(), asset.getId(), versioned.version(), closure);
 		}
 		return asset.getId();
 	}
@@ -168,7 +168,7 @@ public class AssetService {
 		}
 		final var partyId = toPartyId(errand)
 			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
-		final var versioned = partyAssetsIntegration.getAsset(municipalityId, assetId);
+		final var versioned = partyAssetsIntegration.getAsset(assetId);
 		final var asset = versioned.asset();
 		if (!partyId.equals(asset.getPartyId())) {
 			throw new NonRetryableException("Asset '%s' does not belong to the permit holder of errand '%s'".formatted(assetId, errandId));

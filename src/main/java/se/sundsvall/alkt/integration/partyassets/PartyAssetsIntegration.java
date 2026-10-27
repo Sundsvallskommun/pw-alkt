@@ -22,6 +22,8 @@ import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
+import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandRelation;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
@@ -44,19 +46,29 @@ public class PartyAssetsIntegration {
 	}
 
 	/** The id comes from the customer, so one that names no asset is not something a retry fixes. */
-	public VersionedAsset getAsset(final String municipalityId, final String id) {
-		final ResponseEntity<Asset> response;
+	public VersionedAsset getAsset(final String id) {
+		ResponseEntity<Asset> response;
+		String municipalityId = MUNICIPALITY_ID_SUNDSVALL;
 		try {
 			response = partyAssetsClient.getAsset(municipalityId, id);
 		} catch (final ClientProblem e) {
-			if (NOT_FOUND.equals(e.getStatus())) {
-				throw new NonRetryableException("Asset '%s' cannot be read: %s".formatted(id, describe(e)), e);
+			if (!NOT_FOUND.equals(e.getStatus())) {
+				throw e;
 			}
-			throw e;
+			municipalityId = MUNICIPALITY_ID_TIMRA;
+			try {
+				response = partyAssetsClient.getAsset(municipalityId, id);
+			} catch (final ClientProblem timraProblem) {
+				if (NOT_FOUND.equals(timraProblem.getStatus())) {
+					throw new NonRetryableException("Asset '%s' cannot be read in municipality %s or %s: %s"
+						.formatted(id, MUNICIPALITY_ID_SUNDSVALL, MUNICIPALITY_ID_TIMRA, describe(timraProblem)), timraProblem);
+				}
+				throw timraProblem;
+			}
 		}
 		final var asset = Optional.ofNullable(response.getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Asset '%s' came back without content".formatted(id)));
-		return new VersionedAsset(asset, response.getHeaders().getETag());
+		return new VersionedAsset(asset, response.getHeaders().getETag(), municipalityId);
 	}
 
 	/**
