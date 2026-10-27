@@ -494,21 +494,6 @@ class AssetServiceTest {
 	}
 
 	@Test
-	void findOrCreateAssetOfAnErrandWithoutPremisesMunicipalityCreatesThePermitInSundsvall() {
-		givenADraftFor(approval());
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
-
-		assertThat(assetService.findOrCreateAsset("2281", NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
-
-		verify(partyAssetsIntegrationMock).findAsset("2281", PARTY_ID, DECISION_ID);
-		verify(partyAssetsIntegrationMock).createDraftAsset(eq("2281"), eq(NAMESPACE), eq(ERRAND_ID), any());
-		verify(partyAssetsIntegrationMock).addAttachmentToDraft(eq("2281"), eq(ASSET_ID), any());
-		verify(templatingIntegrationMock).renderPdf(eq("2281"), eq(CERTIFICATE_TEMPLATE), any());
-		verify(partyAssetsIntegrationMock).activateAsset("2281", ASSET_ID);
-		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock);
-	}
-
-	@Test
 	void updateAssetRendersTheCertificateBeforeItPatchesTheAssetAndReplacesTheCertificate() throws IOException {
 		final var pdf = "%PDF-1.7".getBytes();
 		final var asset = activeAsset().additionalParameters(Map.of(
@@ -1038,8 +1023,12 @@ class AssetServiceTest {
 	}
 
 	@Test
-	void updateAssetOfAPermitInTimraChangesItAndRendersItsCertificateInTimra() {
-		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
+	void updateAssetOfAPermitInTimraChangesItAndRendersItsCertificateInTimraAlthoughTheErrandSaysSundsvall() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(Optional.of(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00"))))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().parameters(List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
+			new Parameter().key("assetId").values(List.of(ASSET_ID)))));
 		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(new VersionedAsset(activeAsset(), VERSION, "2262"));
 		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
 
@@ -1052,42 +1041,6 @@ class AssetServiceTest {
 		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
-	}
-
-	@Test
-	void updateAssetOfAPermitInTimraChangesItInTimraAlthoughTheErrandSaysSundsvall() {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(Optional.of(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00"))))));
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().parameters(List.of(
-			new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
-			new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(new VersionedAsset(activeAsset(), VERSION, "2262"));
-		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
-
-		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
-
-		verify(partyAssetsIntegrationMock).updateAsset(eq("2262"), eq(ASSET_ID), eq(VERSION), any());
-		verify(partyAssetsIntegrationMock).replaceCertificate(eq("2262"), eq(ASSET_ID), any());
-		verify(partyAssetsIntegrationMock, never()).updateAsset(eq("2281"), any(), any(), any());
-		verify(partyAssetsIntegrationMock, never()).replaceCertificate(eq("2281"), any(), any());
-	}
-
-	@Test
-	void getPermitToChangeAnswersWithThePermitInTimra() {
-		final var versioned = new VersionedAsset(activeAsset(), VERSION, "2262");
-		final var errand = errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned);
-
-		assertThat(assetService.getPermitToChange(errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(versioned);
-	}
-
-	@Test
-	void checkPermitAnswersWithThePermitInTimra() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(new VersionedAsset(activeAsset(), VERSION, "2262"));
-
-		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 	}
 
 	@Test

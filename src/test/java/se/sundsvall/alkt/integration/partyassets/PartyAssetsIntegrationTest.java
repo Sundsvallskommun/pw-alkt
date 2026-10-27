@@ -193,6 +193,10 @@ class PartyAssetsIntegrationTest {
 		when(partyAssetsClientMock.getAsset("2262", "asset-id")).thenReturn(ResponseEntity.ok().eTag("\"5\"").body(asset));
 
 		assertThat(partyAssetsIntegration.getAsset("asset-id")).isEqualTo(new VersionedAsset(asset, "\"5\"", "2262"));
+
+		verify(partyAssetsClientMock).getAsset("2281", "asset-id");
+		verify(partyAssetsClientMock).getAsset("2262", "asset-id");
+		verifyNoMoreInteractions(partyAssetsClientMock);
 	}
 
 	@Test
@@ -213,6 +217,10 @@ class PartyAssetsIntegrationTest {
 			.hasMessageContaining("Asset 'asset-id' cannot be read in municipality 2281 or 2262")
 			.hasMessageNotContaining("No asset")
 			.hasCauseInstanceOf(ClientProblem.class);
+
+		verify(partyAssetsClientMock).getAsset("2281", "asset-id");
+		verify(partyAssetsClientMock).getAsset("2262", "asset-id");
+		verifyNoMoreInteractions(partyAssetsClientMock);
 	}
 
 	@Test
@@ -232,6 +240,10 @@ class PartyAssetsIntegrationTest {
 		when(partyAssetsClientMock.getAsset("2262", "asset-id")).thenThrow(problem);
 
 		assertThatThrownBy(() -> partyAssetsIntegration.getAsset("asset-id")).isSameAs(problem);
+
+		verify(partyAssetsClientMock).getAsset("2281", "asset-id");
+		verify(partyAssetsClientMock).getAsset("2262", "asset-id");
+		verifyNoMoreInteractions(partyAssetsClientMock);
 	}
 
 	@Test
