@@ -70,6 +70,11 @@ public class ProcessLog {
 			"%s, x-request-id %s".formatted(logMessage, RequestId.get()), now());
 	}
 
+	/** A step with nothing to do for this errand. Nothing failed, so it is no warning. */
+	public ProcessActivity taskSkipped(final ExternalTask externalTask, final String technicalMessage) {
+		return entry(ACTIVITY_TYPE_TASK, externalTask.getActivityId() + "#skipped", nameOf(externalTask, Outcome.SKIPPED), SEVERITY_INFO, null, technicalMessage, now());
+	}
+
 	/**
 	 * Every choice by the case worker runs the step as a new external task, so its id gives each refusal an entry of its
 	 * own while a replayed report of the same run is dropped.

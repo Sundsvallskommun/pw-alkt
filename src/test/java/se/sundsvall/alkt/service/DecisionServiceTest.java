@@ -225,6 +225,22 @@ class DecisionServiceTest {
 	}
 
 	@Test
+	void approveAutomaticallyLinksEveryAttachmentButTheSubmissionPdf() {
+		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().errandNumber("ALKT-2026-000123"));
+		when(supportManagementIntegrationMock.createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(DECISION_ID);
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
+			new ErrandAttachment().id("submission").fileName("Inkommet ärende ALKT-2026-000123.pdf"),
+			new ErrandAttachment().id("other").fileName("Ritning.pdf")));
+
+		decisionService.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES, null);
+
+		verify(supportManagementIntegrationMock, never()).linkDecisionAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, "submission");
+		verify(supportManagementIntegrationMock).linkDecisionAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, "other");
+		verify(supportManagementIntegrationMock).updateDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(DECISION_ID), any());
+	}
+
+	@Test
 	void approveAutomaticallyDecidesNothingForAnErrandWithoutAPermitHolder() {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))

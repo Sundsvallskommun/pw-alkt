@@ -1,7 +1,9 @@
 package se.sundsvall.alkt.businesslogic.handler;
 
+import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.camunda.bpm.client.exception.NotFoundException;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
@@ -94,6 +96,19 @@ public class FailureHandler {
 		return true;
 	}
 
+	/**
+	 * For a step with nothing to do for this errand: the error is thrown into the model, where a boundary event takes the
+	 * process past the step. Nothing failed, so there is no alert. Returns true when it was thrown.
+	 */
+	public boolean handleSkipped(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String description) {
+		final var message = "%s, x-request-id %s".formatted(description, RequestId.get());
+		if (!tellEngine(externalTask, () -> externalTaskService.handleBpmnError(externalTask, BPMN_ERROR_STEP_SKIPPED, message))) {
+			return false;
+		}
+		report(externalTask, ProcessStateReport.running(null, null), () -> processLog.taskSkipped(externalTask, message));
+		return true;
+	}
+
 	private void handleFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final int retries) {
 		if (!tellEngine(externalTask, () -> externalTaskService.handleFailure(externalTask.getId(),
 			message, // errorMessage - surfaces as the incident message
@@ -126,10 +141,14 @@ public class FailureHandler {
 		}
 	}
 
-	/** Best effort. A failed report is only logged, the alert must go out regardless. */
 	private void reportFailure(final ExternalTask externalTask, final ProcessStateReport report, final Outcome outcome, final String message) {
+		report(externalTask, report, () -> processLog.taskFailed(externalTask, outcome, message));
+	}
+
+	/** Best effort. A failed report is only logged, the alert must go out regardless. */
+	private void report(final ExternalTask externalTask, final ProcessStateReport report, final Supplier<ProcessActivity> activity) {
 		try {
-			processReportService.report(externalTask, report.withActivities(List.of(processLog.taskFailed(externalTask, outcome, message))));
+			processReportService.report(externalTask, report.withActivities(List.of(activity.get())));
 		} catch (final Exception e) {
 			LOG.error("Could not report {} for task {} of process instance {} to Support Management", report.status(), sanitizeForLogging(externalTask.getId()),
 				sanitizeForLogging(externalTask.getProcessInstanceId()), e);

@@ -8,7 +8,6 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
-
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,7 +17,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.INTERNAL_INSPECTION;
 
 @DirtiesContext
-@WireMockAppTestSuite(files = "classpath:/InternalInspectionIT/", classes = Application.class)
+@WireMockAppTestSuite(files = "classpath:/InternalInspectionIT/", classes = Application.class, sharedContext = false)
 class InternalInspectionIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";
@@ -50,6 +49,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// Verify mocked stubs
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 		wiremock.verify(0, postRequestedFor(urlPathMatching(".*/communication/conversations.*")));
 
@@ -152,10 +152,10 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Registration completed", "await_registration_completed"));
 	}
 
 	@Test
@@ -179,18 +179,18 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"),
-				tuple("End registration phase", "end_registration_phase"),
-				tuple("Review", "review_phase"),
-				tuple("Start review phase", "start_review_phase"),
-				tuple("Review completed", "await_review_completed"),
-				tuple("End review phase", "end_review_phase"),
-				tuple("Investigation", "investigation_phase"),
-				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("Investigation completed", "await_investigation_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Registration completed", "await_registration_completed"),
+			tuple("End registration phase", "end_registration_phase"),
+			tuple("Review", "review_phase"),
+			tuple("Start review phase", "start_review_phase"),
+			tuple("Review completed", "await_review_completed"),
+			tuple("End review phase", "end_review_phase"),
+			tuple("Investigation", "investigation_phase"),
+			tuple("Start investigation phase", "start_investigation_phase"),
+			tuple("Investigation completed", "await_investigation_completed"));
 	}
 
 	@Test
@@ -217,6 +217,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// The action errand, its relation to the inspection and its content are asserted by the POST errands mapping
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
@@ -259,6 +260,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 		assertThat(countReports("$.activities[?(@.severity == 'WARN' && @.activityId =~ /external_task_create_action_errand#rejected#.*/)]"))
 			.as("the refusal is in the log").isOne();
@@ -302,6 +304,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// The order of the refusal and the done entry is asserted by the scenario of the create action errand reports
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 		assertThat(countReports("$.activities[?(@.severity == 'WARN' && @.activityId =~ /external_task_create_action_errand#rejected#.*/)]"))
 			.as("the refusal is in the log").isOne();

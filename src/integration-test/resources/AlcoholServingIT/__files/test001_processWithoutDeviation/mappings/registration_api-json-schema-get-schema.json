@@ -1,0 +1,41 @@
+{
+	"name": "registration_api-json-schema-get-schema",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-json-schema/2281/schemas/2281_aot_alcohol_folkol_sales_notification_0.11"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "2281_aot_alcohol_folkol_sales_notification_0.11",
+			"value": {
+				"$schema": "https://json-schema.org/draft/2020-12/schema",
+				"title": "Försäljning av folköl (klass 2)",
+				"type": "object",
+				"properties": {
+					"arDuFirmatecknare": {
+						"type": "string",
+						"oneOf": [
+							{
+								"const": "JA",
+								"title": "Ja"
+							},
+							{
+								"const": "NEJ",
+								"title": "Nej"
+							}
+						],
+						"title": "Är du firmatecknare?"
+					},
+					"serveringsstalletsNamn": {
+						"type": "string",
+						"title": "Försäljningsställets namn"
+					}
+				}
+			}
+		},
+		"status": 200
+	}
+}

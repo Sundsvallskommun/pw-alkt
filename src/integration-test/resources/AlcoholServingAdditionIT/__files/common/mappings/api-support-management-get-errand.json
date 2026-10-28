@@ -1,0 +1,26 @@
+{
+	"name": "api-support-management-get-errand",
+	"metadata": {
+		"comment": "An errand that did not come in through the e-service, so the submission PDF step is skipped. Lower priority, so a stub of the test case itself always wins."
+	},
+	"priority": 10,
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/0b93f26d-8c47-4e51-b27a-9d4c5e6f7081",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "0b93f26d-8c47-4e51-b27a-9d4c5e6f7081",
+			"errandNumber": "ALKT-2026-000001"
+		},
+		"status": 200
+	}
+}

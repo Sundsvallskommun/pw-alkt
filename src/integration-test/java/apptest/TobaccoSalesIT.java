@@ -7,7 +7,6 @@ import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
-
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
@@ -20,7 +19,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES;
 
 @DirtiesContext
-@WireMockAppTestSuite(files = "classpath:/TobaccoSalesIT/", classes = Application.class)
+@WireMockAppTestSuite(files = "classpath:/TobaccoSalesIT/", classes = Application.class, sharedContext = false)
 class TobaccoSalesIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";
@@ -38,7 +37,8 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
-		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
+		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a
+		// decision event
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
@@ -50,6 +50,7 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// Verify mocked stubs
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 
 		// Verify the activity log: the phases the process entered and the steps it took, named for the case worker
@@ -72,6 +73,8 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 				// Registration
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("No submission", "boundary_create_submission_pdf_skipped"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 
@@ -132,6 +135,7 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES.getKey());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("registration_phase");
 
 		// The WAITING report is asserted by its mapping: the phase, its name and the signal the button carries
 		verifyAllStubs();
@@ -140,7 +144,9 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
-				tuple("Start registration phase", "start_registration_phase"));
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("No submission", "boundary_create_submission_pdf_skipped"));
 	}
 
 	@Test
@@ -160,7 +166,9 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("follow_up_phase");
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "follow_up_phase");
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
 
@@ -190,10 +198,12 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"));
 	}
 
 	@Test
@@ -214,23 +224,26 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase");
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"),
-				tuple("End registration phase", "end_registration_phase"),
-				tuple("Review", "review_phase"),
-				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
-				tuple("Review completed", "await_review_completed"),
-				tuple("End review phase", "end_review_phase"),
-				tuple("Investigation", "investigation_phase"),
-				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("Set complete at", "external_task_set_complete_at"),
-				tuple("Investigation completed", "await_investigation_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"),
+			tuple("End registration phase", "end_registration_phase"),
+			tuple("Review", "review_phase"),
+			tuple("Start review phase", "start_review_phase"),
+			tuple("Notify customer processing started", "external_task_notify_processing_started"),
+			tuple("Review completed", "await_review_completed"),
+			tuple("End review phase", "end_review_phase"),
+			tuple("Investigation", "investigation_phase"),
+			tuple("Start investigation phase", "start_investigation_phase"),
+			tuple("Set complete at", "external_task_set_complete_at"),
+			tuple("Investigation completed", "await_investigation_completed"));
 	}
 
 	@Test
@@ -256,29 +269,32 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase");
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"),
-				tuple("End registration phase", "end_registration_phase"),
-				tuple("Review", "review_phase"),
-				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
-				tuple("Review completed", "await_review_completed"),
-				tuple("End review phase", "end_review_phase"),
-				tuple("Investigation", "investigation_phase"),
-				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("Set complete at", "external_task_set_complete_at"),
-				tuple("Investigation completed", "await_investigation_completed"),
-				tuple("End investigation phase", "end_investigation_phase"),
-				tuple("Decision", "decision_phase"),
-				tuple("Start decision phase", "start_decision_phase"),
-				tuple("Check decision", "external_task_check_decision"),
-				tuple("Decision outcome", "gateway_decision_outcome"),
-				tuple("Await decision", "gateway_await_decision"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"),
+			tuple("End registration phase", "end_registration_phase"),
+			tuple("Review", "review_phase"),
+			tuple("Start review phase", "start_review_phase"),
+			tuple("Notify customer processing started", "external_task_notify_processing_started"),
+			tuple("Review completed", "await_review_completed"),
+			tuple("End review phase", "end_review_phase"),
+			tuple("Investigation", "investigation_phase"),
+			tuple("Start investigation phase", "start_investigation_phase"),
+			tuple("Set complete at", "external_task_set_complete_at"),
+			tuple("Investigation completed", "await_investigation_completed"),
+			tuple("End investigation phase", "end_investigation_phase"),
+			tuple("Decision", "decision_phase"),
+			tuple("Start decision phase", "start_decision_phase"),
+			tuple("Check decision", "external_task_check_decision"),
+			tuple("Decision outcome", "gateway_decision_outcome"),
+			tuple("Await decision", "gateway_await_decision"));
 	}
 
 	/** An approval with conditions grants the permit as well, so the process takes the same path as an approval. */
@@ -303,6 +319,7 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
@@ -328,7 +345,9 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("follow_up_phase");
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "follow_up_phase");
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
 

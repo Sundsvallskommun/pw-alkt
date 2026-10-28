@@ -26,6 +26,7 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecisionCompletion;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
+import static se.sundsvall.alkt.integration.templating.mapper.SubmissionDocumentMapper.toFileName;
 
 @Service
 public class DecisionService {
@@ -48,9 +49,10 @@ public class DecisionService {
 
 	/**
 	 * Support Management locks a completed decision, attachments included, so the decision is written as a draft, given
-	 * every attachment of the errand and completed last. A rerun picks up the draft an earlier attempt left behind. Any
-	 * other decision on the errand is the case worker's, so it is left alone and the step goes to an incident. The decision
-	 * ends on the date in the errand parameter validToParameter names, and holds until further notice when it names none.
+	 * every attachment of the errand but the submission PDF and completed last. A rerun picks up the draft an earlier
+	 * attempt left behind. Any other decision on the errand is the case worker's, so it is left alone and the step goes to
+	 * an incident. The decision ends on the date in the errand parameter validToParameter names, and holds until further
+	 * notice when it names none.
 	 */
 	public String approveAutomatically(final String municipalityId, final String namespace, final String errandId, final ProcessType processType, final String validToParameter) {
 		final var title = processType.getDecisionTitle();
@@ -84,7 +86,9 @@ public class DecisionService {
 		final var linked = draft.map(Decision::getAttachments).orElse(emptyList()).stream()
 			.map(ErrandAttachment::getId)
 			.toList();
+		final var submissionPdf = toFileName(errand);
 		supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
+			.filter(attachment -> !submissionPdf.equals(attachment.getFileName()))
 			.map(ErrandAttachment::getId)
 			.filter(attachmentId -> !linked.contains(attachmentId))
 			.forEach(attachmentId -> supportManagementIntegration.linkDecisionAttachment(municipalityId, namespace, errandId, decisionId, attachmentId));

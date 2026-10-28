@@ -4,6 +4,7 @@
   <bpmn:message id="message_follow_up_completed" name="follow_up_completed" />
   <bpmn:message id="message_closure_completed" name="closure_completed" />
   <bpmn:message id="message_process_cancelled" name="process_cancelled" />
+  <bpmn:error id="error_step_skipped" name="Step skipped" errorCode="step_skipped" />
   <bpmn:process id="e-cigarette-sales" name="PROCESS Sale of electronic cigarettes and refill containers" isExecutable="true" camunda:historyTimeToLive="P30D">
     <bpmn:documentation>Skeleton of the process. Registration through Decision hold no wait state, so the process passes through them without a case worker and without reporting - Support Management sees the errand arrive in Follow up. Follow up and Closure wait for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
@@ -16,11 +17,24 @@
       <bpmn:incoming>flow_start_process_to_registration</bpmn:incoming>
       <bpmn:outgoing>flow_registration_to_review</bpmn:outgoing>
       <bpmn:startEvent id="start_registration_phase" name="Start registration phase">
-        <bpmn:outgoing>flow_registration_start_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_registration_start_to_create_submission_pdf</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_registration_start_to_end" sourceRef="start_registration_phase" targetRef="end_registration_phase" />
+      <bpmn:sequenceFlow id="flow_registration_start_to_create_submission_pdf" sourceRef="start_registration_phase" targetRef="external_task_create_submission_pdf" />
+      <bpmn:serviceTask id="external_task_create_submission_pdf" name="Create submission PDF" camunda:type="external" camunda:topic="CreateSubmissionPdfTask">
+        <bpmn:documentation>Saves the submission the errand came in with as a PDF on the errand, so it can be entered in the records. The form comes from the first JSON parameter of the errand and its schema in json-schema. An errand that did not come in through the e-service has no submission, and the step is skipped. An errand from the e-service without JSON parameters raises an incident.</bpmn:documentation>
+        <bpmn:incoming>flow_registration_start_to_create_submission_pdf</bpmn:incoming>
+        <bpmn:outgoing>flow_registration_create_submission_pdf_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_registration_create_submission_pdf_to_end" sourceRef="external_task_create_submission_pdf" targetRef="end_registration_phase" />
+      <bpmn:boundaryEvent id="boundary_create_submission_pdf_skipped" name="No submission" attachedToRef="external_task_create_submission_pdf">
+        <bpmn:documentation>Takes the process past the step for an errand that did not come in through the e-service.</bpmn:documentation>
+        <bpmn:outgoing>flow_registration_submission_pdf_skipped_to_end</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="errordef_create_submission_pdf_skipped" errorRef="error_step_skipped" />
+      </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="flow_registration_submission_pdf_skipped_to_end" sourceRef="boundary_create_submission_pdf_skipped" targetRef="end_registration_phase" />
       <bpmn:endEvent id="end_registration_phase" name="End registration phase">
-        <bpmn:incoming>flow_registration_start_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_registration_create_submission_pdf_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_registration_submission_pdf_skipped_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_registration_to_review" sourceRef="registration_phase" targetRef="review_phase" />
@@ -59,7 +73,7 @@
       </bpmn:startEvent>
       <bpmn:sequenceFlow id="flow_decision_start_to_create_decision" sourceRef="start_decision_phase" targetRef="external_task_create_decision" />
       <bpmn:serviceTask id="external_task_create_decision" name="Create decision" camunda:type="external" camunda:topic="CreateDecisionTask">
-        <bpmn:documentation>Approves the notification with a completed decision that carries every attachment of the errand.</bpmn:documentation>
+        <bpmn:documentation>Approves the notification with a completed decision that carries every attachment of the errand but the submission PDF.</bpmn:documentation>
         <bpmn:incoming>flow_decision_start_to_create_decision</bpmn:incoming>
         <bpmn:outgoing>flow_decision_create_decision_to_create_asset</bpmn:outgoing>
       </bpmn:serviceTask>
@@ -252,9 +266,9 @@
   <bpmndi:BPMNDiagram id="BPMNDiagram_registration_phase">
     <bpmndi:BPMNPlane id="BPMNPlane_registration_phase" bpmnElement="registration_phase">
       <bpmndi:BPMNShape id="BPMNShape_start_registration_phase" bpmnElement="start_registration_phase">
-        <dc:Bounds x="180" y="182" width="36" height="36" />
+        <dc:Bounds x="40" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="155" y="225" width="86" height="27" />
+          <dc:Bounds x="15" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_registration_phase" bpmnElement="end_registration_phase">
@@ -263,8 +277,24 @@
           <dc:Bounds x="257" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_start_to_end" bpmnElement="flow_registration_start_to_end">
-        <di:waypoint x="216" y="200" />
+      <bpmndi:BPMNShape id="BPMNShape_external_task_create_submission_pdf" bpmnElement="external_task_create_submission_pdf">
+        <dc:Bounds x="96" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_boundary_create_submission_pdf_skipped" bpmnElement="boundary_create_submission_pdf_skipped">
+        <dc:Bounds x="128" y="222" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_start_to_create_submission_pdf" bpmnElement="flow_registration_start_to_create_submission_pdf">
+        <di:waypoint x="76" y="200" />
+        <di:waypoint x="96" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_submission_pdf_skipped_to_end" bpmnElement="flow_registration_submission_pdf_skipped_to_end">
+        <di:waypoint x="146" y="258" />
+        <di:waypoint x="146" y="280" />
+        <di:waypoint x="300" y="280" />
+        <di:waypoint x="300" y="218" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_create_submission_pdf_to_end" bpmnElement="flow_registration_create_submission_pdf_to_end">
+        <di:waypoint x="196" y="200" />
         <di:waypoint x="282" y="200" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>

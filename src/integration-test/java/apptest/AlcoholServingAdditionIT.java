@@ -17,7 +17,7 @@ import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING_ADDITION;
 
 @DirtiesContext
-@WireMockAppTestSuite(files = "classpath:/AlcoholServingAdditionIT/", classes = Application.class)
+@WireMockAppTestSuite(files = "classpath:/AlcoholServingAdditionIT/", classes = Application.class, sharedContext = false)
 class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 
 	private static final String REQUEST_FILE = "request.json";
@@ -35,7 +35,8 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.getKey());
 
-		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a decision event
+		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a
+		// decision event
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "investigation");
@@ -47,6 +48,7 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// Verify mocked stubs
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 		// The addition reads the number of the permanent permit and must never write to licensed business
 		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/.*")));
@@ -60,6 +62,8 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 				// Registration
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("No submission", "boundary_create_submission_pdf_skipped"),
 				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 
@@ -121,6 +125,7 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING_ADDITION.getKey());
 
 		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("registration_phase");
 
 		// The WAITING report is asserted by its mapping: the phase, its name and the signal the button carries
 		verifyAllStubs();
@@ -129,7 +134,9 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
-				tuple("Start registration phase", "start_registration_phase"));
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("No submission", "boundary_create_submission_pdf_skipped"));
 	}
 
 	@Test
@@ -152,10 +159,12 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"));
 	}
 
 	@Test
@@ -176,23 +185,26 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase");
 		verifyAllStubs();
 
 		assertCancelledRoute(processInstanceId,
-				tuple("Start process", "start_process"),
-				tuple("Registration", "registration_phase"),
-				tuple("Start registration phase", "start_registration_phase"),
-				tuple("Registration completed", "await_registration_completed"),
-				tuple("End registration phase", "end_registration_phase"),
-				tuple("Review", "review_phase"),
-				tuple("Start review phase", "start_review_phase"),
-				tuple("Notify customer processing started", "external_task_notify_processing_started"),
-				tuple("Review completed", "await_review_completed"),
-				tuple("End review phase", "end_review_phase"),
-				tuple("Investigation", "investigation_phase"),
-				tuple("Start investigation phase", "start_investigation_phase"),
-				tuple("Set complete at", "external_task_set_complete_at"),
-				tuple("Investigation completed", "await_investigation_completed"));
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"),
+			tuple("End registration phase", "end_registration_phase"),
+			tuple("Review", "review_phase"),
+			tuple("Start review phase", "start_review_phase"),
+			tuple("Notify customer processing started", "external_task_notify_processing_started"),
+			tuple("Review completed", "await_review_completed"),
+			tuple("End review phase", "end_review_phase"),
+			tuple("Investigation", "investigation_phase"),
+			tuple("Start investigation phase", "start_investigation_phase"),
+			tuple("Set complete at", "external_task_set_complete_at"),
+			tuple("Investigation completed", "await_investigation_completed"));
 	}
 
 	@Test
@@ -212,7 +224,9 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING_ADDITION.getKey(), "investigation");
 
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("follow_up_phase");
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "follow_up_phase");
 		verifyAllStubs();
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/.*")));

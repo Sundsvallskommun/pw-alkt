@@ -15,6 +15,19 @@
 		},
 		"jsonBody": {
 			"id": "3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31",
+			"errandNumber": "ALKT-2026-000001",
+			"channel": "ESERVICE",
+			"created": "2026-10-21T08:00:00Z",
+			"jsonParameters": [
+				{
+					"key": "form",
+					"schemaId": "2281_aot_alcohol_folkol_sales_notification_0.11",
+					"value": {
+						"arDuFirmatecknare": "JA",
+						"serveringsstalletsNamn": "Runt Hörnet"
+					}
+				}
+			],
 			"stakeholders": [
 				{
 					"role": "PRIMARY",
