@@ -10,6 +10,7 @@ import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -338,6 +339,13 @@ class SupportManagementMapperTest {
 	@Test
 	void toPremisesMunicipalityIdIsSundsvallWhenTheParameterHasABlankValue() {
 		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of(" "))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWhenTheParameterHasANullValue() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(Collections.singletonList(null))));
 
 		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
 	}

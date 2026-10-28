@@ -14,6 +14,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -89,6 +90,7 @@ public final class SupportManagementMapper {
 		return Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
 			.filter(parameter -> ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID.equals(parameter.getKey()))
 			.flatMap(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream())
+			.filter(Objects::nonNull)
 			.filter(PREMISES_MUNICIPALITY_IDS::contains)
 			.findFirst()
 			.orElse(MUNICIPALITY_ID_SUNDSVALL);
