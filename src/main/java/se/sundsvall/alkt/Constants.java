@@ -82,7 +82,6 @@ public final class Constants {
 	// used.
 	public static final String ERRAND_PARAMETER_RESTAURANT_NUMBER = "restaurantNumber";
 	public static final String ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER = "newRestaurantNumber";
-	public static final String ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID = "premisesMunicipalityId";
 
 	public static final String MUNICIPALITY_ID_SUNDSVALL = "2281";
 	public static final String MUNICIPALITY_ID_TIMRA = "2262";

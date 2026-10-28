@@ -475,8 +475,11 @@ class AssetServiceTest {
 			.isInstanceOf(Problem.class)
 			.hasMessageContaining("removed again");
 
+		verify(partyAssetsIntegrationMock).findAsset("2262", PARTY_ID, DECISION_ID);
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq("2262"), eq(NAMESPACE), eq(ERRAND_ID), any());
+		verify(partyAssetsIntegrationMock).activateAsset("2262", ASSET_ID);
 		verify(partyAssetsIntegrationMock).removeDraftAsset("2262", ASSET_ID);
-		verify(partyAssetsIntegrationMock, never()).removeDraftAsset(eq(MUNICIPALITY_ID), any());
+		verifyNoMoreInteractions(partyAssetsIntegrationMock);
 	}
 
 	@Test

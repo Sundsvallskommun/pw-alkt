@@ -135,6 +135,7 @@ class SupportManagementMapperTest {
 	void toChangeDraftLeavesOutThePremisesAddressAndTheRestaurantNumberChoice() {
 		final var errand = new Errand().parameters(List.of(
 			new Parameter().key("premisesName").values(List.of("Runt Hörnet")),
+			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
 			new Parameter().key("premisesStreetAddress").values(List.of("Storgatan 33")),
 			new Parameter().key("premisesPostalCode").values(List.of("852 30")),
 			new Parameter().key("premisesPostalArea").values(List.of("Sundsvall")),

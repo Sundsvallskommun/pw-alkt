@@ -230,7 +230,8 @@ class PartyAssetsIntegrationTest {
 
 		assertThatThrownBy(() -> partyAssetsIntegration.getAsset("asset-id")).isSameAs(problem);
 
-		verify(partyAssetsClientMock, never()).getAsset("2262", "asset-id");
+		verify(partyAssetsClientMock).getAsset("2281", "asset-id");
+		verifyNoMoreInteractions(partyAssetsClientMock);
 	}
 
 	@Test

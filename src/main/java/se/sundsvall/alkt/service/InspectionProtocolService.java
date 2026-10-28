@@ -39,17 +39,17 @@ public class InspectionProtocolService {
 
 		final var investigation = getInvestigation(municipalityId, namespace, errandId);
 		final var completed = completedAt(investigation);
-		final var premisesMunicipalityId = toPremisesMunicipalityId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId));
 		return supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
 			.filter(attachment -> fileName.equals(attachment.getFileName()))
 			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(completed)).isPresent())
 			.map(ErrandAttachment::getId)
 			.findFirst()
-			.orElseGet(() -> uploadProtocol(municipalityId, premisesMunicipalityId, namespace, errandId, template, fileName, investigation));
+			.orElseGet(() -> uploadProtocol(municipalityId, namespace, errandId, template, fileName, investigation));
 	}
 
-	private String uploadProtocol(final String municipalityId, final String premisesMunicipalityId, final String namespace, final String errandId, final String template,
-		final String fileName, final Investigation investigation) {
+	private String uploadProtocol(final String municipalityId, final String namespace, final String errandId, final String template, final String fileName,
+		final Investigation investigation) {
+		final var premisesMunicipalityId = toPremisesMunicipalityId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId));
 		final var pdf = templatingIntegration.renderPdf(premisesMunicipalityId, template, toTemplateParameters(investigation));
 		return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 	}

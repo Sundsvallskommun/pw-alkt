@@ -230,14 +230,14 @@ public class AssetService {
 	}
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
-	private String createAsset(final String municipalityId, final String assetMunicipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
+	private String createAsset(final String errandMunicipalityId, final String assetMunicipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
 		final AssetType assetType) {
 		final var assetId = partyAssetsIntegration.createDraftAsset(assetMunicipalityId, namespace, errandId, request);
 
 		try {
 			Optional.ofNullable(decision.getAttachments()).orElse(emptyList())
 				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(assetMunicipalityId, assetId,
-					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
+					toAssetFile(attachment, supportManagementIntegration.getAttachment(errandMunicipalityId, namespace, errandId, attachment.getId()))));
 			// Why: rendered from the parameters the asset gets, as on a change, so the certificate shows the restaurant number.
 			assetType.getCertificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(assetMunicipalityId, assetId,
 				toCertificateFile(templatingIntegration.renderPdf(assetMunicipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
