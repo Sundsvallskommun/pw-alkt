@@ -109,7 +109,7 @@ class SubmissionPdfServiceTest {
 			"sections", List.of(
 				new Section("Ärende", List.of(new ValueField("Ärendenummer", ERRAND_NUMBER), new ValueField("Inkomstdatum", "2026-10-21"))),
 				new Section("Försäljning", List.of(new ValueField("Namn på stället", "Kiosken"))),
-				new Section("Intressenter", List.of(new GroupField("PRIMARY", List.of(
+				new Section("Intressenter", List.of(new GroupField("Huvudintressent", List.of(
 					new GroupEntry("Namn", "Kiosken AB"), new GroupEntry("Organisationsnummer", "5566124144"))))),
 				new Section("Bilagor", List.of(new TableField("Bilagor", List.of("Filnamn", "Typ"), List.of(Row.of("fullmakt.pdf", "Fullmakt")))))));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", expectedParameters)).thenReturn(pdf);
@@ -196,7 +196,7 @@ class SubmissionPdfServiceTest {
 			"sections", List.of(
 				new Section("Ärende", List.of(new ValueField("Ärendenummer", ERRAND_NUMBER), new ValueField("Inkomstdatum", "2026-10-21"))),
 				new Section("Försäljning", List.of(new ValueField("Namn på stället", "Kiosken"))),
-				new Section("Intressenter", List.of(new GroupField("PRIMARY", List.of(new GroupEntry("Namn", "Kiosken AB")))))));
+				new Section("Intressenter", List.of(new GroupField("Huvudintressent", List.of(new GroupEntry("Namn", "Kiosken AB")))))));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, "alkt.form-pdf", "1.0", expectedParameters)).thenReturn("%PDF".getBytes());
 		when(supportManagementIntegrationMock.createPdfAttachment(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(FILE_NAME), any())).thenReturn("attachment-1");
 

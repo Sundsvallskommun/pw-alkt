@@ -34,6 +34,9 @@ public final class SubmissionDocumentMapper {
 	private static final String SEPARATOR = ", ";
 	private static final String STAKEHOLDER_TYPE_PRIVATE = "PRIVATE";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
+	// Why: the PDF goes into the records in Swedish. A code without a label is shown as it is rather than left out.
+	private static final Map<String, String> ROLE_LABELS = Map.of("PRIMARY", "Huvudintressent", "CONTACT", "Kontaktperson", "REPORTER", "Anmälare");
+	private static final Map<String, String> CONTACT_CHANNEL_LABELS = Map.of("EMAIL", "E-post", "PHONE", "Telefon");
 
 	private SubmissionDocumentMapper() {}
 
@@ -56,7 +59,7 @@ public final class SubmissionDocumentMapper {
 
 	public static Optional<Section> toStakeholderSection(final List<Stakeholder> stakeholders, final Map<String, String> legalIds) {
 		final var fields = stakeholders.stream()
-			.map(stakeholder -> new GroupField(Optional.ofNullable(stakeholder.getRole()).orElse(""), toStakeholderFields(stakeholder, legalIds)))
+			.map(stakeholder -> new GroupField(Optional.ofNullable(stakeholder.getRole()).map(role -> ROLE_LABELS.getOrDefault(role, role)).orElse(""), toStakeholderFields(stakeholder, legalIds)))
 			.filter(field -> !field.fields().isEmpty())
 			.map(Field.class::cast)
 			.toList();
@@ -94,7 +97,7 @@ public final class SubmissionDocumentMapper {
 		final var addressEntry = new GroupEntry("Adress",
 			joinNonBlank(SEPARATOR, stakeholder.getCareOf(), stakeholder.getAddress(), joinNonBlank(" ", stakeholder.getZipCode(), stakeholder.getCity())));
 		final var channelEntries = Optional.ofNullable(stakeholder.getContactChannels()).orElse(emptyList()).stream()
-			.map(channel -> new GroupEntry(Optional.ofNullable(channel.getType()).orElse(""), channel.getValue()));
+			.map(channel -> new GroupEntry(Optional.ofNullable(channel.getType()).map(type -> CONTACT_CHANNEL_LABELS.getOrDefault(type, type)).orElse(""), channel.getValue()));
 
 		return Stream.concat(Stream.of(nameEntry, legalIdEntry, addressEntry), channelEntries)
 			.filter(entry -> StringUtils.hasText(entry.value()))

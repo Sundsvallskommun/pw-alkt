@@ -55,7 +55,7 @@ class SubmissionDocumentMapperTest {
 	}
 
 	@Test
-	void theStakeholderSectionHasAGroupPerStakeholderLabelledByRole() {
+	void theStakeholderSectionHasAGroupPerStakeholderLabelledByRoleInSwedish() {
 		final var company = new Stakeholder()
 			.role("PRIMARY")
 			.externalId("party-1")
@@ -76,16 +76,27 @@ class SubmissionDocumentMapperTest {
 		final var section = toStakeholderSection(List.of(company, person), Map.of("party-1", "5566124144", "party-2", "199001012385"));
 
 		assertThat(section).contains(new Section("Intressenter", List.of(
-			new GroupField("PRIMARY", List.of(
+			new GroupField("Huvudintressent", List.of(
 				new GroupEntry("Namn", "Kiosken AB"),
 				new GroupEntry("Organisationsnummer", "5566124144"),
 				new GroupEntry("Adress", "Storgatan 1, 851 85 Sundsvall"),
-				new GroupEntry("EMAIL", "kiosk@example.com"),
-				new GroupEntry("PHONE", "060-123456"))),
-			new GroupField("CONTACT", List.of(
+				new GroupEntry("E-post", "kiosk@example.com"),
+				new GroupEntry("Telefon", "060-123456"))),
+			new GroupField("Kontaktperson", List.of(
 				new GroupEntry("Namn", "Anna Andersson"),
 				new GroupEntry("Personnummer", "199001012385"),
-				new GroupEntry("EMAIL", "anna@example.com"))))));
+				new GroupEntry("E-post", "anna@example.com"))))));
+	}
+
+	@Test
+	void theReporterRoleIsLabelledInSwedishAndAnUnknownRoleOrChannelTypeIsShownAsItIs() {
+		final var reporter = new Stakeholder().role("REPORTER").organizationName("Kiosken AB");
+		final var other = new Stakeholder().role("INVOICE_RECIPIENT").firstName("Anna").lastName("Andersson")
+			.contactChannels(List.of(new ContactChannel().type("CELLPHONE").value("070-1234567")));
+
+		assertThat(toStakeholderSection(List.of(reporter, other), Map.of())).contains(new Section("Intressenter", List.of(
+			new GroupField("Anmälare", List.of(new GroupEntry("Namn", "Kiosken AB"))),
+			new GroupField("INVOICE_RECIPIENT", List.of(new GroupEntry("Namn", "Anna Andersson"), new GroupEntry("CELLPHONE", "070-1234567"))))));
 	}
 
 	@Test
@@ -93,7 +104,7 @@ class SubmissionDocumentMapperTest {
 		final var stakeholder = new Stakeholder().role("PRIMARY").externalId("unknown").externalIdType("COMPANY").organizationName("Kiosken AB");
 
 		assertThat(toStakeholderSection(List.of(stakeholder), Map.of())).contains(new Section("Intressenter", List.of(
-			new GroupField("PRIMARY", List.of(new GroupEntry("Namn", "Kiosken AB"))))));
+			new GroupField("Huvudintressent", List.of(new GroupEntry("Namn", "Kiosken AB"))))));
 	}
 
 	@Test
@@ -102,7 +113,7 @@ class SubmissionDocumentMapperTest {
 		final var named = new Stakeholder().role("PRIMARY").organizationName("Kiosken AB");
 
 		assertThat(toStakeholderSection(List.of(empty, named), Map.of())).contains(new Section("Intressenter", List.of(
-			new GroupField("PRIMARY", List.of(new GroupEntry("Namn", "Kiosken AB"))))));
+			new GroupField("Huvudintressent", List.of(new GroupEntry("Namn", "Kiosken AB"))))));
 	}
 
 	@Test
