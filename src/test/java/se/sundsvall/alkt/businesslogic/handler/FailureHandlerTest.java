@@ -316,13 +316,16 @@ class FailureHandlerTest {
 	@Test
 	void handleSkippedTakesTheProcessPastTheStepAndLogsItAsSkippedWithoutAnAlert() {
 		final var expected = "Errand has no JSON parameters, x-request-id request-id";
+		final var skipped = new ProcessActivity().activityType("TASK").severity("INFO");
+		when(processLogMock.taskSkipped(externalTaskMock, expected)).thenReturn(skipped);
 
 		assertThat(failureHandler.handleSkipped(externalTaskServiceMock, externalTaskMock, "Errand has no JSON parameters")).isTrue();
 
 		verify(externalTaskServiceMock).handleBpmnError(externalTaskMock, BPMN_ERROR_STEP_SKIPPED, expected);
 		verify(externalTaskServiceMock, never()).handleFailure(nullable(String.class), any(), any(), anyInt(), anyLong());
-		verify(processLogMock).taskFailed(externalTaskMock, Outcome.SKIPPED, expected);
-		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null).withActivities(List.of(ACTIVITY)));
+		verify(processLogMock).taskSkipped(externalTaskMock, expected);
+		verify(processLogMock, never()).taskFailed(any(), any(), anyString());
+		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.running(null, null).withActivities(List.of(skipped)));
 		verifyNoInteractions(messagingIntegrationMock);
 	}
 

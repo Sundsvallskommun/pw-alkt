@@ -20,7 +20,7 @@
 				}
 			},
 			{
-				"matchesJsonPath": "$.activities[?(@.activityType == 'TASK' && @.errorCode == 'SKIPPED')]"
+				"matchesJsonPath": "$.activities[?(@.activityId == 'external_task_create_submission_pdf#skipped' && @.severity == 'INFO')]"
 			}
 		]
 	},

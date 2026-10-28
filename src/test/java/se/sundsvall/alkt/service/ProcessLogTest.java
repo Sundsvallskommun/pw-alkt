@@ -108,6 +108,22 @@ class ProcessLogTest {
 	}
 
 	@Test
+	void taskSkipped() {
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+
+		final var entry = processLog.taskSkipped(externalTaskMock, "The errand did not come in through the e-service, x-request-id request-id");
+
+		assertThat(entry.getActivityType()).isEqualTo("TASK");
+		assertThat(entry.getActivityId()).isEqualTo(ACTIVITY_ID + "#skipped");
+		assertThat(entry.getActivityName()).isEqualTo("Hoppades över");
+		assertThat(entry.getSeverity()).isEqualTo("INFO");
+		assertThat(entry.getErrorCode()).isNull();
+		assertThat(entry.getMessage()).isEqualTo("The errand did not come in through the e-service, x-request-id request-id");
+		assertThat(entry.getOccurredAt()).isCloseTo(OffsetDateTime.now(), within(5, SECONDS));
+		verifyNoInteractions(operatonIntegrationMock);
+	}
+
+	@Test
 	void taskRejected() {
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 		when(externalTaskMock.getId()).thenReturn("external-task-id");
