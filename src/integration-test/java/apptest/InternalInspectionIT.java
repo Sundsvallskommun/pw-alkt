@@ -49,6 +49,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// Verify mocked stubs
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 		wiremock.verify(0, postRequestedFor(urlPathMatching(".*/communication/conversations.*")));
 
@@ -216,6 +217,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// The action errand, its relation to the inspection and its content are asserted by the POST errands mapping
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
@@ -258,6 +260,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 		assertThat(countReports("$.activities[?(@.severity == 'WARN' && @.activityId =~ /external_task_create_action_errand#rejected#.*/)]"))
 			.as("the refusal is in the log").isOne();
@@ -301,6 +304,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 
 		// The order of the refusal and the done entry is asserted by the scenario of the create action errand reports
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 		assertThat(countReports("$.activities[?(@.severity == 'WARN' && @.activityId =~ /external_task_create_action_errand#rejected#.*/)]"))
 			.as("the refusal is in the log").isOne();

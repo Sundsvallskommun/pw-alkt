@@ -1,6 +1,7 @@
 package apptest;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import generated.se.sundsvall.operaton.HistoricProcessInstanceDto;
 import java.time.Duration;
@@ -209,6 +210,23 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 
 	protected int countReportsAt(String activityId) {
 		return countReports("$[?(@.currentActivityId == '%s')]".formatted(activityId));
+	}
+
+	/**
+	 * The stubs of a WAITING report match in any scenario state, so a late report of an earlier phase would pass them. The
+	 * order is asserted from the journal instead, and a repeated report of the same phase counts once.
+	 */
+	protected void assertWaitingReportsInOrder(String... activityIds) {
+		final var reported = wiremock.findAll(putRequestedFor(urlPathMatching(".*/processes/.*")).withRequestBody(matchingJsonPath("$[?(@.processStatus == 'WAITING')]")))
+			.stream()
+			.sorted(comparing(LoggedRequest::getLoggedDate))
+			.map(request -> JSON_MAPPER.readTree(request.getBodyAsString()).path("currentActivityId").asString())
+			.toList();
+		final var phases = new ArrayList<String>();
+		reported.stream()
+			.filter(activityId -> phases.isEmpty() || !phases.getLast().equals(activityId))
+			.forEach(phases::add);
+		assertThat(phases).containsExactly(activityIds);
 	}
 
 	protected int countReports(String jsonPath) {
