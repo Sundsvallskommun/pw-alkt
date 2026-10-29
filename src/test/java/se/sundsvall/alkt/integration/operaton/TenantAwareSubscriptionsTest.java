@@ -31,6 +31,7 @@ class TenantAwareSubscriptionsTest {
 			"CheckCaseNumberTask",
 			"CheckDecisionTask",
 			"CheckPermitTask",
+			"CheckPremisesMunicipalityTask",
 			"CloseAssetTask",
 			"CompleteProcessTask",
 			"CreateActionErrandTask",

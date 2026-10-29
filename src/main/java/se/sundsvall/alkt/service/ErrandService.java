@@ -54,4 +54,8 @@ public class ErrandService {
 			.anyMatch(StringUtils::isNotBlank);
 		return present ? CaseNumberCheck.PRESENT : CaseNumberCheck.MISSING;
 	}
+
+	public String getPremisesMunicipalityId(final String municipalityId, final String namespace, final String errandId) {
+		return toPremisesMunicipalityId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId));
+	}
 }

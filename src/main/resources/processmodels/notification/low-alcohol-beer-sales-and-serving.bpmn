@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_low_alcohol_beer_sales_and_serving" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_low_alcohol_beer_sales_and_serving" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
   <!-- One message per manual phase exit. The user interface correlates these on the business key of the instance, i.e. the errand id. -->
   <bpmn:message id="message_registration_completed" name="registration_completed" />
+  <bpmn:message id="message_review_completed" name="review_completed" />
   <bpmn:message id="message_follow_up_completed" name="follow_up_completed" />
   <bpmn:message id="message_closure_completed" name="closure_completed" />
   <bpmn:message id="message_process_cancelled" name="process_cancelled" />
   <bpmn:error id="error_step_skipped" name="Step skipped" errorCode="step_skipped" />
   <bpmn:process id="low-alcohol-beer-sales-and-serving" name="PROCESS Sales and serving of low-alcohol beer" isExecutable="true" camunda:historyTimeToLive="P30D">
-    <bpmn:documentation>Skeleton of the process. A notification from the e-service passes Registration through Decision without a case worker and without reporting - Support Management sees the errand arrive in Follow up. One a case worker created waits in Registration until the case worker completes it. Follow up and Closure wait for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
+    <bpmn:documentation>Skeleton of the process. A notification from the e-service passes Registration through Decision without a case worker and without reporting - Support Management sees the errand arrive in Follow up. One a case worker created waits in Registration until the case worker completes it. In Timrå every notification waits in Review until the case worker completes it and the errand has a case number from the records of Timrå. Follow up and Closure wait for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
       <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>
@@ -51,11 +52,56 @@
       <bpmn:incoming>flow_registration_to_review</bpmn:incoming>
       <bpmn:outgoing>flow_review_to_investigation</bpmn:outgoing>
       <bpmn:startEvent id="start_review_phase" name="Start review phase">
-        <bpmn:outgoing>flow_review_start_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_review_start_to_check_premises_municipality</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_review_start_to_end" sourceRef="start_review_phase" targetRef="end_review_phase" />
+      <bpmn:sequenceFlow id="flow_review_start_to_check_premises_municipality" sourceRef="start_review_phase" targetRef="external_task_check_premises_municipality" />
+      <bpmn:serviceTask id="external_task_check_premises_municipality" name="Check premises municipality" camunda:type="external" camunda:topic="CheckPremisesMunicipalityTask">
+        <bpmn:documentation>Reads the municipality of the premises from the errand and sets premisesMunicipalityId.</bpmn:documentation>
+        <bpmn:incoming>flow_review_start_to_check_premises_municipality</bpmn:incoming>
+        <bpmn:outgoing>flow_review_check_premises_municipality_to_gateway</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_review_check_premises_municipality_to_gateway" sourceRef="external_task_check_premises_municipality" targetRef="gateway_premises_municipality" />
+      <bpmn:exclusiveGateway id="gateway_premises_municipality" name="Premises municipality">
+        <bpmn:documentation>Sundsvall reviews a notification without a case worker. Timrå waits for the case worker and for the case number from its records.</bpmn:documentation>
+        <bpmn:incoming>flow_review_check_premises_municipality_to_gateway</bpmn:incoming>
+        <bpmn:outgoing>flow_review_gateway_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_review_gateway_to_await</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:sequenceFlow id="flow_review_gateway_to_end" name="Sundsvall" sourceRef="gateway_premises_municipality" targetRef="end_review_phase">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${premisesMunicipalityId != '2262'}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="flow_review_gateway_to_await" name="Timrå" sourceRef="gateway_premises_municipality" targetRef="await_review_completed">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${premisesMunicipalityId == '2262'}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:intermediateCatchEvent id="await_review_completed" name="Review completed">
+        <bpmn:documentation>Waits until a case worker marks the review as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
+        <bpmn:incoming>flow_review_gateway_to_await</bpmn:incoming>
+        <bpmn:incoming>flow_review_case_number_missing_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_review_await_to_check_case_number</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_review_completed" messageRef="message_review_completed" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_review_await_to_check_case_number" sourceRef="await_review_completed" targetRef="external_task_check_case_number" />
+      <bpmn:serviceTask id="external_task_check_case_number" name="Check case number" camunda:type="external" camunda:topic="CheckCaseNumberTask">
+        <bpmn:documentation>Checks that an errand in Timrå has a case number from the records of Timrå in timraCaseNumber and sets caseNumberAccepted. Without one the case worker is warned in the activity log.</bpmn:documentation>
+        <bpmn:incoming>flow_review_await_to_check_case_number</bpmn:incoming>
+        <bpmn:outgoing>flow_review_check_case_number_to_gateway</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_review_check_case_number_to_gateway" sourceRef="external_task_check_case_number" targetRef="gateway_case_number_accepted" />
+      <bpmn:exclusiveGateway id="gateway_case_number_accepted" name="Case number accepted?">
+        <bpmn:documentation>Without a case number the process goes back to wait for the case worker, who fills it in and completes the review again, instead of stopping on an incident.</bpmn:documentation>
+        <bpmn:incoming>flow_review_check_case_number_to_gateway</bpmn:incoming>
+        <bpmn:outgoing>flow_review_case_number_accepted_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_review_case_number_missing_to_await</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:sequenceFlow id="flow_review_case_number_accepted_to_end" name="Accepted" sourceRef="gateway_case_number_accepted" targetRef="end_review_phase">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${caseNumberAccepted}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="flow_review_case_number_missing_to_await" name="Missing" sourceRef="gateway_case_number_accepted" targetRef="await_review_completed">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!caseNumberAccepted}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
       <bpmn:endEvent id="end_review_phase" name="End review phase">
-        <bpmn:incoming>flow_review_start_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_review_gateway_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_review_case_number_accepted_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_review_to_investigation" sourceRef="review_phase" targetRef="investigation_phase" />
@@ -325,15 +371,71 @@
           <dc:Bounds x="155" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
-        <dc:Bounds x="282" y="182" width="36" height="36" />
+      <bpmndi:BPMNShape id="BPMNShape_external_task_check_premises_municipality" bpmnElement="external_task_check_premises_municipality">
+        <dc:Bounds x="260" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_premises_municipality" bpmnElement="gateway_premises_municipality" isMarkerVisible="true">
+        <dc:Bounds x="405" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="257" y="225" width="86" height="27" />
+          <dc:Bounds x="385" y="145" width="90" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_end" bpmnElement="flow_review_start_to_end">
+      <bpmndi:BPMNShape id="BPMNShape_await_review_completed" bpmnElement="await_review_completed">
+        <dc:Bounds x="500" y="302" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="474" y="345" width="88" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_check_case_number" bpmnElement="external_task_check_case_number">
+        <dc:Bounds x="580" y="280" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_case_number_accepted" bpmnElement="gateway_case_number_accepted" isMarkerVisible="true">
+        <dc:Bounds x="725" y="295" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="710" y="265" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
+        <dc:Bounds x="842" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="817" y="225" width="86" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_check_premises_municipality" bpmnElement="flow_review_start_to_check_premises_municipality">
         <di:waypoint x="216" y="200" />
-        <di:waypoint x="282" y="200" />
+        <di:waypoint x="260" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_check_premises_municipality_to_gateway" bpmnElement="flow_review_check_premises_municipality_to_gateway">
+        <di:waypoint x="360" y="200" />
+        <di:waypoint x="405" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_gateway_to_end" bpmnElement="flow_review_gateway_to_end">
+        <di:waypoint x="455" y="200" />
+        <di:waypoint x="842" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_gateway_to_await" bpmnElement="flow_review_gateway_to_await">
+        <di:waypoint x="430" y="225" />
+        <di:waypoint x="430" y="320" />
+        <di:waypoint x="500" y="320" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_await_to_check_case_number" bpmnElement="flow_review_await_to_check_case_number">
+        <di:waypoint x="536" y="320" />
+        <di:waypoint x="580" y="320" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_check_case_number_to_gateway" bpmnElement="flow_review_check_case_number_to_gateway">
+        <di:waypoint x="680" y="320" />
+        <di:waypoint x="725" y="320" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_case_number_accepted_to_end" bpmnElement="flow_review_case_number_accepted_to_end">
+        <di:waypoint x="775" y="320" />
+        <di:waypoint x="860" y="320" />
+        <di:waypoint x="860" y="218" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_case_number_missing_to_await" bpmnElement="flow_review_case_number_missing_to_await">
+        <di:waypoint x="750" y="345" />
+        <di:waypoint x="750" y="400" />
+        <di:waypoint x="518" y="400" />
+        <di:waypoint x="518" y="338" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

@@ -103,6 +103,10 @@ process-log:
       retry: Diarienumret kunde inte kontrolleras just nu, ett nytt försök görs automatiskt
       failed: Diarienumret kunde inte kontrolleras. Processen har stannat och felet behöver åtgärdas
       rejected: Diarienummer från Timrås diarium saknas. Fyll i diarienumret och klicka vidare igen
+    "[external_task_check_premises_municipality]":
+      done: Lokalens kommun har lästs från ärendet
+      retry: Lokalens kommun kunde inte läsas just nu, ett nytt försök görs automatiskt
+      failed: Lokalens kommun kunde inte läsas. Processen har stannat och felet behöver åtgärdas
   phases:
     "[registration_phase]":
       entered: Registrering har påbörjats

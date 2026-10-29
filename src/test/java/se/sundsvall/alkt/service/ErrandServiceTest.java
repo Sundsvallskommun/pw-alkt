@@ -151,4 +151,33 @@ class ErrandServiceTest {
 			.isSameAs(problem)
 			.isNotInstanceOf(NonRetryableException.class);
 	}
+
+	@Test
+	void premisesMunicipalityIdIsTimraForAnErrandInTimra() {
+		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+
+		assertThat(errandService.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("2262");
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
+	}
+
+	@Test
+	void premisesMunicipalityIdIsSundsvallForAnErrandWithoutIt() {
+		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(null));
+
+		assertThat(errandService.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("2281");
+	}
+
+	@Test
+	void premisesMunicipalityIdOfAnErrandThatCannotBeReadFailsToBeRetried() {
+		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
+		final var problem = new ClientProblem(BAD_GATEWAY, "Support Management is down");
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
+
+		assertThatThrownBy(() -> errandService.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(problem);
+	}
 }
