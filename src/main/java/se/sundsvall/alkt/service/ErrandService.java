@@ -10,6 +10,7 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 
 import static java.util.Collections.emptyList;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_TIMRA_CASE_NUMBER;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.withParameter;
@@ -18,7 +19,6 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 public class ErrandService {
 
 	static final String ERRAND_PARAMETER_COMPLETE_AT = "completeAt";
-	static final String ERRAND_PARAMETER_TIMRA_CASE_NUMBER = "timraCaseNumber";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final Clock clock;

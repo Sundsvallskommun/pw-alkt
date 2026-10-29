@@ -134,11 +134,15 @@ class SupportManagementMapperTest {
 		assertThat(result.getParameters()).extracting(Parameter::getKey).containsExactly("serveringstid", "uteservering");
 	}
 
-	/** The premises address and the case worker's choice of restaurant number are not on the permit, its name is. */
+	/**
+	 * The premises address, the case worker's choice of restaurant number and the case number are not on the permit, its
+	 * name is.
+	 */
 	@Test
 	void toChangeDraftLeavesOutThePremisesAddressAndTheRestaurantNumberChoice() {
 		final var errand = new Errand().parameters(List.of(
 			new Parameter().key("premisesName").values(List.of("Runt Hörnet")),
+			new Parameter().key("timraCaseNumber").values(List.of("TSN 2026/0153")),
 			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
 			new Parameter().key("premisesStreetAddress").values(List.of("Storgatan 33")),
 			new Parameter().key("premisesPostalCode").values(List.of("852 30")),
