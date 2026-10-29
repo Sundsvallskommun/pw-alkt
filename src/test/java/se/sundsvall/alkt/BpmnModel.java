@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.springframework.core.io.Resource;
@@ -102,12 +103,11 @@ final class BpmnModel {
 		return element(id).getAttributeNS(CAMUNDA_NAMESPACE, "topic");
 	}
 
-	/** The ids of every element inside the subprocess that is asynchronous before or after. */
+	/** The ids of the subprocess and every element inside it that is asynchronous before or after. */
 	List<String> asynchronousElementsIn(final String subProcessId) {
-		final var all = element(subProcessId).getElementsByTagNameNS(BPMN_NAMESPACE, "*");
-		return IntStream.range(0, all.getLength())
-			.mapToObj(all::item)
-			.map(Element.class::cast)
+		final var subProcess = element(subProcessId);
+		final var all = subProcess.getElementsByTagNameNS(BPMN_NAMESPACE, "*");
+		return Stream.concat(Stream.of(subProcess), IntStream.range(0, all.getLength()).mapToObj(all::item).map(Element.class::cast))
 			.filter(element -> "true".equals(element.getAttributeNS(CAMUNDA_NAMESPACE, "asyncBefore")) || "true".equals(element.getAttributeNS(CAMUNDA_NAMESPACE, "asyncAfter")))
 			.map(element -> element.getAttribute("id"))
 			.toList();
