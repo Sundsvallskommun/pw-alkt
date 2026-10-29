@@ -1,0 +1,40 @@
+{
+	"name": "review_check-case-number-worker---api-support-management-put-process-done",
+	"metadata": {
+		"comment": "The errand in Timrå has its case number, so the check lets the review end. Higher priority than the plain RUNNING report of the step."
+	},
+	"priority": 1,
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/5a2d7e13-4b98-4c26-8f71-3e0a9b6d5c82/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "RUNNING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_check_case_number"
+				}
+			},
+			{
+				"matchesJsonPath": "$.activities[?(@.activityId == 'external_task_check_case_number#done' && @.severity == 'INFO')]"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

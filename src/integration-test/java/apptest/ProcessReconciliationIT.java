@@ -129,6 +129,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		// === Start process === every report it sends on the way is answered with 500 and swallowed
 		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN, CATERING_OCCASION.getKey());
 
+		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.getKey(), "registration");
 		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.getKey(), "follow_up");
 		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.getKey(), "closure");
 

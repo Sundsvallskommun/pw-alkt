@@ -43,6 +43,7 @@ class RetryIncidentIT extends AbstractOperatonAppTest {
 			.sendRequest();
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
+		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
 		awaitIncidentAt(CATERING_OCCASION.getKey(), processInstanceId, STUCK_ACTIVITY);
 		assertThat(operatonClient.findExternalTasks(processInstanceId, true))
 			.extracting(ExternalTaskDto::getActivityId)

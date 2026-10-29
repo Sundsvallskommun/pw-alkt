@@ -8,10 +8,12 @@ import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.E_CIGARETTE_SALES;
@@ -35,7 +37,20 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.getKey());
 
-		// The first four phases hold no catch event in this model, so follow up is the first one to park
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "registration");
+
+		// The premises are in Timrå, so the review waits for the case worker. The errand has no case number from the records
+		// of Timrå yet, so the check warns and the review waits again
+		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "review");
+		await().until(() -> countReports("$.activities[?(@.activityId =~ /external_task_check_case_number#rejected#.*/)]") == 1);
+		awaitReportsAt("review_phase", 2);
+		awaitProcessState(processInstanceId, "await_review_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		// The case worker fills in the case number and completes the review again
+		wiremock.setScenarioState("timra-case-number", "case-number-filled");
+		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "review");
+
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "closure");
 
@@ -44,6 +59,10 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 		// Verify mocked stubs
 		verifyAllStubs();
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "follow_up_phase", "closure_phase");
+
+		// The process never writes to the errand itself, so its errand number and case number stay as the case worker left them
+		wiremock.verify(0, patchRequestedFor(urlPathMatching("/api-support-management/2281/ALKT/errands/%s(/parameters)?".formatted(ERRAND_ID))));
 
 		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
@@ -51,16 +70,25 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// Registration - no catch event, so the phase walks straight through
+				// Registration - not from the e-service, so the phase waits for the case worker
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
 				tuple("No submission", "boundary_create_submission_pdf_skipped"),
+				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 
-				// Review - no catch event
+				// Review - in Timrå it waits for the case worker, twice, since the first check found no case number
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Check premises municipality", "external_task_check_premises_municipality"),
+				tuple("Premises municipality", "gateway_premises_municipality"),
+				tuple("Review completed", "await_review_completed"),
+				tuple("Check case number", "external_task_check_case_number"),
+				tuple("Case number accepted?", "gateway_case_number_accepted"),
+				tuple("Review completed", "await_review_completed"),
+				tuple("Check case number", "external_task_check_case_number"),
+				tuple("Case number accepted?", "gateway_case_number_accepted"),
 				tuple("End review phase", "end_review_phase"),
 
 				// Investigation - no catch event
@@ -75,7 +103,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
-				// Follow up - the first phase this model parks in
+				// Follow up - no gate between the review and here
 				tuple("Follow up", "follow_up_phase"),
 				tuple("Start follow up phase", "start_follow_up_phase"),
 				tuple("Follow up completed", "await_follow_up_completed"),
@@ -105,6 +133,9 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "registration");
+
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitWaitingReportAt("follow_up_phase");
 
@@ -117,14 +148,18 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// No case worker before follow up: three phases pass straight through, the decision phase runs its two steps
+				// No case worker after the registration: review and investigation pass straight through, the decision phase runs its
+				// two steps
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
 				tuple("No submission", "boundary_create_submission_pdf_skipped"),
+				tuple("Registration completed", "await_registration_completed"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Check premises municipality", "external_task_check_premises_municipality"),
+				tuple("Premises municipality", "gateway_premises_municipality"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
@@ -151,6 +186,9 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "registration");
+
 		cancelProcess(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -165,9 +203,12 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			tuple("Start registration phase", "start_registration_phase"),
 			tuple("Create submission PDF", "external_task_create_submission_pdf"),
 			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"),
 			tuple("End registration phase", "end_registration_phase"),
 			tuple("Review", "review_phase"),
 			tuple("Start review phase", "start_review_phase"),
+			tuple("Check premises municipality", "external_task_check_premises_municipality"),
+			tuple("Premises municipality", "gateway_premises_municipality"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
 			tuple("Start investigation phase", "start_investigation_phase"),
@@ -194,6 +235,9 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			.sendRequest();
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.getKey());
+
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "registration");
 
 		awaitIncidentAt(E_CIGARETTE_SALES.getKey(), processInstanceId, "external_task_create_decision");
 

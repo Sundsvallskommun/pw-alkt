@@ -1,0 +1,48 @@
+{
+	"name": "review_api-support-management-get-errand-with-case-number",
+	"metadata": {
+		"comment": "The same errand once the case worker has filled in the case number. The test moves the scenario here."
+	},
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"id": "6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15",
+			"title": "Anmälan om försäljning av elektroniska cigaretter, Kafé Solsidan",
+			"stakeholders": [
+				{
+					"role": "PRIMARY",
+					"externalIdType": "ENTERPRISE",
+					"externalId": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
+				}
+			],
+			"parameters": [
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2262"
+					]
+				},
+				{
+					"key": "timraCaseNumber",
+					"values": [
+						"TSN 2026/0153"
+					]
+				}
+			]
+		},
+		"status": 200
+	},
+	"scenarioName": "timra-case-number",
+	"requiredScenarioState": "case-number-filled"
+}
