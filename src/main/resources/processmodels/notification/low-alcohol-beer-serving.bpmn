@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_low_alcohol_beer_serving" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.33.1" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.20.0">
   <!-- One message per manual phase exit. The user interface correlates these on the business key of the instance, i.e. the errand id. -->
+  <bpmn:message id="message_registration_completed" name="registration_completed" />
   <bpmn:message id="message_follow_up_completed" name="follow_up_completed" />
   <bpmn:message id="message_closure_completed" name="closure_completed" />
   <bpmn:message id="message_process_cancelled" name="process_cancelled" />
   <bpmn:error id="error_step_skipped" name="Step skipped" errorCode="step_skipped" />
   <bpmn:process id="low-alcohol-beer-serving" name="PROCESS Serving of low-alcohol beer" isExecutable="true" camunda:historyTimeToLive="P30D">
-    <bpmn:documentation>Skeleton of the process. Registration through Decision hold no wait state, so the process passes through them without a case worker and without reporting - Support Management sees the errand arrive in Follow up. Follow up and Closure wait for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
+    <bpmn:documentation>Skeleton of the process. A notification from the e-service passes Registration through Decision without a case worker and without reporting - Support Management sees the errand arrive in Follow up. One a case worker created waits in Registration until the case worker completes it. Follow up and Closure wait for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
       <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>
@@ -27,14 +28,21 @@
       </bpmn:serviceTask>
       <bpmn:sequenceFlow id="flow_registration_create_submission_pdf_to_end" sourceRef="external_task_create_submission_pdf" targetRef="end_registration_phase" />
       <bpmn:boundaryEvent id="boundary_create_submission_pdf_skipped" name="No submission" attachedToRef="external_task_create_submission_pdf">
-        <bpmn:documentation>Takes the process past the step for an errand that did not come in through the e-service.</bpmn:documentation>
-        <bpmn:outgoing>flow_registration_submission_pdf_skipped_to_end</bpmn:outgoing>
+        <bpmn:documentation>Takes the process past the step for an errand that did not come in through the e-service. A case worker created that errand, so it waits for the case worker to complete the registration.</bpmn:documentation>
+        <bpmn:outgoing>flow_registration_submission_pdf_skipped_to_await</bpmn:outgoing>
         <bpmn:errorEventDefinition id="errordef_create_submission_pdf_skipped" errorRef="error_step_skipped" />
       </bpmn:boundaryEvent>
-      <bpmn:sequenceFlow id="flow_registration_submission_pdf_skipped_to_end" sourceRef="boundary_create_submission_pdf_skipped" targetRef="end_registration_phase" />
+      <bpmn:sequenceFlow id="flow_registration_submission_pdf_skipped_to_await" sourceRef="boundary_create_submission_pdf_skipped" targetRef="await_registration_completed" />
+      <bpmn:intermediateCatchEvent id="await_registration_completed" name="Registration completed">
+        <bpmn:documentation>Waits until a case worker marks the registration as completed in the user interface, so a notification the case worker created is complete before it is decided. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
+        <bpmn:incoming>flow_registration_submission_pdf_skipped_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_registration_await_to_end</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="messagedef_registration_completed" messageRef="message_registration_completed" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:sequenceFlow id="flow_registration_await_to_end" sourceRef="await_registration_completed" targetRef="end_registration_phase" />
       <bpmn:endEvent id="end_registration_phase" name="End registration phase">
         <bpmn:incoming>flow_registration_create_submission_pdf_to_end</bpmn:incoming>
-        <bpmn:incoming>flow_registration_submission_pdf_skipped_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_registration_await_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_registration_to_review" sourceRef="registration_phase" targetRef="review_phase" />
@@ -287,9 +295,19 @@
         <di:waypoint x="76" y="200" />
         <di:waypoint x="96" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_submission_pdf_skipped_to_end" bpmnElement="flow_registration_submission_pdf_skipped_to_end">
+      <bpmndi:BPMNShape id="BPMNShape_await_registration_completed" bpmnElement="await_registration_completed">
+        <dc:Bounds x="210" y="262" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="186" y="305" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_submission_pdf_skipped_to_await" bpmnElement="flow_registration_submission_pdf_skipped_to_await">
         <di:waypoint x="146" y="258" />
         <di:waypoint x="146" y="280" />
+        <di:waypoint x="210" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_await_to_end" bpmnElement="flow_registration_await_to_end">
+        <di:waypoint x="246" y="280" />
         <di:waypoint x="300" y="280" />
         <di:waypoint x="300" y="218" />
       </bpmndi:BPMNEdge>

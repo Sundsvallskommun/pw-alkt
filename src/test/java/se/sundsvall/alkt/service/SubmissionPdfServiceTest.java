@@ -162,6 +162,16 @@ class SubmissionPdfServiceTest {
 	}
 
 	@Test
+	void anErrandThatCameInByEmailIsSkipped() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().channel("EMAIL"));
+
+		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.SKIPPED);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
+	}
+
+	@Test
 	void anErrandWithoutChannelIsSkipped() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().channel(null));
 
