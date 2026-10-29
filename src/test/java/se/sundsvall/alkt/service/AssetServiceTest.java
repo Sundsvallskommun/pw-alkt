@@ -439,64 +439,6 @@ class AssetServiceTest {
 	}
 
 	@Test
-	void findOrCreateAssetOfAPremisesInTimraCreatesAndRendersThePermitInTimra() {
-		final var attachment = new ErrandAttachment().id("first").fileName("beslut.pdf").mimeType("application/pdf");
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().attachments(List.of(attachment))));
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
-			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
-		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
-		when(partyAssetsIntegrationMock.findAsset("2262", PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
-		when(partyAssetsIntegrationMock.createDraftAsset(eq("2262"), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
-		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
-
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
-
-		verify(partyAssetsIntegrationMock).findAsset("2262", PARTY_ID, DECISION_ID);
-		verify(partyAssetsIntegrationMock).createDraftAsset(eq("2262"), eq(NAMESPACE), eq(ERRAND_ID), any());
-		verify(partyAssetsIntegrationMock, times(2)).addAttachmentToDraft(eq("2262"), eq(ASSET_ID), any());
-		verify(templatingIntegrationMock).renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any());
-		verify(partyAssetsIntegrationMock).activateAsset("2262", ASSET_ID);
-		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first");
-		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
-	}
-
-	@Test
-	void findOrCreateAssetOfAPremisesInTimraRemovesTheDraftInTimraWhenTheActivationFails() {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
-			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
-		when(partyAssetsIntegrationMock.findAsset("2262", PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
-		when(partyAssetsIntegrationMock.createDraftAsset(eq("2262"), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
-		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).activateAsset("2262", ASSET_ID);
-
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
-			.isInstanceOf(Problem.class)
-			.hasMessageContaining("removed again");
-
-		verify(partyAssetsIntegrationMock).findAsset("2262", PARTY_ID, DECISION_ID);
-		verify(partyAssetsIntegrationMock).createDraftAsset(eq("2262"), eq(NAMESPACE), eq(ERRAND_ID), any());
-		verify(partyAssetsIntegrationMock).activateAsset("2262", ASSET_ID);
-		verify(partyAssetsIntegrationMock).removeDraftAsset("2262", ASSET_ID);
-		verifyNoMoreInteractions(partyAssetsIntegrationMock);
-	}
-
-	@Test
-	void findOrCreateAssetOfAPremisesInTimraAnswersWithTheExistingAssetInTimra() {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
-			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
-		when(partyAssetsIntegrationMock.findAsset("2262", PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset().id("existing-asset-id")));
-
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo("existing-asset-id");
-
-		verify(partyAssetsIntegrationMock).findAsset("2262", PARTY_ID, DECISION_ID);
-		verifyNoMoreInteractions(partyAssetsIntegrationMock);
-		verifyNoInteractions(templatingIntegrationMock);
-	}
-
-	@Test
 	void updateAssetRendersTheCertificateBeforeItPatchesTheAssetAndReplacesTheCertificate() throws IOException {
 		final var pdf = "%PDF-1.7".getBytes();
 		final var asset = activeAsset().additionalParameters(Map.of(
@@ -509,7 +451,7 @@ class AssetServiceTest {
 			.validTo(LocalDate.of(2099, 9, 30))
 			.parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00"))))
 			.terms(List.of(new DecisionTerm().sortOrder(1).text("Ordningsvakt efter 01.00."))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(asset));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn(pdf);
 
 		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
@@ -540,7 +482,7 @@ class AssetServiceTest {
 		final var asset = activeAsset().additionalParameters(Map.of("conditions", "Ordningsvakt efter 23.00."));
 
 		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(asset));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
@@ -555,7 +497,7 @@ class AssetServiceTest {
 		final var asset = activeAsset().additionalParameters(Map.of("conditions", "Ordningsvakt efter 23.00."));
 
 		givenAnErrandNaming(approval().outcome("APPROVAL_WITH_CONDITIONS").parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(asset));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
@@ -568,7 +510,7 @@ class AssetServiceTest {
 	@Test
 	void updateAssetFailsWithoutRetryOnAnApprovalWithConditionsWhenNeitherItNorThePermitHasConditions() {
 		givenAnErrandNaming(approval().outcome("APPROVAL_WITH_CONDITIONS"));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -586,7 +528,7 @@ class AssetServiceTest {
 			.additionalParameters(Map.of("errandId", "granting-errand-id", "serveringstid", "11.00–02.00"));
 
 		givenAnErrandNaming(approval().validTo(LocalDate.of(2099, 9, 30)).parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(asset));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
@@ -598,7 +540,7 @@ class AssetServiceTest {
 	@Test
 	void updateAssetEndsThePermitTodayAtTheEarliest() {
 		givenAnErrandNaming(approval().validTo(TODAY));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
@@ -625,7 +567,7 @@ class AssetServiceTest {
 			.additionalParameters(Map.of("serveringstid", "11.00–02.00"));
 
 		givenAnErrandNaming(approval().validTo(LocalDate.of(2100, 9, 30)).parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(asset));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
@@ -639,7 +581,7 @@ class AssetServiceTest {
 	@Test
 	void updateAssetRendersEmptyConditionsWhenThePermitHasNone() {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
@@ -653,7 +595,7 @@ class AssetServiceTest {
 		final var asset = activeAsset().additionalParameters(Map.of("serveringstid", "11.00–01.00", "serveringsyta", "Matsalen"));
 
 		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringsyta").values(List.of()))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(asset));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture()))
 			.thenThrow(new NonRetryableException("Template 'serving-permit-certificate' cannot be rendered from the given parameters: Missing placeholder 'serveringsyta'"));
 
@@ -668,7 +610,7 @@ class AssetServiceTest {
 	@Test
 	void updateAssetLeavesTheAssetAloneWhenTheCertificateCannotBeRendered() {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any()))
 			.thenThrow(new NonRetryableException("Missing template parameter 'premisesName'"));
 
@@ -683,7 +625,7 @@ class AssetServiceTest {
 	@Test
 	void updateAssetLeavesTheCertificateAloneOfANotification() {
 		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().type(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.getValue())));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.getValue())));
 
 		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION)).isEqualTo(ASSET_ID);
 
@@ -728,9 +670,9 @@ class AssetServiceTest {
 	@Test
 	void getPermitToChangeAnswersWithTheActivePermitOfTheHolder() {
 		final var versioned = versioned(activeAsset());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned);
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned);
 
-		assertThat(assetService.getPermitToChange(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID, ALCOHOL_SERVING_PERMIT))
+		assertThat(assetService.getPermitToChange(MUNICIPALITY_ID, errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isSameAs(versioned);
 		verifyNoInteractions(supportManagementIntegrationMock, templatingIntegrationMock);
 	}
@@ -742,7 +684,7 @@ class AssetServiceTest {
 	})
 	void updateAssetFailsWithoutRetryOnAnAssetOfAnotherType(final String type) {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().type(type)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type(type)));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -766,7 +708,7 @@ class AssetServiceTest {
 	@EnumSource(value = Status.class, names = "ACTIVE", mode = EXCLUDE)
 	void updateAssetFailsWithoutRetryOnAnAssetThatIsNotActive(final Status status) {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -779,7 +721,7 @@ class AssetServiceTest {
 	@Test
 	void updateAssetFailsWithoutRetryOnAnAssetOfAnotherParty() {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().partyId("someone-else")));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().partyId("someone-else")));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -833,7 +775,7 @@ class AssetServiceTest {
 	void checkPermitAnswersWithThePermitTheErrandNames() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
 		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
@@ -845,7 +787,7 @@ class AssetServiceTest {
 	void checkPermitPassesAPermitThatHasAlreadyEnded() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED)));
 
 		assertThat(assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 	}
@@ -857,7 +799,7 @@ class AssetServiceTest {
 	void checkPermitFailsWithoutRetryOnAPermitThatIsNeitherActiveNorEnded(final Status status) {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
 
 		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -868,7 +810,7 @@ class AssetServiceTest {
 	void checkPermitFailsWithoutRetryOnAnAssetOfAnotherType() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().type("LowAlcoholBeerSalesNotification")));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type("LowAlcoholBeerSalesNotification")));
 
 		assertThatThrownBy(() -> assetService.checkPermit(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -879,7 +821,7 @@ class AssetServiceTest {
 	void closeAssetEndsThePermitWhoseLastDayHasPassed() {
 		final var lastDay = TODAY.minusDays(1);
 		givenAnErrandNaming(approval().validTo(lastDay));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().validTo(TODAY.plusDays(30))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(TODAY.plusDays(30))));
 
 		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
@@ -895,7 +837,7 @@ class AssetServiceTest {
 	@Test
 	void closeAssetKeepsThePermitValidOnItsLastDay() {
 		givenAnErrandNaming(approval().validTo(TODAY));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
 		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
@@ -907,7 +849,7 @@ class AssetServiceTest {
 	@Test
 	void closeAssetNeverExtendsThePermit() {
 		givenAnErrandNaming(approval().validTo(TODAY.plusDays(90)));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().validTo(TODAY.plusDays(30))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(TODAY.plusDays(30))));
 
 		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
@@ -918,7 +860,7 @@ class AssetServiceTest {
 	void closeAssetSetsTheLastDayOfAPermitThatEndsLater() {
 		final var lastDay = TODAY.plusDays(30);
 		givenAnErrandNaming(approval().validTo(lastDay));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 
 		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
@@ -932,7 +874,7 @@ class AssetServiceTest {
 	void closeAssetLeavesAPermitAlreadySetToEnd() {
 		final var lastDay = TODAY.plusDays(30);
 		givenAnErrandNaming(approval().validTo(lastDay));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().validTo(lastDay)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().validTo(lastDay)));
 
 		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
@@ -943,7 +885,7 @@ class AssetServiceTest {
 	@Test
 	void closeAssetLeavesAPermitThatHasAlreadyEnded() {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED)));
 
 		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
@@ -956,7 +898,7 @@ class AssetServiceTest {
 	}, mode = EXCLUDE)
 	void closeAssetFailsWithoutRetryOnAnAssetThatIsNeitherActiveNorEnded(final Status status) {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(status)));
 
 		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -968,7 +910,7 @@ class AssetServiceTest {
 	@Test
 	void closeAssetFailsWithoutRetryOnALastDayBeforeThePermitWasIssued() {
 		givenAnErrandNaming(approval().validTo(TODAY.minusDays(10)));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().issued(TODAY.minusDays(5))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().issued(TODAY.minusDays(5))));
 
 		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -980,7 +922,7 @@ class AssetServiceTest {
 	@Test
 	void closeAssetEndsAPermitOnTheDayItWasIssued() {
 		givenAnErrandNaming(approval().validTo(TODAY.minusDays(5)));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().issued(TODAY.minusDays(5))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().issued(TODAY.minusDays(5))));
 
 		assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
@@ -991,7 +933,7 @@ class AssetServiceTest {
 	@Test
 	void closeAssetFailsWithoutRetryOnAnEndedAssetOfAnotherType() {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED).type("LowAlcoholBeerSalesNotification")));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().status(Status.EXPIRED).type("LowAlcoholBeerSalesNotification")));
 
 		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -1001,7 +943,7 @@ class AssetServiceTest {
 	@Test
 	void closeAssetFailsWithoutRetryOnAnAssetOfAnotherParty() {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(versioned(activeAsset().partyId("someone-else")));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().partyId("someone-else")));
 
 		assertThatThrownBy(() -> assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -1025,37 +967,50 @@ class AssetServiceTest {
 		verifyNoInteractions(partyAssetsIntegrationMock);
 	}
 
+	/** party-assets keeps every permit under the municipality of the call, the certificate is Timrå's own. */
 	@Test
-	void updateAssetOfAPermitInTimraChangesItAndRendersItsCertificateInTimraAlthoughTheErrandSaysSundsvall() {
+	void findOrCreateAssetOfAPremisesInTimraCreatesThePermitInSundsvallWithACertificateRenderedInTimra() {
+		final var attachment = new ErrandAttachment().id("first").fileName("beslut.pdf").mimeType("application/pdf");
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().attachments(List.of(attachment))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID);
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
+		verify(partyAssetsIntegrationMock, times(2)).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
+		verify(templatingIntegrationMock).renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any());
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first");
+		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
+	}
+
+	@Test
+	void updateAssetOfAPremisesInTimraChangesThePermitInSundsvallWithACertificateRenderedInTimra() {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(Optional.of(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00"))))));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().parameters(List.of(
-			new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
+			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
 			new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(new VersionedAsset(activeAsset(), VERSION, "2262"));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
 		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
 
 		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
 		verify(templatingIntegrationMock).renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any());
-		verify(partyAssetsIntegrationMock).getAsset(ASSET_ID);
-		verify(partyAssetsIntegrationMock).updateAsset(eq("2262"), eq(ASSET_ID), eq(VERSION), any());
-		verify(partyAssetsIntegrationMock).replaceCertificate(eq("2262"), eq(ASSET_ID), any());
+		verify(partyAssetsIntegrationMock).getAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), any());
+		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
 		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
-	}
-
-	@Test
-	void closeAssetEndsThePermitInTimra() {
-		givenAnErrandNaming(approval().validTo(TODAY.minusDays(1)));
-		when(partyAssetsIntegrationMock.getAsset(ASSET_ID)).thenReturn(new VersionedAsset(activeAsset(), VERSION, "2262"));
-
-		assertThat(assetService.closeAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
-
-		verify(partyAssetsIntegrationMock).updateAsset(eq("2262"), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
-		assertThat(updateCaptor.getValue().getStatus()).isEqualTo(Status.EXPIRED);
-		verify(partyAssetsIntegrationMock, never()).updateAsset(eq(MUNICIPALITY_ID), any(), any(), any());
 	}
 
 	private void givenAnErrandNaming(final Decision decision) {
@@ -1067,7 +1022,7 @@ class AssetServiceTest {
 	}
 
 	private static VersionedAsset versioned(final Asset asset) {
-		return new VersionedAsset(asset, VERSION, MUNICIPALITY_ID);
+		return new VersionedAsset(asset, VERSION);
 	}
 
 	private static Asset activeAsset() {

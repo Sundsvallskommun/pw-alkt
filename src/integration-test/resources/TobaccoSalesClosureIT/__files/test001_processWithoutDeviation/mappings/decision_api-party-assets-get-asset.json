@@ -2,7 +2,7 @@
 	"name": "decision_api-party-assets-get-asset",
 	"request": {
 		"method": "GET",
-		"urlPath": "/api-party-assets/2262/assets/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d",
+		"urlPath": "/api-party-assets/2281/assets/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d",
 		"headers": {
 			"X-Sent-By": {
 				"equalTo": "pw-alkt; type=processEngine"

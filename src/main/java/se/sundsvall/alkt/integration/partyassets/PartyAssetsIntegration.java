@@ -8,6 +8,7 @@ import generated.se.sundsvall.partyassets.DraftAssetUpdateRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.configuration.PartyAssetsProperties;
@@ -21,7 +22,6 @@ import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.PREMISES_MUNICIPALITY_IDS;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandRelation;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
@@ -43,31 +43,20 @@ public class PartyAssetsIntegration {
 		return Optional.ofNullable(partyAssetsClient.getAssets(municipalityId, partyId, assetId).getBody()).orElse(emptyList()).stream().findFirst();
 	}
 
-	/**
-	 * Looked up in each premises municipality in turn. The id comes from the customer, so one that names no asset is not
-	 * something a retry fixes.
-	 */
-	public VersionedAsset getAsset(final String id) {
-		ClientProblem notFound = null;
-		for (final var municipalityId : PREMISES_MUNICIPALITY_IDS) {
-			try {
-				return readAsset(municipalityId, id);
-			} catch (final ClientProblem e) {
-				if (!NOT_FOUND.equals(e.getStatus())) {
-					throw e;
-				}
-				notFound = e;
+	/** The id comes from the customer, so one that names no asset is not something a retry fixes. */
+	public VersionedAsset getAsset(final String municipalityId, final String id) {
+		final ResponseEntity<Asset> response;
+		try {
+			response = partyAssetsClient.getAsset(municipalityId, id);
+		} catch (final ClientProblem e) {
+			if (NOT_FOUND.equals(e.getStatus())) {
+				throw new NonRetryableException("Asset '%s' cannot be read: %s".formatted(id, describe(e)), e);
 			}
+			throw e;
 		}
-		throw new NonRetryableException("Asset '%s' cannot be read in municipality %s: %s"
-			.formatted(id, String.join(" or ", PREMISES_MUNICIPALITY_IDS), describe(notFound)), notFound);
-	}
-
-	private VersionedAsset readAsset(final String municipalityId, final String id) {
-		final var response = partyAssetsClient.getAsset(municipalityId, id);
 		final var asset = Optional.ofNullable(response.getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Asset '%s' came back without content".formatted(id)));
-		return new VersionedAsset(asset, response.getHeaders().getETag(), municipalityId);
+		return new VersionedAsset(asset, response.getHeaders().getETag());
 	}
 
 	/**

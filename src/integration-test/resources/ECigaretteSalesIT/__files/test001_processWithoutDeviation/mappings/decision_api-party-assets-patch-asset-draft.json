@@ -2,7 +2,7 @@
 	"name": "decision_api-party-assets-patch-asset-draft",
 	"request": {
 		"method": "PATCH",
-		"urlPath": "/api-party-assets/2262/asset-drafts/2c4e6a80-9b1d-4e35-a7c9-e1f3a5b7c9d2",
+		"urlPath": "/api-party-assets/2281/asset-drafts/2c4e6a80-9b1d-4e35-a7c9-e1f3a5b7c9d2",
 		"headers": {
 			"X-Sent-By": {
 				"equalTo": "pw-alkt; type=processEngine"

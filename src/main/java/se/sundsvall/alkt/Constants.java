@@ -1,6 +1,5 @@
 package se.sundsvall.alkt;
 
-import java.util.List;
 import java.util.Set;
 
 public final class Constants {
@@ -86,8 +85,6 @@ public final class Constants {
 
 	public static final String MUNICIPALITY_ID_SUNDSVALL = "2281";
 	public static final String MUNICIPALITY_ID_TIMRA = "2262";
-	// The municipalities a premises can lie in, in the order party-assets is searched for an existing asset.
-	public static final List<String> PREMISES_MUNICIPALITY_IDS = List.of(MUNICIPALITY_ID_SUNDSVALL, MUNICIPALITY_ID_TIMRA);
 
 	public static final String EXTERNAL_TAG_INSPECTION_ERRAND_ID = "inspectionErrandId";
 
