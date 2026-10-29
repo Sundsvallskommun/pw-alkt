@@ -28,6 +28,7 @@ class TenantAwareSubscriptionsTest {
 		assertThat(subscriptions).extracting(TopicSubscription::getTopicName).containsExactlyInAnyOrder(
 			"AssignRestaurantNumberTask",
 			"CancelProcessTask",
+			"CheckCaseNumberTask",
 			"CheckDecisionTask",
 			"CheckPermitTask",
 			"CloseAssetTask",
