@@ -2,7 +2,7 @@
 	"name": "decision_api-licensed-business-get-restaurant-number",
 	"request": {
 		"method": "GET",
-		"urlPath": "/api-licensed-business/2281/restaurant-numbers/22810001"
+		"urlPath": "/api-licensed-business/2262/restaurant-numbers/22620001"
 	},
 	"response": {
 		"headers": {
@@ -10,8 +10,8 @@
 		},
 		"jsonBody": {
 			"id": "9ce333ec-a473-438b-8406-a71e957dc107",
-			"number": "22810001",
-			"municipalityId": "2281"
+			"number": "22620001",
+			"municipalityId": "2262"
 		},
 		"status": 200
 	}

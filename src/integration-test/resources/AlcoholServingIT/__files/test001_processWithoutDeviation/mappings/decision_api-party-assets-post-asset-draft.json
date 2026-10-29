@@ -65,7 +65,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.additionalParameters.premisesRestaurantNumber",
-					"equalTo": "22810001"
+					"equalTo": "22620001"
 				}
 			}
 		]

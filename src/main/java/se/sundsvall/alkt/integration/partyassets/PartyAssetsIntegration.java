@@ -21,8 +21,7 @@ import static java.util.Collections.emptyList;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
-import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
+import static se.sundsvall.alkt.Constants.PREMISES_MUNICIPALITY_IDS;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandRelation;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
@@ -44,24 +43,24 @@ public class PartyAssetsIntegration {
 		return Optional.ofNullable(partyAssetsClient.getAssets(municipalityId, partyId, assetId).getBody()).orElse(emptyList()).stream().findFirst();
 	}
 
-	/** The id comes from the customer, so one that names no asset is not something a retry fixes. */
+	/**
+	 * Looked up in each premises municipality in turn. The id comes from the customer, so one that names no asset is not
+	 * something a retry fixes.
+	 */
 	public VersionedAsset getAsset(final String id) {
-		try {
-			return readAsset(MUNICIPALITY_ID_SUNDSVALL, id);
-		} catch (final ClientProblem e) {
-			if (!NOT_FOUND.equals(e.getStatus())) {
-				throw e;
+		ClientProblem notFound = null;
+		for (final var municipalityId : PREMISES_MUNICIPALITY_IDS) {
+			try {
+				return readAsset(municipalityId, id);
+			} catch (final ClientProblem e) {
+				if (!NOT_FOUND.equals(e.getStatus())) {
+					throw e;
+				}
+				notFound = e;
 			}
 		}
-		try {
-			return readAsset(MUNICIPALITY_ID_TIMRA, id);
-		} catch (final ClientProblem e) {
-			if (NOT_FOUND.equals(e.getStatus())) {
-				throw new NonRetryableException("Asset '%s' cannot be read in municipality %s or %s: %s"
-					.formatted(id, MUNICIPALITY_ID_SUNDSVALL, MUNICIPALITY_ID_TIMRA, describe(e)), e);
-			}
-			throw e;
-		}
+		throw new NonRetryableException("Asset '%s' cannot be read in municipality %s: %s"
+			.formatted(id, String.join(" or ", PREMISES_MUNICIPALITY_IDS), describe(notFound)), notFound);
 	}
 
 	private VersionedAsset readAsset(final String municipalityId, final String id) {

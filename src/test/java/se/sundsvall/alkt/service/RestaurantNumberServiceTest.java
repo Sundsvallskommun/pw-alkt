@@ -439,6 +439,65 @@ class RestaurantNumberServiceTest {
 		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
+	/**
+	 * Licensed business numbers a premises by its municipality, so a premises in Timrå gets a number starting with 2262.
+	 */
+	@Test
+	void resolveCreatesTheNumberOfAPremisesInTimraInTimra() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand(parameter("premisesMunicipalityId", "2262")));
+		when(partyIntegrationMock.getLegalId(MUNICIPALITY_ID, PARTY_ID)).thenReturn(ORG_NUMBER);
+		when(licensedBusinessIntegrationMock.findOrCreateAddress(eq("2262"), any())).thenReturn(ADDRESS_ID);
+		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers("2262", ADDRESS_ID)).thenReturn(List.of());
+		when(licensedBusinessIntegrationMock.createRestaurantNumber("2262", ADDRESS_ID)).thenReturn("22620001");
+
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock))
+			.isEqualTo(new ResolvedRestaurantNumber("22620001", ADDRESS_ID, ""));
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(partyIntegrationMock).getLegalId(MUNICIPALITY_ID, PARTY_ID);
+		verify(licensedBusinessIntegrationMock).findOrCreateAddress(eq("2262"), any());
+		verify(licensedBusinessIntegrationMock).getAvailableRestaurantNumbers("2262", ADDRESS_ID);
+		verify(saveAvailableBeforeCreateMock).accept(List.of());
+		verify(licensedBusinessIntegrationMock).createRestaurantNumber("2262", ADDRESS_ID);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment("2262", "22620001");
+	}
+
+	@Test
+	void findLooksUpTheNumberOfAPremisesInTimraInTimra() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(errand(parameter("premisesMunicipalityId", "2262"), parameter("restaurantNumber", "22620001")));
+		when(partyIntegrationMock.getLegalId(MUNICIPALITY_ID, PARTY_ID)).thenReturn(ORG_NUMBER);
+		when(licensedBusinessIntegrationMock.findAddressId(eq("2262"), any())).thenReturn(Optional.of(ADDRESS_ID));
+		when(licensedBusinessIntegrationMock.isRestaurantNumberAtAddress("2262", ADDRESS_ID, "22620001")).thenReturn(true);
+		when(licensedBusinessIntegrationMock.findLatestAssignment("2262", "22620001")).thenReturn(Optional.of(activeAssignmentOf("556612-4144")));
+
+		assertThat(restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("22620001");
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(partyIntegrationMock).getLegalId(MUNICIPALITY_ID, PARTY_ID);
+		verify(licensedBusinessIntegrationMock).findAddressId(eq("2262"), any());
+		verify(licensedBusinessIntegrationMock).isRestaurantNumberAtAddress("2262", ADDRESS_ID, "22620001");
+		verify(licensedBusinessIntegrationMock).findLatestAssignment("2262", "22620001");
+	}
+
+	@Test
+	void assignAssignsTheNumberOfAPremisesInTimraInTimra() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand(parameter("premisesMunicipalityId", "2262")));
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(new Decision().validFrom(VALID_FROM)));
+		when(partyIntegrationMock.getLegalId(MUNICIPALITY_ID, PARTY_ID)).thenReturn(ORG_NUMBER);
+		when(licensedBusinessIntegrationMock.findLatestAssignment("2262", "22620001")).thenReturn(Optional.empty());
+		when(licensedBusinessIntegrationMock.getRestaurantNumberId("2262", "22620001")).thenReturn(NUMBER_ID);
+
+		assertThat(restaurantNumberService.assignRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "22620001", ADDRESS_ID, null)).isTrue();
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(partyIntegrationMock).getLegalId(MUNICIPALITY_ID, PARTY_ID);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment("2262", "22620001");
+		verify(licensedBusinessIntegrationMock).getRestaurantNumberId("2262", "22620001");
+		verify(licensedBusinessIntegrationMock).createAssignment(eq("2262"), eq("22620001"), any());
+	}
+
 	private void givenErrand(final Errand errand) {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(licensedBusinessIntegrationMock.findOrCreateAddress(eq(MUNICIPALITY_ID), any())).thenReturn(ADDRESS_ID);

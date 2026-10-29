@@ -2,7 +2,7 @@
 	"name": "decision_api-licensed-business-get-address-lookup",
 	"request": {
 		"method": "GET",
-		"urlPath": "/api-licensed-business/2281/addresses/lookup",
+		"urlPath": "/api-licensed-business/2262/addresses/lookup",
 		"queryParameters": {
 			"streetAddress": {
 				"equalTo": "Storgatan 33"
@@ -21,7 +21,7 @@
 			"streetAddress": "Storgatan 33",
 			"postalCode": "852 30",
 			"postalArea": "Sundsvall",
-			"municipalityId": "2281"
+			"municipalityId": "2262"
 		},
 		"status": 200
 	}

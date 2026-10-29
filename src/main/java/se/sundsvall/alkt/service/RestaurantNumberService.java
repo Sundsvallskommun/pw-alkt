@@ -27,6 +27,7 @@ import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusi
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAssignmentCreateRequest;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toValidFrom;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 
 @Service
 public class RestaurantNumberService {
@@ -52,13 +53,14 @@ public class RestaurantNumberService {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		requireAssignableHolder(municipalityId, errand, errandId);
 		final var parameters = toParameterValues(errand.getParameters());
-		final var addressId = licensedBusinessIntegration.findOrCreateAddress(municipalityId, toAddress(parameters, errandId));
+		final var premisesMunicipalityId = toPremisesMunicipalityId(errand);
+		final var addressId = licensedBusinessIntegration.findOrCreateAddress(premisesMunicipalityId, toAddress(parameters, errandId));
 
 		final var number = Optional.ofNullable(parameters.get(ERRAND_PARAMETER_RESTAURANT_NUMBER))
-			.map(chosen -> requireAtAddress(municipalityId, addressId, chosen, errandId))
-			.orElseGet(() -> newOrAvailableRestaurantNumber(municipalityId, addressId, parameters, availableBeforeCreate, saveAvailableBeforeCreate));
+			.map(chosen -> requireAtAddress(premisesMunicipalityId, addressId, chosen, errandId))
+			.orElseGet(() -> newOrAvailableRestaurantNumber(premisesMunicipalityId, addressId, parameters, availableBeforeCreate, saveAvailableBeforeCreate));
 
-		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(municipalityId, number);
+		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(premisesMunicipalityId, number);
 		return new ResolvedRestaurantNumber(number, addressId, toAssignmentId(latestAssignment));
 	}
 
@@ -71,12 +73,13 @@ public class RestaurantNumberService {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var parameters = toParameterValues(errand.getParameters());
 		final var orgNumber = partyIntegration.getLegalId(municipalityId, getPermitHolder(errand, errandId).getExternalId());
-		final var addressId = licensedBusinessIntegration.findAddressId(municipalityId, toAddress(parameters, errandId))
+		final var premisesMunicipalityId = toPremisesMunicipalityId(errand);
+		final var addressId = licensedBusinessIntegration.findAddressId(premisesMunicipalityId, toAddress(parameters, errandId))
 			.orElseThrow(() -> new NonRetryableException("The premises address of errand '%s' is unknown to licensed business, so it has no restaurant number".formatted(errandId)));
 
 		return Optional.ofNullable(parameters.get(ERRAND_PARAMETER_RESTAURANT_NUMBER))
-			.map(number -> requireHeldBy(municipalityId, addressId, number, orgNumber, errandId))
-			.orElseGet(() -> findTheOnlyNumberHeldBy(municipalityId, addressId, orgNumber, errandId));
+			.map(number -> requireHeldBy(premisesMunicipalityId, addressId, number, orgNumber, errandId))
+			.orElseGet(() -> findTheOnlyNumberHeldBy(premisesMunicipalityId, addressId, orgNumber, errandId));
 	}
 
 	public boolean assignRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final String restaurantNumber, final String addressId,
@@ -88,8 +91,9 @@ public class RestaurantNumberService {
 		final var holderName = getHolderName(permitHolder, errandId);
 		final var orgNumber = partyIntegration.getLegalId(municipalityId, permitHolder.getExternalId());
 		final var validFrom = toValidFrom(decision);
+		final var premisesMunicipalityId = toPremisesMunicipalityId(errand);
 
-		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(municipalityId, restaurantNumber);
+		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(premisesMunicipalityId, restaurantNumber);
 		if (latestAssignment.filter(assignment -> isAssignedTo(assignment, orgNumber, validFrom)).isPresent()) {
 			return false;
 		}
@@ -99,9 +103,9 @@ public class RestaurantNumberService {
 		}
 
 		final var parameters = toParameterValues(errand.getParameters());
-		final var restaurantNumberId = licensedBusinessIntegration.getRestaurantNumberId(municipalityId, restaurantNumber);
+		final var restaurantNumberId = licensedBusinessIntegration.getRestaurantNumberId(premisesMunicipalityId, restaurantNumber);
 		final var request = toAssignmentCreateRequest(restaurantNumberId, addressId, orgNumber, holderName, parameters, decision);
-		licensedBusinessIntegration.createAssignment(municipalityId, restaurantNumber, request);
+		licensedBusinessIntegration.createAssignment(premisesMunicipalityId, restaurantNumber, request);
 		return true;
 	}
 

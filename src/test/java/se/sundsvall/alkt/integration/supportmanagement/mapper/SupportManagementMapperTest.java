@@ -18,11 +18,14 @@ import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
@@ -350,11 +353,20 @@ class SupportManagementMapperTest {
 		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
 	}
 
-	@Test
-	void toPremisesMunicipalityIdIsSundsvallForAnotherMunicipality() {
-		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2280"))));
+	/**
+	 * Not trimmed: a value the errand got wrong is an incident the case worker fixes, not a permit in the wrong
+	 * municipality.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"2280", "Timrå", "2262 "
+	})
+	void toPremisesMunicipalityIdFailsWithoutRetriesForAnUnknownMunicipality(final String value) {
+		final var errand = new Errand().id("errand-id").parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of(value))));
 
-		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+		assertThatThrownBy(() -> SupportManagementMapper.toPremisesMunicipalityId(errand))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has a premisesMunicipalityId that is none of [2281, 2262]");
 	}
 
 	@Test

@@ -2,7 +2,7 @@
 	"name": "decision_api-licensed-business-get-latest-assignment",
 	"request": {
 		"method": "GET",
-		"urlPath": "/api-licensed-business/2281/restaurant-numbers/22810001/assignment"
+		"urlPath": "/api-licensed-business/2262/restaurant-numbers/22620001/assignment"
 	},
 	"response": {
 		"headers": {
@@ -11,7 +11,7 @@
 		"jsonBody": {
 			"title": "Not Found",
 			"status": 404,
-			"detail": "Restaurant number '22810001' has never been assigned"
+			"detail": "Restaurant number '22620001' has never been assigned"
 		},
 		"status": 404
 	}
