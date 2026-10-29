@@ -87,6 +87,9 @@ class ErrandServiceTest {
 			new Parameter().key("timraCaseNumber").values(List.of("  ")))));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.MISSING);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -97,6 +100,9 @@ class ErrandServiceTest {
 			new Parameter().key("timraCaseNumber").values(null))));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.MISSING);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -107,6 +113,9 @@ class ErrandServiceTest {
 			new Parameter().key("timraCaseNumber").values(List.of("", "TSN 2026/0153")))));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.PRESENT);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -119,6 +128,9 @@ class ErrandServiceTest {
 				new Parameter().key("public360CaseNumber").values(List.of("KS 2026/0042")))));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.MISSING);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -139,6 +151,9 @@ class ErrandServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(null));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.NOT_NEEDED);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -150,6 +165,9 @@ class ErrandServiceTest {
 		assertThatThrownBy(() -> errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isSameAs(problem)
 			.isNotInstanceOf(NonRetryableException.class);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -170,6 +188,9 @@ class ErrandServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(null));
 
 		assertThat(errandService.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("2281");
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
@@ -179,5 +200,8 @@ class ErrandServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
 
 		assertThatThrownBy(() -> errandService.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(problem);
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 }

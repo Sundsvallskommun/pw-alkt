@@ -17,6 +17,8 @@ import se.sundsvall.dept44.exception.ClientProblem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -85,6 +87,8 @@ class CheckCaseNumberWorkerTest {
 			.withVariables(Map.of("caseNumberAccepted", true)));
 		assertThat(result.logMessage()).isNull();
 		assertThat(result.rejected()).isFalse();
+		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(errandServiceMock);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
 	}
 
@@ -102,6 +106,8 @@ class CheckCaseNumberWorkerTest {
 			.withVariables(Map.of("caseNumberAccepted", false))
 			.withRejection("Errand '4517d939-3bd9-40b1-80cb-a70585a071d9' in Timrå has no case number in timraCaseNumber"));
 		assertThat(result.rejected()).isTrue();
+		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(errandServiceMock);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
 	}
 
@@ -114,6 +120,10 @@ class CheckCaseNumberWorkerTest {
 		when(errandServiceMock.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
 
 		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock)).isSameAs(problem);
+
+		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(errandServiceMock);
+		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
 	}
 
 	@Test
@@ -126,8 +136,10 @@ class CheckCaseNumberWorkerTest {
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(failureHandlerMock).handleException(org.mockito.ArgumentMatchers.eq(externalTaskServiceMock), org.mockito.ArgumentMatchers.eq(externalTaskMock),
-			org.mockito.ArgumentMatchers.anyString());
-		verifyNoMoreInteractions(failureHandlerMock);
+		verify(failureHandlerMock).handleException(eq(externalTaskServiceMock), eq(externalTaskMock), anyString());
+		verify(processReportServiceMock).reportStarted(externalTaskMock);
+		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(failureHandlerMock, processReportServiceMock, errandServiceMock);
+		verifyNoInteractions(externalTaskServiceMock);
 	}
 }

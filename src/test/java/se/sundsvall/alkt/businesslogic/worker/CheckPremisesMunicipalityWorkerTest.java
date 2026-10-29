@@ -77,5 +77,9 @@ class CheckPremisesMunicipalityWorkerTest {
 		when(errandServiceMock.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
 
 		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock)).isSameAs(problem);
+
+		verify(errandServiceMock).getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(errandServiceMock);
+		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
 	}
 }
