@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -163,8 +162,7 @@ class ErrandServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
 
 		assertThatThrownBy(() -> errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.isSameAs(problem)
-			.isNotInstanceOf(NonRetryableException.class);
+			.isSameAs(problem);
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(supportManagementIntegrationMock);

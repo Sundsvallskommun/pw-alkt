@@ -8,7 +8,7 @@
   <bpmn:message id="message_process_cancelled" name="process_cancelled" />
   <bpmn:error id="error_step_skipped" name="Step skipped" errorCode="step_skipped" />
   <bpmn:process id="low-alcohol-beer-serving" name="PROCESS Serving of low-alcohol beer" isExecutable="true" camunda:historyTimeToLive="P30D">
-    <bpmn:documentation>Skeleton of the process. A notification from the e-service passes Registration through Decision without a case worker and without reporting - Support Management sees the errand arrive in Follow up. One a case worker created waits in Registration until the case worker completes it. In Timrå every notification waits in Review until the case worker completes it and the errand has a case number from the records of Timrå. Follow up and Closure wait for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
+    <bpmn:documentation>Skeleton of the process. A notification from the e-service passes Registration through Decision without a case worker. One a case worker created waits in Registration until the case worker completes it. In Timrå every notification waits in Review until the case worker completes it and the errand has a case number from the records of Timrå. Follow up and Closure wait for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
       <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>

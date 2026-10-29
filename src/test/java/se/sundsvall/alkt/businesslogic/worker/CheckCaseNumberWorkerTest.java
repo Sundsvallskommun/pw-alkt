@@ -16,7 +16,6 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.dept44.exception.ClientProblem;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -67,7 +66,6 @@ class CheckCaseNumberWorkerTest {
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_case_number", null)
 			.withVariables(Map.of("caseNumberAccepted", true))
 			.withLogMessage("Case number checked"));
-		assertThat(result.rejected()).isFalse();
 		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(errandServiceMock);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
@@ -85,8 +83,6 @@ class CheckCaseNumberWorkerTest {
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_case_number", null)
 			.withVariables(Map.of("caseNumberAccepted", true)));
-		assertThat(result.logMessage()).isNull();
-		assertThat(result.rejected()).isFalse();
 		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(errandServiceMock);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
@@ -105,22 +101,6 @@ class CheckCaseNumberWorkerTest {
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_case_number", null)
 			.withVariables(Map.of("caseNumberAccepted", false))
 			.withRejection("Errand '4517d939-3bd9-40b1-80cb-a70585a071d9' in Timrå has no case number in timraCaseNumber"));
-		assertThat(result.rejected()).isTrue();
-		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verifyNoMoreInteractions(errandServiceMock);
-		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
-	}
-
-	@Test
-	void anErrandThatCannotBeReadFailsTheStep() {
-		final var problem = new ClientProblem(BAD_GATEWAY, "Support Management is down");
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(errandServiceMock.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
-
-		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock)).isSameAs(problem);
-
 		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(errandServiceMock);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);

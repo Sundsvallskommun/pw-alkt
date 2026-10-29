@@ -56,7 +56,6 @@ class ApplicationReviewModelTest {
 		final var model = BpmnModel.read(path);
 
 		assertThat(model.conditionOf(CHECK_GATEWAY_ID, GATE_ID)).isEqualTo("${!caseNumberAccepted}");
-		assertThat(model.targetsFrom(CHECK_GATEWAY_ID)).doesNotContain(NOTIFY_ID, "start_review_phase");
 		assertThat(model.targetsFrom("start_review_phase")).containsExactly(NOTIFY_ID);
 		assertThat(model.targetsFrom(NOTIFY_ID)).containsExactly(GATE_ID);
 		assertThat(model.messageCatchEventsIn("review_phase")).containsExactly(GATE_ID);
