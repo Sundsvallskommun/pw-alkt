@@ -7,8 +7,12 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import se.sundsvall.alkt.exception.NonRetryableException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class InspectionProtocolMapperTest {
 
@@ -117,5 +121,90 @@ class InspectionProtocolMapperTest {
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
 			Map.of("title", "Kassaregister", "noRemark", "X", "remark", "", "comment", "")));
+	}
+
+	@Test
+	void ticksTheBoxOfTheChosenSummary() {
+		final var investigation = new Investigation().parameters(List.of(new Parameter().key("summary").values(List.of("actionRequired"))));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)));
+
+		assertThat(parameters).containsEntry("summaryApprovedActionRequired", "true")
+			.doesNotContainKeys("summary", "summaryApproved", "summaryNotApprovedRevisit", "summaryInvestigationOpened");
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+		"visit, premises, visitInPremises",
+		"visit, closed, visitClosed",
+		"coordinatedWith, none, coordinatedNone",
+		"coordinatedWith, police, coordinatedPolice",
+		"coordinatedWith, taxAgency, coordinatedTaxAgency",
+		"coordinatedWith, rescueService, coordinatedRescueService",
+		"coordinatedWith, environmentHealth, coordinatedEnvironmentHealth",
+		"coordinatedWith, other, coordinatedOther",
+		"securityGuard, yes, securityGuardYes",
+		"securityGuard, no, securityGuardNo",
+		"entranceHost, yes, entranceHostYes",
+		"entranceHost, no, entranceHostNo",
+		"responsiblePerson, present, responsiblePersonPresent",
+		"responsiblePerson, absent, responsiblePersonAbsent",
+		"summary, approved, summaryApproved",
+		"summary, actionRequired, summaryApprovedActionRequired",
+		"summary, revisit, summaryNotApprovedRevisit",
+		"summary, investigation, summaryInvestigationOpened"
+	})
+	void ticksTheBoxOfEachChoice(final String key, final String value, final String box) {
+		final var investigation = new Investigation().parameters(List.of(new Parameter().key(key).values(List.of(value))));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)));
+
+		assertThat(parameters).containsOnlyKeys(box, "measures").containsEntry(box, "true");
+	}
+
+	@Test
+	void ticksEveryChosenCoordination() {
+		final var investigation = new Investigation().parameters(List.of(new Parameter().key("coordinatedWith").values(List.of("taxAgency", "police"))));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)));
+
+		assertThat(parameters).containsOnlyKeys("coordinatedTaxAgency", "coordinatedPolice", "measures")
+			.containsEntry("coordinatedTaxAgency", "true")
+			.containsEntry("coordinatedPolice", "true");
+	}
+
+	@Test
+	void ticksNoBoxForAChoiceNotMade() {
+		final var investigation = new Investigation().parameters(List.of(
+			new Parameter().key("visit").values(List.of()),
+			new Parameter().key("coordinatedWith").values(List.of(" ")),
+			new Parameter().key("summary"),
+			new Parameter().key("businessName").values(List.of("Runt Hörnet AB"))));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)));
+
+		assertThat(parameters).containsOnlyKeys("businessName", "measures");
+	}
+
+	@Test
+	void failsWithoutRetryOnAnUnknownChoice() {
+		final var investigation = new Investigation().parameters(List.of(new Parameter().key("summary").values(List.of("maybe"))));
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null));
+
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, measures))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("summary")
+			.hasMessageContaining("maybe");
+	}
+
+	@Test
+	void failsWithoutRetryOnAnUnknownChoiceAmongKnownOnes() {
+		final var investigation = new Investigation().parameters(List.of(new Parameter().key("coordinatedWith").values(List.of("police", "customs"))));
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null));
+
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, measures))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("coordinatedWith")
+			.hasMessageContaining("customs");
 	}
 }
