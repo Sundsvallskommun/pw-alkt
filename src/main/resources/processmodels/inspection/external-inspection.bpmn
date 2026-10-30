@@ -75,8 +75,7 @@
         <bpmn:documentation>Renders the inspection protocol from the parameters of the investigation and attaches it to the errand as a PDF.</bpmn:documentation>
         <bpmn:extensionElements>
           <camunda:inputOutput>
-            <camunda:inputParameter name="protocolTemplate">inspection.external.protocol</camunda:inputParameter>
-            <camunda:inputParameter name="protocolFileName">Tillsynsprotokoll.pdf</camunda:inputParameter>
+            <camunda:inputParameter name="protocolTemplate">serving-inspection-protocol</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>flow_investigation_await_to_create_protocol</bpmn:incoming>

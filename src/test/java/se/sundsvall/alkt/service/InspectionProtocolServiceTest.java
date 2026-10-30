@@ -259,4 +259,87 @@ class InspectionProtocolServiceTest {
 
 		verifyNoInteractions(supportManagementIntegrationMock, templatingIntegrationMock);
 	}
+
+	@Test
+	void rendersTheServingProtocolWithItsOrderInTimra() {
+		final var errand = timraErrand(List.of("KS 2026/00123"));
+		errand.addMeasuresItem(new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("NOT_COMPLETED").resultText("Smoking").created(CREATED));
+		final var expectedParameters = Map.of("measures", CHECKPOINT_ROWS, "observationSmokingOutdoor", "X", "orderWithRemarks", "true", "caseNumber", "KS 2026/00123");
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(templatingIntegrationMock.renderPdf("2262", "serving-inspection-protocol", expectedParameters)).thenReturn(PDF);
+		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll KS 2026/00123.pdf", PDF)).thenReturn("attachment-id");
+
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "serving-inspection-protocol")).isEqualTo("attachment-id");
+
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(templatingIntegrationMock).renderPdf("2262", "serving-inspection-protocol", expectedParameters);
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll KS 2026/00123.pdf", PDF);
+	}
+
+	@Test
+	void rendersTheTemplateOfTheStepWhateverTheTypeOfTheInvestigation() {
+		final var expectedParameters = Map.of("measures", CHECKPOINT_ROWS, "caseNumber", ERRAND_NUMBER);
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type("serving_permit")));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters)).thenReturn(PDF);
+		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
+
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
+
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters);
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF);
+	}
+
+	@ParameterizedTest
+	@MethodSource("measuresWithoutActiveCheckpoints")
+	void failsWithoutRetryWithoutActiveCheckpoints(final List<Measure> measures) {
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand().measures(measures));
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+
+		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no active checkpoints, so no protocol is made");
+
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	private static Stream<List<Measure>> measuresWithoutActiveCheckpoints() {
+		return Stream.of(
+			null,
+			List.of(),
+			List.of(new Measure().type("INTERNAL").status("CANCELLED").title("Kassaregister").result("COMPLETED").created(CREATED),
+				new Measure().type("EXTERNAL").status("ACTIVE").title("Åtgärda policyn").created(CREATED),
+				new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("COMPLETED").created(CREATED)));
+	}
+
+	@Test
+	void failsWithoutRetryWhenTheTemplateLacksAParameter() {
+		final var expectedParameters = Map.of("measures", CHECKPOINT_ROWS, "caseNumber", ERRAND_NUMBER);
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters))
+			.thenThrow(new NonRetryableException("Template 'internal-inspection-protocol' cannot be rendered from the given parameters: Missing template parameter 'premisesName'"));
+
+		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("premisesName");
+
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters);
+	}
 }

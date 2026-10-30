@@ -75,8 +75,7 @@
         <bpmn:documentation>Renders the inspection report from the parameters of the investigation and attaches it to the errand as a PDF.</bpmn:documentation>
         <bpmn:extensionElements>
           <camunda:inputOutput>
-            <camunda:inputParameter name="protocolTemplate">inspection.internal.report</camunda:inputParameter>
-            <camunda:inputParameter name="protocolFileName">Tillsynsrapport.pdf</camunda:inputParameter>
+            <camunda:inputParameter name="protocolTemplate">internal-inspection-protocol</camunda:inputParameter>
           </camunda:inputOutput>
         </bpmn:extensionElements>
         <bpmn:incoming>flow_investigation_await_to_create_protocol</bpmn:incoming>
