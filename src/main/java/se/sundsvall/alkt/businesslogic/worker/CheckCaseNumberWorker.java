@@ -40,7 +40,7 @@ public class CheckCaseNumberWorker extends AbstractTaskWorker {
 			case NOT_NEEDED -> report;
 			case PRESENT -> report.withLogMessage("Case number checked");
 			// Why: the case worker fills in the case number and moves the errand on again, so this is no incident.
-			case MISSING -> report.withRejection("Errand '%s' in Timrå has no case number in timraCaseNumber".formatted(errandId));
+			case MISSING -> report.withRejection("Errand '%s' in Timrå has no case number in externalReferenceNumber".formatted(errandId));
 		};
 	}
 }

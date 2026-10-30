@@ -10,7 +10,7 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 
 import static java.util.Collections.emptyList;
-import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_TIMRA_CASE_NUMBER;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.withParameter;
@@ -42,14 +42,14 @@ public class ErrandService {
 		return completeAt;
 	}
 
-	/** Only an errand in Timrå needs a case number, from the records of Timrå in timraCaseNumber. */
+	/** Only an errand in Timrå needs a case number, from the records of Timrå in externalReferenceNumber. */
 	public CaseNumberCheck checkCaseNumber(final String municipalityId, final String namespace, final String errandId) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		if (!MUNICIPALITY_ID_TIMRA.equals(toPremisesMunicipalityId(errand))) {
 			return CaseNumberCheck.NOT_NEEDED;
 		}
 		final var present = Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
-			.filter(parameter -> ERRAND_PARAMETER_TIMRA_CASE_NUMBER.equals(parameter.getKey()))
+			.filter(parameter -> ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER.equals(parameter.getKey()))
 			.flatMap(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream())
 			.anyMatch(StringUtils::isNotBlank);
 		return present ? CaseNumberCheck.PRESENT : CaseNumberCheck.MISSING;

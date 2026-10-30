@@ -90,7 +90,7 @@
       </bpmn:intermediateCatchEvent>
       <bpmn:sequenceFlow id="flow_review_await_to_check_case_number" sourceRef="await_review_completed" targetRef="external_task_check_case_number" />
       <bpmn:serviceTask id="external_task_check_case_number" name="Check case number" camunda:type="external" camunda:topic="CheckCaseNumberTask">
-        <bpmn:documentation>Checks that an errand in Timrå has a case number from the records of Timrå in timraCaseNumber and sets caseNumberAccepted. Without one the case worker is warned in the activity log. An errand in Sundsvall needs none.</bpmn:documentation>
+        <bpmn:documentation>Checks that an errand in Timrå has a case number from the records of Timrå in externalReferenceNumber and sets caseNumberAccepted. Without one the case worker is warned in the activity log. An errand in Sundsvall needs none.</bpmn:documentation>
         <bpmn:incoming>flow_review_await_to_check_case_number</bpmn:incoming>
         <bpmn:outgoing>flow_review_check_case_number_to_gateway</bpmn:outgoing>
       </bpmn:serviceTask>

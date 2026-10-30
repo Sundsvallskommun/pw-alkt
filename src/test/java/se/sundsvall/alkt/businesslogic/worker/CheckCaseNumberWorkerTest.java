@@ -100,7 +100,7 @@ class CheckCaseNumberWorkerTest {
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_case_number", null)
 			.withVariables(Map.of("caseNumberAccepted", false))
-			.withRejection("Errand '4517d939-3bd9-40b1-80cb-a70585a071d9' in Timrå has no case number in timraCaseNumber"));
+			.withRejection("Errand '4517d939-3bd9-40b1-80cb-a70585a071d9' in Timrå has no case number in externalReferenceNumber"));
 		verify(errandServiceMock).checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(errandServiceMock);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);

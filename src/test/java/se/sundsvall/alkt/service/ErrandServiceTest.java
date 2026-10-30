@@ -57,7 +57,7 @@ class ErrandServiceTest {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(List.of(
 			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
-			new Parameter().key("timraCaseNumber").values(List.of("TSN 2026/0153")))));
+			new Parameter().key("externalReferenceNumber").values(List.of("TSN 2026/0153")))));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.PRESENT);
 
@@ -83,7 +83,7 @@ class ErrandServiceTest {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(List.of(
 			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
-			new Parameter().key("timraCaseNumber").values(List.of("  ")))));
+			new Parameter().key("externalReferenceNumber").values(List.of("  ")))));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.MISSING);
 
@@ -96,7 +96,7 @@ class ErrandServiceTest {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(List.of(
 			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
-			new Parameter().key("timraCaseNumber").values(null))));
+			new Parameter().key("externalReferenceNumber").values(null))));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.MISSING);
 
@@ -109,7 +109,7 @@ class ErrandServiceTest {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(List.of(
 			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
-			new Parameter().key("timraCaseNumber").values(List.of("", "TSN 2026/0153")))));
+			new Parameter().key("externalReferenceNumber").values(List.of("", "TSN 2026/0153")))));
 
 		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.PRESENT);
 
