@@ -31,6 +31,12 @@
 				{
 					"key": "uteservering",
 					"values": []
+				},
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2281"
+					]
 				}
 			],
 			"stakeholders": [

@@ -66,13 +66,13 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 
 				// Review - in Sundsvall without a case worker
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
-				tuple("Check premises municipality", "external_task_check_premises_municipality"),
-				tuple("Premises municipality", "gateway_premises_municipality"),
+				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 
 				// Investigation - no catch event
@@ -139,11 +139,11 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
 				tuple("No submission", "boundary_create_submission_pdf_skipped"),
 				tuple("Registration completed", "await_registration_completed"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
-				tuple("Check premises municipality", "external_task_check_premises_municipality"),
-				tuple("Premises municipality", "gateway_premises_municipality"),
+				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
@@ -188,11 +188,11 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			tuple("Create submission PDF", "external_task_create_submission_pdf"),
 			tuple("No submission", "boundary_create_submission_pdf_skipped"),
 			tuple("Registration completed", "await_registration_completed"),
+			tuple("Check case number required", "external_task_check_case_number_required"),
 			tuple("End registration phase", "end_registration_phase"),
 			tuple("Review", "review_phase"),
 			tuple("Start review phase", "start_review_phase"),
-			tuple("Check premises municipality", "external_task_check_premises_municipality"),
-			tuple("Premises municipality", "gateway_premises_municipality"),
+			tuple("Case number required?", "gateway_case_number_required"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
 			tuple("Start investigation phase", "start_investigation_phase"),
@@ -257,9 +257,9 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Start review phase", "start_review_phase"),
-				tuple("Check premises municipality", "external_task_check_premises_municipality"),
-				tuple("Premises municipality", "gateway_premises_municipality"));
+				tuple("Case number required?", "gateway_case_number_required"));
 	}
 }

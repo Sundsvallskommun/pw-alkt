@@ -55,7 +55,7 @@ class ProcessLogPropertiesTest {
 			"external_task_cancel_process",
 			"external_task_set_complete_at",
 			"external_task_check_case_number",
-			"external_task_check_premises_municipality");
+			"external_task_check_case_number_required");
 		assertThat(properties.steps().get("external_task_create_asset").done()).isEqualTo("Tillståndet har registrerats hos tillståndshavaren");
 		assertThat(properties.steps().get("external_task_create_asset").skipped()).isNull();
 		assertThat(properties.steps().get("external_task_create_asset").rejected()).isNull();

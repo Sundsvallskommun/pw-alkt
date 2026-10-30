@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 import se.sundsvall.dept44.exception.ClientProblem;
@@ -145,11 +146,14 @@ class ErrandServiceTest {
 	}
 
 	@Test
-	void anErrandWithoutPremisesMunicipalityIsInSundsvallAndNeedsNoCaseNumber() {
+	void anErrandWithoutPremisesMunicipalityStopsTheCaseNumberCheck() {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(null));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().id(ERRAND_ID).parameters(List.of(
+			new Parameter().key("externalReferenceNumber").values(List.of("TSN 2026/0153")))));
 
-		assertThat(errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(CaseNumberCheck.NOT_NEEDED);
+		assertThatThrownBy(() -> errandService.checkCaseNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no premisesMunicipalityId");
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
@@ -169,35 +173,50 @@ class ErrandServiceTest {
 	}
 
 	@Test
-	void premisesMunicipalityIdIsTimraForAnErrandInTimra() {
+	void anErrandInTimraRequiresACaseNumber() {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(List.of(
 			new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
 
-		assertThat(errandService.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("2262");
+		assertThat(errandService.isCaseNumberRequired(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isTrue();
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
-	void premisesMunicipalityIdIsSundsvallForAnErrandWithoutIt() {
+	void anErrandInSundsvallRequiresNoCaseNumber() {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(null));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().parameters(List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of("2281")))));
 
-		assertThat(errandService.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("2281");
+		assertThat(errandService.isCaseNumberRequired(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isFalse();
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
 	}
 
 	@Test
-	void premisesMunicipalityIdOfAnErrandThatCannotBeReadFailsToBeRetried() {
+	void anErrandWithABlankPremisesMunicipalityStopsTheRequirement() {
+		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().id(ERRAND_ID).parameters(List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of(" ")))));
+
+		assertThatThrownBy(() -> errandService.isCaseNumberRequired(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no premisesMunicipalityId");
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock);
+	}
+
+	@Test
+	void theRequirementOfAnErrandThatCannotBeReadFailsToBeRetried() {
 		final var errandService = new ErrandService(supportManagementIntegrationMock, CLOCK);
 		final var problem = new ClientProblem(BAD_GATEWAY, "Support Management is down");
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
 
-		assertThatThrownBy(() -> errandService.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(problem);
+		assertThatThrownBy(() -> errandService.isCaseNumberRequired(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(problem);
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(supportManagementIntegrationMock);

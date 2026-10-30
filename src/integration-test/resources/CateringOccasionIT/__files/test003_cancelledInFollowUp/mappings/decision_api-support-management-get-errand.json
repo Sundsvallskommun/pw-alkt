@@ -22,6 +22,12 @@
 					"values": [
 						"2099-12-31"
 					]
+				},
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2281"
+					]
 				}
 			],
 			"stakeholders": [

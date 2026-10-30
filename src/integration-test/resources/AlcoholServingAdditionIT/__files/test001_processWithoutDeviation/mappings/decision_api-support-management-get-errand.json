@@ -47,6 +47,12 @@
 					"values": [
 						"Sundsvall"
 					]
+				},
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2281"
+					]
 				}
 			]
 		},

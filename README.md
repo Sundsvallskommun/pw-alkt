@@ -103,6 +103,10 @@ curl -X POST http://localhost:8080/2281/ALKT/process/errand-events \
 The `processKey` of the event names the process. The models are in `src/main/resources/processmodels`, one folder
 per table below.
 
+In Timrå an application or notification leaves Review only once the errand parameter `externalReferenceNumber` holds
+the case number from the records of Timrå. The municipality comes from the errand parameter `premisesMunicipalityId`.
+An errand without it raises an incident.
+
 ### Applications
 
 |        Process key         |                   Errand                    |                               What the service does                                | Permit in party-assets |
@@ -126,6 +130,9 @@ Every application tells the customer that the processing has started.
 | `low-alcohol-beer-sales-and-serving`  | Sales and serving of low-alcohol beer     | Makes the decision, creates the asset | `LowAlcoholBeerSalesAndServingNotification`   |
 | `e-cigarette-sales`                   | Sale of electronic cigarettes and refills | Makes the decision, creates the asset | `ECigaretteSalesNotification`                 |
 | `tobacco-free-nicotine-product-sales` | Sale of tobacco-free nicotine products    | Makes the decision, creates the asset | `TobaccoFreeNicotineProductSalesNotification` |
+
+A notification from the e-service needs no case worker in Sundsvall. One a case worker created waits in Registration
+until the case worker completes it, and one in Timrå waits in Review.
 
 An approved notification holds until further notice, except a catering occasion. Its decision and asset end on the date
 in the errand parameter `occasionEndDate` (`yyyy-MM-dd`). An errand without that date, or with one that is not after

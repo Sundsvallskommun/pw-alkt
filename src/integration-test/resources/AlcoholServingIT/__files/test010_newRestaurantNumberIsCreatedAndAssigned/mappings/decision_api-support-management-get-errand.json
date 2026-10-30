@@ -53,6 +53,12 @@
 					"values": [
 						"true"
 					]
+				},
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2281"
+					]
 				}
 			]
 		},

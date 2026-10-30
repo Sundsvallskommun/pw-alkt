@@ -26,7 +26,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 
 @ExtendWith(MockitoExtension.class)
-class CheckPremisesMunicipalityWorkerTest {
+class CheckCaseNumberRequiredWorkerTest {
 
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
@@ -48,22 +48,22 @@ class CheckPremisesMunicipalityWorkerTest {
 	private ExternalTaskService externalTaskServiceMock;
 
 	@InjectMocks
-	private CheckPremisesMunicipalityWorker worker;
+	private CheckCaseNumberRequiredWorker worker;
 
 	@Test
-	void handsTheMunicipalityOfThePremisesToTheProcessWithoutAnEntryInTheActivityLog() {
+	void handsWhetherTheErrandRequiresACaseNumberToTheProcessWithoutAnEntryInTheActivityLog() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_premises_municipality");
-		when(errandServiceMock.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn("2262");
+		when(externalTaskMock.getActivityId()).thenReturn("external_task_check_case_number_required");
+		when(errandServiceMock.isCaseNumberRequired(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(true);
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_premises_municipality", null)
-			.withVariables(Map.of("premisesMunicipalityId", "2262")));
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_check_case_number_required", null)
+			.withVariables(Map.of("caseNumberRequired", true)));
 		assertThat(result.logMessage()).isNull();
-		verify(errandServiceMock).getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(errandServiceMock).isCaseNumberRequired(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(errandServiceMock);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
 	}
@@ -74,11 +74,11 @@ class CheckPremisesMunicipalityWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(errandServiceMock.getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
+		when(errandServiceMock.isCaseNumberRequired(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(problem);
 
 		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock)).isSameAs(problem);
 
-		verify(errandServiceMock).getPremisesMunicipalityId(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(errandServiceMock).isCaseNumberRequired(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoMoreInteractions(errandServiceMock);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock, externalTaskServiceMock);
 	}

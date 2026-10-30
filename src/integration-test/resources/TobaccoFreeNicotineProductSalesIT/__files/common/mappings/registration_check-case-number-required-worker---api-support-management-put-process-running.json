@@ -1,5 +1,5 @@
 {
-	"name": "review_check-premises-municipality-worker---api-support-management-put-process-running",
+	"name": "registration_check-case-number-required-worker---api-support-management-put-process-running",
 	"request": {
 		"method": "PUT",
 		"urlPathPattern": "/api-support-management/2281/ALKT/errands/3b7e2c91-5d4a-4e8f-a1c6-9f0d2b8e7a54/processes/[^/]+",
@@ -18,7 +18,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.currentActivityId",
-					"equalTo": "external_task_check_premises_municipality"
+					"equalTo": "external_task_check_case_number_required"
 				}
 			},
 			{

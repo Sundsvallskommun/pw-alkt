@@ -1,17 +1,18 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.supportmanagement.Errand;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Optional;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 
-import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.withParameter;
 
@@ -42,20 +43,26 @@ public class ErrandService {
 		return completeAt;
 	}
 
-	/** Only an errand in Timrå needs a case number, from the records of Timrå in externalReferenceNumber. */
+	/** The case number comes from the records of Timrå, in externalReferenceNumber. */
 	public CaseNumberCheck checkCaseNumber(final String municipalityId, final String namespace, final String errandId) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		if (!MUNICIPALITY_ID_TIMRA.equals(toPremisesMunicipalityId(errand))) {
+		if (!requiresCaseNumber(errand)) {
 			return CaseNumberCheck.NOT_NEEDED;
 		}
-		final var present = Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
-			.filter(parameter -> ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER.equals(parameter.getKey()))
-			.flatMap(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream())
-			.anyMatch(StringUtils::isNotBlank);
-		return present ? CaseNumberCheck.PRESENT : CaseNumberCheck.MISSING;
+		return toParameterValues(errand.getParameters()).containsKey(ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER) ? CaseNumberCheck.PRESENT : CaseNumberCheck.MISSING;
 	}
 
-	public String getPremisesMunicipalityId(final String municipalityId, final String namespace, final String errandId) {
-		return toPremisesMunicipalityId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId));
+	public boolean isCaseNumberRequired(final String municipalityId, final String namespace, final String errandId) {
+		return requiresCaseNumber(supportManagementIntegration.getErrand(municipalityId, namespace, errandId));
+	}
+
+	/**
+	 * Only an errand in Timrå needs a case number. Without a premises municipality that is unknown, so the errand stops.
+	 */
+	private static boolean requiresCaseNumber(final Errand errand) {
+		if (!toParameterValues(errand.getParameters()).containsKey(ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID)) {
+			throw new NonRetryableException("Errand '%s' has no %s".formatted(errand.getId(), ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID));
+		}
+		return MUNICIPALITY_ID_TIMRA.equals(toPremisesMunicipalityId(errand));
 	}
 }

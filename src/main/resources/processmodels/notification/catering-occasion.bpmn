@@ -25,11 +25,11 @@
       <bpmn:serviceTask id="external_task_create_submission_pdf" name="Create submission PDF" camunda:type="external" camunda:topic="CreateSubmissionPdfTask">
         <bpmn:documentation>Saves the submission the errand came in with as a PDF on the errand, so it can be entered in the records. The form comes from the first JSON parameter of the errand and its schema in json-schema. An errand that did not come in through the e-service has no submission, and the step is skipped. An errand from the e-service without JSON parameters raises an incident.</bpmn:documentation>
         <bpmn:incoming>flow_registration_start_to_create_submission_pdf</bpmn:incoming>
-        <bpmn:outgoing>flow_registration_create_submission_pdf_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_registration_create_submission_pdf_to_check_case_number_required</bpmn:outgoing>
       </bpmn:serviceTask>
-      <bpmn:sequenceFlow id="flow_registration_create_submission_pdf_to_end" sourceRef="external_task_create_submission_pdf" targetRef="end_registration_phase" />
+      <bpmn:sequenceFlow id="flow_registration_create_submission_pdf_to_check_case_number_required" sourceRef="external_task_create_submission_pdf" targetRef="external_task_check_case_number_required" />
       <bpmn:boundaryEvent id="boundary_create_submission_pdf_skipped" name="No submission" attachedToRef="external_task_create_submission_pdf">
-        <bpmn:documentation>Takes the process past the step for an errand that did not come in through the e-service. A case worker created that errand, so it waits for the case worker to complete the registration.</bpmn:documentation>
+        <bpmn:documentation>Takes the process past the step for an errand that did not come in through the e-service. The step is skipped for that reason only, so a case worker created the errand, and it waits for the case worker to complete the registration.</bpmn:documentation>
         <bpmn:outgoing>flow_registration_submission_pdf_skipped_to_await</bpmn:outgoing>
         <bpmn:errorEventDefinition id="errordef_create_submission_pdf_skipped" errorRef="error_step_skipped" />
       </bpmn:boundaryEvent>
@@ -37,13 +37,19 @@
       <bpmn:intermediateCatchEvent id="await_registration_completed" name="Registration completed">
         <bpmn:documentation>Waits until a case worker marks the registration as completed in the user interface, so a notification the case worker created is complete before it is decided. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
         <bpmn:incoming>flow_registration_submission_pdf_skipped_to_await</bpmn:incoming>
-        <bpmn:outgoing>flow_registration_await_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_registration_await_to_check_case_number_required</bpmn:outgoing>
         <bpmn:messageEventDefinition id="messagedef_registration_completed" messageRef="message_registration_completed" />
       </bpmn:intermediateCatchEvent>
-      <bpmn:sequenceFlow id="flow_registration_await_to_end" sourceRef="await_registration_completed" targetRef="end_registration_phase" />
+      <bpmn:sequenceFlow id="flow_registration_await_to_check_case_number_required" sourceRef="await_registration_completed" targetRef="external_task_check_case_number_required" />
+      <bpmn:serviceTask id="external_task_check_case_number_required" name="Check case number required" camunda:type="external" camunda:topic="CheckCaseNumberRequiredTask">
+        <bpmn:documentation>Sets caseNumberRequired from the municipality of the premises. It runs at the end of the registration, so a review without a gate opens with no step and leaves no entry in the activity log.</bpmn:documentation>
+        <bpmn:incoming>flow_registration_create_submission_pdf_to_check_case_number_required</bpmn:incoming>
+        <bpmn:incoming>flow_registration_await_to_check_case_number_required</bpmn:incoming>
+        <bpmn:outgoing>flow_registration_check_case_number_required_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_registration_check_case_number_required_to_end" sourceRef="external_task_check_case_number_required" targetRef="end_registration_phase" />
       <bpmn:endEvent id="end_registration_phase" name="End registration phase">
-        <bpmn:incoming>flow_registration_create_submission_pdf_to_end</bpmn:incoming>
-        <bpmn:incoming>flow_registration_await_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_registration_check_case_number_required_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_registration_to_review" sourceRef="registration_phase" targetRef="review_phase" />
@@ -52,26 +58,20 @@
       <bpmn:incoming>flow_registration_to_review</bpmn:incoming>
       <bpmn:outgoing>flow_review_to_investigation</bpmn:outgoing>
       <bpmn:startEvent id="start_review_phase" name="Start review phase">
-        <bpmn:outgoing>flow_review_start_to_check_premises_municipality</bpmn:outgoing>
+        <bpmn:outgoing>flow_review_start_to_gateway</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_review_start_to_check_premises_municipality" sourceRef="start_review_phase" targetRef="external_task_check_premises_municipality" />
-      <bpmn:serviceTask id="external_task_check_premises_municipality" name="Check premises municipality" camunda:type="external" camunda:topic="CheckPremisesMunicipalityTask">
-        <bpmn:documentation>Reads the municipality of the premises from the errand and sets premisesMunicipalityId.</bpmn:documentation>
-        <bpmn:incoming>flow_review_start_to_check_premises_municipality</bpmn:incoming>
-        <bpmn:outgoing>flow_review_check_premises_municipality_to_gateway</bpmn:outgoing>
-      </bpmn:serviceTask>
-      <bpmn:sequenceFlow id="flow_review_check_premises_municipality_to_gateway" sourceRef="external_task_check_premises_municipality" targetRef="gateway_premises_municipality" />
-      <bpmn:exclusiveGateway id="gateway_premises_municipality" name="Premises municipality">
-        <bpmn:documentation>Sundsvall reviews a notification without a case worker. Timrå waits for the case worker and for the case number from its records.</bpmn:documentation>
-        <bpmn:incoming>flow_review_check_premises_municipality_to_gateway</bpmn:incoming>
+      <bpmn:sequenceFlow id="flow_review_start_to_gateway" sourceRef="start_review_phase" targetRef="gateway_case_number_required" />
+      <bpmn:exclusiveGateway id="gateway_case_number_required" name="Case number required?">
+        <bpmn:documentation>A notification that needs no case number is reviewed without a case worker. One that needs a case number waits for the case worker and for the case number.</bpmn:documentation>
+        <bpmn:incoming>flow_review_start_to_gateway</bpmn:incoming>
         <bpmn:outgoing>flow_review_gateway_to_end</bpmn:outgoing>
         <bpmn:outgoing>flow_review_gateway_to_await</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:sequenceFlow id="flow_review_gateway_to_end" name="Sundsvall" sourceRef="gateway_premises_municipality" targetRef="end_review_phase">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${premisesMunicipalityId != '2262'}</bpmn:conditionExpression>
+      <bpmn:sequenceFlow id="flow_review_gateway_to_end" name="Not required" sourceRef="gateway_case_number_required" targetRef="end_review_phase">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!caseNumberRequired}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-      <bpmn:sequenceFlow id="flow_review_gateway_to_await" name="Timrå" sourceRef="gateway_premises_municipality" targetRef="await_review_completed">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${premisesMunicipalityId == '2262'}</bpmn:conditionExpression>
+      <bpmn:sequenceFlow id="flow_review_gateway_to_await" name="Required" sourceRef="gateway_case_number_required" targetRef="await_review_completed">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${caseNumberRequired}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
       <bpmn:intermediateCatchEvent id="await_review_completed" name="Review completed">
         <bpmn:documentation>Waits until a case worker marks the review as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
@@ -331,9 +331,9 @@
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_registration_phase" bpmnElement="end_registration_phase">
-        <dc:Bounds x="282" y="182" width="36" height="36" />
+        <dc:Bounds x="402" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="257" y="225" width="86" height="27" />
+          <dc:Bounds x="377" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_external_task_create_submission_pdf" bpmnElement="external_task_create_submission_pdf">
@@ -352,19 +352,26 @@
           <dc:Bounds x="186" y="305" width="84" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_check_case_number_required" bpmnElement="external_task_check_case_number_required">
+        <dc:Bounds x="260" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_submission_pdf_skipped_to_await" bpmnElement="flow_registration_submission_pdf_skipped_to_await">
         <di:waypoint x="146" y="258" />
         <di:waypoint x="146" y="280" />
         <di:waypoint x="210" y="280" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_await_to_end" bpmnElement="flow_registration_await_to_end">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_await_to_check_case_number_required" bpmnElement="flow_registration_await_to_check_case_number_required">
         <di:waypoint x="246" y="280" />
-        <di:waypoint x="300" y="280" />
-        <di:waypoint x="300" y="218" />
+        <di:waypoint x="310" y="280" />
+        <di:waypoint x="310" y="240" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_create_submission_pdf_to_end" bpmnElement="flow_registration_create_submission_pdf_to_end">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_create_submission_pdf_to_check_case_number_required" bpmnElement="flow_registration_create_submission_pdf_to_check_case_number_required">
         <di:waypoint x="196" y="200" />
-        <di:waypoint x="282" y="200" />
+        <di:waypoint x="260" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_registration_check_case_number_required_to_end" bpmnElement="flow_registration_check_case_number_required_to_end">
+        <di:waypoint x="360" y="200" />
+        <di:waypoint x="402" y="200" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
@@ -376,71 +383,64 @@
           <dc:Bounds x="155" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_external_task_check_premises_municipality" bpmnElement="external_task_check_premises_municipality">
-        <dc:Bounds x="260" y="160" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_gateway_premises_municipality" bpmnElement="gateway_premises_municipality" isMarkerVisible="true">
-        <dc:Bounds x="405" y="175" width="50" height="50" />
+      <bpmndi:BPMNShape id="BPMNShape_gateway_case_number_required" bpmnElement="gateway_case_number_required" isMarkerVisible="true">
+        <dc:Bounds x="260" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="385" y="145" width="90" height="27" />
+          <dc:Bounds x="240" y="145" width="90" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_await_review_completed" bpmnElement="await_review_completed">
-        <dc:Bounds x="500" y="302" width="36" height="36" />
+        <dc:Bounds x="355" y="302" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="474" y="345" width="88" height="14" />
+          <dc:Bounds x="329" y="345" width="88" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_external_task_check_case_number" bpmnElement="external_task_check_case_number">
-        <dc:Bounds x="580" y="280" width="100" height="80" />
+        <dc:Bounds x="435" y="280" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_gateway_case_number_accepted" bpmnElement="gateway_case_number_accepted" isMarkerVisible="true">
-        <dc:Bounds x="725" y="295" width="50" height="50" />
+        <dc:Bounds x="580" y="295" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="710" y="265" width="80" height="27" />
+          <dc:Bounds x="565" y="265" width="80" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
-        <dc:Bounds x="842" y="182" width="36" height="36" />
+        <dc:Bounds x="697" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="817" y="225" width="86" height="27" />
+          <dc:Bounds x="672" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_check_premises_municipality" bpmnElement="flow_review_start_to_check_premises_municipality">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_gateway" bpmnElement="flow_review_start_to_gateway">
         <di:waypoint x="216" y="200" />
         <di:waypoint x="260" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_check_premises_municipality_to_gateway" bpmnElement="flow_review_check_premises_municipality_to_gateway">
-        <di:waypoint x="360" y="200" />
-        <di:waypoint x="405" y="200" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_gateway_to_end" bpmnElement="flow_review_gateway_to_end">
-        <di:waypoint x="455" y="200" />
-        <di:waypoint x="842" y="200" />
+        <di:waypoint x="310" y="200" />
+        <di:waypoint x="697" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_gateway_to_await" bpmnElement="flow_review_gateway_to_await">
-        <di:waypoint x="430" y="225" />
-        <di:waypoint x="430" y="320" />
-        <di:waypoint x="500" y="320" />
+        <di:waypoint x="285" y="225" />
+        <di:waypoint x="285" y="320" />
+        <di:waypoint x="355" y="320" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_await_to_check_case_number" bpmnElement="flow_review_await_to_check_case_number">
-        <di:waypoint x="536" y="320" />
-        <di:waypoint x="580" y="320" />
+        <di:waypoint x="391" y="320" />
+        <di:waypoint x="435" y="320" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_check_case_number_to_gateway" bpmnElement="flow_review_check_case_number_to_gateway">
-        <di:waypoint x="680" y="320" />
-        <di:waypoint x="725" y="320" />
+        <di:waypoint x="535" y="320" />
+        <di:waypoint x="580" y="320" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_case_number_accepted_to_end" bpmnElement="flow_review_case_number_accepted_to_end">
-        <di:waypoint x="775" y="320" />
-        <di:waypoint x="860" y="320" />
-        <di:waypoint x="860" y="218" />
+        <di:waypoint x="630" y="320" />
+        <di:waypoint x="715" y="320" />
+        <di:waypoint x="715" y="218" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_case_number_missing_to_await" bpmnElement="flow_review_case_number_missing_to_await">
-        <di:waypoint x="750" y="345" />
-        <di:waypoint x="750" y="400" />
-        <di:waypoint x="518" y="400" />
-        <di:waypoint x="518" y="338" />
+        <di:waypoint x="605" y="345" />
+        <di:waypoint x="605" y="400" />
+        <di:waypoint x="373" y="400" />
+        <di:waypoint x="373" y="338" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
