@@ -1,7 +1,6 @@
 package se.sundsvall.alkt.integration.templating.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
-import generated.se.sundsvall.supportmanagement.Investigation;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -44,10 +43,5 @@ public final class TemplatingMapper {
 		templateParameters.putAll(permitParameters);
 		templateParameters.put(PERMIT_PARAMETER_CONDITIONS, conditions);
 		return templateParameters;
-	}
-
-	/** The same placeholders as for a decision, without conditions since an investigation has none. */
-	public static Map<String, Object> toTemplateParameters(final Investigation investigation) {
-		return new LinkedHashMap<>(toParameterValues(investigation.getParameters()));
 	}
 }

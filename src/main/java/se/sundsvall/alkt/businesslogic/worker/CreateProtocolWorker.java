@@ -16,7 +16,6 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 public class CreateProtocolWorker extends AbstractTaskWorker {
 
 	// Input parameters of the step in the bpmn schema, not process variables.
-	static final String PROCESS_VARIABLE_PROTOCOL_FILE_NAME = "protocolFileName";
 	static final String PROCESS_VARIABLE_PROTOCOL_TEMPLATE = "protocolTemplate";
 
 	private final InspectionProtocolService inspectionProtocolService;
@@ -29,7 +28,7 @@ public class CreateProtocolWorker extends AbstractTaskWorker {
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final var attachmentId = inspectionProtocolService.createProtocol(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
-			externalTask.getVariable(PROCESS_VARIABLE_PROTOCOL_TEMPLATE), externalTask.getVariable(PROCESS_VARIABLE_PROTOCOL_FILE_NAME));
+			externalTask.getVariable(PROCESS_VARIABLE_PROTOCOL_TEMPLATE));
 
 		logInfo("Errand {} has protocol {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(attachmentId));
 

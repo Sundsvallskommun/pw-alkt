@@ -19,7 +19,6 @@ import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.businesslogic.worker.CreateProtocolWorker.PROCESS_VARIABLE_PROTOCOL_FILE_NAME;
 import static se.sundsvall.alkt.businesslogic.worker.CreateProtocolWorker.PROCESS_VARIABLE_PROTOCOL_TEMPLATE;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,8 +27,7 @@ class CreateProtocolWorkerTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
-	private static final String TEMPLATE = "inspection.external.protocol";
-	private static final String FILE_NAME = "Tillsynsprotokoll.pdf";
+	private static final String TEMPLATE = "serving-inspection-protocol";
 
 	@Mock
 	private ProcessReportService processReportServiceMock;
@@ -50,19 +48,18 @@ class CreateProtocolWorkerTest {
 	private CreateProtocolWorker worker;
 
 	@Test
-	void createsTheProtocolWithTheTemplateAndFileNameOfTheStep() {
+	void createsTheProtocolWithTheTemplateOfTheStep() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_PROTOCOL_TEMPLATE)).thenReturn(TEMPLATE);
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_PROTOCOL_FILE_NAME)).thenReturn(FILE_NAME);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_protocol");
-		when(inspectionProtocolServiceMock.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, FILE_NAME)).thenReturn("attachment-id");
+		when(inspectionProtocolServiceMock.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).thenReturn("attachment-id");
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
 		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_protocol", null).withLogMessage("Protocol 'attachment-id' found or created"));
-		verify(inspectionProtocolServiceMock).createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, FILE_NAME);
+		verify(inspectionProtocolServiceMock).createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 }
