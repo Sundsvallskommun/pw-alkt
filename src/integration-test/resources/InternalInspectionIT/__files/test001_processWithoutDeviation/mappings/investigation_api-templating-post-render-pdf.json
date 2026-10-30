@@ -12,13 +12,67 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.identifier",
-					"equalTo": "inspection.internal.report"
+					"equalTo": "internal-inspection-protocol"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.version",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.caseNumber",
+					"equalTo": "AOT-26100148"
 				}
 			},
 			{
 				"matchesJsonPath": {
 					"expression": "$.parameters.permitHolderName",
 					"equalTo": "Runt Hörnet AB"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.summaryApproved",
+					"equalTo": "true"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.coordinatedPolice",
+					"equalTo": "true"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.coordinatedTaxAgency",
+					"equalTo": "true"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.summary",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.orderWithoutRemarks",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.orderWithRemarks",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.measures",
+					"equalToJson": "[{\"title\":\"Alkoholpolicy\",\"noRemark\":\"\",\"remark\":\"X\",\"comment\":\"Policyn saknas\"},{\"title\":\"Kassaregister\",\"noRemark\":\"X\",\"remark\":\"\",\"comment\":\"Certifierat kassaregister\"}]"
 				}
 			}
 		]

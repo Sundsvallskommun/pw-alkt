@@ -12,13 +12,55 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.identifier",
-					"equalTo": "inspection.external.protocol"
+					"equalTo": "serving-inspection-protocol"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.version",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.caseNumber",
+					"equalTo": "KS 2026/00123"
 				}
 			},
 			{
 				"matchesJsonPath": {
 					"expression": "$.parameters.permitHolderName",
 					"equalTo": "Runt Hörnet AB"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.observationCrowdedTablesOutdoor",
+					"equalTo": "X"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.observationLitteringOutdoor",
+					"equalTo": "X"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.orderWithRemarks",
+					"equalTo": "true"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.orderWithoutRemarks",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.measures",
+					"equalToJson": "[{\"title\":\"Serveringsansvarig på plats\",\"noRemark\":\"X\",\"remark\":\"\",\"comment\":\"\"}]"
 				}
 			}
 		]

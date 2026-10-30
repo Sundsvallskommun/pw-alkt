@@ -16,7 +16,7 @@
 				"matchingType": "ALL",
 				"headers": {
 					"Content-Disposition": {
-						"contains": "filename=\"Tillsynsrapport.pdf\""
+						"contains": "filename=\"Tillsynsprotokoll AOT-26100150.pdf\""
 					}
 				},
 				"bodyPatterns": [
@@ -32,5 +32,8 @@
 			"Location": "http://localhost/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7/attachments/5e7a9c1b-3d4f-4a6c-8e0a-4b6c8d0e2f3a"
 		},
 		"status": 201
-	}
+	},
+	"scenarioName": "internal-inspection-protocol",
+	"requiredScenarioState": "Started",
+	"newScenarioState": "protocol_created"
 }
