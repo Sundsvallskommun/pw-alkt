@@ -64,7 +64,7 @@ class ActionErrandServiceTest {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().id(ERRAND_ID).title("Brister vid tillsyn").assignedUserId("handlaggare").classification(classification)
-				.stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id"))).measures(List.of(new Measure().type("DEFICIENCY").status("ACTIVE"))));
+				.stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id"))).measures(List.of(new Measure().type("EXTERNAL").status("ACTIVE"))));
 		when(supportManagementIntegrationMock.createErrand(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(REFERRED_FROM), errandCaptor.capture())).thenReturn("action-errand-id");
 
 		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(ActionErrandResult.created("action-errand-id"));
@@ -91,7 +91,7 @@ class ActionErrandServiceTest {
 	void failsWithoutRetryForAnInspectionWithoutPermitHolder() {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(new Errand().id(ERRAND_ID).stakeholders(List.of(new Stakeholder().role("CONTACT").externalId("contact-id"), new Stakeholder().role("PRIMARY"))).measures(List.of(new Measure().type("DEFICIENCY").status("ACTIVE"))));
+			.thenReturn(new Errand().id(ERRAND_ID).stakeholders(List.of(new Stakeholder().role("CONTACT").externalId("contact-id"), new Stakeholder().role("PRIMARY"))).measures(List.of(new Measure().type("EXTERNAL").status("ACTIVE"))));
 
 		assertThatThrownBy(() -> service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
@@ -108,7 +108,7 @@ class ActionErrandServiceTest {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().id(ERRAND_ID).assignedUserId(assignedUserId).stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id")))
-				.measures(List.of(new Measure().type("DEFICIENCY").status("ACTIVE"))));
+				.measures(List.of(new Measure().type("EXTERNAL").status("ACTIVE"))));
 
 		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isEqualTo(ActionErrandResult.refused("Errand 'inspection-id' has no assigned user to report the action errand, no action errand created"));
@@ -137,7 +137,7 @@ class ActionErrandServiceTest {
 	void refusesAnInspectionWithoutActiveMeasures(final String status) {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(new Errand().id(ERRAND_ID).stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id"))).measures(List.of(new Measure().type("DEFICIENCY").status(status))));
+			.thenReturn(new Errand().id(ERRAND_ID).stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id"))).measures(List.of(new Measure().type("EXTERNAL").status(status))));
 
 		assertThat(service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(ActionErrandResult.refused("Errand 'inspection-id' has no deficiencies, no action errand created"));
 

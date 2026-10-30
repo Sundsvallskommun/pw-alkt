@@ -42,7 +42,7 @@
 					],
 					"measures": [
 						{
-							"type": "DEFICIENCY",
+							"type": "EXTERNAL",
 							"title": "Matsedel saknas",
 							"description": "Matsedel ska finnas tillgänglig för gästerna",
 							"addedByUser": "handlaggare",

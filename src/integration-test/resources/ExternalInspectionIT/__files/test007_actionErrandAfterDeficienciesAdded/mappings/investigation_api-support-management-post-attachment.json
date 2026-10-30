@@ -32,8 +32,5 @@
 			"Location": "http://localhost/2281/ALKT/errands/4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345/attachments/3a5c7e9f-1b2d-4f6a-8c0e-2d4f6a8b0c1e"
 		},
 		"status": 201
-	},
-	"scenarioName": "external-inspection-protocol",
-	"requiredScenarioState": "Started",
-	"newScenarioState": "protocol_created"
+	}
 }
