@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class InspectionProtocolMapperTest {
 
 	private static final String INTERNAL_TEMPLATE = "internal-inspection-protocol";
+	private static final String SERVING_TEMPLATE = "serving-inspection-protocol";
 	private static final OffsetDateTime CREATED = OffsetDateTime.parse("2026-10-01T09:00:00+02:00");
 
 	private static Measure checkpoint(final String title, final String result, final String description) {
@@ -206,5 +207,129 @@ class InspectionProtocolMapperTest {
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining("coordinatedWith")
 			.hasMessageContaining("customs");
+	}
+
+	private static Measure place(final String label, final String result, final String observed) {
+		return new Measure().type("OBSERVATION").status("ACTIVE").title(label).result(result).resultText(observed).created(CREATED);
+	}
+
+	@Test
+	void ticksTheObservedThingsOfAPlaceWithDeficiencies() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "CrowdedTables|Littering"));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures);
+
+		assertThat(parameters).containsOnlyKeys("measures", "observationCrowdedTablesOutdoor", "observationLitteringOutdoor", "orderWithRemarks")
+			.containsEntry("observationCrowdedTablesOutdoor", "X")
+			.containsEntry("observationLitteringOutdoor", "X")
+			.containsEntry("orderWithRemarks", "true");
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+		"Serveringsyta inomhus, observationGlassBreakageIndoor",
+		"Uteservering, observationGlassBreakageOutdoor",
+		"Utanför (entré), observationGlassBreakageEntrance",
+		"Toaletter, observationGlassBreakageToilets"
+	})
+	void namesTheCellAfterThePlace(final String label, final String cell) {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place(label, "NOT_COMPLETED", "GlassBreakage"));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures);
+
+		assertThat(parameters).containsOnlyKeys("measures", cell, "orderWithRemarks").containsEntry(cell, "X");
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+		"GlassBreakage", "CrowdedTables", "Littering", "Vomit", "StickyFloor", "Disorder", "TooManyGuests", "DancingOnFurniture", "InadequateBoundary", "MissingSeating",
+		"AlcoholOutsideServingArea", "Smoking", "HighNoiseLevel"
+	})
+	void knowsEveryObservedThing(final String thing) {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Toaletter", "NOT_COMPLETED", thing));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures);
+
+		assertThat(parameters).containsEntry("observation" + thing + "Toilets", "X");
+	}
+
+	@Test
+	void ticksNothingForAPlaceWithoutDeficiencies() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "COMPLETED", "CrowdedTables|Littering"));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures);
+
+		assertThat(parameters).containsOnlyKeys("measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
+	}
+
+	@Test
+	void isWithoutRemarksWhenNoPlaceWasAssessed() {
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), List.of(checkpoint("Tillstånd", "COMPLETED", null)));
+
+		assertThat(parameters).containsOnlyKeys("measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
+	}
+
+	@Test
+	void isWithRemarksForAPlaceWithDeficienciesButNothingObserved() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", null),
+			place("Toaletter", "NOT_COMPLETED", "").created(CREATED.plusMinutes(1)));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures);
+
+		assertThat(parameters).containsOnlyKeys("measures", "orderWithRemarks").containsEntry("orderWithRemarks", "true");
+	}
+
+	@Test
+	void skipsEmptyPartsOfTheObservedThings() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking||"));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures);
+
+		assertThat(parameters).containsOnlyKeys("measures", "observationSmokingOutdoor", "orderWithRemarks").containsEntry("observationSmokingOutdoor", "X");
+	}
+
+	@Test
+	void leavesOutAPlaceThatIsNotActive() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking").status("CANCELLED"));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures);
+
+		assertThat(parameters).containsOnlyKeys("measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
+	}
+
+	@Test
+	void sendsNoOrderToTheInternalProtocol() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking"));
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, new Investigation(), measures);
+
+		assertThat(parameters).containsOnlyKeys("measures");
+	}
+
+	@Test
+	void failsWithoutRetryOnAnUnknownPlace() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Bakgården", "NOT_COMPLETED", "Smoking"));
+
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("Bakgården");
+	}
+
+	@Test
+	void failsWithoutRetryOnAnUnknownPlaceWithoutDeficiencies() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Bakgården", "COMPLETED", null));
+
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("Bakgården");
+	}
+
+	@Test
+	void failsWithoutRetryOnAnUnknownObservedThing() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking|Fireworks"));
+
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("Fireworks");
 	}
 }
