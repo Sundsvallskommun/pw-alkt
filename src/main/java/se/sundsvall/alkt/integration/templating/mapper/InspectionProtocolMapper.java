@@ -53,7 +53,7 @@ public final class InspectionProtocolMapper {
 			.forEach(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream()
 				.filter(StringUtils::isNotBlank)
 				.forEach(value -> parameters.put(toBox(parameter.getKey(), value), BOX_TICKED)));
-		parameters.put("measures", activeOfType(measures, MEASURE_TYPE_INTERNAL).stream()
+		parameters.put("measures", toActiveCheckpoints(measures).stream()
 			.sorted(Comparator.comparing(Measure::getCreated, Comparator.nullsLast(Comparator.<OffsetDateTime>naturalOrder())))
 			.map(InspectionProtocolMapper::toRow)
 			.toList());
@@ -87,7 +87,11 @@ public final class InspectionProtocolMapper {
 		return order;
 	}
 
-	public static List<Measure> activeOfType(final List<Measure> measures, final String type) {
+	public static List<Measure> toActiveCheckpoints(final List<Measure> measures) {
+		return activeOfType(measures, MEASURE_TYPE_INTERNAL);
+	}
+
+	private static List<Measure> activeOfType(final List<Measure> measures, final String type) {
 		return Optional.ofNullable(measures).orElse(emptyList()).stream()
 			.filter(measure -> type.equals(measure.getType()))
 			.filter(measure -> MEASURE_STATUS_ACTIVE.equals(measure.getStatus()))

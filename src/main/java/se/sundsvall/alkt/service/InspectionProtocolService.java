@@ -17,14 +17,13 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_REFERENCE_NU
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
-import static se.sundsvall.alkt.integration.templating.mapper.InspectionProtocolMapper.activeOfType;
+import static se.sundsvall.alkt.integration.templating.mapper.InspectionProtocolMapper.toActiveCheckpoints;
 import static se.sundsvall.alkt.integration.templating.mapper.InspectionProtocolMapper.toTemplateParameters;
 
 @Service
 public class InspectionProtocolService {
 
 	private static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
-	private static final String MEASURE_TYPE_INTERNAL = "INTERNAL";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final TemplatingIntegration templatingIntegration;
@@ -59,7 +58,7 @@ public class InspectionProtocolService {
 
 	private String uploadProtocol(final String municipalityId, final String namespace, final String errandId, final String template, final String fileName,
 		final Investigation investigation, final Errand errand, final String premisesMunicipalityId, final String caseNumber) {
-		if (activeOfType(errand.getMeasures(), MEASURE_TYPE_INTERNAL).isEmpty()) {
+		if (toActiveCheckpoints(errand.getMeasures()).isEmpty()) {
 			throw new NonRetryableException("Errand '%s' has no active checkpoints, so no protocol is made".formatted(errandId));
 		}
 		final var parameters = toTemplateParameters(template, investigation, errand.getMeasures());
