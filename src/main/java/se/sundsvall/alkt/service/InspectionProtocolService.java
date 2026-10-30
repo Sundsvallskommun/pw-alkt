@@ -15,7 +15,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.replace;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER;
-import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.requiresCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.InspectionProtocolMapper.toActiveCheckpoints;
@@ -46,7 +46,7 @@ public class InspectionProtocolService {
 		final var investigation = getInvestigation(municipalityId, namespace, errandId);
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var premisesMunicipalityId = toPremisesMunicipalityId(errand);
-		final var caseNumber = toCaseNumber(errand, premisesMunicipalityId);
+		final var caseNumber = toCaseNumber(errand);
 		// Why: a slash in the case number of Timrå would read as a path in the file name.
 		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
 		final var completed = completedAt(investigation);
@@ -69,8 +69,8 @@ public class InspectionProtocolService {
 		return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 	}
 
-	private static String toCaseNumber(final Errand errand, final String premisesMunicipalityId) {
-		if (!MUNICIPALITY_ID_TIMRA.equals(premisesMunicipalityId)) {
+	private static String toCaseNumber(final Errand errand) {
+		if (!requiresCaseNumber(errand)) {
 			return errand.getErrandNumber();
 		}
 		return Optional.ofNullable(toParameterValues(errand.getParameters()).get(ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER))

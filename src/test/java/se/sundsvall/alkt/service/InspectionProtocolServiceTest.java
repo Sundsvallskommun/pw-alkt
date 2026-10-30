@@ -64,7 +64,8 @@ class InspectionProtocolServiceTest {
 	}
 
 	private static Errand sundsvallErrand() {
-		return new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER).measures(new ArrayList<>(List.of(CHECKPOINT)));
+		return new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER).parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2281"))))
+			.measures(new ArrayList<>(List.of(CHECKPOINT)));
 	}
 
 	private static Errand timraErrand(final List<String> externalReferenceNumbers) {
@@ -131,6 +132,20 @@ class InspectionProtocolServiceTest {
 		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' in Timrå has no case number in externalReferenceNumber, so no protocol is made");
+
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	@Test
+	void failsWithoutRetryWhenTheErrandHasNoPremisesMunicipality() {
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER).measures(List.of(CHECKPOINT)));
+
+		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no premisesMunicipalityId");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);

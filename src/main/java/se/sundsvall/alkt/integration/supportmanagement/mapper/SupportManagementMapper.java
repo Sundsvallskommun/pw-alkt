@@ -100,6 +100,16 @@ public final class SupportManagementMapper {
 		return municipalityId;
 	}
 
+	/**
+	 * Only an errand in Timrå needs a case number. Without a premises municipality that is unknown, so the errand stops.
+	 */
+	public static boolean requiresCaseNumber(final Errand errand) {
+		if (!toParameterValues(errand.getParameters()).containsKey(ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID)) {
+			throw new NonRetryableException("Errand '%s' has no %s".formatted(errand.getId(), ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID));
+		}
+		return MUNICIPALITY_ID_TIMRA.equals(toPremisesMunicipalityId(errand));
+	}
+
 	public static Optional<String> toPartyId(final Errand errand) {
 		return Optional.ofNullable(errand.getStakeholders()).orElse(emptyList()).stream()
 			.filter(SupportManagementMapper::isPermitHolder)
