@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.Parameter;
@@ -64,6 +65,7 @@ class InspectionProtocolServiceTest {
 			.parameters(List.of(new Parameter().key("visitDate").values(List.of("2026-09-15"))));
 		final var cancelled = new Investigation().status("CANCELLED").created(CREATED).parameters(List.of(new Parameter().key("visitDate").values(List.of("2026-09-01"))));
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(cancelled, investigation));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
 			new ErrandAttachment().id("other-id").fileName("Foto.jpg").created(COMPLETED.plusSeconds(1)),
 			new ErrandAttachment().id("scanned-id").fileName(FILE_NAME).created(COMPLETED.minusSeconds(1))));
@@ -73,8 +75,32 @@ class InspectionProtocolServiceTest {
 		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, FILE_NAME)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, TEMPLATE, Map.of("visitDate", "2026-09-15"));
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf);
+	}
+
+	@Test
+	void rendersTheProtocolInTheMunicipalityOfTheInspectedPremises() {
+		final var pdf = new byte[] {
+			1, 2, 3
+		};
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(List.of(new Investigation().status("COMPLETED").created(CREATED).completedAt(COMPLETED)
+				.parameters(List.of(new Parameter().key("visitDate").values(List.of("2026-09-15"))))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(templatingIntegrationMock.renderPdf("2262", TEMPLATE, Map.of("visitDate", "2026-09-15"))).thenReturn(pdf);
+		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf)).thenReturn("attachment-id");
+
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, FILE_NAME)).isEqualTo("attachment-id");
+
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(templatingIntegrationMock).renderPdf("2262", TEMPLATE, Map.of("visitDate", "2026-09-15"));
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf);
 	}
 
@@ -123,6 +149,7 @@ class InspectionProtocolServiceTest {
 		};
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new Investigation().status("COMPLETED").created(CREATED).completedAt(COMPLETED)));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand());
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new ErrandAttachment().id("unknown-id").fileName(FILE_NAME)));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, Map.of())).thenReturn(pdf);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf)).thenReturn("attachment-id");
@@ -130,6 +157,7 @@ class InspectionProtocolServiceTest {
 		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, FILE_NAME)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, TEMPLATE, Map.of());
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf);

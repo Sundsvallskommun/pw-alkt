@@ -46,6 +46,12 @@
 			},
 			{
 				"matchesJsonPath": {
+					"expression": "$.description",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
 					"expression": "$.title",
 					"equalTo": "Beslut om serveringstillstånd"
 				}
@@ -59,7 +65,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.additionalParameters.premisesRestaurantNumber",
-					"equalTo": "22810001"
+					"equalTo": "22620001"
 				}
 			}
 		]

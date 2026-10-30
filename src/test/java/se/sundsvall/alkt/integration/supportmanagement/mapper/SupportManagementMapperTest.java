@@ -10,6 +10,7 @@ import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -17,11 +18,14 @@ import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.mock;
@@ -135,6 +139,7 @@ class SupportManagementMapperTest {
 	void toChangeDraftLeavesOutThePremisesAddressAndTheRestaurantNumberChoice() {
 		final var errand = new Errand().parameters(List.of(
 			new Parameter().key("premisesName").values(List.of("Runt Hörnet")),
+			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
 			new Parameter().key("premisesStreetAddress").values(List.of("Storgatan 33")),
 			new Parameter().key("premisesPostalCode").values(List.of("852 30")),
 			new Parameter().key("premisesPostalArea").values(List.of("Sundsvall")),
@@ -302,5 +307,70 @@ class SupportManagementMapperTest {
 	@Test
 	void toConditionsIsEmptyForADecisionWithoutTerms() {
 		assertThat(SupportManagementMapper.toConditions(new Decision().terms(null))).isEmpty();
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsTimraWhenTheErrandSaysTimra() {
+		final var errand = new Errand().parameters(List.of(
+			new Parameter().key("premisesName").values(List.of("Krogen")),
+			new Parameter().key("premisesMunicipalityId").values(List.of("2262"))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2262");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWhenTheErrandSaysSundsvall() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2281"))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWithoutTheParameter() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesName").values(List.of("Krogen"))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWhenTheParameterHasNoValues() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(null)));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWhenTheParameterHasABlankValue() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of(" "))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallWhenTheParameterHasANullValue() {
+		final var errand = new Errand().parameters(List.of(new Parameter().key("premisesMunicipalityId").values(Collections.singletonList(null))));
+
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(errand)).isEqualTo("2281");
+	}
+
+	/**
+	 * Not trimmed: a value the errand got wrong is an incident the case worker fixes, not a permit in the wrong
+	 * municipality.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"2280", "Timrå", "2262 "
+	})
+	void toPremisesMunicipalityIdFailsWithoutRetriesForAnUnknownMunicipality(final String value) {
+		final var errand = new Errand().id("errand-id").parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of(value))));
+
+		assertThatThrownBy(() -> SupportManagementMapper.toPremisesMunicipalityId(errand))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has a premisesMunicipalityId that is none of [2281, 2262]");
+	}
+
+	@Test
+	void toPremisesMunicipalityIdIsSundsvallForAnErrandWithoutParameters() {
+		assertThat(SupportManagementMapper.toPremisesMunicipalityId(new Errand().parameters(null))).isEqualTo("2281");
 	}
 }

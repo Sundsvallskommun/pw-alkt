@@ -21,6 +21,7 @@
 				"type": "PERMIT",
 				"status": "COMPLETED",
 				"title": "Beslut om serveringstillstånd",
+				"description": "Serveringstillstånd för restaurang Runt Hörnet",
 				"outcome": "APPROVAL",
 				"method": "MANUAL",
 				"decidedAt": "2026-09-20T10:00:00+02:00",

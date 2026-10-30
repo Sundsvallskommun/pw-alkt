@@ -37,6 +37,7 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
 
@@ -68,7 +69,8 @@ public class AssetService {
 			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
 		}
 
-		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
+		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+		final var partyId = toPartyId(errand)
 			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
 
 		return partyAssetsIntegration.findAsset(municipalityId, partyId, decision.getId())
@@ -78,7 +80,7 @@ public class AssetService {
 			})
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType, restaurantNumber), assetType);
+				return createAsset(municipalityId, toPremisesMunicipalityId(errand), namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType, restaurantNumber), assetType);
 			});
 	}
 
@@ -90,7 +92,8 @@ public class AssetService {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
 		// Why: checked again at the decision, as the permit may have been deactivated while the errand was handled.
-		final var versioned = getPermitToChange(municipalityId, supportManagementIntegration.getErrand(municipalityId, namespace, errandId), errandId, assetType);
+		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+		final var versioned = getPermitToChange(municipalityId, errand, errandId, assetType);
 		final var asset = versioned.asset();
 		final var assetId = asset.getId();
 
@@ -98,7 +101,7 @@ public class AssetService {
 		// Rendered from the parameters the asset gets, since the certificate shows the whole permit.
 		final var update = toAssetUpdateRequest(asset, decision);
 		final var certificate = assetType.getCertificateTemplate()
-			.map(template -> toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, update.getAdditionalParameters()))));
+			.map(template -> toCertificateFile(templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, toTemplateParameters(decision, update.getAdditionalParameters()))));
 
 		// Why: a rerun after the certificate failed finds the change already made, and every PATCH adds a revision.
 		if (changes(update, asset)) {
@@ -227,7 +230,7 @@ public class AssetService {
 	}
 
 	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
-	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
+	private String createAsset(final String municipalityId, final String certificateMunicipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
 		final AssetType assetType) {
 		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, request);
 
@@ -237,7 +240,7 @@ public class AssetService {
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
 			// Why: rendered from the parameters the asset gets, as on a change, so the certificate shows the restaurant number.
 			assetType.getCertificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
-				toCertificateFile(templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
+				toCertificateFile(templatingIntegration.renderPdf(certificateMunicipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);
 		} catch (final NonRetryableException e) {
 			throw new NonRetryableException(removeDraftAsset(municipalityId, assetId, e), e);

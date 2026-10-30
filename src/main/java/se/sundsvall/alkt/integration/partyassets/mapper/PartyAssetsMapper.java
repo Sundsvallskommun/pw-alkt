@@ -55,7 +55,6 @@ public final class PartyAssetsMapper {
 			.issued(toFirstDay(decision).orElse(null))
 			.validTo(decision.getValidTo())
 			.title(decision.getTitle())
-			.description(decision.getDescription())
 			.additionalParameters(toAdditionalParameters(decision, errandId, restaurantNumber));
 	}
 

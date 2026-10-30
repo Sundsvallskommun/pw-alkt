@@ -2,7 +2,7 @@
 	"name": "decision_api-licensed-business-post-assignment",
 	"request": {
 		"method": "POST",
-		"urlPath": "/api-licensed-business/2281/assignments",
+		"urlPath": "/api-licensed-business/2262/assignments",
 		"bodyPatterns": [
 			{
 				"equalToJson": {
@@ -20,7 +20,7 @@
 	},
 	"response": {
 		"headers": {
-			"Location": "http://localhost/2281/assignments/5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d"
+			"Location": "http://localhost/2262/assignments/5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d"
 		},
 		"status": 201
 	}

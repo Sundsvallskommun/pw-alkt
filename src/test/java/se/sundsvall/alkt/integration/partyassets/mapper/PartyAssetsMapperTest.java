@@ -44,7 +44,7 @@ class PartyAssetsMapperTest {
 	private static final LocalDate TODAY = LocalDate.of(2026, 10, 6);
 
 	@Test
-	void toAssetCreateRequestCarriesTheDecision() {
+	void toAssetCreateRequestCarriesTheDecisionButNotItsDescription() {
 		final var decision = new Decision()
 			.id(randomUUID().toString())
 			.type("PERMIT")
@@ -69,7 +69,7 @@ class PartyAssetsMapperTest {
 		assertThat(result.getIssued()).isEqualTo(LocalDate.of(2026, 10, 1));
 		assertThat(result.getValidTo()).isEqualTo(LocalDate.of(2027, 9, 30));
 		assertThat(result.getTitle()).isEqualTo("Beslut om serveringstillstånd");
-		assertThat(result.getDescription()).isEqualTo("Tillstånd för servering till allmänheten");
+		assertThat(result.getDescription()).isNull();
 		assertThat(result.getStatus()).isEqualTo(DRAFT);
 		assertThat(result.getAdditionalParameters()).containsExactly(
 			entry(PERMIT_PARAMETER_ERRAND_ID, ERRAND_ID),

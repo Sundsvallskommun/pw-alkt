@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.task.ExternalTask;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
@@ -41,6 +42,8 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_AREA;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_CODE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRESS;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_RESTAURANT_NUMBER;
+import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
+import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
@@ -54,10 +57,15 @@ import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class SupportManagementMapper {
 
+	private static final String ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID = "premisesMunicipalityId";
+
 	// The parameters of a change errand that are not part of the change the customer asks for. Every other one is.
 	private static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
 		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, ERRAND_PARAMETER_PREMISES_STREET_ADDRESS, ERRAND_PARAMETER_PREMISES_POSTAL_CODE,
-		ERRAND_PARAMETER_PREMISES_POSTAL_AREA, ERRAND_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER, PERMIT_PARAMETER_RESTAURANT_NUMBER);
+		ERRAND_PARAMETER_PREMISES_POSTAL_AREA, ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID, ERRAND_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER,
+		PERMIT_PARAMETER_RESTAURANT_NUMBER);
+
+	private static final List<String> PREMISES_MUNICIPALITY_IDS = List.of(MUNICIPALITY_ID_SUNDSVALL, MUNICIPALITY_ID_TIMRA);
 
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
@@ -76,6 +84,20 @@ public final class SupportManagementMapper {
 	/** A permit holder is the primary stakeholder, known by its external id. */
 	public static boolean isPermitHolder(final Stakeholder stakeholder) {
 		return STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole()) && nonNull(stakeholder.getExternalId());
+	}
+
+	/** Sundsvall when the errand names none. Any other municipality is a fault in the errand that a retry does not fix. */
+	public static String toPremisesMunicipalityId(final Errand errand) {
+		final var municipalityId = Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
+			.filter(parameter -> ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID.equals(parameter.getKey()))
+			.flatMap(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream())
+			.filter(StringUtils::isNotBlank)
+			.findFirst()
+			.orElse(MUNICIPALITY_ID_SUNDSVALL);
+		if (!PREMISES_MUNICIPALITY_IDS.contains(municipalityId)) {
+			throw new NonRetryableException("Errand '%s' has a %s that is none of %s".formatted(errand.getId(), ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID, PREMISES_MUNICIPALITY_IDS));
+		}
+		return municipalityId;
 	}
 
 	public static Optional<String> toPartyId(final Errand errand) {

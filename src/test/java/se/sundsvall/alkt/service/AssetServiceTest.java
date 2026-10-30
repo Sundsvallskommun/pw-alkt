@@ -46,6 +46,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -964,6 +965,52 @@ class AssetServiceTest {
 			.isInstanceOf(Problem.class);
 
 		verifyNoInteractions(partyAssetsIntegrationMock);
+	}
+
+	/** party-assets keeps every permit under the municipality of the call, the certificate is Timrå's own. */
+	@Test
+	void findOrCreateAssetOfAPremisesInTimraCreatesThePermitInSundsvallWithACertificateRenderedInTimra() {
+		final var attachment = new ErrandAttachment().id("first").fileName("beslut.pdf").mimeType("application/pdf");
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().attachments(List.of(attachment))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID);
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
+		verify(partyAssetsIntegrationMock, times(2)).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
+		verify(templatingIntegrationMock).renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any());
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first");
+		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
+	}
+
+	@Test
+	void updateAssetOfAPremisesInTimraChangesThePermitInSundsvallWithACertificateRenderedInTimra() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(Optional.of(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00"))))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().parameters(List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
+			new Parameter().key("assetId").values(List.of(ASSET_ID)))));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+
+		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
+
+		verify(templatingIntegrationMock).renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any());
+		verify(partyAssetsIntegrationMock).getAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), any());
+		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
 	}
 
 	private void givenAnErrandNaming(final Decision decision) {

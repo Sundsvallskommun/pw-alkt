@@ -12,6 +12,7 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.isAnyBlank;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
 
 @Service
@@ -48,7 +49,8 @@ public class InspectionProtocolService {
 
 	private String uploadProtocol(final String municipalityId, final String namespace, final String errandId, final String template, final String fileName,
 		final Investigation investigation) {
-		final var pdf = templatingIntegration.renderPdf(municipalityId, template, toTemplateParameters(investigation));
+		final var premisesMunicipalityId = toPremisesMunicipalityId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId));
+		final var pdf = templatingIntegration.renderPdf(premisesMunicipalityId, template, toTemplateParameters(investigation));
 		return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 	}
 
