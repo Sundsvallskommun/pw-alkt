@@ -12,6 +12,7 @@ import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.replace;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
@@ -46,7 +47,8 @@ public class InspectionProtocolService {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var premisesMunicipalityId = toPremisesMunicipalityId(errand);
 		final var caseNumber = toCaseNumber(errand, premisesMunicipalityId);
-		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(caseNumber);
+		// Why: a slash in the case number of Timrå would read as a path in the file name.
+		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
 		final var completed = completedAt(investigation);
 		return supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
 			.filter(attachment -> fileName.equals(attachment.getFileName()))

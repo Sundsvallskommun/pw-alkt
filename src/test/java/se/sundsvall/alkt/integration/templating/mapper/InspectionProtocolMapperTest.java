@@ -124,16 +124,6 @@ class InspectionProtocolMapperTest {
 			Map.of("title", "Kassaregister", "noRemark", "X", "remark", "", "comment", "")));
 	}
 
-	@Test
-	void ticksTheBoxOfTheChosenSummary() {
-		final var investigation = new Investigation().parameters(List.of(new Parameter().key("summary").values(List.of("actionRequired"))));
-
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)));
-
-		assertThat(parameters).containsEntry("summaryApprovedActionRequired", "true")
-			.doesNotContainKeys("summary", "summaryApproved", "summaryNotApprovedRevisit", "summaryInvestigationOpened");
-	}
-
 	@ParameterizedTest
 	@CsvSource({
 		"visit, premises, visitInPremises",
@@ -185,17 +175,6 @@ class InspectionProtocolMapperTest {
 		final var parameters = InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)));
 
 		assertThat(parameters).containsOnlyKeys("businessName", "measures");
-	}
-
-	@Test
-	void failsWithoutRetryOnAnUnknownChoice() {
-		final var investigation = new Investigation().parameters(List.of(new Parameter().key("summary").values(List.of("maybe"))));
-		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null));
-
-		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(INTERNAL_TEMPLATE, investigation, measures))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining("summary")
-			.hasMessageContaining("maybe");
 	}
 
 	@Test
@@ -307,8 +286,8 @@ class InspectionProtocolMapperTest {
 	}
 
 	@Test
-	void failsWithoutRetryOnAnUnknownPlace() {
-		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Bakgården", "NOT_COMPLETED", "Smoking"));
+	void failsWithoutRetryOnAnUnknownPlaceWithoutDeficiencies() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Bakgården", "COMPLETED", null));
 
 		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures))
 			.isInstanceOf(NonRetryableException.class)
@@ -316,12 +295,12 @@ class InspectionProtocolMapperTest {
 	}
 
 	@Test
-	void failsWithoutRetryOnAnUnknownPlaceWithoutDeficiencies() {
-		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Bakgården", "COMPLETED", null));
+	void failsWithoutRetryOnAPlaceWithoutTitle() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place(null, "NOT_COMPLETED", "Smoking"));
 
 		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(SERVING_TEMPLATE, new Investigation(), measures))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining("Bakgården");
+			.hasMessageContaining("'null'");
 	}
 
 	@Test

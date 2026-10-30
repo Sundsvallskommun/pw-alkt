@@ -67,7 +67,7 @@ public final class InspectionProtocolMapper {
 		final var order = new LinkedHashMap<String, String>();
 		var remarks = false;
 		for (final var place : places) {
-			final var suffix = Optional.ofNullable(PLACES.get(place.getTitle()))
+			final var suffix = Optional.ofNullable(place.getTitle()).map(PLACES::get)
 				.orElseThrow(() -> new NonRetryableException("The errand has an observation of the place '%s', which is not a place the protocol knows".formatted(place.getTitle())));
 			if (!RESULT_NOT_COMPLETED.equals(place.getResult())) {
 				continue;

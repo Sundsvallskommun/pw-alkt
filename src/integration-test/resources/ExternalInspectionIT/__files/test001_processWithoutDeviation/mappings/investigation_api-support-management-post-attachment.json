@@ -16,7 +16,7 @@
 				"matchingType": "ALL",
 				"headers": {
 					"Content-Disposition": {
-						"contains": "filename=\"Tillsynsprotokoll KS 2026/00123.pdf\""
+						"contains": "filename=\"Tillsynsprotokoll KS 2026-00123.pdf\""
 					}
 				},
 				"bodyPatterns": [
