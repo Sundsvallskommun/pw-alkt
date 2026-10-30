@@ -19,7 +19,15 @@
 		},
 		"jsonBody": {
 			"id": "3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31",
-			"errandNumber": "ALKT-2026-000001"
+			"errandNumber": "ALKT-2026-000001",
+			"parameters": [
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2281"
+					]
+				}
+			]
 		},
 		"status": 200
 	}

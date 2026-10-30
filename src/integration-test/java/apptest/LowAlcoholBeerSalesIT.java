@@ -32,7 +32,9 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey());
 
-		// The first four phases hold no catch event in this model, so follow up is the first one to park
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "registration");
+
 		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "closure");
 
@@ -48,16 +50,19 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// Registration - no catch event, so the phase walks straight through
+				// Registration - not from the e-service, so the phase waits for the case worker
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
 				tuple("No submission", "boundary_create_submission_pdf_skipped"),
+				tuple("Registration completed", "await_registration_completed"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 
-				// Review - no catch event
+				// Review - in Sundsvall without a case worker
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 
 				// Investigation - no catch event
@@ -72,7 +77,7 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
-				// Follow up - the first phase this model parks in
+				// Follow up - the first phase after the registration to wait
 				tuple("Follow up", "follow_up_phase"),
 				tuple("Start follow up phase", "start_follow_up_phase"),
 				tuple("Follow up completed", "await_follow_up_completed"),
@@ -102,6 +107,9 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "registration");
+
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitWaitingReportAt("follow_up_phase");
 
@@ -114,14 +122,18 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// No case worker before follow up: three phases pass straight through, the decision phase runs its two steps
+				// No case worker after the registration: review and investigation pass straight through, the decision phase runs its
+				// two steps
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
 				tuple("No submission", "boundary_create_submission_pdf_skipped"),
+				tuple("Registration completed", "await_registration_completed"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
@@ -148,6 +160,9 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "registration");
+
 		cancelProcess(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -162,9 +177,12 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			tuple("Start registration phase", "start_registration_phase"),
 			tuple("Create submission PDF", "external_task_create_submission_pdf"),
 			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"),
+			tuple("Check case number required", "external_task_check_case_number_required"),
 			tuple("End registration phase", "end_registration_phase"),
 			tuple("Review", "review_phase"),
 			tuple("Start review phase", "start_review_phase"),
+			tuple("Case number required?", "gateway_case_number_required"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
 			tuple("Start investigation phase", "start_investigation_phase"),
@@ -177,5 +195,35 @@ class LowAlcoholBeerSalesIT extends AbstractOperatonAppTest {
 			tuple("Follow up", "follow_up_phase"),
 			tuple("Start follow up phase", "start_follow_up_phase"),
 			tuple("Follow up completed", "await_follow_up_completed"));
+	}
+
+	@Test
+	void test004_cancelledInRegistration() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, LOW_ALCOHOL_BEER_SALES.getKey());
+
+		// A case worker created the errand, so it waits in the registration, where it is cancelled
+		cancelProcess(ERRAND_ID, processInstanceId, LOW_ALCOHOL_BEER_SALES.getKey(), "registration");
+
+		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+
+		// The mappings assert the cancellation offered next to the gate of the registration, and the process reported
+		// COMPLETED once it is used. Nothing is decided.
+		verifyAllStubs();
+
+		assertCancelledRoute(processInstanceId,
+			tuple("Start process", "start_process"),
+			tuple("Registration", "registration_phase"),
+			tuple("Start registration phase", "start_registration_phase"),
+			tuple("Create submission PDF", "external_task_create_submission_pdf"),
+			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"));
 	}
 }

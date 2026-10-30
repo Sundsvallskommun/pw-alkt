@@ -95,6 +95,8 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				tuple("Start review phase", "start_review_phase"),
 				tuple("Notify customer processing started", "external_task_notify_processing_started"),
 				tuple("Review completed", "await_review_completed"),
+				tuple("Check case number", "external_task_check_case_number"),
+				tuple("Case number accepted?", "gateway_case_number_accepted"),
 				tuple("End review phase", "end_review_phase"),
 
 				// Investigation
@@ -254,6 +256,8 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			tuple("Start review phase", "start_review_phase"),
 			tuple("Notify customer processing started", "external_task_notify_processing_started"),
 			tuple("Review completed", "await_review_completed"),
+			tuple("Check case number", "external_task_check_case_number"),
+			tuple("Case number accepted?", "gateway_case_number_accepted"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
 			tuple("Start investigation phase", "start_investigation_phase"),
@@ -299,6 +303,8 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			tuple("Start review phase", "start_review_phase"),
 			tuple("Notify customer processing started", "external_task_notify_processing_started"),
 			tuple("Review completed", "await_review_completed"),
+			tuple("Check case number", "external_task_check_case_number"),
+			tuple("Case number accepted?", "gateway_case_number_accepted"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
 			tuple("Start investigation phase", "start_investigation_phase"),

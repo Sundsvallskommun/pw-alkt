@@ -34,6 +34,12 @@
 					"values": [
 						"Försäljning får ske mellan 11.00 och 02.00."
 					]
+				},
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2281"
+					]
 				}
 			]
 		},

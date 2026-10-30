@@ -53,13 +53,19 @@ class ProcessLogPropertiesTest {
 			"external_task_close_asset",
 			"external_task_complete_process",
 			"external_task_cancel_process",
-			"external_task_set_complete_at");
+			"external_task_set_complete_at",
+			"external_task_check_case_number",
+			"external_task_check_case_number_required");
 		assertThat(properties.steps().get("external_task_create_asset").done()).isEqualTo("Tillståndet har registrerats hos tillståndshavaren");
 		assertThat(properties.steps().get("external_task_create_asset").skipped()).isNull();
 		assertThat(properties.steps().get("external_task_create_asset").rejected()).isNull();
 		assertThat(properties.steps().get("external_task_notify_processing_started").skipped()).isNotBlank();
 		assertThat(properties.steps().get("external_task_create_submission_pdf").skipped()).isNotBlank();
 		assertThat(properties.steps().get("external_task_create_action_errand").rejected()).isNotBlank();
+		assertThat(properties.steps().get("external_task_check_case_number").rejected()).isEqualTo("Diarienummer från Timrås diarium saknas. Fyll i diarienumret och klicka vidare igen");
+		assertThat(properties.steps().get("external_task_check_case_number").done()).isNotBlank();
+		assertThat(properties.steps().get("external_task_check_case_number").retry()).isNotBlank();
+		assertThat(properties.steps().get("external_task_check_case_number").failed()).isNotBlank();
 		assertThat(properties.phases()).containsOnlyKeys(
 			"registration_phase",
 			"review_phase",

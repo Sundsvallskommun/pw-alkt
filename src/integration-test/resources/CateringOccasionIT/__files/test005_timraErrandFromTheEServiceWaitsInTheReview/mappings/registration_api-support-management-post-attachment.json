@@ -1,0 +1,36 @@
+{
+	"name": "registration_api-support-management-post-attachment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/9696b9e6-6753-48ca-aa9d-cd1ca7f18d70/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ALL",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "filename=\"Inkommet ärende ALKT-2026-000002.pdf\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalTo": "%PDF-1.7 inkommen anmälan"
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/9696b9e6-6753-48ca-aa9d-cd1ca7f18d70/attachments/1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b"
+		},
+		"status": 201
+	}
+}

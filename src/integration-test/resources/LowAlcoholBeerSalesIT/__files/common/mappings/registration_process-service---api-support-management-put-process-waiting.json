@@ -1,0 +1,64 @@
+{
+	"name": "registration_process-service---api-support-management-put-process-waiting",
+	"metadata": {
+		"comment": "A notification a case worker created waits in the registration."
+	},
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "WAITING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.processKey",
+					"equalTo": "low-alcohol-beer-sales"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "registration_phase"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityName",
+					"equalTo": "Registration"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].name",
+					"equalTo": "registration_completed"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.awaitingSignals[0].label",
+					"equalTo": "Registration completed"
+				}
+			},
+			{
+				"matchesJsonPath": "$.awaitingSignals[?(@.name == 'process_cancelled')]"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

@@ -98,6 +98,15 @@ process-log:
       done: Datumet då ansökan blev komplett har registrerats i ärendet
       retry: Datumet då ansökan blev komplett kunde inte registreras just nu, ett nytt försök görs automatiskt
       failed: Datumet då ansökan blev komplett kunde inte registreras. Processen har stannat och felet behöver åtgärdas
+    "[external_task_check_case_number]":
+      done: Diarienumret från Timrås diarium har kontrollerats
+      retry: Diarienumret kunde inte kontrolleras just nu, ett nytt försök görs automatiskt
+      failed: Diarienumret kunde inte kontrolleras. Processen har stannat och felet behöver åtgärdas
+      rejected: Diarienummer från Timrås diarium saknas. Fyll i diarienumret och klicka vidare igen
+    "[external_task_check_case_number_required]":
+      done: Det har kontrollerats om ärendet behöver ett diarienummer från Timrås diarium
+      retry: Det kunde inte kontrolleras just nu om ärendet behöver ett diarienummer, ett nytt försök görs automatiskt
+      failed: Lokalens kommun saknas i ärendet eller kunde inte läsas, så det går inte att avgöra om ett diarienummer behövs. Processen har stannat och felet behöver åtgärdas
   phases:
     "[registration_phase]":
       entered: Registrering har påbörjats

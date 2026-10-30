@@ -24,6 +24,14 @@
 					"externalIdType": "PRIVATE",
 					"externalId": "3b7e1c2d-9a4f-4e58-b6d0-2f1a8c5e7b93"
 				}
+			],
+			"parameters": [
+				{
+					"key": "premisesMunicipalityId",
+					"values": [
+						"2281"
+					]
+				}
 			]
 		},
 		"status": 200

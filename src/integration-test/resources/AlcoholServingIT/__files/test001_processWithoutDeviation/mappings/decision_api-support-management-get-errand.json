@@ -44,6 +44,12 @@
 					]
 				},
 				{
+					"key": "externalReferenceNumber",
+					"values": [
+						"TSN 2026/0153"
+					]
+				},
+				{
 					"key": "premisesName",
 					"values": [
 						"Runt Hörnet"

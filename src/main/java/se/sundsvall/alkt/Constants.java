@@ -78,10 +78,12 @@ public final class Constants {
 	public static final String ERRAND_PARAMETER_PREMISES_STREET_ADDRESS = "premisesStreetAddress";
 	public static final String ERRAND_PARAMETER_PREMISES_POSTAL_CODE = "premisesPostalCode";
 	public static final String ERRAND_PARAMETER_PREMISES_POSTAL_AREA = "premisesPostalArea";
+	public static final String ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID = "premisesMunicipalityId";
 	// A number at the premises, or "true" in newRestaurantNumber for a new one. Without either the first free number is
 	// used.
 	public static final String ERRAND_PARAMETER_RESTAURANT_NUMBER = "restaurantNumber";
 	public static final String ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER = "newRestaurantNumber";
+	public static final String ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER = "externalReferenceNumber";
 
 	public static final String MUNICIPALITY_ID_SUNDSVALL = "2281";
 	public static final String MUNICIPALITY_ID_TIMRA = "2262";

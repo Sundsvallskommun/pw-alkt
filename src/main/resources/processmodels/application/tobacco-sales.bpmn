@@ -78,12 +78,31 @@
         <bpmn:documentation>Waits until a case worker marks the review as completed in the user interface. The phase stays in the activity tree while it waits, so the interface can show where the errand is.</bpmn:documentation>
         <bpmn:incoming>flow_review_notify_to_await</bpmn:incoming>
         <bpmn:incoming>flow_review_notify_skipped_to_await</bpmn:incoming>
-        <bpmn:outgoing>flow_review_await_to_end</bpmn:outgoing>
+        <bpmn:incoming>flow_review_case_number_missing_to_await</bpmn:incoming>
+        <bpmn:outgoing>flow_review_await_to_check_case_number</bpmn:outgoing>
         <bpmn:messageEventDefinition id="messagedef_review_completed" messageRef="message_review_completed" />
       </bpmn:intermediateCatchEvent>
-      <bpmn:sequenceFlow id="flow_review_await_to_end" sourceRef="await_review_completed" targetRef="end_review_phase" />
+      <bpmn:sequenceFlow id="flow_review_await_to_check_case_number" sourceRef="await_review_completed" targetRef="external_task_check_case_number" />
+      <bpmn:serviceTask id="external_task_check_case_number" name="Check case number" camunda:type="external" camunda:topic="CheckCaseNumberTask">
+        <bpmn:documentation>Checks that an errand in Timrå has a case number from the records of Timrå in externalReferenceNumber and sets caseNumberAccepted. Without one the case worker is warned in the activity log. An errand in Sundsvall needs none.</bpmn:documentation>
+        <bpmn:incoming>flow_review_await_to_check_case_number</bpmn:incoming>
+        <bpmn:outgoing>flow_review_check_case_number_to_gateway</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_review_check_case_number_to_gateway" sourceRef="external_task_check_case_number" targetRef="gateway_case_number_accepted" />
+      <bpmn:exclusiveGateway id="gateway_case_number_accepted" name="Case number accepted?">
+        <bpmn:documentation>Without a case number the process goes back to wait for the case worker, who fills it in and completes the review again, instead of stopping on an incident. It goes back past the customer message, so the customer is told once.</bpmn:documentation>
+        <bpmn:incoming>flow_review_check_case_number_to_gateway</bpmn:incoming>
+        <bpmn:outgoing>flow_review_case_number_accepted_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_review_case_number_missing_to_await</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:sequenceFlow id="flow_review_case_number_accepted_to_end" name="Accepted" sourceRef="gateway_case_number_accepted" targetRef="end_review_phase">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${caseNumberAccepted}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="flow_review_case_number_missing_to_await" name="Missing" sourceRef="gateway_case_number_accepted" targetRef="await_review_completed">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!caseNumberAccepted}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
       <bpmn:endEvent id="end_review_phase" name="End review phase">
-        <bpmn:incoming>flow_review_await_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_review_case_number_accepted_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_review_to_investigation" sourceRef="review_phase" targetRef="investigation_phase" />
@@ -482,10 +501,19 @@
           <dc:Bounds x="397" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
-        <dc:Bounds x="522" y="182" width="36" height="36" />
+      <bpmndi:BPMNShape id="BPMNShape_external_task_check_case_number" bpmnElement="external_task_check_case_number">
+        <dc:Bounds x="500" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_gateway_case_number_accepted" bpmnElement="gateway_case_number_accepted" isMarkerVisible="true">
+        <dc:Bounds x="645" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="497" y="225" width="86" height="27" />
+          <dc:Bounds x="630" y="232" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
+        <dc:Bounds x="742" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="717" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_notify" bpmnElement="flow_review_start_to_notify">
@@ -508,9 +536,23 @@
         <di:waypoint x="440" y="290" />
         <di:waypoint x="440" y="218" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_await_to_end" bpmnElement="flow_review_await_to_end">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_await_to_check_case_number" bpmnElement="flow_review_await_to_check_case_number">
         <di:waypoint x="458" y="200" />
-        <di:waypoint x="522" y="200" />
+        <di:waypoint x="500" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_check_case_number_to_gateway" bpmnElement="flow_review_check_case_number_to_gateway">
+        <di:waypoint x="600" y="200" />
+        <di:waypoint x="645" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_case_number_accepted_to_end" bpmnElement="flow_review_case_number_accepted_to_end">
+        <di:waypoint x="695" y="200" />
+        <di:waypoint x="742" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_case_number_missing_to_await" bpmnElement="flow_review_case_number_missing_to_await">
+        <di:waypoint x="670" y="175" />
+        <di:waypoint x="670" y="120" />
+        <di:waypoint x="440" y="120" />
+        <di:waypoint x="440" y="182" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

@@ -1,5 +1,8 @@
 {
 	"name": "investigation_api-support-management-patch-errand-parameters",
+	"metadata": {
+		"comment": "The case number from the records of Timrå goes back as read: the process never changes it."
+	},
 	"request": {
 		"method": "PATCH",
 		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/parameters",
@@ -21,6 +24,12 @@
 						"key": "premisesMunicipalityId",
 						"values": [
 							"2262"
+						]
+					},
+					{
+						"key": "externalReferenceNumber",
+						"values": [
+							"TSN 2026/0153"
 						]
 					},
 					{

@@ -66,11 +66,13 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 
-				// Review - no catch event
+				// Review - in Sundsvall without a case worker
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 
 				// Investigation - no catch event
@@ -115,6 +117,9 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
+
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitWaitingReportAt("follow_up_phase");
 
@@ -127,14 +132,18 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// No case worker before follow up: three phases pass straight through, the decision phase runs its two steps
+				// No case worker after the registration: review and investigation pass straight through, the decision phase runs its
+				// two steps
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
 				tuple("No submission", "boundary_create_submission_pdf_skipped"),
+				tuple("Registration completed", "await_registration_completed"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
@@ -161,6 +170,9 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
+
 		cancelProcess(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -175,9 +187,12 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			tuple("Start registration phase", "start_registration_phase"),
 			tuple("Create submission PDF", "external_task_create_submission_pdf"),
 			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"),
+			tuple("Check case number required", "external_task_check_case_number_required"),
 			tuple("End registration phase", "end_registration_phase"),
 			tuple("Review", "review_phase"),
 			tuple("Start review phase", "start_review_phase"),
+			tuple("Case number required?", "gateway_case_number_required"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
 			tuple("Start investigation phase", "start_investigation_phase"),
@@ -205,11 +220,46 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
+
 		awaitIncidentAt(CATERING_OCCASION.getKey(), processInstanceId, "external_task_create_decision");
 
 		// No decision is written, so nothing is locked before the case worker has added the permit holder
 		verifyAllStubs();
 		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-support-management/.*/decisions")));
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/.*")));
+	}
+
+	@Test
+	void test005_timraErrandFromTheEServiceWaitsInTheReview() throws JacksonException {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
+
+		// From the e-service, so the registration ends on its own. The premises are in Timrå, so the review waits
+		awaitProcessState(processInstanceId, "await_review_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitWaitingReportAt("review_phase");
+
+		verifyAllStubs();
+		assertWaitingReportsInOrder("review_phase");
+
+		assertThat(getProcessInstanceRoute(processInstanceId))
+			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
+			.containsExactlyInAnyOrder(
+				tuple("Start process", "start_process"),
+				tuple("Registration", "registration_phase"),
+				tuple("Start registration phase", "start_registration_phase"),
+				tuple("Create submission PDF", "external_task_create_submission_pdf"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
+				tuple("End registration phase", "end_registration_phase"),
+				tuple("Start review phase", "start_review_phase"),
+				tuple("Case number required?", "gateway_case_number_required"));
 	}
 }

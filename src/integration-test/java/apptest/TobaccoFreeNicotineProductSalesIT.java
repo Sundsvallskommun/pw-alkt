@@ -35,7 +35,9 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
 
-		// The first four phases hold no catch event in this model, so follow up is the first one to park
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "registration");
+
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "closure");
 
@@ -51,16 +53,19 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// Registration - no catch event, so the phase walks straight through
+				// Registration - not from the e-service, so the phase waits for the case worker
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
 				tuple("No submission", "boundary_create_submission_pdf_skipped"),
+				tuple("Registration completed", "await_registration_completed"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 
-				// Review - no catch event
+				// Review - in Sundsvall without a case worker
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 
 				// Investigation - no catch event
@@ -75,7 +80,7 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 				tuple("Create asset", "external_task_create_asset"),
 				tuple("End decision phase", "end_decision_phase"),
 
-				// Follow up - the first phase this model parks in
+				// Follow up - the first phase after the registration to wait
 				tuple("Follow up", "follow_up_phase"),
 				tuple("Start follow up phase", "start_follow_up_phase"),
 				tuple("Follow up completed", "await_follow_up_completed"),
@@ -105,6 +110,9 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "registration");
+
 		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
 		awaitWaitingReportAt("follow_up_phase");
 
@@ -117,14 +125,18 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// No case worker before follow up: three phases pass straight through, the decision phase runs its two steps
+				// No case worker after the registration: review and investigation pass straight through, the decision phase runs its
+				// two steps
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
 				tuple("No submission", "boundary_create_submission_pdf_skipped"),
+				tuple("Registration completed", "await_registration_completed"),
+				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
@@ -151,6 +163,9 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
 
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "registration");
+
 		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "follow_up");
 
 		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
@@ -165,9 +180,12 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 			tuple("Start registration phase", "start_registration_phase"),
 			tuple("Create submission PDF", "external_task_create_submission_pdf"),
 			tuple("No submission", "boundary_create_submission_pdf_skipped"),
+			tuple("Registration completed", "await_registration_completed"),
+			tuple("Check case number required", "external_task_check_case_number_required"),
 			tuple("End registration phase", "end_registration_phase"),
 			tuple("Review", "review_phase"),
 			tuple("Start review phase", "start_review_phase"),
+			tuple("Case number required?", "gateway_case_number_required"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
 			tuple("Start investigation phase", "start_investigation_phase"),
@@ -194,6 +212,9 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 			.sendRequest();
 
 		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
+
+		// A case worker created the errand, so it waits in the registration
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "registration");
 
 		awaitIncidentAt(TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), processInstanceId, "external_task_create_decision");
 
