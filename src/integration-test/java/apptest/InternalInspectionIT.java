@@ -75,7 +75,7 @@ class InternalInspectionIT extends AbstractOperatonAppTest {
 				tuple("Investigation", "investigation_phase"),
 				tuple("Start investigation phase", "start_investigation_phase"),
 				tuple("Investigation completed", "await_investigation_completed"),
-				tuple("Create inspection report", "external_task_create_protocol"),
+				tuple("Create inspection protocol", "external_task_create_protocol"),
 				tuple("End investigation phase", "end_investigation_phase"),
 
 				// Decision

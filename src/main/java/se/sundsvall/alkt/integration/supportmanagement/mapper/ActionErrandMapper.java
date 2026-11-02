@@ -11,21 +11,17 @@ import java.util.Set;
 import static generated.se.sundsvall.supportmanagement.Priority.MEDIUM;
 import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toActiveMeasures;
 
 public final class ActionErrandMapper {
 
-	private static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
 	private static final String MEASURE_TYPE_ACTION_POINT = "EXTERNAL";
 	private static final String TITLE = "Åtgärdsärende";
 	private static final String STATUS_NEW = "NEW";
 
 	private ActionErrandMapper() {}
 
-	/**
-	 * The deficiencies found by the inspection are its active action points, since a draft, completed or cancelled one is
-	 * nothing to remedy, and the checkpoints and observed places are the inspection itself. They follow without the
-	 * fields Support Management sets.
-	 */
+	/** The deficiencies are the active action points of the inspection, without the fields Support Management sets. */
 	public static Errand toActionErrand(final Errand inspection, final String errandId, final String labelId) {
 		return new Errand()
 			.title(TITLE)
@@ -38,9 +34,7 @@ public final class ActionErrandMapper {
 			.stakeholders(Optional.ofNullable(inspection.getStakeholders()).orElse(emptyList()).stream()
 				.filter(SupportManagementMapper::isPermitHolder)
 				.toList())
-			.measures(Optional.ofNullable(inspection.getMeasures()).orElse(emptyList()).stream()
-				.filter(measure -> MEASURE_TYPE_ACTION_POINT.equals(measure.getType()))
-				.filter(measure -> MEASURE_STATUS_ACTIVE.equals(measure.getStatus()))
+			.measures(toActiveMeasures(inspection.getMeasures(), MEASURE_TYPE_ACTION_POINT).stream()
 				.map(ActionErrandMapper::toMeasure)
 				.toList())
 			.externalTags(Set.of(new ExternalTag().key(EXTERNAL_TAG_INSPECTION_ERRAND_ID).value(errandId)));

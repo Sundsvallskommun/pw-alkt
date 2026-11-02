@@ -68,15 +68,6 @@ class InspectionProtocolServiceTest {
 			.measures(new ArrayList<>(List.of(CHECKPOINT)));
 	}
 
-	private static Errand timraErrand(final List<String> externalReferenceNumbers) {
-		final var parameters = new ArrayList<Parameter>();
-		parameters.add(new Parameter().key("premisesMunicipalityId").values(List.of("2262")));
-		if (externalReferenceNumbers != null) {
-			parameters.add(new Parameter().key("externalReferenceNumber").values(externalReferenceNumbers));
-		}
-		return new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER).parameters(parameters).measures(new ArrayList<>(List.of(CHECKPOINT)));
-	}
-
 	private static Investigation completedInvestigation() {
 		return new Investigation().status("COMPLETED").created(CREATED).completedAt(COMPLETED).modified(COMPLETED);
 	}
@@ -125,9 +116,10 @@ class InspectionProtocolServiceTest {
 
 	@ParameterizedTest
 	@MethodSource("missingCaseNumbersOfTimra")
-	void failsWithoutRetryWhenTheErrandInTimraHasNoCaseNumber(final List<String> externalReferenceNumbers) {
+	void failsWithoutRetryWhenTheErrandInTimraHasNoCaseNumber(final List<Parameter> parameters) {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(timraErrand(externalReferenceNumbers));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER).parameters(parameters).measures(List.of(CHECKPOINT)));
 
 		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
 			.isInstanceOf(NonRetryableException.class)
@@ -152,8 +144,12 @@ class InspectionProtocolServiceTest {
 		verifyNoInteractions(templatingIntegrationMock);
 	}
 
-	private static Stream<List<String>> missingCaseNumbersOfTimra() {
-		return Stream.of(null, List.of(), List.of(" ", ""));
+	private static Stream<List<Parameter>> missingCaseNumbersOfTimra() {
+		final var inTimra = new Parameter().key("premisesMunicipalityId").values(List.of("2262"));
+		return Stream.of(
+			List.of(inTimra),
+			List.of(inTimra, new Parameter().key("externalReferenceNumber").values(List.of())),
+			List.of(inTimra, new Parameter().key("externalReferenceNumber").values(List.of(" ", ""))));
 	}
 
 	@ParameterizedTest
@@ -259,8 +255,12 @@ class InspectionProtocolServiceTest {
 
 	@Test
 	void rendersTheServingProtocolWithItsOrderInTimra() {
-		final var errand = timraErrand(List.of("KS 2026/00123"));
-		errand.addMeasuresItem(new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("NOT_COMPLETED").resultText("Smoking").created(CREATED));
+		final var errand = new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER)
+			.parameters(List.of(
+				new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
+				new Parameter().key("externalReferenceNumber").values(List.of("KS 2026/00123"))))
+			.measures(List.of(CHECKPOINT,
+				new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("NOT_COMPLETED").resultText("Smoking").created(CREATED)));
 		final var expectedParameters = Map.of("measures", CHECKPOINT_ROWS, "observationSmokingOutdoor", "X", "orderWithRemarks", "true", "caseNumber", "KS 2026/00123");
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);

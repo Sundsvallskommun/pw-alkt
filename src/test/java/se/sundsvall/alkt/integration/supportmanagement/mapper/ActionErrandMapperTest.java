@@ -31,10 +31,10 @@ class ActionErrandMapperTest {
 			.stakeholders(List.of(permitHolder, new Stakeholder().role("CONTACT").externalId("contact-id"), new Stakeholder().role("PRIMARY")))
 			.measures(List.of(new Measure().id("measure-id").type("EXTERNAL").title("Matsedel saknas").description("Matsedel ska finnas").goal("Matsedel finns").dueAt(dueAt)
 				.addedByUser("handlaggare").addedByRole("CASE_WORKER").created(dueAt).status("ACTIVE"),
-				new Measure().type("EXTERNAL").title("Utkast").status("DRAFT"),
-				new Measure().type("EXTERNAL").title("Åtgärdad på plats").status("COMPLETED"),
-				new Measure().type("EXTERNAL").title("Makulerad").status("CANCELLED"),
-				new Measure().type("EXTERNAL").title("Utan status"),
+				new Measure().type("EXTERNAL").title("Alkoholpolicy saknas").status("DRAFT"),
+				new Measure().type("EXTERNAL").title("Serveringsansvarig saknas").status("COMPLETED"),
+				new Measure().type("EXTERNAL").title("Ordningsvakt saknas").status("CANCELLED"),
+				new Measure().type("EXTERNAL").title("Brandskydd bristfälligt"),
 				new Measure().type("INTERNAL").title("Brandskydd (8:16)").status("ACTIVE"),
 				new Measure().type("OBSERVATION").title("Uteservering").status("ACTIVE")));
 
