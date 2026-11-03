@@ -34,8 +34,6 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 
 		logInfo("Decision of errand {} has outcome {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(outcome));
 
-		// Why: Support Management locks a completed decision, so the case worker cannot correct it and only an incident tells
-		// anyone.
 		if (!processType.isKnownOutcome(outcome)) {
 			throw new NonRetryableException("Decision outcome %s is not an outcome of process %s".formatted(outcome, processType.getKey()));
 		}
@@ -43,7 +41,6 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
 			.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, outcome));
 
-		// Why: without a decision the step reruns every hour, and a check that found nothing is not worth an entry each time.
 		if (DECISION_OUTCOME_NONE.equals(outcome)) {
 			return report;
 		}

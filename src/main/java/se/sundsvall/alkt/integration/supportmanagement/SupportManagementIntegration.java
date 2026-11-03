@@ -49,7 +49,6 @@ public class SupportManagementIntegration {
 	 */
 	public void updateErrandParameters(final String municipalityId, final String namespace, final String errandId, final Long errandVersion, final List<Parameter> parameters) {
 		final var ifMatch = Optional.ofNullable(errandVersion).map("\"%s\""::formatted).orElse(null);
-		// Why: the parameters are written by the process of the errand, and must not wake that process again.
 		supportManagementClient.updateErrandParameters(municipalityId, namespace, errandId, ifMatch, false, parameters);
 	}
 
@@ -88,7 +87,6 @@ public class SupportManagementIntegration {
 			.orElse(emptyList());
 	}
 
-	// Why: the decision is written by the process of the errand, and must not wake that process again.
 	public String createDecision(final String municipalityId, final String namespace, final String errandId, final Decision decision) {
 		return getIdOfCreatedResource(supportManagementClient.createDecision(municipalityId, namespace, errandId, false, decision), SERVICE);
 	}

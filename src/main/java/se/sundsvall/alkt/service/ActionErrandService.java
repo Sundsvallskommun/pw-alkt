@@ -52,8 +52,6 @@ public class ActionErrandService {
 		return ActionErrandResult.created(supportManagementIntegration.createErrand(municipalityId, namespace, toErrandRelation(RELATION_TYPE_LINK, errandId, namespace), actionErrand));
 	}
 
-	// Why: a rerun finds a created action errand by its tag and creates no new one, so an action errand created without a
-	// permit holder would stay without one.
 	private static void requirePermitHolder(final Errand actionErrand, final String errandId) {
 		if (actionErrand.getStakeholders().isEmpty()) {
 			throw new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId));

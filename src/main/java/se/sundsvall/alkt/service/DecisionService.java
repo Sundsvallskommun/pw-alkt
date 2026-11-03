@@ -70,8 +70,6 @@ public class DecisionService {
 		}
 
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		// Why: the next step creates the permit for this holder. Without one the approval would be locked with no permit behind
-		// it.
 		if (toPartyId(errand).isEmpty()) {
 			throw new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId));
 		}
@@ -109,14 +107,11 @@ public class DecisionService {
 			.map(Decision::getId)
 			.orElseGet(() -> {
 				final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-				// Why: a fault in the permit the customer chose shows now, not once the decision is locked.
 				assetService.getPermitToChange(municipalityId, errand, errandId, processType.getAssetType());
 				return supportManagementIntegration.createDecision(municipalityId, namespace, errandId, toChangeDraft(errand, title, OffsetDateTime.now(clock)));
 			});
 	}
 
-	// Why: the completed decision is locked, and party-assets refuses to activate an asset whose last day is not after
-	// today, so a date that cannot end the asset stops the step before anything is written.
 	private static LocalDate toValidTo(final Errand errand, final String errandId, final String parameter, final LocalDate today) {
 		final var value = Optional.ofNullable(toParameterValues(errand.getParameters()).get(parameter))
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no parameter '%s' with the last day of the decision".formatted(errandId, parameter)));

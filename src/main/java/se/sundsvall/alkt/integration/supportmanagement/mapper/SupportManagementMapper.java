@@ -130,8 +130,6 @@ public final class SupportManagementMapper {
 			.findFirst();
 	}
 
-	// Why: an approval of an ongoing notification holds until further notice, so it has no validTo; one for a single
-	// occasion ends with it. Support Management requires decidedAt already on the draft.
 	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final LocalDate validTo, final OffsetDateTime decidedAt) {
 		return new Decision()
 			.type(DECISION_TYPE_PERMIT)
@@ -146,8 +144,6 @@ public final class SupportManagementMapper {
 			.validTo(validTo);
 	}
 
-	// Why: Support Management lets the process write only an automatic decision, with outcome and decidedAt already on the
-	// draft; the case worker's edit makes it manual. A parameter without a value asks for a removal, so it is kept.
 	public static Decision toChangeDraft(final Errand errand, final String title, final OffsetDateTime decidedAt) {
 		return new Decision()
 			.type(DECISION_TYPE_PERMIT)
@@ -181,7 +177,6 @@ public final class SupportManagementMapper {
 			.collect(toSet());
 	}
 
-	// Why: the generated model starts parameters as an empty list, and an empty list removes the decision's parameters.
 	public static Decision toDecisionCompletion(final OffsetDateTime decidedAt) {
 		return new Decision()
 			.status(DECISION_STATUS_COMPLETED)

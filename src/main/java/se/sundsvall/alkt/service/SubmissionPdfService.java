@@ -87,7 +87,6 @@ public class SubmissionPdfService {
 		return Map.of("title", toTitle(errand), "sections", sections);
 	}
 
-	// Why: a party the register does not know is shown without a number rather than holding the errand.
 	private Map<String, String> legalIdsOf(final String municipalityId, final List<Stakeholder> stakeholders) {
 		final var legalIds = new HashMap<String, String>();
 		stakeholders.stream()

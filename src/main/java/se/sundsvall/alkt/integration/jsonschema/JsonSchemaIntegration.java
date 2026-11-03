@@ -36,7 +36,6 @@ public class JsonSchemaIntegration {
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "UI schema of schema '%s' came back without content".formatted(schemaId)));
 	}
 
-	// Why: a schema that does not exist will not appear on a retry.
 	private static <T> ResponseEntity<T> failWithoutRetryWhenMissing(final Supplier<ResponseEntity<T>> request, final String what, final String schemaId) {
 		try {
 			return request.get();

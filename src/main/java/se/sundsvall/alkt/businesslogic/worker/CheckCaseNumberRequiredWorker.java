@@ -31,7 +31,6 @@ public class CheckCaseNumberRequiredWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} requires a case number: {}", sanitizeForLogging(getErrandId(externalTask)), caseNumberRequired);
 
-		// Why: the step only reads, so it leaves no entry in the activity log.
 		return ProcessStateReport.running(externalTask.getActivityId(), null)
 			.withVariables(Map.of(PROCESS_VARIABLE_CASE_NUMBER_REQUIRED, caseNumberRequired));
 	}

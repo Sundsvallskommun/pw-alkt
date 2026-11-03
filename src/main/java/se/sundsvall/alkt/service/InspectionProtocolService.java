@@ -46,7 +46,6 @@ public class InspectionProtocolService {
 				investigation.getType(), TEMPLATES_BY_INVESTIGATION_TYPE.keySet())));
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var caseNumber = toCaseNumber(errand);
-		// Why: a slash in the case number of Timrå would read as a path in the file name.
 		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
 		final var completed = completedAt(investigation);
 		return supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
@@ -69,17 +68,12 @@ public class InspectionProtocolService {
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' in Timrå has no case number in externalCaseRegistrationNumber, so no protocol is made".formatted(errand.getId())));
 	}
 
-	// Why: a file of that name uploaded before the completion, by a case worker or a cancelled earlier process, is not this
-	// protocol. completedAt is set by the client and may be missing; modified moves with every later change.
 	private static OffsetDateTime completedAt(final Investigation investigation) {
 		return Optional.ofNullable(investigation.getCompletedAt())
 			.or(() -> Optional.ofNullable(investigation.getModified()))
 			.orElse(investigation.getCreated());
 	}
 
-	// Why: the step runs once the case worker has completed the investigation, so that is the one the protocol is of. A
-	// draft, active or cancelled one is not, and with several completed there is no telling which one it is.
-	// Without a completed one the step is retried, since the completion may not be saved yet when the phase ends.
 	private Investigation getInvestigation(final String municipalityId, final String namespace, final String errandId) {
 		final var investigations = supportManagementIntegration.getInvestigations(municipalityId, namespace, errandId).stream()
 			.filter(investigation -> INVESTIGATION_STATUS_COMPLETED.equals(investigation.getStatus()))

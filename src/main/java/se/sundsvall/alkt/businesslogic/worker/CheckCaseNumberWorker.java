@@ -36,10 +36,8 @@ public class CheckCaseNumberWorker extends AbstractTaskWorker {
 		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
 			.withVariables(Map.of(PROCESS_VARIABLE_CASE_NUMBER_ACCEPTED, check != CaseNumberCheck.MISSING));
 		return switch (check) {
-			// Why: Sundsvall has no case number to check, and an entry saying it was checked would mislead the case worker.
 			case NOT_NEEDED -> report;
 			case PRESENT -> report.withLogMessage("Case number checked");
-			// Why: the case worker fills in the case number and moves the errand on again, so this is no incident.
 			case MISSING -> report.withRejection("Errand '%s' in Timrå has no case number in externalCaseRegistrationNumber".formatted(errandId));
 		};
 	}

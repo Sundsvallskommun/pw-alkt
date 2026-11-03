@@ -13,7 +13,6 @@ public class PartyIntegration {
 		this.partyClient = partyClient;
 	}
 
-	// Why: a party the register does not know stays unknown, so a retry would only delay the incident.
 	public String getLegalId(final String municipalityId, final String partyId) {
 		return partyClient.getLegalId(municipalityId, partyId)
 			.orElseThrow(() -> new NonRetryableException("Party '%s' has no legal id".formatted(partyId)));

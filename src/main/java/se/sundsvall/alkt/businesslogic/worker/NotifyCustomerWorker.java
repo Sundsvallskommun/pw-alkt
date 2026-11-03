@@ -45,8 +45,6 @@ public class NotifyCustomerWorker extends AbstractTaskWorker {
 		return report.withLogMessage("Message '%s' already sent, not sent again".formatted(message));
 	}
 
-	// Why: the notice is not worth holding the errand for, so a step that keeps failing is skipped rather than left as an
-	// incident in front of the case worker's gate.
 	@Override
 	protected void handleFailure(final ExternalTaskService externalTaskService, final ExternalTask externalTask, final String message, final boolean retryable) {
 		if (failureHandler.handleSkippableFailure(externalTaskService, externalTask, message, retryable)) {

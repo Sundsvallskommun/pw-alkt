@@ -54,8 +54,6 @@ public class CustomerMessageService {
 		return true;
 	}
 
-	// Why: an external conversation can be held with another party, e.g. a referral body, so only one the customer takes
-	// part in is used.
 	private String findOrCreateConversation(final String municipalityId, final String namespace, final String errandId) {
 		final var partyId = toPartyId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId))
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));

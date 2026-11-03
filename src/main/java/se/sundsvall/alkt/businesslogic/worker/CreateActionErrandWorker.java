@@ -26,8 +26,6 @@ public class CreateActionErrandWorker extends AbstractTaskWorker {
 		this.actionErrandService = actionErrandService;
 	}
 
-	// Why: an inspection without deficiencies or an assigned case worker is the case worker's to fix, so the process goes
-	// back to the choice instead of raising an incident.
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		final var errandId = getErrandId(externalTask);

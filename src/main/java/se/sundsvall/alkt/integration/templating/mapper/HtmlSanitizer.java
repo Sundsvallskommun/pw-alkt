@@ -13,7 +13,6 @@ public final class HtmlSanitizer {
 	// could make templating fetch an outside address.
 	private static final Set<String> ALLOWED_TAGS = Set.of("p", "br", "strong", "b", "em", "i", "u", "s", "ul", "ol", "li", "blockquote",
 		"h1", "h2", "h3", "h4", "h5", "h6", "sub", "sup");
-	// Why: an opener without its closer swallows the rest of the input in one match, which keeps the scan linear.
 	private static final Pattern SCRIPT_OR_STYLE = Pattern.compile("(?is)<(script|style)\\b[^>]*+(?:>.*?(?:</\\1\\s*>|\\z)|\\z)");
 	private static final Pattern TAG = Pattern.compile("<(/?)([a-zA-Z][a-zA-Z0-9]*)(?:\\s[^<>]*)?/?>");
 	private static final Pattern BARE_AMPERSAND = Pattern.compile("&(?!(#\\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);)");

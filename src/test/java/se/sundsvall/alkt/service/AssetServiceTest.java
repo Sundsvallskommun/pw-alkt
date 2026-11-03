@@ -93,7 +93,6 @@ class AssetServiceTest {
 
 	private AssetService assetService;
 
-	// Why: one day for the test and the service alike, as both reading the clock would race midnight.
 	@BeforeEach
 	void setUp() {
 		assetService = new AssetService(supportManagementIntegrationMock, partyAssetsIntegrationMock, templatingIntegrationMock,

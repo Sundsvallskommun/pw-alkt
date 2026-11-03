@@ -32,13 +32,11 @@ public final class TemplatingMapper {
 	 */
 	public static Map<String, Object> toTemplateParameters(final Decision decision, final Map<String, String> permitParameters) {
 		final var conditions = Optional.ofNullable(permitParameters.get(PERMIT_PARAMETER_CONDITIONS)).orElseGet(() -> toConditions(decision));
-		// Why: an empty conditions field is valid for a plain approval, so the template would render the permit without them.
 		if (DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS.equals(decision.getOutcome()) && conditions.isBlank()) {
 			throw new NonRetryableException("Decision %s is an approval with conditions but has no conditions, so no certificate is made".formatted(decision.getId()));
 		}
 
 		final var templateParameters = new LinkedHashMap<String, Object>(toParameterValues(decision.getParameters()));
-		// Why: set by the process, so only the number the permit carries is rendered.
 		templateParameters.remove(PERMIT_PARAMETER_RESTAURANT_NUMBER);
 		templateParameters.putAll(permitParameters);
 		templateParameters.put(PERMIT_PARAMETER_CONDITIONS, conditions);

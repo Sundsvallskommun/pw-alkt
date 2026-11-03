@@ -34,7 +34,6 @@ public final class SubmissionDocumentMapper {
 	private static final String SEPARATOR = ", ";
 	private static final String STAKEHOLDER_TYPE_PRIVATE = "PRIVATE";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
-	// Why: the PDF goes into the records in Swedish. A code without a label is shown as it is rather than left out.
 	private static final Map<String, String> ROLE_LABELS = Map.of("PRIMARY", "Huvudintressent", "CONTACT", "Kontaktperson", "REPORTER", "Anmälare");
 	private static final Map<String, String> CONTACT_CHANNEL_LABELS = Map.of("EMAIL", "E-post", "PHONE", "Telefon");
 

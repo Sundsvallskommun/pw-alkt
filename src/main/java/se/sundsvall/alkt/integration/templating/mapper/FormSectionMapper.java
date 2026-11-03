@@ -110,7 +110,6 @@ public final class FormSectionMapper {
 		return new GroupField(node.label(), fields);
 	}
 
-	// Why: the template shows one level of fields in a group, so a deeper object is flattened into the group.
 	private static List<GroupEntry> toGroupEntries(final FormNode node) {
 		final var fields = new ArrayList<GroupEntry>();
 		for (final var key : node.schemaAndAnswerKeys()) {
@@ -127,7 +126,6 @@ public final class FormSectionMapper {
 		return fields;
 	}
 
-	// Why: a group entry or a table cell is a plain value in the template, so rich text there is reduced to its text.
 	private static String toText(final FormNode node) {
 		if (node.isRichText()) {
 			return toPlainText(node.answer().asString());
