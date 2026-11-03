@@ -23,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
-import se.sundsvall.dept44.problem.Problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -69,12 +68,12 @@ class InspectionProtocolServiceTest {
 	}
 
 	private static Investigation completedInvestigation() {
-		return new Investigation().status("COMPLETED").created(CREATED).completedAt(COMPLETED).modified(COMPLETED);
+		return new Investigation().type("internal_inspection").status("COMPLETED").created(CREATED).completedAt(COMPLETED).modified(COMPLETED);
 	}
 
 	@Test
 	void createsTheProtocolFromTheInvestigation() {
-		final var investigation = completedInvestigation().type("serving_permit").parameters(List.of(new Parameter().key("businessName").values(List.of("Runt Hörnet AB"))));
+		final var investigation = completedInvestigation().parameters(List.of(new Parameter().key("businessName").values(List.of("Runt Hörnet AB"))));
 		final var cancelled = new Investigation().status("CANCELLED").created(CREATED).parameters(List.of(new Parameter().key("businessName").values(List.of("Gamla Namnet AB"))));
 		final var expectedParameters = Map.of("businessName", "Runt Hörnet AB", "measures", CHECKPOINT_ROWS, "caseNumber", ERRAND_NUMBER);
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(cancelled, investigation));
@@ -85,7 +84,7 @@ class InspectionProtocolServiceTest {
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
 
-		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -105,7 +104,7 @@ class InspectionProtocolServiceTest {
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll AOT-26100147.pdf", PDF)).thenReturn("attachment-id");
 
-		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -121,7 +120,7 @@ class InspectionProtocolServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER).parameters(parameters).measures(List.of(CHECKPOINT)));
 
-		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' in Timrå has no case number in externalReferenceNumber, so no protocol is made");
 
@@ -135,7 +134,7 @@ class InspectionProtocolServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER).measures(List.of(CHECKPOINT)));
 
-		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has no premisesMunicipalityId");
 
@@ -158,12 +157,12 @@ class InspectionProtocolServiceTest {
 	})
 	void answersWithTheProtocolAnEarlierAttemptUploadedAlthoughTheInvestigationChangedSince(final long secondsAfterCompleted) {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(List.of(new Investigation().status("COMPLETED").created(CREATED).completedAt(COMPLETED).modified(COMPLETED.plusDays(2))));
+			.thenReturn(List.of(new Investigation().type("internal_inspection").status("COMPLETED").created(CREATED).completedAt(COMPLETED).modified(COMPLETED.plusDays(2))));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new ErrandAttachment().id("attachment-id").fileName(FILE_NAME).created(COMPLETED.plusSeconds(secondsAfterCompleted))));
 
-		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -180,7 +179,7 @@ class InspectionProtocolServiceTest {
 			new ErrandAttachment().id("scanned-id").fileName(FILE_NAME).created(COMPLETED.minusSeconds(1)),
 			new ErrandAttachment().id("attachment-id").fileName(FILE_NAME).created(COMPLETED)));
 
-		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -190,8 +189,8 @@ class InspectionProtocolServiceTest {
 
 	private static Stream<Investigation> investigationsWithoutCompletedAt() {
 		return Stream.of(
-			new Investigation().status("COMPLETED").created(CREATED).modified(COMPLETED),
-			new Investigation().status("COMPLETED").created(COMPLETED));
+			new Investigation().type("internal_inspection").status("COMPLETED").created(CREATED).modified(COMPLETED),
+			new Investigation().type("internal_inspection").status("COMPLETED").created(COMPLETED));
 	}
 
 	@Test
@@ -203,7 +202,7 @@ class InspectionProtocolServiceTest {
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
 
-		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -215,42 +214,17 @@ class InspectionProtocolServiceTest {
 	@ParameterizedTest
 	@NullSource
 	@ValueSource(strings = {
-		"DRAFT", "ACTIVE", "CANCELLED"
+		"", "external_inspection"
 	})
-	void failsWithRetryWithoutACompletedInvestigation(final String status) {
-		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Investigation().status(status)));
+	void failsWithoutRetryWhenTheInvestigationTypeNamesNoProtocol(final String type) {
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type(type)));
 
-		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
-			.isInstanceOf(Problem.class)
-			.hasMessageContaining("Errand 'errand-id' has no completed investigation to create a protocol from");
+		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageStartingWith("Errand 'errand-id' has an investigation of type '%s', which is none of the inspection protocols".formatted(type));
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoInteractions(templatingIntegrationMock);
-	}
-
-	@Test
-	void failsWithoutRetryWithSeveralInvestigations() {
-		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new Investigation().status("COMPLETED"), new Investigation().status("COMPLETED")));
-
-		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand 'errand-id' has 2 completed investigations, the protocol is created from exactly one");
-
-		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verifyNoInteractions(templatingIntegrationMock);
-	}
-
-	@ParameterizedTest
-	@NullSource
-	@ValueSource(strings = {
-		"", " "
-	})
-	void failsWithoutRetryWhenTheStepHasNoTemplate(final String template) {
-		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, template))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("The step has no protocol template, see the input parameters in the bpmn schema");
-
-		verifyNoInteractions(supportManagementIntegrationMock, templatingIntegrationMock);
 	}
 
 	@Test
@@ -262,13 +236,13 @@ class InspectionProtocolServiceTest {
 			.measures(List.of(CHECKPOINT,
 				new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("NOT_COMPLETED").resultText("Smoking").created(CREATED)));
 		final var expectedParameters = Map.of("measures", CHECKPOINT_ROWS, "observationSmokingOutdoor", "X", "orderWithRemarks", "true", "caseNumber", "KS 2026/00123");
-		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type("serving_permit")));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(templatingIntegrationMock.renderPdf("2262", "serving-inspection-protocol", expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll KS 2026-00123.pdf", PDF)).thenReturn("attachment-id");
 
-		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "serving-inspection-protocol")).isEqualTo("attachment-id");
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -284,7 +258,7 @@ class InspectionProtocolServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand().measures(measures));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 
-		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has no active checkpoints, so no protocol is made");
 

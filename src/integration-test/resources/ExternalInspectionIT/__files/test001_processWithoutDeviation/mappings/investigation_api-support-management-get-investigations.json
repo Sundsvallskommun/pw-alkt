@@ -28,7 +28,8 @@
 							"Runt Hörnet AB"
 						]
 					}
-				]
+				],
+				"type": "serving_permit"
 			}
 		],
 		"status": 200

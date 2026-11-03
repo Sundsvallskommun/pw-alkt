@@ -45,7 +45,8 @@ public final class InspectionProtocolMapper {
 
 	private InspectionProtocolMapper() {}
 
-	public static Map<String, Object> toTemplateParameters(final String errandId, final String template, final Investigation investigation, final List<Measure> measures) {
+	public static Map<String, Object> toTemplateParameters(final String errandId, final String template, final Investigation investigation, final List<Measure> measures,
+		final String caseNumber) {
 		final var checkpoints = toActiveMeasures(measures, MEASURE_TYPE_INTERNAL);
 		if (checkpoints.isEmpty()) {
 			throw new NonRetryableException("Errand '%s' has no active checkpoints, so no protocol is made".formatted(errandId));
@@ -65,6 +66,7 @@ public final class InspectionProtocolMapper {
 		if (SERVING_TEMPLATE.equals(template)) {
 			parameters.putAll(toOrder(errandId, toActiveMeasures(measures, MEASURE_TYPE_OBSERVATION)));
 		}
+		parameters.put("caseNumber", caseNumber);
 		return parameters;
 	}
 

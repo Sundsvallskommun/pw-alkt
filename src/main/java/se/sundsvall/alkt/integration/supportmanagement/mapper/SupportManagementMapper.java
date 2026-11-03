@@ -112,6 +112,10 @@ public final class SupportManagementMapper {
 		return MUNICIPALITY_ID_TIMRA.equals(toPremisesMunicipalityId(errand));
 	}
 
+	public static Optional<String> findCaseNumber(final Errand errand) {
+		return Optional.ofNullable(toParameterValues(errand.getParameters()).get(ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER));
+	}
+
 	public static List<Measure> toActiveMeasures(final List<Measure> measures, final String type) {
 		return Optional.ofNullable(measures).orElse(emptyList()).stream()
 			.filter(measure -> type.equals(measure.getType()))

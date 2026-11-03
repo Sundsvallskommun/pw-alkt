@@ -7,9 +7,8 @@ import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 
-import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.requiresCaseNumber;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.withParameter;
 
 @Service
@@ -45,7 +44,7 @@ public class ErrandService {
 		if (!requiresCaseNumber(errand)) {
 			return CaseNumberCheck.NOT_NEEDED;
 		}
-		return toParameterValues(errand.getParameters()).containsKey(ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER) ? CaseNumberCheck.PRESENT : CaseNumberCheck.MISSING;
+		return findCaseNumber(errand).isPresent() ? CaseNumberCheck.PRESENT : CaseNumberCheck.MISSING;
 	}
 
 	public boolean isCaseNumberRequired(final String municipalityId, final String namespace, final String errandId) {

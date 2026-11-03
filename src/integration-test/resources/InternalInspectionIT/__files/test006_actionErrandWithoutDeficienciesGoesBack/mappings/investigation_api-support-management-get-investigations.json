@@ -28,7 +28,8 @@
 							"Runt Hörnet AB"
 						]
 					}
-				]
+				],
+				"type": "internal_inspection"
 			}
 		],
 		"status": 200
