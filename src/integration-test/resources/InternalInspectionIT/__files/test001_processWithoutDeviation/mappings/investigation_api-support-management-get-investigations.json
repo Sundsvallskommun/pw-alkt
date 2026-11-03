@@ -27,8 +27,22 @@
 						"values": [
 							"Runt Hörnet AB"
 						]
+					},
+					{
+						"key": "summary",
+						"values": [
+							"approved"
+						]
+					},
+					{
+						"key": "coordinatedWith",
+						"values": [
+							"police",
+							"taxAgency"
+						]
 					}
-				]
+				],
+				"type": "internal_inspection"
 			}
 		],
 		"status": 200

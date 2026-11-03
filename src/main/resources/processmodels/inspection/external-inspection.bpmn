@@ -72,13 +72,7 @@
       </bpmn:intermediateCatchEvent>
       <bpmn:sequenceFlow id="flow_investigation_await_to_create_protocol" sourceRef="await_investigation_completed" targetRef="external_task_create_protocol" />
       <bpmn:serviceTask id="external_task_create_protocol" name="Create inspection protocol" camunda:type="external" camunda:topic="CreateProtocolTask">
-        <bpmn:documentation>Renders the inspection protocol from the parameters of the investigation and attaches it to the errand as a PDF.</bpmn:documentation>
-        <bpmn:extensionElements>
-          <camunda:inputOutput>
-            <camunda:inputParameter name="protocolTemplate">inspection.external.protocol</camunda:inputParameter>
-            <camunda:inputParameter name="protocolFileName">Tillsynsprotokoll.pdf</camunda:inputParameter>
-          </camunda:inputOutput>
-        </bpmn:extensionElements>
+        <bpmn:documentation>Renders the inspection protocol the investigation type names from the completed investigation and the active checkpoints and observed places of the errand, and attaches it to the errand as a PDF named after its case number. Stops when the investigation type names no protocol, the errand has no premises municipality, no active checkpoint or, in Timrå, no case number.</bpmn:documentation>
         <bpmn:incoming>flow_investigation_await_to_create_protocol</bpmn:incoming>
         <bpmn:outgoing>flow_investigation_create_protocol_to_end</bpmn:outgoing>
       </bpmn:serviceTask>

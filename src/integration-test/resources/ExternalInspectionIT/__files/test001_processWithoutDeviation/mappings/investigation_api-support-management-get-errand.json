@@ -22,6 +22,40 @@
 					"values": [
 						"2262"
 					]
+				},
+				{
+					"key": "externalReferenceNumber",
+					"values": [
+						"KS 2026/00123"
+					]
+				}
+			],
+			"errandNumber": "AOT-26100149",
+			"measures": [
+				{
+					"id": "4b6d8f0a-2c3e-4a5b-9c7d-1e2f3a4b5c6d",
+					"type": "INTERNAL",
+					"status": "ACTIVE",
+					"title": "Serveringsansvarig på plats",
+					"result": "COMPLETED",
+					"created": "2026-09-16T22:00:00+02:00"
+				},
+				{
+					"id": "5c7e9a1b-3d4f-4b6c-8d0e-2f3a4b5c6d7e",
+					"type": "OBSERVATION",
+					"status": "ACTIVE",
+					"title": "Uteservering",
+					"result": "NOT_COMPLETED",
+					"resultText": "CrowdedTables|Littering",
+					"created": "2026-09-16T22:10:00+02:00"
+				},
+				{
+					"id": "6d8f0a2c-4e5a-4c7d-9e1f-3a4b5c6d7e8f",
+					"type": "OBSERVATION",
+					"status": "ACTIVE",
+					"title": "Toaletter",
+					"result": "COMPLETED",
+					"created": "2026-09-16T22:15:00+02:00"
 				}
 			]
 		},

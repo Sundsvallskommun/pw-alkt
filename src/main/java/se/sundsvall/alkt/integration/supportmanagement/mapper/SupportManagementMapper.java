@@ -4,6 +4,7 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.Measure;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
@@ -67,6 +68,7 @@ public final class SupportManagementMapper {
 
 	private static final List<String> PREMISES_MUNICIPALITY_IDS = List.of(MUNICIPALITY_ID_SUNDSVALL, MUNICIPALITY_ID_TIMRA);
 
+	private static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
@@ -98,6 +100,27 @@ public final class SupportManagementMapper {
 			throw new NonRetryableException("Errand '%s' has a %s that is none of %s".formatted(errand.getId(), ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID, PREMISES_MUNICIPALITY_IDS));
 		}
 		return municipalityId;
+	}
+
+	/**
+	 * Only an errand in Timrå needs a case number. Without a premises municipality that is unknown, so the errand stops.
+	 */
+	public static boolean requiresCaseNumber(final Errand errand) {
+		if (!toParameterValues(errand.getParameters()).containsKey(ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID)) {
+			throw new NonRetryableException("Errand '%s' has no %s".formatted(errand.getId(), ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID));
+		}
+		return MUNICIPALITY_ID_TIMRA.equals(toPremisesMunicipalityId(errand));
+	}
+
+	public static Optional<String> findCaseNumber(final Errand errand) {
+		return Optional.ofNullable(toParameterValues(errand.getParameters()).get(ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER));
+	}
+
+	public static List<Measure> toActiveMeasures(final List<Measure> measures, final String type) {
+		return Optional.ofNullable(measures).orElse(emptyList()).stream()
+			.filter(measure -> type.equals(measure.getType()))
+			.filter(measure -> MEASURE_STATUS_ACTIVE.equals(measure.getStatus()))
+			.toList();
 	}
 
 	public static Optional<String> toPartyId(final Errand errand) {

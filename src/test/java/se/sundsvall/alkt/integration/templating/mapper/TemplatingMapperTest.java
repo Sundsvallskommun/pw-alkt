@@ -2,7 +2,6 @@ package se.sundsvall.alkt.integration.templating.mapper;
 
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
-import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import java.util.List;
 import java.util.Map;
@@ -110,20 +109,6 @@ class TemplatingMapperTest {
 		final var decision = new Decision().outcome(DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS);
 
 		assertThatThrownBy(() -> toTemplateParameters(decision)).isInstanceOf(NonRetryableException.class);
-	}
-
-	@Test
-	void toTemplateParametersOfAnInvestigationHasItsParametersAndNoConditions() {
-		final var investigation = new Investigation().parameters(List.of(parameter("visitDate", "2026-09-15"), parameter("checkpoints", "Godkänt", "Brist"), parameter("note")));
-
-		assertThat(toTemplateParameters(investigation)).containsExactly(
-			entry("visitDate", "2026-09-15"),
-			entry("checkpoints", "Godkänt, Brist"));
-	}
-
-	@Test
-	void toTemplateParametersOfAnEmptyInvestigationIsEmpty() {
-		assertThat(toTemplateParameters(new Investigation())).isEmpty();
 	}
 
 	@Test

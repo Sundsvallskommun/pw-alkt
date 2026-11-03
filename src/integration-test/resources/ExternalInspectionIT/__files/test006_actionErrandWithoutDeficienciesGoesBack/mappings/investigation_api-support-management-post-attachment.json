@@ -16,7 +16,7 @@
 				"matchingType": "ALL",
 				"headers": {
 					"Content-Disposition": {
-						"contains": "filename=\"Tillsynsprotokoll.pdf\""
+						"contains": "filename=\"Tillsynsprotokoll AOT-26100151.pdf\""
 					}
 				},
 				"bodyPatterns": [

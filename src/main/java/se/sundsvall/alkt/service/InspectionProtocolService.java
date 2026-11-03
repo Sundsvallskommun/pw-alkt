@@ -1,8 +1,10 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
@@ -10,15 +12,20 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.dept44.problem.Problem;
 
-import static org.apache.commons.lang3.StringUtils.isAnyBlank;
+import static org.apache.commons.lang3.StringUtils.replace;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findCaseNumber;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.requiresCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
-import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
+import static se.sundsvall.alkt.integration.templating.mapper.InspectionProtocolMapper.toTemplateParameters;
 
 @Service
 public class InspectionProtocolService {
 
 	private static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
+	private static final Map<String, String> TEMPLATES_BY_INVESTIGATION_TYPE = Map.of(
+		"serving_permit", "serving-inspection-protocol",
+		"internal_inspection", "internal-inspection-protocol");
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final TemplatingIntegration templatingIntegration;
@@ -32,26 +39,34 @@ public class InspectionProtocolService {
 	 * A rerun finds the protocol an earlier attempt uploaded by its file name and by it being uploaded after the
 	 * investigation was completed, and uploads no second one.
 	 */
-	public String createProtocol(final String municipalityId, final String namespace, final String errandId, final String template, final String fileName) {
-		if (isAnyBlank(template, fileName)) {
-			throw new NonRetryableException("The step has no protocol template or file name, see the input parameters in the bpmn schema");
-		}
-
+	public String createProtocol(final String municipalityId, final String namespace, final String errandId) {
 		final var investigation = getInvestigation(municipalityId, namespace, errandId);
+		final var template = Optional.ofNullable(investigation.getType()).map(TEMPLATES_BY_INVESTIGATION_TYPE::get)
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' has an investigation of type '%s', which is none of the inspection protocols %s".formatted(errandId,
+				investigation.getType(), TEMPLATES_BY_INVESTIGATION_TYPE.keySet())));
+		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+		final var caseNumber = toCaseNumber(errand);
+		// Why: a slash in the case number of Timrå would read as a path in the file name.
+		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
 		final var completed = completedAt(investigation);
 		return supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
 			.filter(attachment -> fileName.equals(attachment.getFileName()))
 			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(completed)).isPresent())
 			.map(ErrandAttachment::getId)
 			.findFirst()
-			.orElseGet(() -> uploadProtocol(municipalityId, namespace, errandId, template, fileName, investigation));
+			.orElseGet(() -> {
+				final var parameters = toTemplateParameters(errandId, template, investigation, errand.getMeasures(), caseNumber);
+				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
+				return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
+			});
 	}
 
-	private String uploadProtocol(final String municipalityId, final String namespace, final String errandId, final String template, final String fileName,
-		final Investigation investigation) {
-		final var premisesMunicipalityId = toPremisesMunicipalityId(supportManagementIntegration.getErrand(municipalityId, namespace, errandId));
-		final var pdf = templatingIntegration.renderPdf(premisesMunicipalityId, template, toTemplateParameters(investigation));
-		return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
+	private static String toCaseNumber(final Errand errand) {
+		if (!requiresCaseNumber(errand)) {
+			return errand.getErrandNumber();
+		}
+		return findCaseNumber(errand)
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' in Timrå has no case number in externalReferenceNumber, so no protocol is made".formatted(errand.getId())));
 	}
 
 	// Why: a file of that name uploaded before the completion, by a case worker or a cancelled earlier process, is not this
