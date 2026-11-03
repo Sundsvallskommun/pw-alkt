@@ -1,0 +1,81 @@
+{
+	"name": "investigation_api-support-management-get-investigations",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/investigations",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "6d2e8f41-0a7b-4c93-b5e1-2f8a9c3d7e60",
+				"status": "COMPLETED",
+				"summary": "Sökanden bedöms lämplig och lokalen uppfyller kraven",
+				"recommendation": "APPROVAL",
+				"recommendationMotivation": "<p>Serveringstillstånd beviljas till allmänheten året runt</p><p>Serveringstid 11.00–01.00</p>",
+				"conclusion": "<p>Sökanden bedöms lämplig.</p>",
+				"sections": [
+					{
+						"sectionKey": "ownership",
+						"heading": "Ägarförhållanden",
+						"text": "<p>Aktiebolag med aktiekapital 25 000 kr</p>"
+					},
+					{
+						"sectionKey": "financial_suitability",
+						"heading": "Ekonomisk lämplighet",
+						"text": ""
+					},
+					{
+						"sectionKey": "premises",
+						"heading": "Serveringsställe",
+						"text": "<p>Lokalen är ändamålsenlig</p>",
+						"parameters": [
+							{
+								"key": "PREMISES_INSPECTED_AT",
+								"values": [
+									"2026-10-10"
+								]
+							},
+							{
+								"key": "PREMISES_RIGHT_OF_DISPOSAL",
+								"values": [
+									"PROVEN"
+								]
+							},
+							{
+								"key": "PREMISES_RIGHT_OF_DISPOSAL_NOTE",
+								"values": [
+									"Hyresavtal till och med 2029"
+								]
+							},
+							{
+								"key": "PREMISES_SERVING_AREA",
+								"values": [
+									"Matsal och bar"
+								]
+							}
+						]
+					},
+					{
+						"sectionKey": "communication",
+						"heading": "Kommunicering",
+						"text": "<p>Kommunicerat 2026-10-20</p>"
+					},
+					{
+						"sectionKey": "legal_basis",
+						"heading": "Tillämpad lagstiftning",
+						"text": "<h3>Alkohollagen</h3><h4>8 kap. 2 §</h4><p>Serveringstillstånd kan meddelas för servering till allmänheten.</p>"
+					}
+				]
+			}
+		],
+		"status": 200
+	}
+}

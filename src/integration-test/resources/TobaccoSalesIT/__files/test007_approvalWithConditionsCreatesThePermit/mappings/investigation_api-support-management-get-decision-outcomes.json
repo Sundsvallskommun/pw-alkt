@@ -1,0 +1,28 @@
+{
+	"name": "investigation_api-support-management-get-decision-outcomes",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/metadata/decisionoutcomes",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"name": "APPROVAL",
+				"displayName": "Bifall"
+			},
+			{
+				"name": "REJECTED",
+				"displayName": "Avslag"
+			}
+		],
+		"status": 200
+	}
+}

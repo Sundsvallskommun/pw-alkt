@@ -1,0 +1,162 @@
+{
+	"name": "investigation_api-templating-post-render-pdf",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-templating/2262/render/pdf",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.identifier",
+					"equalTo": "serving-permit-decision-basis"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters",
+					"equalToJson": {
+						"documentDate": "${json-unit.any-string}",
+						"caseNumber": "TSN 2026/0153",
+						"caseType": "stadigvarande serveringstillstånd",
+						"handlerName": "",
+						"handlerTitle": "handläggare",
+						"issuedByUnit": "Alkohol- och tobaksenheten",
+						"issuedByAuthority": "Miljö- och byggkontoret, Timrå kommun",
+						"communication": "Kommunicerat 2026-10-20",
+						"childPerspectiveHtml": "",
+						"marketingHtml": "",
+						"selfMonitoringHtml": "",
+						"legislationHtml": "<h3>Alkohollagen</h3><h4>8 kap. 2 §</h4><p>Serveringstillstånd kan meddelas för servering till allmänheten.</p>",
+						"exciseTaxHtml": "",
+						"proposal": {
+							"points": [
+								"Serveringstillstånd beviljas till allmänheten året runt",
+								"Serveringstid 11.00–01.00"
+							]
+						},
+						"applicant": {
+							"name": "Runt Hörnet AB",
+							"orgNumber": "556612-4144",
+							"street": "Storgatan 33",
+							"postalAddress": "852 30 Sundsvall"
+						},
+						"company": {
+							"ownershipHtml": "<p>Aktiebolag med aktiekapital 25 000 kr</p>"
+						},
+						"application": {
+							"receivedAt": "2026-10-21",
+							"completeAt": "2026-10-23",
+							"servingTo": "Allmänheten",
+							"beverages": "Spritdrycker, Vin",
+							"period": "Året runt",
+							"servingHours": [
+								"Inomhus, allmänheten 11:00–01:00"
+							],
+							"orientation": "",
+							"orientationHtml": "",
+							"businessDescriptionHtml": "",
+							"orderAndSobrietyHtml": "<p>Ordningsvakt fredag och lördag</p>",
+							"rightOfDisposal": "",
+							"distanceSelling": "",
+							"distanceSellingWebsite": "",
+							"particularlyDangerousProducts": "",
+							"supplierAgreement": "",
+							"knowledgeBasis": "har godkänt kunskapsprov",
+							"responsibleStaff": [
+								{
+									"name": "Karin Lund",
+									"dateOfBirth": "1982-05-05",
+									"fromDate": "2026-06-01"
+								}
+							],
+							"staffingHtml": "",
+							"servesFood": "",
+							"menuFiles": [],
+							"drinksMenuFiles": [],
+							"foodAndBeveragesHtml": "",
+							"financing": {
+								"sources": [
+									{
+										"kind": "Banklån",
+										"amount": "250 000 kr",
+										"lender": "Handelsbanken"
+									}
+								],
+								"notesHtml": ""
+							}
+						},
+						"premises": {
+							"name": "Runt Hörnet",
+							"street": "Storgatan 33",
+							"postalAddress": "852 30 Sundsvall",
+							"seatsIndoor": "60",
+							"seatsOutdoor": "20",
+							"maxPersons": "120",
+							"inspectedAt": "2026-10-10",
+							"rightOfDisposalLabel": "Ja",
+							"rightOfDisposalNote": "Hyresavtal till och med 2029",
+							"servingAreaDescription": "Matsal och bar",
+							"salesAreaDescription": "",
+							"leaseHtml": "",
+							"floorPlanFiles": [],
+							"fireSafety": "Medelpads Räddningstjänstförbund: Inget att erinra",
+							"fireSafetyHtml": ""
+						},
+						"personsOfInfluence": [
+							{
+								"name": "Maria Lind",
+								"personalNumber": "19820315-4321",
+								"roles": "Styrelseledamot",
+								"motivation": "Äger 60 % av aktierna",
+								"knowledgeTest": {
+									"statusLabel": "Godkänt",
+									"testType": "Stadigvarande serveringstillstånd till allmänheten",
+									"testedAt": "2026-09-15",
+									"comment": ""
+								}
+							}
+						],
+						"statements": [
+							{
+								"counterparty": "Polismyndigheten",
+								"sentAt": "2026-10-01",
+								"respondedAt": "2026-10-08",
+								"outcomeLabel": "Inget att erinra",
+								"responseText": "Polisen har inget att erinra mot ansökan",
+								"status": "RESPONDED"
+							},
+							{
+								"counterparty": "Medelpads Räddningstjänstförbund",
+								"sentAt": "2026-10-01",
+								"respondedAt": "2026-10-12",
+								"outcomeLabel": "Inget att erinra",
+								"responseText": "Brandskyddet är godkänt.",
+								"status": "RESPONDED"
+							}
+						],
+						"investigation": {
+							"recommendationLabel": "Bifall",
+							"financialAssessmentHtml": "",
+							"premisesRemarksHtml": "<p>Lokalen är ändamålsenlig</p>",
+							"conclusionHtml": "<p>Sökanden bedöms lämplig.</p>",
+							"recommendationMotivationHtml": "<p>Serveringstillstånd beviljas till allmänheten året runt</p><p>Serveringstid 11.00–01.00</p>"
+						}
+					}
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"output": "JVBERi0xLjcgYmVzbHV0c3VuZGVybGFn"
+		},
+		"status": 200
+	}
+}

@@ -3,6 +3,7 @@ package se.sundsvall.alkt.integration.supportmanagement;
 import generated.se.sundsvall.supportmanagement.Conversation;
 import generated.se.sundsvall.supportmanagement.ConversationRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.DecisionOutcome;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
@@ -12,7 +13,11 @@ import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
+import generated.se.sundsvall.supportmanagement.Statement;
+import generated.se.sundsvall.supportmanagement.StatementOutcome;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
@@ -20,6 +25,7 @@ import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import se.sundsvall.dept44.problem.Problem;
 
 import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toMap;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
@@ -125,6 +131,25 @@ public class SupportManagementIntegration {
 	public List<Investigation> getInvestigations(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getInvestigations(municipalityId, namespace, errandId).getBody())
 			.orElse(emptyList());
+	}
+
+	public List<Statement> getStatements(final String municipalityId, final String namespace, final String errandId) {
+		return Optional.ofNullable(supportManagementClient.getStatements(municipalityId, namespace, errandId).getBody())
+			.orElse(emptyList());
+	}
+
+	/** The display name of each decision outcome of the namespace, by its name. */
+	public Map<String, String> getDecisionOutcomeNames(final String municipalityId, final String namespace) {
+		return Optional.ofNullable(supportManagementClient.getDecisionOutcomes(municipalityId, namespace).getBody()).orElse(emptyList()).stream()
+			.filter(outcome -> Objects.nonNull(outcome.getName()) && Objects.nonNull(outcome.getDisplayName()))
+			.collect(toMap(DecisionOutcome::getName, DecisionOutcome::getDisplayName, (first, _) -> first));
+	}
+
+	/** The display name of each statement outcome of the namespace, by its name. */
+	public Map<String, String> getStatementOutcomeNames(final String municipalityId, final String namespace) {
+		return Optional.ofNullable(supportManagementClient.getStatementOutcomes(municipalityId, namespace).getBody()).orElse(emptyList()).stream()
+			.filter(outcome -> Objects.nonNull(outcome.getName()) && Objects.nonNull(outcome.getDisplayName()))
+			.collect(toMap(StatementOutcome::getName, StatementOutcome::getDisplayName, (first, _) -> first));
 	}
 
 	public Optional<String> findErrandIdByExternalTag(final String municipalityId, final String namespace, final String key, final String value) {

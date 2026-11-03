@@ -32,6 +32,55 @@
 					"serveringsstalletsNamn": {
 						"type": "string",
 						"title": "Försäljningsställets namn"
+					},
+					"servingAudience": {
+						"type": "string",
+						"title": "Servering till",
+						"oneOf": [
+							{
+								"const": "PUBLIC",
+								"title": "Allmänheten"
+							},
+							{
+								"const": "CLOSED_COMPANY",
+								"title": "Slutet sällskap"
+							}
+						]
+					},
+					"beverages": {
+						"type": "array",
+						"title": "Alkoholdrycker",
+						"items": {
+							"type": "string",
+							"oneOf": [
+								{
+									"const": "SPIRITS",
+									"title": "Spritdrycker"
+								},
+								{
+									"const": "WINE",
+									"title": "Vin"
+								},
+								{
+									"const": "STRONG_BEER",
+									"title": "Starköl"
+								}
+							]
+						}
+					},
+					"publicServingPeriod": {
+						"type": "string",
+						"title": "Serveringsperiod",
+						"oneOf": [
+							{
+								"const": "ALL_YEAR",
+								"title": "Året runt"
+							},
+							{
+								"const": "ANNUAL_PERIOD",
+								"title": "Viss period varje år"
+							}
+						]
 					}
 				}
 			}

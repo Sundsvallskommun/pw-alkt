@@ -55,6 +55,10 @@ process-log:
       done: Tillsynens PDF har skapats och lagts till i ärendet
       retry: Tillsynens PDF kunde inte skapas just nu, ett nytt försök görs automatiskt
       failed: Tillsynens PDF kunde inte skapas. Processen har stannat och felet behöver åtgärdas
+    "[external_task_create_decision_basis]":
+      done: Beslutsunderlaget har skapats och lagts till i ärendet
+      retry: Beslutsunderlaget kunde inte skapas just nu, ett nytt försök görs automatiskt
+      failed: Beslutsunderlaget kunde inte skapas. Processen har stannat och felet behöver åtgärdas
     "[external_task_create_action_errand]":
       done: Åtgärdsärende har skapats och kopplats till tillsynsärendet
       retry: Åtgärdsärendet kunde inte skapas just nu, ett nytt försök görs automatiskt

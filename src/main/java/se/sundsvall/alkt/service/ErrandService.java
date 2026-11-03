@@ -7,14 +7,13 @@ import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_COMPLETE_AT;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.requiresCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.withParameter;
 
 @Service
 public class ErrandService {
-
-	static final String ERRAND_PARAMETER_COMPLETE_AT = "completeAt";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final Clock clock;

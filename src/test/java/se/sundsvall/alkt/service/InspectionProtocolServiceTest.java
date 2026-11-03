@@ -122,7 +122,7 @@ class InspectionProtocolServiceTest {
 
 		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand 'errand-id' in Timrå has no case number in externalCaseRegistrationNumber, so no protocol is made");
+			.hasMessage("Errand 'errand-id' in Timrå has no case number in externalCaseRegistrationNumber");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);

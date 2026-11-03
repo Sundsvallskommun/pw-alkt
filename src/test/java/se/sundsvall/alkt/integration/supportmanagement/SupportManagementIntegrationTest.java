@@ -3,6 +3,7 @@ package se.sundsvall.alkt.integration.supportmanagement;
 import generated.se.sundsvall.supportmanagement.Conversation;
 import generated.se.sundsvall.supportmanagement.ConversationRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.DecisionOutcome;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
@@ -12,8 +13,11 @@ import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
+import generated.se.sundsvall.supportmanagement.Statement;
+import generated.se.sundsvall.supportmanagement.StatementOutcome;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -300,6 +304,38 @@ class SupportManagementIntegrationTest {
 		when(supportManagementClientMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
 
 		assertThat(supportManagementIntegration.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+	}
+
+	@Test
+	void getStatementsAnswersWithTheStatements() {
+		final var statement = new Statement().id("statement-id").type("REFERRAL");
+		when(supportManagementClientMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(statement)));
+
+		assertThat(supportManagementIntegration.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsExactly(statement);
+	}
+
+	@Test
+	void getStatementsAnswersWithNothingWithoutABody() {
+		when(supportManagementClientMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(null));
+
+		assertThat(supportManagementIntegration.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEmpty();
+	}
+
+	@Test
+	void getDecisionOutcomeNamesAnswersWithTheDisplayNameByName() {
+		when(supportManagementClientMock.getDecisionOutcomes(MUNICIPALITY_ID, NAMESPACE)).thenReturn(ResponseEntity.ok(List.of(
+			new DecisionOutcome().name("APPROVAL").displayName("Bifall"),
+			new DecisionOutcome().name("REJECTED").displayName("Avslag"))));
+
+		assertThat(supportManagementIntegration.getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).containsExactlyInAnyOrderEntriesOf(Map.of("APPROVAL", "Bifall", "REJECTED", "Avslag"));
+	}
+
+	@Test
+	void getStatementOutcomeNamesAnswersWithTheDisplayNameByName() {
+		when(supportManagementClientMock.getStatementOutcomes(MUNICIPALITY_ID, NAMESPACE)).thenReturn(ResponseEntity.ok(List.of(
+			new StatementOutcome().name("NO_OBJECTION").displayName("Inget att erinra"))));
+
+		assertThat(supportManagementIntegration.getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).containsExactlyEntriesOf(Map.of("NO_OBJECTION", "Inget att erinra"));
 	}
 
 	@Test

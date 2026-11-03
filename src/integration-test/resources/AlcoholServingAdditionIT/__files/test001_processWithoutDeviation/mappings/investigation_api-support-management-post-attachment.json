@@ -1,0 +1,36 @@
+{
+	"name": "investigation_api-support-management-post-attachment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/0b93f26d-8c47-4e51-b27a-9d4c5e6f7081/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ALL",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "filename=\"Beslutsunderlag ALKT-2026-000001.pdf\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalTo": "%PDF-1.7 beslutsunderlag"
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/0b93f26d-8c47-4e51-b27a-9d4c5e6f7081/attachments/e7a3d915-4c28-4b6f-9d01-3a5c8e2f7b46"
+		},
+		"status": 201
+	}
+}

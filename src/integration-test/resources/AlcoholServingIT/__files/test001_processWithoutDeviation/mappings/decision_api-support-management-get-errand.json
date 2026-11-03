@@ -24,7 +24,46 @@
 					"schemaId": "2281_aot_alcohol_folkol_sales_notification_0.11",
 					"value": {
 						"arDuFirmatecknare": "JA",
-						"serveringsstalletsNamn": "Runt Hörnet"
+						"serveringsstalletsNamn": "Runt Hörnet",
+						"premisesName": "Runt Hörnet",
+						"premisesAddressSameAsCompany": "NO",
+						"premisesAddress": {
+							"street": "Storgatan 33",
+							"postalCode": "852 30",
+							"city": "Sundsvall"
+						},
+						"servingAudience": "PUBLIC",
+						"beverages": [
+							"SPIRITS",
+							"WINE"
+						],
+						"publicServingPeriod": "ALL_YEAR",
+						"publicServingHoursIndoor": {
+							"from": "11:00:00+02:00",
+							"to": "01:00:00+02:00"
+						},
+						"seating": {
+							"seatsIndoor": 60,
+							"seatsOutdoor": 20
+						},
+						"maxPersonsInPremises": {
+							"maxPersons": 120
+						},
+						"responsibleServingStaff": [
+							{
+								"firstName": "Karin",
+								"lastName": "Lund",
+								"dateOfBirth": "1982-05-05",
+								"fromDate": "2026-06-01"
+							}
+						],
+						"bankLoans": [
+							{
+								"bank": "Handelsbanken",
+								"amountSek": "250000"
+							}
+						],
+						"orderAndSobriety": "<p>Ordningsvakt fredag och lördag</p>"
 					}
 				}
 			],
@@ -33,7 +72,69 @@
 					"role": "PRIMARY",
 					"externalIdType": "ENTERPRISE",
 					"externalId": "d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f",
-					"organizationName": "Runt Hörnet AB"
+					"organizationName": "Runt Hörnet AB",
+					"address": "Storgatan 33",
+					"zipCode": "852 30",
+					"city": "Sundsvall",
+					"parameters": [
+						{
+							"key": "organizationNumber",
+							"values": [
+								"556612-4144"
+							]
+						}
+					]
+				},
+				{
+					"role": "CONTACT",
+					"externalIdType": "PRIVATE",
+					"externalId": "7b2d9e14-6c3a-4f81-b5d2-9e0a1c4f3b68",
+					"firstName": "Maria",
+					"lastName": "Lind",
+					"parameters": [
+						{
+							"key": "PBI",
+							"values": [
+								"true"
+							]
+						},
+						{
+							"key": "PBI_ROLE",
+							"values": [
+								"Styrelseledamot"
+							]
+						},
+						{
+							"key": "PBI_MOTIVATION",
+							"values": [
+								"<p>Äger 60 % av aktierna</p>"
+							]
+						},
+						{
+							"key": "PBI_KNOWLEDGE_TESTS",
+							"values": [
+								"1"
+							]
+						},
+						{
+							"key": "PBI_KNOWLEDGE_TEST_1_TYPE",
+							"values": [
+								"PERMANENT_PUBLIC"
+							]
+						},
+						{
+							"key": "PBI_KNOWLEDGE_TEST_1_STATUS",
+							"values": [
+								"APPROVED"
+							]
+						},
+						{
+							"key": "PBI_KNOWLEDGE_TEST_1_DATE",
+							"values": [
+								"2026-09-15"
+							]
+						}
+					]
 				}
 			],
 			"parameters": [
@@ -72,9 +173,27 @@
 					"values": [
 						"Sundsvall"
 					]
+				},
+				{
+					"key": "completeAt",
+					"values": [
+						"2026-10-23"
+					]
 				}
 			],
-			"version": 3
+			"version": 3,
+			"labels": [
+				{
+					"classification": "CATEGORY",
+					"resourceName": "ALCOHOL",
+					"displayName": "Alkohol"
+				},
+				{
+					"classification": "TYPE",
+					"resourceName": "SERVING_PERMIT_APPLICATION",
+					"displayName": "Stadigvarande serveringstillstånd"
+				}
+			]
 		},
 		"status": 200
 	}

@@ -1,8 +1,10 @@
 package se.sundsvall.alkt.integration.templating.mapper;
 
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.springframework.web.util.HtmlUtils.htmlUnescape;
 
@@ -15,6 +17,7 @@ public final class HtmlSanitizer {
 		"h1", "h2", "h3", "h4", "h5", "h6", "sub", "sup");
 	private static final Pattern SCRIPT_OR_STYLE = Pattern.compile("(?is)<(script|style)\\b[^>]*+(?:>.*?(?:</\\1\\s*>|\\z)|\\z)");
 	private static final Pattern TAG = Pattern.compile("<(/?)([a-zA-Z][a-zA-Z0-9]*)(?:\\s[^<>]*)?/?>");
+	private static final Pattern LINE_BREAK = Pattern.compile("(?i)</(p|div|li|h[1-6]|blockquote)\\s*>|<br\\b[^>]*>|<(li|ul|ol)\\b[^>]*>");
 	private static final Pattern BARE_AMPERSAND = Pattern.compile("&(?!(#\\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);)");
 
 	private HtmlSanitizer() {}
@@ -41,6 +44,18 @@ public final class HtmlSanitizer {
 	public static String toPlainText(final String html) {
 		final var text = TAG.matcher(SCRIPT_OR_STYLE.matcher(html).replaceAll("")).replaceAll(" ");
 		return htmlUnescape(text).replaceAll("\\s+", " ").strip();
+	}
+
+	/** The text of a rich-text answer without any tags, one line per paragraph, line break or list item. */
+	public static String toPlainTextLines(final String html) {
+		final var withoutScripts = SCRIPT_OR_STYLE.matcher(html).replaceAll("");
+		final var flowing = Optional.of(withoutScripts).filter(text -> TAG.matcher(text).find()).map(text -> text.replaceAll("\\s+", " ")).orElse(withoutScripts);
+		final var text = TAG.matcher(LINE_BREAK.matcher(flowing).replaceAll("\n")).replaceAll(" ");
+		return htmlUnescape(text).replace('\u00A0', ' ').lines()
+			.map(line -> line.replaceAll("\\s+", " ").strip())
+			.collect(Collectors.joining("\n"))
+			.replaceAll("\n{3,}", "\n\n")
+			.strip();
 	}
 
 	private static String escape(final String text) {

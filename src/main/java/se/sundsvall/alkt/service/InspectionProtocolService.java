@@ -1,9 +1,7 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Investigation;
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
@@ -14,8 +12,8 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.replace;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findCaseNumber;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.requiresCaseNumber;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCompletedAt;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.InspectionProtocolMapper.toTemplateParameters;
 
@@ -47,7 +45,7 @@ public class InspectionProtocolService {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var caseNumber = toCaseNumber(errand);
 		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
-		final var completed = completedAt(investigation);
+		final var completed = toCompletedAt(investigation);
 		return supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
 			.filter(attachment -> fileName.equals(attachment.getFileName()))
 			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(completed)).isPresent())
@@ -58,20 +56,6 @@ public class InspectionProtocolService {
 				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
 				return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 			});
-	}
-
-	private static String toCaseNumber(final Errand errand) {
-		if (!requiresCaseNumber(errand)) {
-			return errand.getErrandNumber();
-		}
-		return findCaseNumber(errand)
-			.orElseThrow(() -> new NonRetryableException("Errand '%s' in Timrå has no case number in externalCaseRegistrationNumber, so no protocol is made".formatted(errand.getId())));
-	}
-
-	private static OffsetDateTime completedAt(final Investigation investigation) {
-		return Optional.ofNullable(investigation.getCompletedAt())
-			.or(() -> Optional.ofNullable(investigation.getModified()))
-			.orElse(investigation.getCreated());
 	}
 
 	private Investigation getInvestigation(final String municipalityId, final String namespace, final String errandId) {

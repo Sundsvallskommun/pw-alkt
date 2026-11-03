@@ -4,6 +4,8 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.Investigation;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Measure;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
@@ -69,6 +71,7 @@ public final class SupportManagementMapper {
 	private static final List<String> PREMISES_MUNICIPALITY_IDS = List.of(MUNICIPALITY_ID_SUNDSVALL, MUNICIPALITY_ID_TIMRA);
 
 	private static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
+	private static final String ORIGINAL_FORM_SUFFIX = "_original";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
@@ -112,6 +115,21 @@ public final class SupportManagementMapper {
 		return MUNICIPALITY_ID_TIMRA.equals(toPremisesMunicipalityId(errand));
 	}
 
+	public static Optional<JsonParameter> findFormParameter(final Errand errand) {
+		return Optional.ofNullable(errand.getJsonParameters()).orElse(emptyList()).stream()
+			.filter(parameter -> !StringUtils.endsWith(parameter.getKey(), ORIGINAL_FORM_SUFFIX))
+			.filter(parameter -> nonNull(parameter.getValue()))
+			.findFirst();
+	}
+
+	public static String toCaseNumber(final Errand errand) {
+		if (!requiresCaseNumber(errand)) {
+			return errand.getErrandNumber();
+		}
+		return findCaseNumber(errand)
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' in Timrå has no case number in %s".formatted(errand.getId(), ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER)));
+	}
+
 	public static Optional<String> findCaseNumber(final Errand errand) {
 		return Optional.ofNullable(toParameterValues(errand.getParameters()).get(ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER));
 	}
@@ -121,6 +139,12 @@ public final class SupportManagementMapper {
 			.filter(measure -> type.equals(measure.getType()))
 			.filter(measure -> MEASURE_STATUS_ACTIVE.equals(measure.getStatus()))
 			.toList();
+	}
+
+	public static OffsetDateTime toCompletedAt(final Investigation investigation) {
+		return Optional.ofNullable(investigation.getCompletedAt())
+			.or(() -> Optional.ofNullable(investigation.getModified()))
+			.orElse(investigation.getCreated());
 	}
 
 	public static Optional<String> toPartyId(final Errand errand) {

@@ -1,0 +1,40 @@
+{
+	"name": "investigation_api-support-management-get-statements",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/statements",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "b4f1c7a2-9e36-4d58-8a0b-7c2e5f1d3a94",
+				"type": "REFERRAL",
+				"status": "RESPONDED",
+				"counterpartyName": "Polismyndigheten",
+				"outcome": "NO_OBJECTION",
+				"responseText": "Polisen har inget att erinra mot ansökan",
+				"sentAt": "2026-10-01T09:00:00Z",
+				"respondedAt": "2026-10-08T12:00:00Z"
+			},
+			{
+				"id": "e5a2b7c1-3d4f-4e6a-9b8c-1d2e3f4a5b6c",
+				"type": "REFERRAL",
+				"status": "RESPONDED",
+				"counterpartyName": "Medelpads Räddningstjänstförbund",
+				"sentAt": "2026-10-01T09:00:00Z",
+				"respondedAt": "2026-10-12T08:00:00Z",
+				"outcome": "NO_OBJECTION",
+				"responseText": "<p>Brandskyddet är godkänt.</p>"
+			}
+		],
+		"status": 200
+	}
+}
