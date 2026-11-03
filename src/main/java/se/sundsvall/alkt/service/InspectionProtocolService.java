@@ -54,14 +54,11 @@ public class InspectionProtocolService {
 			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(completed)).isPresent())
 			.map(ErrandAttachment::getId)
 			.findFirst()
-			.orElseGet(() -> uploadProtocol(municipalityId, namespace, errandId, template, fileName, investigation, errand, caseNumber));
-	}
-
-	private String uploadProtocol(final String municipalityId, final String namespace, final String errandId, final String template, final String fileName,
-		final Investigation investigation, final Errand errand, final String caseNumber) {
-		final var parameters = toTemplateParameters(errandId, template, investigation, errand.getMeasures(), caseNumber);
-		final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
-		return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
+			.orElseGet(() -> {
+				final var parameters = toTemplateParameters(errandId, template, investigation, errand.getMeasures(), caseNumber);
+				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
+				return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
+			});
 	}
 
 	private static String toCaseNumber(final Errand errand) {
