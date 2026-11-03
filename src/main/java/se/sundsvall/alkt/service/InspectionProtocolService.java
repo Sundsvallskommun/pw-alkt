@@ -66,7 +66,7 @@ public class InspectionProtocolService {
 			return errand.getErrandNumber();
 		}
 		return findCaseNumber(errand)
-			.orElseThrow(() -> new NonRetryableException("Errand '%s' in Timrå has no case number in externalReferenceNumber, so no protocol is made".formatted(errand.getId())));
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' in Timrå has no case number in externalCaseRegistrationNumber, so no protocol is made".formatted(errand.getId())));
 	}
 
 	// Why: a file of that name uploaded before the completion, by a case worker or a cancelled earlier process, is not this

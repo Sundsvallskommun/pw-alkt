@@ -38,7 +38,7 @@ public class ErrandService {
 		return completeAt;
 	}
 
-	/** The case number comes from the records of Timrå, in externalReferenceNumber. */
+	/** The case number comes from the records of Timrå, in externalCaseRegistrationNumber. */
 	public CaseNumberCheck checkCaseNumber(final String municipalityId, final String namespace, final String errandId) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		if (!requiresCaseNumber(errand)) {
