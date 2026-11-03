@@ -17,7 +17,7 @@ public final class HtmlSanitizer {
 		"h1", "h2", "h3", "h4", "h5", "h6", "sub", "sup");
 	private static final Pattern SCRIPT_OR_STYLE = Pattern.compile("(?is)<(script|style)\\b[^>]*+(?:>.*?(?:</\\1\\s*>|\\z)|\\z)");
 	private static final Pattern TAG = Pattern.compile("<(/?)([a-zA-Z][a-zA-Z0-9]*)(?:\\s[^<>]*)?/?>");
-	private static final Pattern LINE_BREAK = Pattern.compile("(?i)</(p|div|li|h[1-6]|blockquote)\\s*>|<br\\b[^>]*>|<(li|ul|ol)\\b[^>]*>");
+	private static final Pattern LINE_BREAK = Pattern.compile("(?i)</(?:p|div|li|h[1-6]|blockquote)\\s*>|<(?:br|li|ul|ol)\\b[^>]*>");
 	private static final Pattern BARE_AMPERSAND = Pattern.compile("&(?!(#\\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);)");
 
 	private HtmlSanitizer() {}

@@ -56,9 +56,13 @@ public final class DecisionBasisMapper {
 		MUNICIPALITY_ID_TIMRA, "Miljö- och byggkontoret, Timrå kommun");
 	private static final String HANDLER_TITLE = "handläggare";
 	private static final String KNOWLEDGE_TEST_APPROVED = "APPROVED";
+	private static final String STATUS = "STATUS";
+	private static final String PREMISES = "premises";
+	private static final String STREET = "street";
+	private static final String FROM_DATE = "fromDate";
 	private static final String KNOWLEDGE_BASIS_APPROVED = "har godkänt kunskapsprov";
 	private static final List<String> FLOOR_PLAN_PURPOSES = List.of("FLOOR_PLAN", "KITCHEN_FLOOR_PLAN");
-	private static final List<String> PREMISES_PREFIXES = List.of("premises", "pointOfSale");
+	private static final List<String> PREMISES_PREFIXES = List.of(PREMISES, "pointOfSale");
 	private static final Pattern CLOCK = Pattern.compile("^(\\d{2}:\\d{2}).*");
 	private static final Pattern KNOWLEDGE_TEST = Pattern.compile("^PBI_KNOWLEDGE_TEST_(\\d+)_(TYPE|STATUS|DATE|COMMENT)$");
 
@@ -68,7 +72,7 @@ public final class DecisionBasisMapper {
 		"NOT_PROVEN", "Nej");
 
 	private static final Map<String, String> KNOWLEDGE_TEST_STATUSES = Map.of(
-		"APPROVED", "Godkänt",
+		KNOWLEDGE_TEST_APPROVED, "Godkänt",
 		"FAILED", "Underkänt",
 		"BOOKED", "Bokat",
 		"RETAKE", "Omprov",
@@ -112,7 +116,7 @@ public final class DecisionBasisMapper {
 		final var schema = labels.formSchema();
 		final var sections = Optional.ofNullable(investigation.getSections()).orElse(emptyList());
 		final var premisesExamination = sections.stream()
-			.filter(section -> "premises".equals(section.getSectionKey()))
+			.filter(section -> PREMISES.equals(section.getSectionKey()))
 			.findFirst()
 			.map(section -> toParameterValues(section.getParameters()))
 			.orElse(Map.of());
@@ -142,16 +146,16 @@ public final class DecisionBasisMapper {
 		parameters.put("applicant", Map.of(
 			"name", applicant.map(DecisionBasisMapper::toName).orElse(""),
 			"orgNumber", applicant.map(stakeholder -> toParameterValues(stakeholder.getParameters()).getOrDefault("organizationNumber", "")).orElse(""),
-			"street", applicant.map(Stakeholder::getAddress).orElse(""),
+			STREET, applicant.map(Stakeholder::getAddress).orElse(""),
 			"postalAddress", applicant.map(stakeholder -> toPostalAddress(stakeholder.getZipCode(), stakeholder.getCity())).orElse("")));
 		parameters.put("company", Map.of("ownershipHtml", toSectionText(sections, "ownership")));
 		parameters.put("application", toApplication(errand, form, schema, sections, attachments, personsOfInfluence));
-		parameters.put("premises", Map.ofEntries(
+		parameters.put(PREMISES, Map.ofEntries(
 			Map.entry("name", findText(findPremisesValue(form, "Name"))
 				.or(() -> Optional.ofNullable(errandValues.get(ERRAND_PARAMETER_PREMISES_NAME)))
 				.or(() -> applicant.map(Stakeholder::getOrganizationName))
 				.orElse("")),
-			Map.entry("street", address.street()),
+			Map.entry(STREET, address.street()),
 			Map.entry("postalAddress", address.postalAddress()),
 			Map.entry("seatsIndoor", findText(form.path("seating").path("seatsIndoor")).orElse("")),
 			Map.entry("seatsOutdoor", findText(form.path("seating").path("seatsOutdoor")).orElse("")),
@@ -170,7 +174,7 @@ public final class DecisionBasisMapper {
 		parameters.put("investigation", Map.of(
 			"recommendationLabel", toLabel(labels.decisionOutcomes(), investigation.getRecommendation()),
 			"financialAssessmentHtml", toSectionText(sections, "financial_suitability"),
-			"premisesRemarksHtml", Optional.of(toSectionText(sections, "premises")).filter(StringUtils::isNotEmpty).orElseGet(() -> toSectionText(sections, "sales_point")),
+			"premisesRemarksHtml", Optional.of(toSectionText(sections, PREMISES)).filter(StringUtils::isNotEmpty).orElseGet(() -> toSectionText(sections, "sales_point")),
 			"conclusionHtml", toSanitizedHtml(investigation.getConclusion()),
 			"recommendationMotivationHtml", toSanitizedHtml(investigation.getRecommendationMotivation())));
 		return parameters;
@@ -199,13 +203,13 @@ public final class DecisionBasisMapper {
 		application.put("supplierAgreement", toChoice(form, schema, "hasSupplierAgreement"));
 		application.put("knowledgeBasis", personsOfInfluence.stream()
 			.flatMap(person -> toKnowledgeTests(person).values().stream())
-			.anyMatch(test -> KNOWLEDGE_TEST_APPROVED.equals(test.get("STATUS"))) ? KNOWLEDGE_BASIS_APPROVED : "");
+			.anyMatch(test -> KNOWLEDGE_TEST_APPROVED.equals(test.get(STATUS))) ? KNOWLEDGE_BASIS_APPROVED : "");
 		application.put("responsibleStaff", form.path("responsibleServingStaff").values().stream()
 			.filter(JsonNode::isObject)
 			.map(staff -> Map.of(
 				"name", Stream.of(findText(staff.path("firstName")), findText(staff.path("lastName"))).flatMap(Optional::stream).collect(joining(" ")),
 				"dateOfBirth", findText(staff.path("dateOfBirth")).orElse(""),
-				"fromDate", findText(staff.path("fromDate")).orElse("")))
+				FROM_DATE, findText(staff.path(FROM_DATE)).orElse("")))
 			.toList());
 		application.put("staffingHtml", toSectionText(sections, "staffing"));
 		application.put("servesFood", toChoice(form, schema, "servesFood"));
@@ -240,7 +244,7 @@ public final class DecisionBasisMapper {
 				.orElse(new Address("", ""));
 		}
 		final var address = findPremisesValue(form, "Address");
-		final var street = findText(address.path("street"));
+		final var street = findText(address.path(STREET));
 		final var postalCode = findText(address.path("postalCode"));
 		final var city = findText(address.path("city"));
 		if (street.isPresent() || postalCode.isPresent() || city.isPresent()) {
@@ -292,7 +296,7 @@ public final class DecisionBasisMapper {
 	}
 
 	private static Optional<String> toDateRange(final JsonNode range) {
-		final var from = findText(range.path("fromDate"));
+		final var from = findText(range.path(FROM_DATE));
 		final var to = findText(range.path("toDate"));
 		return from.isEmpty() && to.isEmpty() ? Optional.empty() : Optional.of("%s – %s".formatted(from.orElse(""), to.orElse("")));
 	}
@@ -362,7 +366,7 @@ public final class DecisionBasisMapper {
 		final var values = toParameterValues(person.getParameters());
 		final var tests = toKnowledgeTests(person).values();
 		final var shownTest = tests.stream()
-			.filter(test -> KNOWLEDGE_TEST_APPROVED.equals(test.get("STATUS")))
+			.filter(test -> KNOWLEDGE_TEST_APPROVED.equals(test.get(STATUS)))
 			.reduce((earlier, later) -> later)
 			.or(() -> tests.stream().reduce((earlier, later) -> later))
 			.orElse(Map.of());
@@ -375,7 +379,7 @@ public final class DecisionBasisMapper {
 			"roles", values.getOrDefault("PBI_ROLE", ""),
 			"motivation", toPlainTextLines(values.get("PBI_MOTIVATION")),
 			"knowledgeTest", Map.of(
-				"statusLabel", toLabel(KNOWLEDGE_TEST_STATUSES, shownTest.get("STATUS")),
+				"statusLabel", toLabel(KNOWLEDGE_TEST_STATUSES, shownTest.get(STATUS)),
 				"testType", toLabel(KNOWLEDGE_TEST_TYPES, shownTest.get("TYPE")),
 				"testedAt", shownTest.getOrDefault("DATE", ""),
 				"comment", shownTest.getOrDefault("COMMENT", "")));
