@@ -508,7 +508,7 @@ class FormSectionMapperTest {
 		final var answers = JSON.createObjectNode().put("beskrivning", "<p>1 < 2 & 3</p><!-- <img src=bild.png> --><p data-id=\"1\">Hej</p>");
 
 		assertThat(((HtmlField) toSections(schema, uiSchema, answers).getFirst().fields().getFirst()).html())
-			.isEqualTo("<p>1 &lt; 2 &amp; 3</p>&lt;!--  --&gt;<p>Hej</p>");
+			.isEqualTo("<p>1 &lt; 2 &amp; 3</p><p>Hej</p>");
 	}
 
 	@Test

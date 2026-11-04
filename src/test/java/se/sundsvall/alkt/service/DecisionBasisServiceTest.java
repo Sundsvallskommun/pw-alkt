@@ -13,7 +13,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -102,7 +101,7 @@ class DecisionBasisServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(investigation));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(unanswered));
-		when(partyIntegrationMock.findLegalId(MUNICIPALITY_ID, PBI_PARTY_ID)).thenReturn(Optional.of("198203154321"));
+		when(partyIntegrationMock.findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID))).thenReturn(Map.of(PBI_PARTY_ID, "198203154321"));
 		when(supportManagementIntegrationMock.getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of("APPROVAL", "Bifall"));
 		when(supportManagementIntegrationMock.getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of());
 		when(templatingIntegrationMock.renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap())).thenReturn(PDF);
@@ -114,7 +113,7 @@ class DecisionBasisServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(partyIntegrationMock).findLegalId(MUNICIPALITY_ID, PBI_PARTY_ID);
+		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
 		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, "2281_aot_alcohol_serving_permit_application_permanent_serving_1.0");
 		verify(supportManagementIntegrationMock).getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
 		verify(supportManagementIntegrationMock).getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
@@ -153,7 +152,7 @@ class DecisionBasisServiceTest {
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new ErrandAttachment().id("earlier-id").fileName(FILE_NAME).created(COMPLETED_AT.minusDays(1))));
 		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
-		when(partyIntegrationMock.findLegalId(MUNICIPALITY_ID, PBI_PARTY_ID)).thenReturn(Optional.empty());
+		when(partyIntegrationMock.findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID))).thenReturn(Map.of());
 		when(supportManagementIntegrationMock.getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of("APPROVAL", "Bifall"));
 		when(supportManagementIntegrationMock.getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of());
 		when(templatingIntegrationMock.renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap())).thenReturn(PDF);
@@ -165,7 +164,7 @@ class DecisionBasisServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(partyIntegrationMock).findLegalId(MUNICIPALITY_ID, PBI_PARTY_ID);
+		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
 		verify(supportManagementIntegrationMock).getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
 		verify(supportManagementIntegrationMock).getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
 		verify(templatingIntegrationMock).renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap());
@@ -179,11 +178,25 @@ class DecisionBasisServiceTest {
 
 		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has no investigation to create a decision basis from");
+			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has no investigation that is not cancelled to create a decision basis from");
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	@Test
+	void leavesOutACancelledInvestigation() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand());
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(List.of(new Investigation().id("cancelled-id").status("CANCELLED")));
+
+		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has no investigation that is not cancelled to create a decision basis from");
+
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 	}
 
 	@Test
@@ -194,7 +207,7 @@ class DecisionBasisServiceTest {
 
 		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has 2 investigations, the decision basis is created from exactly one");
+			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has 2 investigations that are not cancelled, the decision basis is created from exactly one");
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);

@@ -1,5 +1,7 @@
 package se.sundsvall.alkt.integration.party;
 
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,29 +60,14 @@ class PartyIntegrationTest {
 	}
 
 	@Test
-	void findLegalIdAnswersWithThePartysLegalId() {
-		when(partyClientMock.getLegalId(MUNICIPALITY_ID, "party-1")).thenReturn(Optional.of("5566124144"));
+	void findLegalIdsLooksUpEachPartyOnceAndLeavesOutThoseThatAreNotKnown() {
+		when(partyClientMock.getLegalId(MUNICIPALITY_ID, "party-of-karl")).thenReturn(Optional.of("198001011234"));
+		when(partyClientMock.getLegalId(MUNICIPALITY_ID, "party-of-unknown")).thenReturn(Optional.empty());
 
-		assertThat(partyIntegration.findLegalId(MUNICIPALITY_ID, "party-1")).contains("5566124144");
+		assertThat(partyIntegration.findLegalIds(MUNICIPALITY_ID, Arrays.asList("party-of-karl", "party-of-unknown", null, "party-of-karl")))
+			.isEqualTo(Map.of("party-of-karl", "198001011234"));
 
-		verify(partyClientMock).getLegalId(MUNICIPALITY_ID, "party-1");
-	}
-
-	@Test
-	void findLegalIdIsEmptyForAPartyThatIsNotKnown() {
-		when(partyClientMock.getLegalId(MUNICIPALITY_ID, "party-1")).thenReturn(Optional.empty());
-
-		assertThat(partyIntegration.findLegalId(MUNICIPALITY_ID, "party-1")).isEmpty();
-
-		verify(partyClientMock).getLegalId(MUNICIPALITY_ID, "party-1");
-	}
-
-	@Test
-	void findLegalIdLetsOtherFailuresThrough() {
-		when(partyClientMock.getLegalId(MUNICIPALITY_ID, "party-1")).thenThrow(new ClientProblem(BAD_GATEWAY, "Party is down"));
-
-		assertThatThrownBy(() -> partyIntegration.findLegalId(MUNICIPALITY_ID, "party-1")).isInstanceOf(ClientProblem.class);
-
-		verify(partyClientMock).getLegalId(MUNICIPALITY_ID, "party-1");
+		verify(partyClientMock).getLegalId(MUNICIPALITY_ID, "party-of-karl");
+		verify(partyClientMock).getLegalId(MUNICIPALITY_ID, "party-of-unknown");
 	}
 }

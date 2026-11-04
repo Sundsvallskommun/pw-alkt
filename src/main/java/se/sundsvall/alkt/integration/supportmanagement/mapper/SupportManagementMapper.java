@@ -3,6 +3,7 @@ package se.sundsvall.alkt.integration.supportmanagement.mapper;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
@@ -139,6 +140,14 @@ public final class SupportManagementMapper {
 			.filter(measure -> type.equals(measure.getType()))
 			.filter(measure -> MEASURE_STATUS_ACTIVE.equals(measure.getStatus()))
 			.toList();
+	}
+
+	public static Optional<String> findAttachmentId(final List<ErrandAttachment> attachments, final String fileName, final OffsetDateTime uploadedFrom) {
+		return attachments.stream()
+			.filter(attachment -> fileName.equals(attachment.getFileName()))
+			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(uploadedFrom)).isPresent())
+			.map(ErrandAttachment::getId)
+			.findFirst();
 	}
 
 	public static OffsetDateTime toCompletedAt(final Investigation investigation) {

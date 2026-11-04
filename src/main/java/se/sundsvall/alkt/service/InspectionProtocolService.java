@@ -1,6 +1,5 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import java.util.Map;
 import java.util.Optional;
@@ -12,6 +11,7 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.replace;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCompletedAt;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
@@ -46,11 +46,7 @@ public class InspectionProtocolService {
 		final var caseNumber = toCaseNumber(errand);
 		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
 		final var completed = toCompletedAt(investigation);
-		return supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
-			.filter(attachment -> fileName.equals(attachment.getFileName()))
-			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(completed)).isPresent())
-			.map(ErrandAttachment::getId)
-			.findFirst()
+		return findAttachmentId(supportManagementIntegration.getAttachments(municipalityId, namespace, errandId), fileName, completed)
 			.orElseGet(() -> {
 				final var parameters = toTemplateParameters(errandId, template, investigation, errand.getMeasures(), caseNumber);
 				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);

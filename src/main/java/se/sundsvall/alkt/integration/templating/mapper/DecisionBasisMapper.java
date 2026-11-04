@@ -14,6 +14,7 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +40,7 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_CODE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRESS;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
+import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findFormParameter;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
@@ -47,7 +49,6 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 public final class DecisionBasisMapper {
 
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
-	private static final String ROLE_PRIMARY = "PRIMARY";
 	private static final String YES = "YES";
 	private static final String RESCUE_SERVICE = "Medelpads Räddningstjänstförbund";
 	private static final String ISSUED_BY_UNIT = "Alkohol- och tobaksenheten";
@@ -87,13 +88,13 @@ public final class DecisionBasisMapper {
 		"TASTING", "Tillstånd för provsmakning",
 		"FARM_SALES", "Gårdsförsäljning");
 
-	private static final Map<String, String> FINANCING = Map.of(
+	private static final Map<String, String> FINANCING = orderedMap(
 		"ownFunds", "Egna medel",
 		"bankLoans", "Banklån",
 		"privateLoans", "Privatlån",
 		"otherFinancing", "Annan finansiering");
 
-	private static final Map<String, String> SERVING_HOURS = Map.of(
+	private static final Map<String, String> SERVING_HOURS = orderedMap(
 		"publicServingHoursIndoor", "Inomhus, allmänheten",
 		"publicServingHoursOutdoor", "Utomhus, allmänheten",
 		"closedCompanyServingHoursIndoor", "Inomhus, slutet sällskap",
@@ -101,7 +102,7 @@ public final class DecisionBasisMapper {
 		"dailyServingHours", "",
 		"salesHours", "");
 
-	private static final Map<String, String> SERVING_PERIODS = Map.of(
+	private static final Map<String, String> SERVING_PERIODS = orderedMap(
 		"publicServingPeriod", "publicServingPeriodDates",
 		"closedCompanyServingPeriod", "closedCompanyServingPeriodDates",
 		"salesPeriod", "salesPeriodDates");
@@ -121,7 +122,7 @@ public final class DecisionBasisMapper {
 			.map(section -> toParameterValues(section.getParameters()))
 			.orElse(Map.of());
 		final var stakeholders = Optional.ofNullable(errand.getStakeholders()).orElse(emptyList());
-		final var applicant = stakeholders.stream().filter(stakeholder -> ROLE_PRIMARY.equals(stakeholder.getRole())).findFirst();
+		final var applicant = stakeholders.stream().filter(stakeholder -> STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole())).findFirst();
 		final var personsOfInfluence = stakeholders.stream().filter(DecisionBasisMapper::isPersonOfInfluence).toList();
 		final var errandValues = toParameterValues(errand.getParameters());
 		final var address = toPremisesAddress(form, applicant, errandValues);
@@ -136,7 +137,7 @@ public final class DecisionBasisMapper {
 		parameters.put("handlerTitle", HANDLER_TITLE);
 		parameters.put("issuedByUnit", ISSUED_BY_UNIT);
 		parameters.put("issuedByAuthority", ISSUING_AUTHORITIES.get(toPremisesMunicipalityId(errand)));
-		parameters.put("communication", toPlainTextLines(toSectionText(sections, "communication")));
+		parameters.put("communication", findSectionText(sections, "communication").map(HtmlSanitizer::toPlainTextLines).orElse(""));
 		parameters.put("childPerspectiveHtml", toSectionText(sections, "child_perspective"));
 		parameters.put("marketingHtml", toSectionText(sections, "marketing"));
 		parameters.put("selfMonitoringHtml", toSectionText(sections, "self_monitoring"));
@@ -270,13 +271,15 @@ public final class DecisionBasisMapper {
 	}
 
 	private static String toSectionText(final List<InvestigationSection> sections, final String sectionKey) {
+		return findSectionText(sections, sectionKey).map(HtmlSanitizer::sanitize).orElse("");
+	}
+
+	private static Optional<String> findSectionText(final List<InvestigationSection> sections, final String sectionKey) {
 		return sections.stream()
 			.filter(section -> sectionKey.equals(section.getSectionKey()))
 			.findFirst()
 			.map(InvestigationSection::getText)
-			.filter(StringUtils::isNotBlank)
-			.map(HtmlSanitizer::sanitize)
-			.orElse("");
+			.filter(StringUtils::isNotBlank);
 	}
 
 	private static List<String> toProposalPoints(final Investigation investigation, final Labels labels) {
@@ -419,9 +422,9 @@ public final class DecisionBasisMapper {
 
 	private static String toFireSafety(final List<Statement> statements, final Labels labels) {
 		return statements.stream()
-			.filter(statement -> RESCUE_SERVICE.equals(statement.getCounterpartyName()) && isNotBlank(statement.getOutcome()))
+			.filter(statement -> RESCUE_SERVICE.equalsIgnoreCase(StringUtils.strip(statement.getCounterpartyName())) && isNotBlank(statement.getOutcome()))
 			.max(Comparator.comparing(Statement::getRespondedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
-			.map(statement -> statement.getCounterpartyName() + ": " + toLabel(labels.statementOutcomes(), statement.getOutcome()))
+			.map(statement -> RESCUE_SERVICE + ": " + toLabel(labels.statementOutcomes(), statement.getOutcome()))
 			.orElse("");
 	}
 
@@ -435,5 +438,13 @@ public final class DecisionBasisMapper {
 
 	private static String toPlainTextLines(final String html) {
 		return Optional.ofNullable(html).map(HtmlSanitizer::toPlainTextLines).orElse("");
+	}
+
+	private static Map<String, String> orderedMap(final String... keysAndValues) {
+		final var map = new LinkedHashMap<String, String>();
+		for (var i = 0; i < keysAndValues.length; i += 2) {
+			map.put(keysAndValues[i], keysAndValues[i + 1]);
+		}
+		return Collections.unmodifiableMap(map);
 	}
 }

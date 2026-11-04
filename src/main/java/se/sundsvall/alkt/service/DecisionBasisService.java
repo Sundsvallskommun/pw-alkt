@@ -1,13 +1,10 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.supportmanagement.Errand;
-import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
@@ -21,6 +18,7 @@ import tools.jackson.databind.node.MissingNode;
 
 import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringUtils.replace;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findFormParameter;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCompletedAt;
@@ -29,6 +27,8 @@ import static se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMappe
 
 @Service
 public class DecisionBasisService {
+
+	private static final String INVESTIGATION_STATUS_CANCELLED = "CANCELLED";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final TemplatingIntegration templatingIntegration;
@@ -51,22 +51,20 @@ public class DecisionBasisService {
 	 */
 	public String createDecisionBasis(final String municipalityId, final String namespace, final String errandId, final String template) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		final var investigations = supportManagementIntegration.getInvestigations(municipalityId, namespace, errandId);
+		final var investigations = supportManagementIntegration.getInvestigations(municipalityId, namespace, errandId).stream()
+			.filter(investigation -> !INVESTIGATION_STATUS_CANCELLED.equals(investigation.getStatus()))
+			.toList();
 		if (investigations.isEmpty()) {
-			throw new NonRetryableException("Errand '%s' has no investigation to create a decision basis from".formatted(errandId));
+			throw new NonRetryableException("Errand '%s' has no investigation that is not cancelled to create a decision basis from".formatted(errandId));
 		}
 		if (investigations.size() > 1) {
-			throw new NonRetryableException("Errand '%s' has %d investigations, the decision basis is created from exactly one".formatted(errandId, investigations.size()));
+			throw new NonRetryableException("Errand '%s' has %d investigations that are not cancelled, the decision basis is created from exactly one".formatted(errandId, investigations.size()));
 		}
 		final var investigation = investigations.getFirst();
 		final var fileName = "Beslutsunderlag %s.pdf".formatted(replace(toCaseNumber(errand), "/", "-"));
 		final var completed = toCompletedAt(investigation);
 		final var attachments = supportManagementIntegration.getAttachments(municipalityId, namespace, errandId);
-		return attachments.stream()
-			.filter(attachment -> fileName.equals(attachment.getFileName()))
-			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(completed)).isPresent())
-			.map(ErrandAttachment::getId)
-			.findFirst()
+		return findAttachmentId(attachments, fileName, completed)
 			.orElseGet(() -> {
 				final var statements = supportManagementIntegration.getStatements(municipalityId, namespace, errandId);
 				final var parameters = toTemplateParameters(errand, investigation, statements, attachments, legalIdsOfPersonsOfInfluence(municipalityId, errand),
@@ -85,13 +83,9 @@ public class DecisionBasisService {
 	}
 
 	private Map<String, String> legalIdsOfPersonsOfInfluence(final String municipalityId, final Errand errand) {
-		final var legalIds = new HashMap<String, String>();
-		Optional.ofNullable(errand.getStakeholders()).orElse(emptyList()).stream()
+		return partyIntegration.findLegalIds(municipalityId, Optional.ofNullable(errand.getStakeholders()).orElse(emptyList()).stream()
 			.filter(DecisionBasisMapper::isPersonOfInfluence)
 			.map(Stakeholder::getExternalId)
-			.filter(Objects::nonNull)
-			.distinct()
-			.forEach(partyId -> partyIntegration.findLegalId(municipalityId, partyId).ifPresent(legalId -> legalIds.put(partyId, legalId)));
-		return legalIds;
+			.toList());
 	}
 }

@@ -45,9 +45,11 @@ class DecisionBasisMapperTest {
 			  "beverages": ["SPIRITS", "WINE"],
 			  "publicServingPeriod": "ALL_YEAR",
 			  "publicServingHoursIndoor": { "from": "11:00:00+02:00", "to": "01:00:00+02:00" },
+			  "publicServingHoursOutdoor": { "from": "11:00:00+02:00", "to": "22:00:00+02:00" },
 			  "seating": { "seatsIndoor": 80, "seatsOutdoor": 40 },
 			  "maxPersonsInPremises": { "maxPersons": 150 },
 			  "responsibleServingStaff": [ { "firstName": "Karin", "lastName": "Lund", "dateOfBirth": "1982-05-05", "fromDate": "2026-06-01" } ],
+			  "ownFunds": [ { "amountSek": "100000" } ],
 			  "bankLoans": [ { "bank": "Handelsbanken", "amountSek": "250000" } ],
 			  "orderAndSobriety": "<p>Två ordningsvakter fredag och lördag</p>"
 			}
@@ -67,7 +69,7 @@ class DecisionBasisMapperTest {
 			.conclusion("<p>Sökanden bedöms lämplig.</p>")
 			.sections(List.of(
 				new InvestigationSection().sectionKey("ownership").text("<p>Aktiebolag med aktiekapital 25 000 kr</p>"),
-				new InvestigationSection().sectionKey("communication").text("<p>Kommunicerat 2026-10-20</p><p>Inga synpunkter</p>"),
+				new InvestigationSection().sectionKey("communication").text("<div>Kommunicerat 2026-10-20</div><div>Inga synpunkter</div>"),
 				new InvestigationSection().sectionKey("premises").text("")
 					.parameters(List.of(parameter("PREMISES_INSPECTED_AT", "2026-10-02"), parameter("PREMISES_RIGHT_OF_DISPOSAL", "PROVEN"))),
 				new InvestigationSection().sectionKey("legal_basis").text("<h3>Alkohollagen</h3>")));
@@ -113,12 +115,13 @@ class DecisionBasisMapperTest {
 			.containsEntry("servingTo", "Allmänheten")
 			.containsEntry("beverages", "Spritdrycker, Vin")
 			.containsEntry("period", "Året runt")
-			.containsEntry("servingHours", List.of("Inomhus, allmänheten 11:00–01:00"))
+			.containsEntry("servingHours", List.of("Inomhus, allmänheten 11:00–01:00", "Utomhus, allmänheten 11:00–22:00"))
 			.containsEntry("orderAndSobrietyHtml", "<p>Två ordningsvakter fredag och lördag</p>")
 			.containsEntry("knowledgeBasis", "har godkänt kunskapsprov")
 			.containsEntry("responsibleStaff", List.of(Map.of("name", "Karin Lund", "dateOfBirth", "1982-05-05", "fromDate", "2026-06-01")))
 			.containsEntry("menuFiles", List.of("Meny.pdf"))
-			.containsEntry("financing", Map.of("sources", List.of(Map.of("kind", "Banklån", "amount", "250 000 kr", "lender", "Handelsbanken")), "notesHtml", ""));
+			.containsEntry("financing", Map.of("sources", List.of(Map.of("kind", "Egna medel", "amount", "100 000 kr", "lender", ""),
+				Map.of("kind", "Banklån", "amount", "250 000 kr", "lender", "Handelsbanken")), "notesHtml", ""));
 		assertThat(parameters.get("premises")).asInstanceOf(MAP)
 			.containsEntry("name", "Restaurang Kajen")
 			.containsEntry("street", "Hamngatan 4")
@@ -181,6 +184,15 @@ class DecisionBasisMapperTest {
 			.containsEntry("name", "Runt Hörnet")
 			.containsEntry("street", "Storgatan 33")
 			.containsEntry("postalAddress", "852 30 Sundsvall");
+	}
+
+	@Test
+	void findsTheRescueServiceWhateverTheCaseAndSpacesAroundItsName() {
+		final var statement = new Statement().counterpartyName(" medelpads räddningstjänstförbund ").status("RESPONDED").outcome("NO_OBJECTION");
+
+		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), List.of(statement), List.of(), Map.of(), NO_LABELS, TODAY);
+
+		assertThat(parameters.get("premises")).asInstanceOf(MAP).containsEntry("fireSafety", "Medelpads Räddningstjänstförbund: NO_OBJECTION");
 	}
 
 	@Test
