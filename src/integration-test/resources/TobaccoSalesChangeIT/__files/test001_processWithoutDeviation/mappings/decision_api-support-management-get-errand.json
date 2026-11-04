@@ -16,6 +16,7 @@
 		"jsonBody": {
 			"id": "9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3",
 			"errandNumber": "ALKT-2026-000001",
+			"assignedUserId": "er12lin",
 			"parameters": [
 				{
 					"key": "assetId",

@@ -66,6 +66,9 @@ This microservice depends on the following services:
   - **Purpose:** Holds the schema and UI schema of the submission form, which the submission PDF and the decision basis
     are laid out by. party-assets validates the JSON parameter of a permit against its schema there.
   - **Repository:** [https://github.com/Sundsvallskommun/api-service-json-schema](https://github.com/Sundsvallskommun/api-service-json-schema)
+- **Employee**
+  - **Purpose:** Looks up the name of the case worker assigned to the errand, for the decision basis.
+  - **Repository:** [https://github.com/Sundsvallskommun/api-service-employee](https://github.com/Sundsvallskommun/api-service-employee)
 - **Messaging**
   - **Purpose:** Posts incident alerts to Slack.
   - **Repository:** [https://github.com/Sundsvallskommun/api-service-messaging](https://github.com/Sundsvallskommun/api-service-messaging)
@@ -237,7 +240,7 @@ Configuration is crucial for the application to run successfully. Ensure all nec
       token-uri: http://token_url
       client-id: client-id
       client-secret: client-secret
-    # the same for operaton, party-assets, licensed-business, party, templating, json-schema and messaging
+    # the same for operaton, party-assets, licensed-business, party, templating, json-schema, employee and messaging
     messaging:
       slack:
         token: slack-token
