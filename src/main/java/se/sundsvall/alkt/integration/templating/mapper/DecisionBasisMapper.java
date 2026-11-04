@@ -107,14 +107,15 @@ public final class DecisionBasisMapper {
 		"closedCompanyServingPeriod", "closedCompanyServingPeriodDates",
 		"salesPeriod", "salesPeriodDates");
 
-	public record Labels(JsonNode formSchema, Map<String, String> decisionOutcomes, Map<String, String> statementOutcomes) {}
+	public record Lookups(JsonNode formSchema, Map<String, String> decisionOutcomes, Map<String, String> statementOutcomes, Map<String, String> legalIds,
+		String handlerName) {}
 
 	private DecisionBasisMapper() {}
 
 	public static Map<String, Object> toTemplateParameters(final Errand errand, final Investigation investigation, final List<Statement> statements,
-		final List<ErrandAttachment> attachments, final Map<String, String> legalIds, final Labels labels, final LocalDate today) {
+		final List<ErrandAttachment> attachments, final Lookups lookups, final LocalDate today) {
 		final var form = findFormParameter(errand).map(JsonParameter::getValue).orElse(MissingNode.getInstance());
-		final var schema = labels.formSchema();
+		final var schema = lookups.formSchema();
 		final var sections = Optional.ofNullable(investigation.getSections()).orElse(emptyList());
 		final var premisesExamination = sections.stream()
 			.filter(section -> PREMISES.equals(section.getSectionKey()))
@@ -132,8 +133,7 @@ public final class DecisionBasisMapper {
 		parameters.put("documentDate", today.toString());
 		parameters.put("caseNumber", Objects.toString(toCaseNumber(errand), ""));
 		parameters.put("caseType", toCaseType(errand));
-		// TODO: the case worker's name, looked up by investigatorUserId in the employee API.
-		parameters.put("handlerName", "");
+		parameters.put("handlerName", lookups.handlerName());
 		parameters.put("handlerTitle", HANDLER_TITLE);
 		parameters.put("issuedByUnit", ISSUED_BY_UNIT);
 		parameters.put("issuedByAuthority", ISSUING_AUTHORITIES.get(toPremisesMunicipalityId(errand)));
@@ -143,7 +143,7 @@ public final class DecisionBasisMapper {
 		parameters.put("selfMonitoringHtml", toSectionText(sections, "self_monitoring"));
 		parameters.put("legislationHtml", toSectionText(sections, "legal_basis"));
 		parameters.put("exciseTaxHtml", "");
-		parameters.put("proposal", Map.of("points", toProposalPoints(investigation, labels)));
+		parameters.put("proposal", Map.of("points", toProposalPoints(investigation, lookups)));
 		parameters.put("applicant", Map.of(
 			"name", applicant.map(DecisionBasisMapper::toName).orElse(""),
 			"orgNumber", applicant.map(stakeholder -> toParameterValues(stakeholder.getParameters()).getOrDefault("organizationNumber", "")).orElse(""),
@@ -168,12 +168,12 @@ public final class DecisionBasisMapper {
 			Map.entry("salesAreaDescription", toHtml(form.path("salesAreaDescription"))),
 			Map.entry("leaseHtml", toSectionText(sections, "lease")),
 			Map.entry("floorPlanFiles", toFileNames(attachments, FLOOR_PLAN_PURPOSES)),
-			Map.entry("fireSafety", toFireSafety(referrals, labels)),
+			Map.entry("fireSafety", toFireSafety(referrals, lookups)),
 			Map.entry("fireSafetyHtml", toSectionText(sections, "fire_safety"))));
-		parameters.put("personsOfInfluence", personsOfInfluence.stream().map(person -> toPersonOfInfluence(person, legalIds)).toList());
-		parameters.put("statements", referrals.stream().map(statement -> toStatement(statement, labels)).toList());
+		parameters.put("personsOfInfluence", personsOfInfluence.stream().map(person -> toPersonOfInfluence(person, lookups.legalIds())).toList());
+		parameters.put("statements", referrals.stream().map(statement -> toStatement(statement, lookups)).toList());
 		parameters.put("investigation", Map.of(
-			"recommendationLabel", toLabel(labels.decisionOutcomes(), investigation.getRecommendation()),
+			"recommendationLabel", toLabel(lookups.decisionOutcomes(), investigation.getRecommendation()),
 			"financialAssessmentHtml", toSectionText(sections, "financial_suitability"),
 			"premisesRemarksHtml", Optional.of(toSectionText(sections, PREMISES)).filter(StringUtils::isNotEmpty).orElseGet(() -> toSectionText(sections, "sales_point")),
 			"conclusionHtml", toSanitizedHtml(investigation.getConclusion()),
@@ -282,12 +282,12 @@ public final class DecisionBasisMapper {
 			.filter(StringUtils::isNotBlank);
 	}
 
-	private static List<String> toProposalPoints(final Investigation investigation, final Labels labels) {
+	private static List<String> toProposalPoints(final Investigation investigation, final Lookups lookups) {
 		final var points = toPlainTextLines(investigation.getRecommendationMotivation()).lines().filter(StringUtils::isNotBlank).toList();
 		if (!points.isEmpty()) {
 			return points;
 		}
-		return Optional.of(toLabel(labels.decisionOutcomes(), investigation.getRecommendation())).filter(StringUtils::isNotEmpty).map(List::of).orElse(emptyList());
+		return Optional.of(toLabel(lookups.decisionOutcomes(), investigation.getRecommendation())).filter(StringUtils::isNotEmpty).map(List::of).orElse(emptyList());
 	}
 
 	private static String toPeriod(final JsonNode form, final JsonNode schema) {
@@ -410,21 +410,21 @@ public final class DecisionBasisMapper {
 		return legalId.length() > 4 && StringUtils.isNumeric(legalId) ? legalId.substring(0, legalId.length() - 4) + "-" + legalId.substring(legalId.length() - 4) : legalId;
 	}
 
-	private static Map<String, Object> toStatement(final Statement statement, final Labels labels) {
+	private static Map<String, Object> toStatement(final Statement statement, final Lookups lookups) {
 		return Map.of(
 			"counterparty", Objects.toString(statement.getCounterpartyName(), ""),
 			"sentAt", toDate(statement.getSentAt()),
 			"respondedAt", toDate(statement.getRespondedAt()),
 			"status", Objects.toString(statement.getStatus(), ""),
-			"outcomeLabel", toLabel(labels.statementOutcomes(), statement.getOutcome()),
+			"outcomeLabel", toLabel(lookups.statementOutcomes(), statement.getOutcome()),
 			"responseText", toPlainTextLines(statement.getResponseText()));
 	}
 
-	private static String toFireSafety(final List<Statement> statements, final Labels labels) {
+	private static String toFireSafety(final List<Statement> statements, final Lookups lookups) {
 		return statements.stream()
 			.filter(statement -> RESCUE_SERVICE.equalsIgnoreCase(StringUtils.strip(statement.getCounterpartyName())) && isNotBlank(statement.getOutcome()))
 			.max(Comparator.comparing(Statement::getRespondedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
-			.map(statement -> RESCUE_SERVICE + ": " + toLabel(labels.statementOutcomes(), statement.getOutcome()))
+			.map(statement -> RESCUE_SERVICE + ": " + toLabel(lookups.statementOutcomes(), statement.getOutcome()))
 			.orElse("");
 	}
 
