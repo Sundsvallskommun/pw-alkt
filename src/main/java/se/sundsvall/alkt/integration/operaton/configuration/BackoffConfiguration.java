@@ -9,8 +9,6 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class BackoffConfiguration {
 
-	// Why: error-aware, so an empty long poll is followed by the next one at once. A plain exponential backoff
-	// waits after an empty poll as well, and a task created in that gap waits with it.
 	@Bean
 	@Primary
 	public BackoffStrategy backoffStrategyConfiguration(BackoffProperties properties) {

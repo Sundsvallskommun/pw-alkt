@@ -3,6 +3,7 @@ package se.sundsvall.alkt.integration.supportmanagement.mapper;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.ProcessActivity;
 import generated.se.sundsvall.supportmanagement.ProcessError;
@@ -23,6 +24,7 @@ import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ReportTarget;
+import tools.jackson.databind.node.JsonNodeFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -142,7 +144,7 @@ class SupportManagementMapperTest {
 	void toChangeDraftLeavesOutThePremisesAddressAndTheRestaurantNumberChoice() {
 		final var errand = new Errand().parameters(List.of(
 			new Parameter().key("premisesName").values(List.of("Runt Hörnet")),
-			new Parameter().key("externalReferenceNumber").values(List.of("TSN 2026/0153")),
+			new Parameter().key("externalCaseRegistrationNumber").values(List.of("TSN 2026/0153")),
 			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
 			new Parameter().key("premisesStreetAddress").values(List.of("Storgatan 33")),
 			new Parameter().key("premisesPostalCode").values(List.of("852 30")),
@@ -279,6 +281,15 @@ class SupportManagementMapperTest {
 			new Stakeholder().role("PRIMARY").externalId("holder-id")));
 
 		assertThat(SupportManagementMapper.toPartyId(errand)).contains("holder-id");
+	}
+
+	@Test
+	void findFormParameterTakesTheEditedFormAndNotTheOriginalWhateverTheirOrder() {
+		final var edited = new JsonParameter().key("aot_alcohol_serving_permit_application").value(JsonNodeFactory.instance.objectNode().put("premisesName", "Kajen"));
+		final var original = new JsonParameter().key("aot_alcohol_serving_permit_application_original").value(JsonNodeFactory.instance.objectNode().put("premisesName", "Kajn"));
+
+		assertThat(SupportManagementMapper.findFormParameter(new Errand().jsonParameters(List.of(original, edited)))).contains(edited);
+		assertThat(SupportManagementMapper.findFormParameter(new Errand().jsonParameters(List.of(edited, original)))).contains(edited);
 	}
 
 	@Test

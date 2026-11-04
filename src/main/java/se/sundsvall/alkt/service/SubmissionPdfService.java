@@ -5,10 +5,8 @@ import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.exception.NonRetryableException;
@@ -82,19 +80,8 @@ public class SubmissionPdfService {
 		final var sections = new ArrayList<Section>();
 		sections.add(toErrandSection(errand));
 		sections.addAll(toSections(schema, uiSchema, submission.getValue()));
-		toStakeholderSection(stakeholders, legalIdsOf(municipalityId, stakeholders)).ifPresent(sections::add);
+		toStakeholderSection(stakeholders, partyIntegration.findLegalIds(municipalityId, stakeholders.stream().map(Stakeholder::getExternalId).toList())).ifPresent(sections::add);
 		toAttachmentSection(attachments, schema).ifPresent(sections::add);
 		return Map.of("title", toTitle(errand), "sections", sections);
-	}
-
-	// Why: a party the register does not know is shown without a number rather than holding the errand.
-	private Map<String, String> legalIdsOf(final String municipalityId, final List<Stakeholder> stakeholders) {
-		final var legalIds = new HashMap<String, String>();
-		stakeholders.stream()
-			.map(Stakeholder::getExternalId)
-			.filter(Objects::nonNull)
-			.distinct()
-			.forEach(partyId -> partyIntegration.findLegalId(municipalityId, partyId).ifPresent(legalId -> legalIds.put(partyId, legalId)));
-		return legalIds;
 	}
 }

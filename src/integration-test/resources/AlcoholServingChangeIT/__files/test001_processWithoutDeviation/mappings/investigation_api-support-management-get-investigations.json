@@ -1,0 +1,25 @@
+{
+	"name": "investigation_api-support-management-get-investigations",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44/investigations",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "6d2e8f41-0a7b-4c93-b5e1-2f8a9c3d7e60",
+				"status": "COMPLETED",
+				"summary": "Sökanden bedöms lämplig och lokalen uppfyller kraven"
+			}
+		],
+		"status": 200
+	}
+}

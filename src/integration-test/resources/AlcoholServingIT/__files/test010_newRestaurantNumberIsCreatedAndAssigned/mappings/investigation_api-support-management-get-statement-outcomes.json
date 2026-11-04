@@ -1,0 +1,24 @@
+{
+	"name": "investigation_api-support-management-get-statement-outcomes",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/metadata/statementoutcomes",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"name": "NO_OBJECTION",
+				"displayName": "Inget att erinra"
+			}
+		],
+		"status": 200
+	}
+}

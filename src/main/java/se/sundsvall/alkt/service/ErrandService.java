@@ -7,14 +7,13 @@ import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_COMPLETE_AT;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.requiresCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.withParameter;
 
 @Service
 public class ErrandService {
-
-	static final String ERRAND_PARAMETER_COMPLETE_AT = "completeAt";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final Clock clock;
@@ -38,7 +37,7 @@ public class ErrandService {
 		return completeAt;
 	}
 
-	/** The case number comes from the records of Timrå, in externalReferenceNumber. */
+	/** The case number comes from the records of Timrå, in externalCaseRegistrationNumber. */
 	public CaseNumberCheck checkCaseNumber(final String municipalityId, final String namespace, final String errandId) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		if (!requiresCaseNumber(errand)) {

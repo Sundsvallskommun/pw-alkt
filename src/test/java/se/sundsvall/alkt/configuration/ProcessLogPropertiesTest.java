@@ -55,7 +55,11 @@ class ProcessLogPropertiesTest {
 			"external_task_cancel_process",
 			"external_task_set_complete_at",
 			"external_task_check_case_number",
-			"external_task_check_case_number_required");
+			"external_task_check_case_number_required",
+			"external_task_create_decision_basis");
+		assertThat(properties.steps().get("external_task_create_decision_basis").done()).isEqualTo("Beslutsunderlaget har skapats och lagts till i ärendet");
+		assertThat(properties.steps().get("external_task_create_decision_basis").retry()).isEqualTo("Beslutsunderlaget kunde inte skapas just nu, ett nytt försök görs automatiskt");
+		assertThat(properties.steps().get("external_task_create_decision_basis").failed()).isEqualTo("Beslutsunderlaget kunde inte skapas. Processen har stannat och felet behöver åtgärdas");
 		assertThat(properties.steps().get("external_task_create_asset").done()).isEqualTo("Tillståndet har registrerats hos tillståndshavaren");
 		assertThat(properties.steps().get("external_task_create_asset").skipped()).isNull();
 		assertThat(properties.steps().get("external_task_create_asset").rejected()).isNull();

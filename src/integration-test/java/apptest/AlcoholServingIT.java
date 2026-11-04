@@ -10,6 +10,7 @@ import tools.jackson.core.JacksonException;
 import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
@@ -64,7 +65,16 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 
+		// The decision basis is rendered and attached to the errand before the decision phase starts
+		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-templating/2262/render/pdf"))
+			.withRequestBody(matchingJsonPath("$.identifier", equalTo("serving-permit-decision-basis"))));
+		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/attachments".formatted(ERRAND_ID)))
+			.withAnyRequestBodyPart(aMultipart().withHeader("Content-Disposition", containing("filename=\"Beslutsunderlag TSN 2026-0153.pdf\""))));
+
 		// Verify the activity log: the phases the process entered and the steps it took, named for the case worker
+		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
+			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_decision_basis#done')].activityName",
+				containing("Beslutsunderlaget har skapats och lagts till i ärendet"))));
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'PHASE' && @.activityId == 'registration_phase')].activityName",
 				containing("Registrering har påbörjats"))));
@@ -104,6 +114,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				tuple("Start investigation phase", "start_investigation_phase"),
 				tuple("Set complete at", "external_task_set_complete_at"),
 				tuple("Investigation completed", "await_investigation_completed"),
+				tuple("Create decision basis", "external_task_create_decision_basis"),
 				tuple("End investigation phase", "end_investigation_phase"),
 
 				// Decision
@@ -310,6 +321,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			tuple("Start investigation phase", "start_investigation_phase"),
 			tuple("Set complete at", "external_task_set_complete_at"),
 			tuple("Investigation completed", "await_investigation_completed"),
+			tuple("Create decision basis", "external_task_create_decision_basis"),
 			tuple("End investigation phase", "end_investigation_phase"),
 			tuple("Decision", "decision_phase"),
 			tuple("Start decision phase", "start_decision_phase"),

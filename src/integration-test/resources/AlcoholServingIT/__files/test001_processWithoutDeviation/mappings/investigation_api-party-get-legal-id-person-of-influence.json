@@ -1,0 +1,14 @@
+{
+	"name": "investigation_api-party-get-legal-id-person-of-influence",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-party/2281/partyId/7b2d9e14-6c3a-4f81-b5d2-9e0a1c4f3b68/legalId"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "text/plain"
+		},
+		"body": "198203154321",
+		"status": 200
+	}
+}

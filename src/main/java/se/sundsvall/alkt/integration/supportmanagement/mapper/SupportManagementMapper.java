@@ -3,7 +3,10 @@ package se.sundsvall.alkt.integration.supportmanagement.mapper;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
+import generated.se.sundsvall.supportmanagement.Investigation;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Measure;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.ProcessSignal;
@@ -38,7 +41,7 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_DRAFT;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
-import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER;
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_AREA;
@@ -64,11 +67,12 @@ public final class SupportManagementMapper {
 	private static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
 		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, ERRAND_PARAMETER_PREMISES_STREET_ADDRESS, ERRAND_PARAMETER_PREMISES_POSTAL_CODE,
 		ERRAND_PARAMETER_PREMISES_POSTAL_AREA, ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID, ERRAND_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER,
-		PERMIT_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER);
+		PERMIT_PARAMETER_RESTAURANT_NUMBER, ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER);
 
 	private static final List<String> PREMISES_MUNICIPALITY_IDS = List.of(MUNICIPALITY_ID_SUNDSVALL, MUNICIPALITY_ID_TIMRA);
 
 	private static final String MEASURE_STATUS_ACTIVE = "ACTIVE";
+	private static final String ORIGINAL_FORM_SUFFIX = "_original";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
 	static final String DECISION_TYPE_PERMIT = "PERMIT";
@@ -112,8 +116,23 @@ public final class SupportManagementMapper {
 		return MUNICIPALITY_ID_TIMRA.equals(toPremisesMunicipalityId(errand));
 	}
 
+	public static Optional<JsonParameter> findFormParameter(final Errand errand) {
+		return Optional.ofNullable(errand.getJsonParameters()).orElse(emptyList()).stream()
+			.filter(parameter -> !StringUtils.endsWith(parameter.getKey(), ORIGINAL_FORM_SUFFIX))
+			.filter(parameter -> nonNull(parameter.getValue()))
+			.findFirst();
+	}
+
+	public static String toCaseNumber(final Errand errand) {
+		if (!requiresCaseNumber(errand)) {
+			return errand.getErrandNumber();
+		}
+		return findCaseNumber(errand)
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' in Timrå has no case number in %s".formatted(errand.getId(), ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER)));
+	}
+
 	public static Optional<String> findCaseNumber(final Errand errand) {
-		return Optional.ofNullable(toParameterValues(errand.getParameters()).get(ERRAND_PARAMETER_EXTERNAL_REFERENCE_NUMBER));
+		return Optional.ofNullable(toParameterValues(errand.getParameters()).get(ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER));
 	}
 
 	public static List<Measure> toActiveMeasures(final List<Measure> measures, final String type) {
@@ -123,6 +142,20 @@ public final class SupportManagementMapper {
 			.toList();
 	}
 
+	public static Optional<String> findAttachmentId(final List<ErrandAttachment> attachments, final String fileName, final OffsetDateTime uploadedFrom) {
+		return attachments.stream()
+			.filter(attachment -> fileName.equals(attachment.getFileName()))
+			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(uploadedFrom)).isPresent())
+			.map(ErrandAttachment::getId)
+			.findFirst();
+	}
+
+	public static OffsetDateTime toCompletedAt(final Investigation investigation) {
+		return Optional.ofNullable(investigation.getCompletedAt())
+			.or(() -> Optional.ofNullable(investigation.getModified()))
+			.orElse(investigation.getCreated());
+	}
+
 	public static Optional<String> toPartyId(final Errand errand) {
 		return Optional.ofNullable(errand.getStakeholders()).orElse(emptyList()).stream()
 			.filter(SupportManagementMapper::isPermitHolder)
@@ -130,8 +163,6 @@ public final class SupportManagementMapper {
 			.findFirst();
 	}
 
-	// Why: an approval of an ongoing notification holds until further notice, so it has no validTo; one for a single
-	// occasion ends with it. Support Management requires decidedAt already on the draft.
 	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final LocalDate validTo, final OffsetDateTime decidedAt) {
 		return new Decision()
 			.type(DECISION_TYPE_PERMIT)
@@ -146,8 +177,6 @@ public final class SupportManagementMapper {
 			.validTo(validTo);
 	}
 
-	// Why: Support Management lets the process write only an automatic decision, with outcome and decidedAt already on the
-	// draft; the case worker's edit makes it manual. A parameter without a value asks for a removal, so it is kept.
 	public static Decision toChangeDraft(final Errand errand, final String title, final OffsetDateTime decidedAt) {
 		return new Decision()
 			.type(DECISION_TYPE_PERMIT)
@@ -181,7 +210,6 @@ public final class SupportManagementMapper {
 			.collect(toSet());
 	}
 
-	// Why: the generated model starts parameters as an empty list, and an empty list removes the decision's parameters.
 	public static Decision toDecisionCompletion(final OffsetDateTime decidedAt) {
 		return new Decision()
 			.status(DECISION_STATUS_COMPLETED)

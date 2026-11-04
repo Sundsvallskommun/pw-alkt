@@ -1,9 +1,6 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.supportmanagement.Errand;
-import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Investigation;
-import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
@@ -14,8 +11,9 @@ import se.sundsvall.dept44.problem.Problem;
 
 import static org.apache.commons.lang3.StringUtils.replace;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findCaseNumber;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.requiresCaseNumber;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCompletedAt;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.InspectionProtocolMapper.toTemplateParameters;
 
@@ -46,14 +44,9 @@ public class InspectionProtocolService {
 				investigation.getType(), TEMPLATES_BY_INVESTIGATION_TYPE.keySet())));
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var caseNumber = toCaseNumber(errand);
-		// Why: a slash in the case number of Timrå would read as a path in the file name.
 		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
-		final var completed = completedAt(investigation);
-		return supportManagementIntegration.getAttachments(municipalityId, namespace, errandId).stream()
-			.filter(attachment -> fileName.equals(attachment.getFileName()))
-			.filter(attachment -> Optional.ofNullable(attachment.getCreated()).filter(created -> !created.isBefore(completed)).isPresent())
-			.map(ErrandAttachment::getId)
-			.findFirst()
+		final var completed = toCompletedAt(investigation);
+		return findAttachmentId(supportManagementIntegration.getAttachments(municipalityId, namespace, errandId), fileName, completed)
 			.orElseGet(() -> {
 				final var parameters = toTemplateParameters(errandId, template, investigation, errand.getMeasures(), caseNumber);
 				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
@@ -61,25 +54,6 @@ public class InspectionProtocolService {
 			});
 	}
 
-	private static String toCaseNumber(final Errand errand) {
-		if (!requiresCaseNumber(errand)) {
-			return errand.getErrandNumber();
-		}
-		return findCaseNumber(errand)
-			.orElseThrow(() -> new NonRetryableException("Errand '%s' in Timrå has no case number in externalReferenceNumber, so no protocol is made".formatted(errand.getId())));
-	}
-
-	// Why: a file of that name uploaded before the completion, by a case worker or a cancelled earlier process, is not this
-	// protocol. completedAt is set by the client and may be missing; modified moves with every later change.
-	private static OffsetDateTime completedAt(final Investigation investigation) {
-		return Optional.ofNullable(investigation.getCompletedAt())
-			.or(() -> Optional.ofNullable(investigation.getModified()))
-			.orElse(investigation.getCreated());
-	}
-
-	// Why: the step runs once the case worker has completed the investigation, so that is the one the protocol is of. A
-	// draft, active or cancelled one is not, and with several completed there is no telling which one it is.
-	// Without a completed one the step is retried, since the completion may not be saved yet when the phase ends.
 	private Investigation getInvestigation(final String municipalityId, final String namespace, final String errandId) {
 		final var investigations = supportManagementIntegration.getInvestigations(municipalityId, namespace, errandId).stream()
 			.filter(investigation -> INVESTIGATION_STATUS_COMPLETED.equals(investigation.getStatus()))

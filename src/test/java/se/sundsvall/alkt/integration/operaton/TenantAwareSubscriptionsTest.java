@@ -37,6 +37,7 @@ class TenantAwareSubscriptionsTest {
 			"CreateActionErrandTask",
 			"CreateAssetTask",
 			"CreateChangeDraftTask",
+			"CreateDecisionBasisTask",
 			"CreateDecisionTask",
 			"CreateProtocolTask",
 			"CreateSubmissionPdfTask",

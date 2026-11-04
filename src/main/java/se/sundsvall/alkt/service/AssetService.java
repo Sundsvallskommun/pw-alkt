@@ -91,19 +91,15 @@ public class AssetService {
 	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final AssetType assetType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
-		// Why: checked again at the decision, as the permit may have been deactivated while the errand was handled.
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var versioned = getPermitToChange(municipalityId, errand, errandId, assetType);
 		final var asset = versioned.asset();
 		final var assetId = asset.getId();
 
-		// Why: rendered before the asset changes, so a decision that does not fill the template leaves the asset as it was.
-		// Rendered from the parameters the asset gets, since the certificate shows the whole permit.
 		final var update = toAssetUpdateRequest(asset, decision);
 		final var certificate = assetType.getCertificateTemplate()
 			.map(template -> toCertificateFile(templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, toTemplateParameters(decision, update.getAdditionalParameters()))));
 
-		// Why: a rerun after the certificate failed finds the change already made, and every PATCH adds a revision.
 		if (changes(update, asset)) {
 			partyAssetsIntegration.updateAsset(municipalityId, assetId, versioned.version(), update);
 		}
@@ -130,7 +126,6 @@ public class AssetService {
 		final var asset = versioned.asset();
 		final var closure = toAssetClosureRequest(asset, decision, LocalDate.now(clock));
 
-		// Why: a rerun after the PATCH went through finds the permit already ended, or already set to end.
 		if (!isClosed(asset, closure)) {
 			requireActive(asset);
 			requireNotBeforeIssued(asset, closure, errandId);
@@ -162,7 +157,6 @@ public class AssetService {
 	private VersionedAsset getPermitOfTheErrand(final String municipalityId, final Errand errand, final String errandId, final AssetType assetType) {
 		final var assetId = toAssetId(errand)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' names no asset to change".formatted(errandId)));
-		// Why: party-assets answers an id that is not a UUID with 400, which would be retried in vain.
 		if (!UUID_VALIDATOR.isValid(assetId)) {
 			throw new NonRetryableException("Errand '%s' names asset '%s', which is not an asset id".formatted(errandId, assetId));
 		}
@@ -212,7 +206,6 @@ public class AssetService {
 			|| (update.getValidTo() != null && !update.getValidTo().equals(asset.getValidTo()));
 	}
 
-	// Why: a change may end the permit today at the earliest, never backdate its end.
 	private void requireNotPassed(final Decision decision, final String errandId) {
 		Optional.ofNullable(decision.getValidTo())
 			.filter(validTo -> validTo.isBefore(LocalDate.now(clock)))
@@ -229,7 +222,6 @@ public class AssetService {
 			});
 	}
 
-	// Why: each file is fetched just before its upload, so only one of them is held in memory at a time.
 	private String createAsset(final String municipalityId, final String certificateMunicipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
 		final AssetType assetType) {
 		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, request);
@@ -238,7 +230,6 @@ public class AssetService {
 			Optional.ofNullable(decision.getAttachments()).orElse(emptyList())
 				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
-			// Why: rendered from the parameters the asset gets, as on a change, so the certificate shows the restaurant number.
 			assetType.getCertificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
 				toCertificateFile(templatingIntegration.renderPdf(certificateMunicipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);

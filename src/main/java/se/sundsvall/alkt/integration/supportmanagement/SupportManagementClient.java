@@ -3,6 +3,7 @@ package se.sundsvall.alkt.integration.supportmanagement;
 import generated.se.sundsvall.supportmanagement.Conversation;
 import generated.se.sundsvall.supportmanagement.ConversationRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
+import generated.se.sundsvall.supportmanagement.DecisionOutcome;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
@@ -12,6 +13,8 @@ import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
+import generated.se.sundsvall.supportmanagement.Statement;
+import generated.se.sundsvall.supportmanagement.StatementOutcome;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -173,6 +176,22 @@ public interface SupportManagementClient {
 		@PathVariable String namespace,
 		@PathVariable String errandId);
 
+	@GetMapping(path = "/{municipalityId}/{namespace}/metadata/decisionoutcomes", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<DecisionOutcome>> getDecisionOutcomes(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/metadata/statementoutcomes", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<StatementOutcome>> getStatementOutcomes(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/statements", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<Statement>> getStatements(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId);
+
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<PageErrand> findErrands(
 		@PathVariable String municipalityId,
@@ -183,8 +202,6 @@ public interface SupportManagementClient {
 	 * Support Management creates the relation named in referredFrom along with the errand, and starts the new errand's own
 	 * process.
 	 */
-	// Why: no X-Trigger-Process, since the new errand is not this process's own and the header would keep its process from
-	// starting.
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> createErrand(
 		@PathVariable String municipalityId,

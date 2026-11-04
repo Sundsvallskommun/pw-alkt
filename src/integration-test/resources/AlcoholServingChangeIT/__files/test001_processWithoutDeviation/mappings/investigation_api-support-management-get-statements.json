@@ -1,0 +1,28 @@
+{
+	"name": "investigation_api-support-management-get-statements",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44/statements",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "b4f1c7a2-9e36-4d58-8a0b-7c2e5f1d3a94",
+				"type": "REFERRAL",
+				"status": "RESPONDED",
+				"counterpartyName": "Polismyndigheten",
+				"outcome": "NO_OBJECTION",
+				"responseText": "Polisen har inget att erinra mot ansökan"
+			}
+		],
+		"status": 200
+	}
+}

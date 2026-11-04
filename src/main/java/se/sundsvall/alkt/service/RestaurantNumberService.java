@@ -109,8 +109,6 @@ public class RestaurantNumberService {
 		return true;
 	}
 
-	// Why: the number is assigned only once the permit exists, so a holder it cannot be assigned to stops the process here,
-	// before there is a permit without an assignment.
 	private void requireAssignableHolder(final String municipalityId, final Errand errand, final String errandId) {
 		final var permitHolder = getPermitHolder(errand, errandId);
 		getHolderName(permitHolder, errandId);
@@ -165,8 +163,6 @@ public class RestaurantNumberService {
 			});
 	}
 
-	// Why: a run that fails after the create leaves its number free at the premises. It is the free number that was not
-	// there before the create, so the rerun takes it instead of creating another.
 	private static Optional<String> findCreatedByAnEarlierRun(final List<String> available, final List<String> availableBeforeCreate) {
 		return Optional.ofNullable(availableBeforeCreate)
 			.flatMap(before -> available.stream()

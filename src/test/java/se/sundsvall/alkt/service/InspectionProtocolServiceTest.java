@@ -96,7 +96,7 @@ class InspectionProtocolServiceTest {
 	@Test
 	void usesTheErrandNumberAsCaseNumberInSundsvall() {
 		final var errand = sundsvallErrand().errandNumber("AOT-26100147")
-			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2281")), new Parameter().key("externalReferenceNumber").values(List.of("KS 2026/00999"))));
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2281")), new Parameter().key("externalCaseRegistrationNumber").values(List.of("KS 2026/00999"))));
 		final var expectedParameters = Map.of("measures", CHECKPOINT_ROWS, "caseNumber", "AOT-26100147");
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
@@ -122,7 +122,7 @@ class InspectionProtocolServiceTest {
 
 		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand 'errand-id' in Timrå has no case number in externalReferenceNumber, so no protocol is made");
+			.hasMessage("Errand 'errand-id' in Timrå has no case number in externalCaseRegistrationNumber");
 
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
@@ -147,8 +147,8 @@ class InspectionProtocolServiceTest {
 		final var inTimra = new Parameter().key("premisesMunicipalityId").values(List.of("2262"));
 		return Stream.of(
 			List.of(inTimra),
-			List.of(inTimra, new Parameter().key("externalReferenceNumber").values(List.of())),
-			List.of(inTimra, new Parameter().key("externalReferenceNumber").values(List.of(" ", ""))));
+			List.of(inTimra, new Parameter().key("externalCaseRegistrationNumber").values(List.of())),
+			List.of(inTimra, new Parameter().key("externalCaseRegistrationNumber").values(List.of(" ", ""))));
 	}
 
 	@ParameterizedTest
@@ -232,7 +232,7 @@ class InspectionProtocolServiceTest {
 		final var errand = new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER)
 			.parameters(List.of(
 				new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
-				new Parameter().key("externalReferenceNumber").values(List.of("KS 2026/00123"))))
+				new Parameter().key("externalCaseRegistrationNumber").values(List.of("KS 2026/00123"))))
 			.measures(List.of(CHECKPOINT,
 				new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("NOT_COMPLETED").resultText("Smoking").created(CREATED)));
 		final var expectedParameters = Map.of("measures", CHECKPOINT_ROWS, "observationSmokingOutdoor", "X", "orderWithRemarks", "true", "caseNumber", "KS 2026/00123");

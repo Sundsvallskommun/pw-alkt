@@ -1,0 +1,36 @@
+{
+	"name": "investigation_api-support-management-post-attachment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/5a2d7e13-4b98-4c26-8f71-3e0a9b6d5c82/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ALL",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "filename=\"Beslutsunderlag TSN 2026-0153.pdf\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalTo": "%PDF-1.7 beslutsunderlag"
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/5a2d7e13-4b98-4c26-8f71-3e0a9b6d5c82/attachments/e7a3d915-4c28-4b6f-9d01-3a5c8e2f7b46"
+		},
+		"status": 201
+	}
+}

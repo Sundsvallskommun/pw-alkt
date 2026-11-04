@@ -68,8 +68,6 @@ public final class LicensedBusinessMapper {
 		return isHeldBy(assignment, orgNumber) && ASSIGNMENT_STATUS_ACTIVE.equals(assignment.getStatus());
 	}
 
-	// Why: Party gives a personal identity number with its century, licensed business may keep it without, and an
-	// organisation number may carry the prefix 16. The last ten digits name the same holder in every form.
 	private static boolean isHeldBy(final Assignment assignment, final String orgNumber) {
 		return Optional.ofNullable(assignment.getLicenseHolder())
 			.map(LicenseHolder::getOrgNumber)

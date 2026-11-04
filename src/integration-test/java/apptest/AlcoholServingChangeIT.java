@@ -80,6 +80,7 @@ class AlcoholServingChangeIT extends AbstractOperatonAppTest {
 				tuple("Start investigation phase", "start_investigation_phase"),
 				tuple("Set complete at", "external_task_set_complete_at"),
 				tuple("Investigation completed", "await_investigation_completed"),
+				tuple("Create decision basis", "external_task_create_decision_basis"),
 				tuple("End investigation phase", "end_investigation_phase"),
 
 				// Decision
