@@ -16,7 +16,8 @@ public final class HtmlSanitizer {
 	// could make templating fetch an outside address.
 	private static final Set<String> ALLOWED_TAGS = Set.of("p", "br", "strong", "b", "em", "i", "u", "s", "ul", "ol", "li", "blockquote",
 		"h1", "h2", "h3", "h4", "h5", "h6", "sub", "sup");
-	private static final Map<String, String> SEPARATORS_OF_DROPPED_CLOSING_TAGS = Map.of("div", "<br/>", "tr", "<br/>", "td", " ", "th", " ");
+	private static final String BR = "<br/>";
+	private static final Map<String, String> SEPARATORS_OF_DROPPED_CLOSING_TAGS = Map.of("div", BR, "tr", BR, "td", " ", "th", " ");
 	private static final Pattern COMMENT = Pattern.compile("(?s)<!--.*?(?:-->|\\z)");
 	private static final Pattern SCRIPT_OR_STYLE = Pattern.compile("(?is)<(script|style)\\b[^>]*+(?:>.*?(?:</\\1\\s*>|\\z)|\\z)");
 	private static final Pattern TAG = Pattern.compile("<(/?)([a-zA-Z][\\w:-]*)(?:\\s[^<>]*)?/?>");
@@ -34,7 +35,7 @@ public final class HtmlSanitizer {
 			sanitized.append(escape(text.substring(last, matcher.start())));
 			final var tag = matcher.group(2).toLowerCase(Locale.ROOT);
 			if ("br".equals(tag)) {
-				sanitized.append("<br/>");
+				sanitized.append(BR);
 			} else if (ALLOWED_TAGS.contains(tag)) {
 				sanitized.append('<').append(matcher.group(1)).append(tag).append('>');
 			} else if ("/".equals(matcher.group(1))) {
