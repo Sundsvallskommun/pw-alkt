@@ -5,6 +5,8 @@ spring:
     oauth2:
       client:
         provider:
+          employee:
+            token-uri: ${config.employee.token-uri}
           json-schema:
             token-uri: ${config.json-schema.token-uri}
           licensed-business:
@@ -22,6 +24,11 @@ spring:
           templating:
             token-uri: ${config.templating.token-uri}
         registration:
+          employee:
+            authorization-grant-type: client_credentials
+            provider: employee
+            client-id: ${config.employee.client-id}
+            client-secret: ${config.employee.client-secret}
           json-schema:
             authorization-grant-type: client_credentials
             provider: json-schema
@@ -120,6 +127,10 @@ reconciliation:
     enabled: true
 
 integration:
+  employee:
+    url: ${config.employee.base-url}
+    connectTimeout: 5
+    readTimeout: 20
   json-schema:
     url: ${config.json-schema.base-url}
     connectTimeout: 5
@@ -159,6 +170,8 @@ integration:
 
 resilience4j.circuitbreaker:
   instances:
+    employee:
+      ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
     json-schema:
       ignoreExceptions: se.sundsvall.dept44.exception.ClientProblem
     licensed-business:

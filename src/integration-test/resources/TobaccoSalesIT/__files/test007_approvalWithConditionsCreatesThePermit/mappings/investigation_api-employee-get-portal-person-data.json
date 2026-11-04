@@ -1,0 +1,20 @@
+{
+	"name": "investigation_api-employee-get-portal-person-data",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-employee/2281/portalpersondata/personal/er12lin"
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"personid": "5b0d3c61-8a2f-4c7e-9d14-2e6f7a8b9c01",
+			"givenname": "Erik",
+			"lastname": "Lindqvist",
+			"fullname": "Lindqvist Erik",
+			"loginName": "er12lin"
+		},
+		"status": 200
+	}
+}
