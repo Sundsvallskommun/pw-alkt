@@ -21,9 +21,12 @@ import static se.sundsvall.alkt.integration.templating.mapper.InspectionProtocol
 public class InspectionProtocolService {
 
 	private static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
-	private static final Map<String, String> TEMPLATES_BY_INVESTIGATION_TYPE = Map.of(
-		"serving_permit", "serving-inspection-protocol",
-		"internal_inspection", "internal-inspection-protocol");
+	private static final Map<String, Protocol> PROTOCOLS_BY_INVESTIGATION_TYPE = Map.of(
+		"serving_permit", new Protocol("serving-inspection-protocol", "aot_inspection_serving_permit"),
+		"internal_inspection", new Protocol("internal-inspection-protocol", "aot_inspection_internal"));
+
+	/** The template of a protocol, and the key of the JSON parameter of the investigation that holds its answers. */
+	private record Protocol(String template, String answersKey) {}
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final TemplatingIntegration templatingIntegration;
@@ -34,22 +37,24 @@ public class InspectionProtocolService {
 	}
 
 	/**
-	 * A rerun finds the protocol an earlier attempt uploaded by its file name and by it being uploaded after the
+	 * Renders the protocol from the answers in the JSON parameter of the investigation and attaches it to the errand. A
+	 * rerun finds the protocol an earlier attempt uploaded by its file name and by it being uploaded after the
 	 * investigation was completed, and uploads no second one.
 	 */
 	public String createProtocol(final String municipalityId, final String namespace, final String errandId) {
 		final var investigation = getInvestigation(municipalityId, namespace, errandId);
-		final var template = Optional.ofNullable(investigation.getType()).map(TEMPLATES_BY_INVESTIGATION_TYPE::get)
+		final var protocol = Optional.ofNullable(investigation.getType()).map(PROTOCOLS_BY_INVESTIGATION_TYPE::get)
 			.orElseThrow(() -> new NonRetryableException("Errand '%s' has an investigation of type '%s', which is none of the inspection protocols %s".formatted(errandId,
-				investigation.getType(), TEMPLATES_BY_INVESTIGATION_TYPE.keySet())));
+				investigation.getType(), PROTOCOLS_BY_INVESTIGATION_TYPE.keySet())));
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var caseNumber = toCaseNumber(errand);
 		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
 		final var completed = toCompletedAt(investigation);
 		return findAttachmentId(supportManagementIntegration.getAttachments(municipalityId, namespace, errandId), fileName, completed)
 			.orElseGet(() -> {
-				final var parameters = toTemplateParameters(errandId, template, investigation, errand.getMeasures(), caseNumber);
-				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
+				final var answers = supportManagementIntegration.getInvestigationJson(municipalityId, namespace, errandId, investigation.getId(), protocol.answersKey());
+				final var parameters = toTemplateParameters(errandId, protocol.template(), answers, errand.getMeasures(), caseNumber);
+				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), protocol.template(), parameters);
 				return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 			});
 	}

@@ -1,6 +1,5 @@
 package se.sundsvall.alkt.integration.templating.mapper;
 
-import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.Measure;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -8,13 +7,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import tools.jackson.databind.JsonNode;
 
-import static java.util.Collections.emptyList;
 import static java.util.Comparator.nullsLast;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toActiveMeasures;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 
 public final class InspectionProtocolMapper {
 
@@ -45,20 +44,31 @@ public final class InspectionProtocolMapper {
 
 	private InspectionProtocolMapper() {}
 
-	public static Map<String, Object> toTemplateParameters(final String errandId, final String template, final Investigation investigation, final List<Measure> measures,
+	/**
+	 * The placeholders of the protocol: each answer under its key, a ticked box for each choice made, the checkpoints and,
+	 * in the serving protocol, the order. Fails without retry when the answers are not a JSON object, a choice is not one
+	 * of the protocol, or there are no active checkpoints.
+	 */
+	public static Map<String, Object> toTemplateParameters(final String errandId, final String template, final JsonNode answers, final List<Measure> measures,
 		final String caseNumber) {
 		final var checkpoints = toActiveMeasures(measures, MEASURE_TYPE_INTERNAL);
 		if (checkpoints.isEmpty()) {
 			throw new NonRetryableException("Errand '%s' has no active checkpoints, so no protocol is made".formatted(errandId));
 		}
+		if (!answers.isObject()) {
+			throw new NonRetryableException("The inspection protocol of errand '%s' must be a JSON object, but was %s".formatted(errandId, answers.getNodeType()));
+		}
 
-		final var parameters = new LinkedHashMap<String, Object>(toParameterValues(investigation.getParameters()));
-		CHOICES.keySet().forEach(parameters::remove);
-		Optional.ofNullable(investigation.getParameters()).orElse(emptyList()).stream()
-			.filter(parameter -> CHOICES.containsKey(parameter.getKey()))
-			.forEach(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream()
-				.filter(StringUtils::isNotBlank)
-				.forEach(value -> parameters.put(toBox(errandId, parameter.getKey(), value), BOX_TICKED)));
+		final var parameters = new LinkedHashMap<String, Object>();
+		answers.properties().forEach(answer -> {
+			final var key = answer.getKey();
+			final var values = textsOf(answer.getValue());
+			if (CHOICES.containsKey(key)) {
+				values.forEach(value -> parameters.put(toBox(errandId, key, value), BOX_TICKED));
+			} else if (!values.isEmpty()) {
+				parameters.put(key, String.join(", ", values));
+			}
+		});
 		parameters.put("measures", checkpoints.stream()
 			.sorted(Comparator.comparing(Measure::getCreated, nullsLast(Comparator.naturalOrder())))
 			.map(InspectionProtocolMapper::toRow)
@@ -92,6 +102,15 @@ public final class InspectionProtocolMapper {
 		}
 		order.put(remarks ? "orderWithRemarks" : "orderWithoutRemarks", BOX_TICKED);
 		return order;
+	}
+
+	/** The texts of an answer, which is one text or, for a question with several choices, a list of them. */
+	private static List<String> textsOf(final JsonNode answer) {
+		return (answer.isArray() ? answer.values().stream() : Stream.of(answer))
+			.filter(value -> value.isValueNode() && !value.isNull())
+			.map(JsonNode::asString)
+			.filter(StringUtils::isNotBlank)
+			.toList();
 	}
 
 	private static String toBox(final String errandId, final String key, final String value) {

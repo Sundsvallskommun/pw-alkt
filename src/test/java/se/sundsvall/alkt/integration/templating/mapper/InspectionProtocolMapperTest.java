@@ -1,8 +1,6 @@
 package se.sundsvall.alkt.integration.templating.mapper;
 
-import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.Measure;
-import generated.se.sundsvall.supportmanagement.Parameter;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -10,12 +8,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class InspectionProtocolMapperTest {
 
+	private static final JsonMapper JSON = JsonMapper.builder().build();
+	private static final JsonNode NO_ANSWERS = json("{}");
 	private static final String ERRAND_ID = "errand-id";
 	private static final String CASE_NUMBER = "AOT-26100148";
 	private static final String INTERNAL_TEMPLATE = "internal-inspection-protocol";
@@ -27,14 +29,39 @@ class InspectionProtocolMapperTest {
 	}
 
 	@Test
-	void sendsTheTextFieldsOfTheInvestigationUnderTheirOwnKeys() {
-		final var investigation = new Investigation().parameters(List.of(
-			new Parameter().key("businessName").values(List.of("Runt Hörnet AB")),
-			new Parameter().key("inspectionDate").values(List.of("2026-10-15"))));
+	void sendsTheTextAnswersUnderTheirOwnKeys() {
+		final var answers = json("""
+			{ "businessName": "Runt Hörnet AB", "inspectionDate": "2026-10-15", "guestCount": 40, "inspectors": ["Kim Karlsson", "Alex Andersson"] }
+			""");
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, answers, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
 
-		assertThat(parameters).containsEntry("businessName", "Runt Hörnet AB").containsEntry("inspectionDate", "2026-10-15");
+		assertThat(parameters)
+			.containsEntry("businessName", "Runt Hörnet AB")
+			.containsEntry("inspectionDate", "2026-10-15")
+			.containsEntry("guestCount", "40")
+			.containsEntry("inspectors", "Kim Karlsson, Alex Andersson");
+	}
+
+	@Test
+	void sendsNoAnswerThatIsBlankNullOrAnObject() {
+		final var answers = json("""
+			{ "businessName": " ", "inspectionDate": null, "business": { "name": "Runt Hörnet AB" }, "inspectors": [] }
+			""");
+
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, answers, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
+
+		assertThat(parameters).containsOnlyKeys("caseNumber", "measures");
+	}
+
+	@Test
+	void failsWithoutRetryWhenTheAnswersAreNotAJsonObject() {
+		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null));
+		final var answers = json("[]");
+
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, answers, measures, CASE_NUMBER))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The inspection protocol of errand 'errand-id' must be a JSON object, but was ARRAY");
 	}
 
 	@Test
@@ -43,7 +70,7 @@ class InspectionProtocolMapperTest {
 		final var second = checkpoint("Kassaregister", "COMPLETED", null).created(CREATED.plusMinutes(1));
 		final var third = checkpoint("Alkoholpolicy", "COMPLETED", null).created(CREATED.plusMinutes(2));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(), List.of(third, first, second), CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS, List.of(third, first, second), CASE_NUMBER);
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
 			Map.of("title", "Serveringsansvarig", "noRemark", "X", "remark", "", "comment", ""),
@@ -53,7 +80,7 @@ class InspectionProtocolMapperTest {
 
 	@Test
 	void marksANotCompletedCheckpointWithRemark() {
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(),
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS,
 			List.of(checkpoint("Alkoholpolicy", "NOT_COMPLETED", "Policyn saknas")), CASE_NUMBER);
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
@@ -62,7 +89,7 @@ class InspectionProtocolMapperTest {
 
 	@Test
 	void commentsANotApplicableCheckpointWithoutDescription() {
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(),
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS,
 			List.of(checkpoint("Matservering", "NOT_APPLICABLE", null), checkpoint("Uteservering", "NOT_APPLICABLE", " ").created(CREATED.plusMinutes(1))), CASE_NUMBER);
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
@@ -72,7 +99,7 @@ class InspectionProtocolMapperTest {
 
 	@Test
 	void keepsTheDescriptionOfANotApplicableCheckpoint() {
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(),
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS,
 			List.of(checkpoint("Matservering", "NOT_APPLICABLE", "Ingen matservering på kvällen")), CASE_NUMBER);
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
@@ -81,7 +108,7 @@ class InspectionProtocolMapperTest {
 
 	@Test
 	void leavesBothMarksEmptyForACheckpointNotAssessed() {
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(),
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS,
 			List.of(checkpoint("Kassaregister", null, "Kontrolleras vid nästa besök"), checkpoint("Alkoholpolicy", null, null).created(CREATED.plusMinutes(1))), CASE_NUMBER);
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
@@ -99,7 +126,7 @@ class InspectionProtocolMapperTest {
 			new Measure().type("EXTERNAL").status("ACTIVE").title("Matsedel saknas").result("NOT_COMPLETED").created(CREATED),
 			new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("NOT_COMPLETED").created(CREATED));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
 			Map.of("title", "Kassaregister", "noRemark", "X", "remark", "", "comment", "")));
@@ -110,7 +137,7 @@ class InspectionProtocolMapperTest {
 		final var withoutCreation = new Measure().type("INTERNAL").status("ACTIVE").title("Ordningsvakter").result("COMPLETED");
 		final var created = new Measure().type("INTERNAL").status("ACTIVE").title("Kassaregister").result("COMPLETED").created(CREATED);
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(), List.of(withoutCreation, created), CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS, List.of(withoutCreation, created), CASE_NUMBER);
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
 			Map.of("title", "Kassaregister", "noRemark", "X", "remark", "", "comment", ""),
@@ -119,7 +146,7 @@ class InspectionProtocolMapperTest {
 
 	@Test
 	void leavesTheTitleEmptyForACheckpointWithoutTitle() {
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(),
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS,
 			List.of(new Measure().type("INTERNAL").status("ACTIVE").result("NOT_COMPLETED").description("Policyn saknas").created(CREATED)), CASE_NUMBER);
 
 		assertThat(parameters.get("measures")).isEqualTo(List.of(
@@ -148,18 +175,22 @@ class InspectionProtocolMapperTest {
 		"summary, investigation, summaryInvestigationOpened"
 	})
 	void ticksTheBoxOfEachChoice(final String key, final String value, final String box) {
-		final var investigation = new Investigation().parameters(List.of(new Parameter().key(key).values(List.of(value))));
+		final var answers = json("""
+			{ "%s": "%s" }
+			""".formatted(key, value));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, answers, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", box, "measures").containsEntry(box, "true");
 	}
 
 	@Test
 	void ticksEveryChosenCoordination() {
-		final var investigation = new Investigation().parameters(List.of(new Parameter().key("coordinatedWith").values(List.of("taxAgency", "police"))));
+		final var answers = json("""
+			{ "coordinatedWith": ["taxAgency", "police"] }
+			""");
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, answers, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "coordinatedTaxAgency", "coordinatedPolice", "measures")
 			.containsEntry("coordinatedTaxAgency", "true")
@@ -168,23 +199,23 @@ class InspectionProtocolMapperTest {
 
 	@Test
 	void ticksNoBoxForAChoiceNotMade() {
-		final var investigation = new Investigation().parameters(List.of(
-			new Parameter().key("visit").values(List.of()),
-			new Parameter().key("coordinatedWith").values(List.of(" ")),
-			new Parameter().key("summary"),
-			new Parameter().key("businessName").values(List.of("Runt Hörnet AB"))));
+		final var answers = json("""
+			{ "visit": [], "coordinatedWith": [" "], "summary": null, "securityGuard": "", "businessName": "Runt Hörnet AB" }
+			""");
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, investigation, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, answers, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "businessName", "measures");
 	}
 
 	@Test
 	void failsWithoutRetryOnAnUnknownChoiceAmongKnownOnes() {
-		final var investigation = new Investigation().parameters(List.of(new Parameter().key("coordinatedWith").values(List.of("police", "customs"))));
+		final var answers = json("""
+			{ "coordinatedWith": ["police", "customs"] }
+			""");
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null));
 
-		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, investigation, measures, CASE_NUMBER))
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, answers, measures, CASE_NUMBER))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has coordinatedWith 'customs' in its investigation, which is not among the choices of the inspection protocol in pw-alkt");
 	}
@@ -197,7 +228,7 @@ class InspectionProtocolMapperTest {
 	void ticksTheObservedThingsOfAPlaceWithDeficiencies() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "CrowdedTables|Littering"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "observationCrowdedTablesOutdoor", "observationLitteringOutdoor", "orderWithRemarks")
 			.containsEntry("observationCrowdedTablesOutdoor", "X")
@@ -215,7 +246,7 @@ class InspectionProtocolMapperTest {
 	void namesTheCellAfterThePlace(final String label, final String cell) {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place(label, "NOT_COMPLETED", "GlassBreakage"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", cell, "orderWithRemarks").containsEntry(cell, "X");
 	}
@@ -228,7 +259,7 @@ class InspectionProtocolMapperTest {
 	void knowsEveryObservedThing(final String thing) {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Toaletter", "NOT_COMPLETED", thing));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsEntry("observation" + thing + "Toilets", "X");
 	}
@@ -237,14 +268,14 @@ class InspectionProtocolMapperTest {
 	void ticksNothingForAPlaceWithoutDeficiencies() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "COMPLETED", "CrowdedTables|Littering"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
 	}
 
 	@Test
 	void isWithoutRemarksWhenNoPlaceWasAssessed() {
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
 	}
@@ -254,7 +285,7 @@ class InspectionProtocolMapperTest {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", null),
 			place("Toaletter", "NOT_COMPLETED", "").created(CREATED.plusMinutes(1)));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "orderWithRemarks").containsEntry("orderWithRemarks", "true");
 	}
@@ -263,7 +294,7 @@ class InspectionProtocolMapperTest {
 	void skipsEmptyPartsOfTheObservedThings() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking||"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "observationSmokingOutdoor", "orderWithRemarks").containsEntry("observationSmokingOutdoor", "X");
 	}
@@ -273,7 +304,7 @@ class InspectionProtocolMapperTest {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null),
 			new Measure().type("OBSERVATION").status("CANCELLED").title("Uteservering").result("NOT_COMPLETED").resultText("Smoking").created(CREATED));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
 	}
@@ -282,7 +313,7 @@ class InspectionProtocolMapperTest {
 	void sendsNoOrderToTheInternalProtocol() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, new Investigation(), measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, INTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures");
 	}
@@ -291,7 +322,7 @@ class InspectionProtocolMapperTest {
 	void failsWithoutRetryOnAnUnknownPlaceWithoutDeficiencies() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Bakgården", "COMPLETED", null));
 
-		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER))
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has an observation of the place 'Bakgården', which is not among the places of the inspection protocol in pw-alkt");
 	}
@@ -300,7 +331,7 @@ class InspectionProtocolMapperTest {
 	void failsWithoutRetryOnAPlaceWithoutTitle() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place(null, "NOT_COMPLETED", "Smoking"));
 
-		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER))
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has an observation of the place 'null', which is not among the places of the inspection protocol in pw-alkt");
 	}
@@ -309,8 +340,12 @@ class InspectionProtocolMapperTest {
 	void failsWithoutRetryOnAnUnknownObservedThing() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking|Fireworks"));
 
-		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, new Investigation(), measures, CASE_NUMBER))
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has observed 'Fireworks' at the place 'Uteservering', which is not among the observations of the inspection protocol in pw-alkt");
+	}
+
+	private static JsonNode json(final String text) {
+		return JSON.readTree(text);
 	}
 }

@@ -23,6 +23,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,10 +36,13 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class InspectionProtocolServiceTest {
 
+	private static final JsonMapper JSON = JsonMapper.builder().build();
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
 	private static final String TEMPLATE = "internal-inspection-protocol";
+	private static final String INVESTIGATION_ID = "investigation-id";
+	private static final String ANSWERS_KEY = "aot_inspection_internal";
 	private static final String ERRAND_NUMBER = "AOT-26100148";
 	private static final String FILE_NAME = "Tillsynsprotokoll AOT-26100148.pdf";
 	private static final OffsetDateTime CREATED = OffsetDateTime.parse("2026-09-15T09:00:00+02:00");
@@ -68,19 +73,22 @@ class InspectionProtocolServiceTest {
 	}
 
 	private static Investigation completedInvestigation() {
-		return new Investigation().type("internal_inspection").status("COMPLETED").created(CREATED).completedAt(COMPLETED).modified(COMPLETED);
+		return new Investigation().id(INVESTIGATION_ID).type("internal_inspection").status("COMPLETED").created(CREATED).completedAt(COMPLETED).modified(COMPLETED);
 	}
 
 	@Test
 	void createsTheProtocolFromTheInvestigation() {
-		final var investigation = completedInvestigation().parameters(List.of(new Parameter().key("businessName").values(List.of("Runt Hörnet AB"))));
-		final var cancelled = new Investigation().status("CANCELLED").created(CREATED).parameters(List.of(new Parameter().key("businessName").values(List.of("Gamla Namnet AB"))));
+		final var investigation = completedInvestigation();
+		final var cancelled = new Investigation().id("cancelled-id").type("internal_inspection").status("CANCELLED").created(CREATED);
 		final var expectedParameters = Map.of("businessName", "Runt Hörnet AB", "measures", CHECKPOINT_ROWS, "caseNumber", ERRAND_NUMBER);
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(cancelled, investigation));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(
 			new ErrandAttachment().id("other-id").fileName("Foto.jpg").created(COMPLETED.plusSeconds(1)),
 			new ErrandAttachment().id("scanned-id").fileName(FILE_NAME).created(COMPLETED.minusSeconds(1))));
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY)).thenReturn(json("""
+			{ "businessName": "Runt Hörnet AB" }
+			"""));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
 
@@ -89,8 +97,50 @@ class InspectionProtocolServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY);
 		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters);
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF);
+	}
+
+	@Test
+	void createsTheProtocolOfAServingPermitFromItsOwnAnswers() {
+		final var expectedParameters = Map.of("guestCount", "40", "measures", CHECKPOINT_ROWS, "orderWithoutRemarks", "true", "caseNumber", ERRAND_NUMBER);
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type("serving_permit")));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_inspection_serving_permit"))
+			.thenReturn(json("""
+				{ "guestCount": "40" }
+				"""));
+		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, "serving-inspection-protocol", expectedParameters)).thenReturn(PDF);
+		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
+
+		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
+
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_inspection_serving_permit");
+		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, "serving-inspection-protocol", expectedParameters);
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF);
+	}
+
+	/** The case worker fills in the protocol, so one not filled in waits for the case worker, not for a retry. */
+	@Test
+	void failsWithoutRetryAndUploadsNothingWhenTheInvestigationHasNoAnswers() {
+		final var problem = new NonRetryableException("Investigation 'investigation-id' of errand 'errand-id' has no JSON parameter 'aot_inspection_internal'");
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY)).thenThrow(problem);
+
+		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isSameAs(problem);
+
+		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY);
+		verifyNoInteractions(templatingIntegrationMock);
 	}
 
 	@Test
@@ -101,6 +151,7 @@ class InspectionProtocolServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY)).thenReturn(json("{}"));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll AOT-26100147.pdf", PDF)).thenReturn("attachment-id");
 
@@ -109,6 +160,7 @@ class InspectionProtocolServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY);
 		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters);
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll AOT-26100147.pdf", PDF);
 	}
@@ -199,6 +251,7 @@ class InspectionProtocolServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(new ErrandAttachment().id("unknown-id").fileName(FILE_NAME)));
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY)).thenReturn(json("{}"));
 		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
 
@@ -207,6 +260,7 @@ class InspectionProtocolServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY);
 		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, TEMPLATE, expectedParameters);
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF);
 	}
@@ -239,6 +293,7 @@ class InspectionProtocolServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type("serving_permit")));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_inspection_serving_permit")).thenReturn(json("{}"));
 		when(templatingIntegrationMock.renderPdf("2262", "serving-inspection-protocol", expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll KS 2026-00123.pdf", PDF)).thenReturn("attachment-id");
 
@@ -247,6 +302,7 @@ class InspectionProtocolServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_inspection_serving_permit");
 		verify(templatingIntegrationMock).renderPdf("2262", "serving-inspection-protocol", expectedParameters);
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll KS 2026-00123.pdf", PDF);
 	}
@@ -257,6 +313,7 @@ class InspectionProtocolServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand().measures(measures));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY)).thenReturn(json("{}"));
 
 		assertThatThrownBy(() -> service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
@@ -265,6 +322,7 @@ class InspectionProtocolServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, ANSWERS_KEY);
 		verifyNoInteractions(templatingIntegrationMock);
 	}
 
@@ -277,4 +335,7 @@ class InspectionProtocolServiceTest {
 				new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("COMPLETED").created(CREATED)));
 	}
 
+	private static JsonNode json(final String text) {
+		return JSON.readTree(text);
+	}
 }

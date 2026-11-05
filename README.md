@@ -163,6 +163,11 @@ today, raises an incident before any decision is written.
 | `internal-inspection` | Internal inspection | Creates the protocol, creates the action errand when asked to | None                   |
 | `action-errand`       | Action errand       | Checks the decision                                           | None yet               |
 
+The protocol is rendered from the answers in the JSON parameter of the completed investigation, under the key
+`aot_inspection_serving_permit` for an investigation of type `serving_permit` and `aot_inspection_internal` for one of
+type `internal_inspection`, with the checkpoints and observations of the errand. An investigation without its JSON
+parameter raises an incident.
+
 The action errand gets the title `Åtgärdsärende`, status `NEW`, priority `MEDIUM`, and the case worker assigned to
 the inspection as reporter. An inspection without deficiencies or without an assigned case worker sends the process
 back to the choice with a refusal in the activity log. An inspection without a permit holder raises an incident.
