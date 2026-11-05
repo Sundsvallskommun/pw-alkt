@@ -15,9 +15,8 @@ import tools.jackson.databind.node.ObjectNode;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 /**
- * Builds the JSON parameter of a permit from the JSON parameter of the decision that grants or changes it. A field
- * given
- * as null is left out, as the schema of a permit has no null.
+ * Builds the JSON parameter of a permit from the JSON parameter of the decision that grants or changes it.
+ * A field given as null is left out, as the schema of a permit has no null.
  */
 public final class PermitJsonMapper {
 
@@ -60,7 +59,8 @@ public final class PermitJsonMapper {
 	/**
 	 * The permit after a change: the JSON parameter of the change decision on top of the one of the permit. A field of the
 	 * change replaces the one of the permit, an object is merged field by field, a list is replaced whole, a field the
-	 * change leaves out stays and a field the change gives as null is removed.
+	 * change leaves out stays and a field the change gives as null is removed. An empty list counts as left out, so only
+	 * null removes a list.
 	 * <p>
 	 * errandId, caseRegistrationNumber and migration never change, nor does the restaurant number, which the process
 	 * assigned. The decision is the one of the change, with the case number of the change errand, and the terms of the
@@ -73,6 +73,7 @@ public final class PermitJsonMapper {
 		final var change = copyOfObject(changeJson);
 		schema.getDecisionOnlyFields().forEach(field -> remove(change, field));
 		change.remove(CONDITIONS);
+		removeEmptyLists(change);
 		final var changedDecision = change.remove(DECISION);
 
 		final var kept = new LinkedHashMap<List<String>, JsonNode>();
@@ -119,6 +120,19 @@ public final class PermitJsonMapper {
 				merge(targetObject, patchObject);
 			} else {
 				target.set(name, value);
+			}
+		});
+	}
+
+	// The decision writes an empty list for a question the change form does not ask. A list inside a list is part of the
+	// value that replaces the permit's, so it stays.
+	private static void removeEmptyLists(final ObjectNode object) {
+		new ArrayList<>(object.propertyNames()).forEach(name -> {
+			final var value = object.get(name);
+			if (value instanceof final ArrayNode array && array.isEmpty()) {
+				object.remove(name);
+			} else if (value instanceof final ObjectNode child) {
+				removeEmptyLists(child);
 			}
 		});
 	}

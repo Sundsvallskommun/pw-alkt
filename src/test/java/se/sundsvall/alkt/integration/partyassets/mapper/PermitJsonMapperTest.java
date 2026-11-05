@@ -3,9 +3,11 @@ package se.sundsvall.alkt.integration.partyassets.mapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.service.model.PermitSchema;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.NullNode;
@@ -126,6 +128,18 @@ class PermitJsonMapperTest {
 			"""));
 	}
 
+	@ParameterizedTest
+	@EnumSource(PermitSchema.class)
+	void toGrantedPermitLeavesOutTheClausesOfTheDecision(final PermitSchema schema) {
+		final var result = toGrantedPermit(schema, json("""
+			{ "decision": { "outcome": "APPROVAL", "clauses": "att bevilja tillstånd" } }
+			"""), ERRAND_ID, "ALKT-2026-000123", null, List.of());
+
+		assertThat(result.path("decision")).isEqualTo(json("""
+			{ "outcome": "APPROVAL", "caseRegistrationNumber": "ALKT-2026-000123" }
+			"""));
+	}
+
 	@Test
 	void toGrantedPermitLeavesTheJsonOfTheDecisionAsItIs() {
 		final var decision = json("""
@@ -222,6 +236,37 @@ class PermitJsonMapperTest {
 	}
 
 	@Test
+	void toChangedPermitKeepsAListTheChangeGivesEmptyAndRemovesOneTheChangeGivesAsNull() {
+		final var permit = json("""
+			{
+			  "beverages": ["WINE"],
+			  "servingTo": ["PUBLIC"],
+			  "salesTypes": ["RETAIL"],
+			  "premises": { "name": "Restaurang Ankaret", "areas": ["Matsal"] }
+			}
+			""");
+		final var change = json("""
+			{
+			  "beverages": [],
+			  "servingTo": null,
+			  "salesTypes": ["DISTANCE_SELLING"],
+			  "premises": { "areas": [] }
+			}
+			""");
+
+		final var result = toChangedPermit(ALCOHOL, permit, change, "ALKT-2026-000300", List.of());
+
+		assertThat(result).isEqualTo(json("""
+			{
+			  "beverages": ["WINE"],
+			  "salesTypes": ["DISTANCE_SELLING"],
+			  "premises": { "name": "Restaurang Ankaret", "areas": ["Matsal"] },
+			  "decision": { "caseRegistrationNumber": "ALKT-2026-000300" }
+			}
+			"""));
+	}
+
+	@Test
 	void toChangedPermitTakesTheExternalCaseRegistrationNumberOfTheChangeAndKeepsItWhenTheChangeHasNone() {
 		final var permit = json("""
 			{ "caseRegistrationNumber": "IAN-2019-45", "externalCaseRegistrationNumber": "2026/0456" }
@@ -265,6 +310,20 @@ class PermitJsonMapperTest {
 
 		assertThat(result.path("premises")).isEqualTo(json("""
 			{ "name": "Restaurang Ankaret" }
+			"""));
+	}
+
+	@ParameterizedTest
+	@EnumSource(PermitSchema.class)
+	void toChangedPermitLeavesOutTheClausesOfTheChangeDecision(final PermitSchema schema) {
+		final var result = toChangedPermit(schema, json("""
+			{ "decision": { "outcome": "APPROVAL" } }
+			"""), json("""
+			{ "decision": { "outcome": "APPROVAL_WITH_CONDITIONS", "clauses": "att ändra serveringstiden" } }
+			"""), "ALKT-2026-000300", List.of());
+
+		assertThat(result.path("decision")).isEqualTo(json("""
+			{ "outcome": "APPROVAL_WITH_CONDITIONS", "caseRegistrationNumber": "ALKT-2026-000300" }
 			"""));
 	}
 

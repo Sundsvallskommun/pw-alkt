@@ -6,28 +6,28 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.HashMap;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LicensedBusinessMapperTest {
 
+	private static final JsonMapper JSON = JsonMapper.builder().build();
 	private static final String ERRAND_ID = "errand-id";
-	private static final Map<String, String> PARAMETERS = Map.of(
-		"premisesName", "Harrys Pub",
-		"premisesStreetAddress", "Storgatan 33",
-		"premisesPostalCode", "852 30",
-		"premisesPostalArea", "Sundsvall");
+	private static final JsonNode DECISION_JSON = json("""
+		{ "premises": { "name": " Harrys Pub ", "address": { "street": "Storgatan 33", "postalCode": "852 30", "city": "Sundsvall" } } }
+		""");
 
 	@Test
-	void toAddressTakesThePremisesAddressOfTheErrand() {
-		final var address = LicensedBusinessMapper.toAddress(PARAMETERS, ERRAND_ID);
+	void toAddressTakesThePremisesAddressOfTheDecision() {
+		final var address = LicensedBusinessMapper.toAddress(DECISION_JSON, ERRAND_ID);
 
 		assertThat(address.getStreetAddress()).isEqualTo("Storgatan 33");
 		assertThat(address.getPostalCode()).isEqualTo("852 30");
@@ -37,22 +37,55 @@ class LicensedBusinessMapperTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = {
-		"premisesStreetAddress", "premisesPostalCode", "premisesPostalArea"
+		"street", "postalCode", "city"
 	})
 	void toAddressFailsWithoutAPartOfTheAddress(final String missing) {
-		final var parameters = new HashMap<>(PARAMETERS);
-		parameters.remove(missing);
+		final var decisionJson = DECISION_JSON.deepCopy();
+		((ObjectNode) decisionJson.path("premises").path("address")).put(missing, " ");
 
-		assertThatThrownBy(() -> LicensedBusinessMapper.toAddress(parameters, ERRAND_ID))
+		assertThatThrownBy(() -> LicensedBusinessMapper.toAddress(decisionJson, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand 'errand-id' has no premises address, parameters [%s] are missing".formatted(missing));
+			.hasMessage("The decision of errand 'errand-id' does not name all of the premises address, it lacks premises.address.%s".formatted(missing));
+	}
+
+	@Test
+	void toAddressFailsWithoutThePremises() {
+		assertThatThrownBy(() -> LicensedBusinessMapper.toAddress(json("{}"), ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The decision of errand 'errand-id' does not name all of the premises address, it lacks premises.address.street, premises.address.postalCode, "
+				+ "premises.address.city");
+	}
+
+	@Test
+	void findChosenRestaurantNumberTakesTheNumberOfThePremisesOfTheDecision() {
+		assertThat(LicensedBusinessMapper.findChosenRestaurantNumber(json("""
+			{ "premises": { "restaurantNumber": " 22810001 " } }
+			"""))).contains("22810001");
+		assertThat(LicensedBusinessMapper.findChosenRestaurantNumber(json("""
+			{ "premises": { "restaurantNumber": "" } }
+			"""))).isEmpty();
+		assertThat(LicensedBusinessMapper.findChosenRestaurantNumber(json("{}"))).isEmpty();
+	}
+
+	@Test
+	void asksForANewRestaurantNumberOnlyByTheBooleanTrue() {
+		assertThat(LicensedBusinessMapper.asksForANewRestaurantNumber(json("""
+			{ "premises": { "newRestaurantNumber": true } }
+			"""))).isTrue();
+		assertThat(LicensedBusinessMapper.asksForANewRestaurantNumber(json("""
+			{ "premises": { "newRestaurantNumber": "true" } }
+			"""))).isFalse();
+		assertThat(LicensedBusinessMapper.asksForANewRestaurantNumber(json("""
+			{ "premises": { "newRestaurantNumber": false } }
+			"""))).isFalse();
+		assertThat(LicensedBusinessMapper.asksForANewRestaurantNumber(json("{}"))).isFalse();
 	}
 
 	@Test
 	void toAssignmentCreateRequestTakesTheHolderThePremisesAndThePeriodOfTheDecision() {
 		final var decision = new Decision().validFrom(LocalDate.of(2026, 3, 1)).validTo(LocalDate.of(2026, 12, 31));
 
-		final var assignment = LicensedBusinessMapper.toAssignmentCreateRequest("number-id", "address-id", "5566124144", "Krogen AB", PARAMETERS, decision);
+		final var assignment = LicensedBusinessMapper.toAssignmentCreateRequest("number-id", "address-id", "5566124144", "Krogen AB", DECISION_JSON, decision);
 
 		assertThat(assignment.getRestaurantNumberId()).isEqualTo("number-id");
 		assertThat(assignment.getAddressId()).isEqualTo("address-id");
@@ -64,8 +97,8 @@ class LicensedBusinessMapperTest {
 	}
 
 	@Test
-	void toAssignmentCreateRequestLeavesOutAPremisesNameTheErrandDoesNotHave() {
-		final var assignment = LicensedBusinessMapper.toAssignmentCreateRequest("number-id", "address-id", "5566124144", "Krogen AB", Map.of(),
+	void toAssignmentCreateRequestLeavesOutAPremisesNameTheDecisionDoesNotHave() {
+		final var assignment = LicensedBusinessMapper.toAssignmentCreateRequest("number-id", "address-id", "5566124144", "Krogen AB", json("{}"),
 			new Decision().validFrom(LocalDate.of(2026, 3, 1)));
 
 		assertThat(assignment.getPremisesName()).isNull();
@@ -132,5 +165,9 @@ class LicensedBusinessMapperTest {
 		assertThat(LicensedBusinessMapper.isAssignedTo(assignment, "5590001111", LocalDate.of(2026, 3, 1))).isFalse();
 		assertThat(LicensedBusinessMapper.isAssignedTo(assignment, "5566124144", LocalDate.of(2026, 3, 2))).isFalse();
 		assertThat(LicensedBusinessMapper.isAssignedTo(new Assignment().validFrom(LocalDate.of(2026, 3, 1)), "5566124144", LocalDate.of(2026, 3, 1))).isFalse();
+	}
+
+	private static JsonNode json(final String text) {
+		return JSON.readTree(text);
 	}
 }

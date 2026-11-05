@@ -82,6 +82,12 @@
 			},
 			{
 				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.clauses",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
 					"expression": "$.jsonParameters[0].value.decision.caseRegistrationNumber",
 					"equalTo": "ALKT-2026-000001"
 				}

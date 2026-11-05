@@ -127,10 +127,15 @@ Every application tells the customer that the processing has started.
 A permit is built from the JSON parameter of its decision in Support Management, under the key `aot_alcohol_decision`
 or `aot_tobacco_decision`, and saved in party-assets as a JSON parameter by the schema `aot_alcohol_party_asset` or
 `aot_tobacco_party_asset`. The process sets what it owns: `errandId`, `caseRegistrationNumber`, the restaurant number
-and the conditions from the terms of the decision. A change puts the JSON parameter of the change decision on top of the
-one of the permit, and leaves `errandId`, `caseRegistrationNumber`, `migration` and the restaurant number as they are.
-The certificate is rendered from the JSON parameter. A decision without its JSON parameter, and a JSON parameter
-party-assets refuses, raise an incident.
+and the conditions from the terms of the decision. It leaves out what only a decision has, `premises.newRestaurantNumber`
+and `decision.clauses`. A change puts the JSON parameter of the change decision on top of the one of the permit, and
+leaves `errandId`, `caseRegistrationNumber`, `migration` and the restaurant number as they are. A list in the change
+replaces the permit's, an empty list counts as left out, and only null removes a list. The certificate is rendered from
+the JSON parameter. A decision without its JSON parameter, and a JSON parameter party-assets refuses, raise an incident.
+
+The restaurant number and the premises it is kept at come from `premises` in the JSON parameter of the decision: the
+number in `restaurantNumber` the case worker chose, a new one when `newRestaurantNumber` is `true`, and otherwise the
+first free number at `address`, or a new one when none is free.
 
 ### Notifications
 

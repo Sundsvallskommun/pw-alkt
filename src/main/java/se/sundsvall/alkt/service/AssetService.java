@@ -84,8 +84,7 @@ public class AssetService {
 		requireId(decision, errandId);
 
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		final var partyId = toPartyId(errand)
-			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
+		final var partyId = requirePartyId(errand, errandId);
 
 		return partyAssetsIntegration.findAsset(municipalityId, partyId, decision.getId())
 			.map(asset -> {
@@ -94,9 +93,9 @@ public class AssetService {
 			})
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return assetType.getPermitSchema()
-					.map(schema -> createPermit(municipalityId, namespace, errandId, errand, decision, partyId, assetType, schema, restaurantNumber))
-					.orElseGet(() -> createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType), Optional.empty()));
+				return assetType.getPermitSchema().isPresent()
+					? createPermit(municipalityId, namespace, errandId, errand, decision, assetType, restaurantNumber)
+					: createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType), Optional.empty());
 			});
 	}
 
@@ -192,8 +191,7 @@ public class AssetService {
 		if (!UUID_VALIDATOR.isValid(assetId)) {
 			throw new NonRetryableException("Errand '%s' names asset '%s', which is not an asset id".formatted(errandId, assetId));
 		}
-		final var partyId = toPartyId(errand)
-			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
+		final var partyId = requirePartyId(errand, errandId);
 		final var versioned = partyAssetsIntegration.getAsset(municipalityId, assetId);
 		final var asset = versioned.asset();
 		if (!partyId.equals(asset.getPartyId())) {
@@ -231,12 +229,8 @@ public class AssetService {
 		return decision;
 	}
 
-	/** The decision is the case worker's, so a decision without its JSON parameter is not something a retry fixes. */
 	private JsonNode getDecisionJson(final String municipalityId, final String namespace, final String errandId, final Decision decision, final PermitSchema schema) {
-		final var key = permitJsonProperties.of(schema).decisionKey();
-		return Optional.ofNullable(supportManagementIntegration.getDecisionJsonParameter(municipalityId, namespace, errandId, decision.getId(), key).getValue())
-			.filter(value -> !value.isNull())
-			.orElseThrow(() -> new NonRetryableException("JSON parameter '%s' of decision '%s' of errand '%s' has no value".formatted(key, decision.getId(), errandId)));
+		return supportManagementIntegration.getDecisionJson(municipalityId, namespace, errandId, decision.getId(), permitJsonProperties.of(schema).decisionKey());
 	}
 
 	private String toSchemaId(final String municipalityId, final PermitSchema schema) {
@@ -285,13 +279,19 @@ public class AssetService {
 	 * The permit and its certificate are made before the draft is created, so a decision that does not fill them leaves no
 	 * draft. party-assets validates the JSON parameter of the permit against its schema as the draft is created.
 	 */
-	private String createPermit(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision, final String partyId,
-		final AssetType assetType, final PermitSchema schema, final String restaurantNumber) {
+	private String createPermit(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision,
+		final AssetType assetType, final String restaurantNumber) {
+		final var schema = assetType.getPermitSchema().orElseThrow();
 		final var permit = toGrantedPermit(schema, getDecisionJson(municipalityId, namespace, errandId, decision, schema), errandId, toCaseRegistrationNumber(errand, errandId),
 			restaurantNumber, toConditionList(decision));
 		final var certificate = renderCertificate(assetType, schema, permit, decision, errand);
-		return createAsset(municipalityId, namespace, errandId, decision, toPermitCreateRequest(decision, partyId, assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit)),
-			certificate);
+		final var request = toPermitCreateRequest(decision, requirePartyId(errand, errandId), assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit));
+		return createAsset(municipalityId, namespace, errandId, decision, request, certificate);
+	}
+
+	private static String requirePartyId(final Errand errand, final String errandId) {
+		return toPartyId(errand)
+			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
 	}
 
 	/** Rendered in the municipality of the premises, with the case number the errand has there. */

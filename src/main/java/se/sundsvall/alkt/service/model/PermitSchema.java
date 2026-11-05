@@ -9,8 +9,8 @@ import java.util.Optional;
  */
 public enum PermitSchema {
 
-	ALCOHOL("aot_alcohol_party_asset", List.of(List.of("premises", "newRestaurantNumber")), List.of("premises", "restaurantNumber")),
-	TOBACCO("aot_tobacco_party_asset", List.of(), null);
+	ALCOHOL("aot_alcohol_party_asset", List.of(List.of("premises", "newRestaurantNumber"), List.of("decision", "clauses")), List.of("premises", "restaurantNumber")),
+	TOBACCO("aot_tobacco_party_asset", List.of(List.of("decision", "clauses")), null);
 
 	private final String name;
 	private final List<List<String>> decisionOnlyFields;

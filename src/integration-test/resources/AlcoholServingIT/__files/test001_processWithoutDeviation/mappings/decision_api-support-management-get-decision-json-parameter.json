@@ -23,6 +23,7 @@
 				],
 				"caseRegistrationNumber": "ALKT-2026-000001",
 				"decision": {
+					"clauses": "att bevilja Runt Hörnet AB serveringstillstånd",
 					"decisionDate": "2026-09-20",
 					"decisionMaker": "Alkoholhandläggare",
 					"decisionText": "Bifall",
@@ -56,9 +57,7 @@
 					},
 					"municipalityId": "2262",
 					"name": "Restaurang Runt Hörnet",
-					"newRestaurantNumber": true,
-					"phoneNumber": "060-654321",
-					"restaurantNumber": "22819999"
+					"phoneNumber": "060-654321"
 				},
 				"servingArea": {
 					"description": "Matsal och bar",

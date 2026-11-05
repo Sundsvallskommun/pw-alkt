@@ -9,7 +9,6 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
-import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
@@ -46,7 +45,6 @@ import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.node.NullNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -156,7 +154,7 @@ class AssetServiceTest {
 		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
 		assertThat(assetCaptor.getValue().getAdditionalParameters()).containsEntry("errandId", ERRAND_ID).containsEntry("legalBasis", "8 kap. 6 § alkohollagen");
 		assertThat(assetCaptor.getValue().getJsonParameters()).isNull();
-		verify(supportManagementIntegrationMock, never()).getDecisionJsonParameter(any(), any(), any(), any(), any());
+		verify(supportManagementIntegrationMock, never()).getDecisionJson(any(), any(), any(), any(), any());
 	}
 
 	@Test
@@ -182,7 +180,7 @@ class AssetServiceTest {
 		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, "22810001")).isEqualTo(ASSET_ID);
 
 		final InOrder inOrder = inOrder(supportManagementIntegrationMock, templatingIntegrationMock, partyAssetsIntegrationMock);
-		inOrder.verify(supportManagementIntegrationMock).getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
+		inOrder.verify(supportManagementIntegrationMock).getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
 		inOrder.verify(templatingIntegrationMock).renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any());
 		inOrder.verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
 		inOrder.verify(partyAssetsIntegrationMock, times(2)).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), attachmentCaptor.capture());
@@ -268,7 +266,7 @@ class AssetServiceTest {
 		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
+		verify(supportManagementIntegrationMock).getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
 		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
 	}
 
@@ -292,7 +290,7 @@ class AssetServiceTest {
 	@Test
 	void findOrCreateAssetFailsWithoutRetryAndCreatesNoDraftWhenTheDecisionHasNoJsonParameter() {
 		givenNoAssetYetFor(approval());
-		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY))
+		when(supportManagementIntegrationMock.getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY))
 			.thenThrow(new NonRetryableException("Decision 'decision-id' of errand 'errand-id' has no JSON parameter 'aot_alcohol_decision'"));
 
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
@@ -301,19 +299,6 @@ class AssetServiceTest {
 
 		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 		verifyNoInteractions(templatingIntegrationMock);
-	}
-
-	@Test
-	void findOrCreateAssetFailsWithoutRetryAndCreatesNoDraftWhenTheJsonParameterOfTheDecisionHasNoValue() {
-		givenNoAssetYetFor(approval());
-		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY))
-			.thenReturn(new JsonParameter().key(ALCOHOL_DECISION_KEY).value(NullNode.getInstance()));
-
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("JSON parameter 'aot_alcohol_decision' of decision 'decision-id' of errand 'errand-id' has no value");
-
-		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 	}
 
 	@ParameterizedTest
@@ -412,7 +397,7 @@ class AssetServiceTest {
 
 		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 		verify(supportManagementIntegrationMock, never()).getAttachment(any(), any(), any(), any());
-		verify(supportManagementIntegrationMock, never()).getDecisionJsonParameter(any(), any(), any(), any(), any());
+		verify(supportManagementIntegrationMock, never()).getDecisionJson(any(), any(), any(), any(), any());
 	}
 
 	/** The permit was created when its decision still ended after today, so a rerun does not check it again. */
@@ -809,7 +794,7 @@ class AssetServiceTest {
 	void updateAssetFailsWithoutRetryWhenTheChangeDecisionHasNoJsonParameter() {
 		givenAnErrandNaming(approval());
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().jsonParameters(List.of(permitParameter("{}")))));
-		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY))
+		when(supportManagementIntegrationMock.getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY))
 			.thenThrow(new NonRetryableException("Decision 'decision-id' of errand 'errand-id' has no JSON parameter 'aot_alcohol_decision'"));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
@@ -832,7 +817,7 @@ class AssetServiceTest {
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Asset '%s' has no JSON parameter 'aot_alcohol_party_asset' to change".formatted(ASSET_ID));
 
-		verify(supportManagementIntegrationMock, never()).getDecisionJsonParameter(any(), any(), any(), any(), any());
+		verify(supportManagementIntegrationMock, never()).getDecisionJson(any(), any(), any(), any(), any());
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verifyNoInteractions(templatingIntegrationMock);
 	}
@@ -1225,7 +1210,7 @@ class AssetServiceTest {
 		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
 		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
+		verify(supportManagementIntegrationMock).getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
 		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
 	}
 
@@ -1249,8 +1234,8 @@ class AssetServiceTest {
 	}
 
 	private void givenTheDecisionJson(final String key, final String value) {
-		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, key))
-			.thenReturn(new JsonParameter().key(key).schemaId("2281_%s_1.0".formatted(key)).value(json(value)));
+		when(supportManagementIntegrationMock.getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, key))
+			.thenReturn(json(value));
 	}
 
 	private static AssetJsonParameter permitParameter(final String value) {

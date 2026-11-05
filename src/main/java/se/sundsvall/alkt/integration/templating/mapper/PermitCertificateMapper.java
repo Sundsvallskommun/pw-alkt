@@ -16,15 +16,25 @@ import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL_WITH_CONDITI
 
 /**
  * Maps the JSON parameter of a permit to the placeholders of its certificate: serving-permit-certificate for the
- * alcohol
- * schema and tobacco-permit-certificate for the tobacco schema. A value the permit does not have is left out, so the
- * strict template answers 400 naming it instead of rendering an empty field. Only conditions and information, which a
+ * alcohol schema and tobacco-permit-certificate for the tobacco schema. A value the permit does not have is left out,
+ * so
+ * the strict template answers 400 naming it instead of rendering an empty field. Only conditions and information, which
+ * a
  * permit may well have none of, become empty text, and a box is ticked or not.
  */
 public final class PermitCertificateMapper {
 
 	private static final Map<String, String> AUDIENCES = Map.of("PUBLIC", "Allmänheten", "CLOSED_COMPANY", "Slutet sällskap");
 	private static final Map<String, String> LOCATIONS = Map.of("INDOOR", "inomhus", "OUTDOOR", "uteservering");
+	private static final String ADDRESS = "address";
+	private static final String ANNUAL_PERIOD = "ANNUAL_PERIOD";
+	private static final String CONDITIONS = "conditions";
+	private static final String DECISION_DATE = "decisionDate";
+	private static final String DESCRIPTION = "description";
+	private static final String ISSUED_BY = "issuedBy";
+	private static final String PERIOD = "period";
+	private static final String RANGE = " – ";
+	private static final String VALID_FROM = "validFrom";
 
 	private PermitCertificateMapper() {}
 
@@ -35,7 +45,7 @@ public final class PermitCertificateMapper {
 	 * @throws NonRetryableException when the decision is an approval with conditions and the permit has none
 	 */
 	public static Map<String, Object> toCertificateParameters(final PermitSchema schema, final JsonNode permit, final Decision decision, final String caseNumber) {
-		if (DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS.equals(decision.getOutcome()) && strings(permit.path("conditions")).isEmpty()) {
+		if (DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS.equals(decision.getOutcome()) && strings(permit.path(CONDITIONS)).isEmpty()) {
 			throw new NonRetryableException("Decision %s is an approval with conditions but has no conditions, so no certificate is made".formatted(decision.getId()));
 		}
 		final var dnr = Optional.ofNullable(caseNumber).filter(StringUtils::isNotBlank);
@@ -52,7 +62,6 @@ public final class PermitCertificateMapper {
 		final var premises = permit.path("premises");
 		final var servingArea = permit.path("servingArea");
 		final var periods = permit.path("servingPeriods").values();
-		final var annualPeriods = periods.stream().filter(period -> is(period.path("period"), "ANNUAL_PERIOD")).toList();
 		final var beverages = strings(permit.path("beverages"));
 		final var servingTo = strings(permit.path("servingTo"));
 		final var servingHours = permit.path("servingHours").values().stream()
@@ -61,19 +70,19 @@ public final class PermitCertificateMapper {
 			.toList();
 
 		putDecision(parameters, decision, caseNumber);
-		put(parameters, "decisionDateAndCaseNumber", join(" / ", text(decision.path("decisionDate")), caseNumber));
-		put(parameters, "validFrom", text(decision.path("validFrom")));
+		put(parameters, "decisionDateAndCaseNumber", join(" / ", text(decision.path(DECISION_DATE)), caseNumber));
+		put(parameters, VALID_FROM, text(decision.path(VALID_FROM)));
 		putPermitHolder(parameters, holder);
 		put(parameters, "permitHolderPhone", text(holder.path("phoneNumber")));
 		putPlace(parameters, premises);
 		put(parameters, "premisesRestaurantNumber", text(premises.path("restaurantNumber")));
-		put(parameters, "servingAreaDescription", text(servingArea.path("description")));
+		put(parameters, "servingAreaDescription", text(servingArea.path(DESCRIPTION)));
 		put(parameters, "servingAreaDrawingReference", text(servingArea.path("drawingReference")));
 		put(parameters, "servingAreaMaxPersons", text(servingArea.path("maxPersons")));
 		put(parameters, "servingAreaSeats", text(servingArea.path("seatsIndoor")));
-		parameters.put("scopeAllYear", box(periods.stream().anyMatch(period -> is(period.path("period"), "ALL_YEAR"))));
-		parameters.put("scopeAnnualPeriod", box(!annualPeriods.isEmpty()));
-		put(parameters, "scopePeriodFromTo", joinAll(", ", annualPeriods.stream().map(PermitCertificateMapper::toAnnualPeriod)));
+		parameters.put("scopeAllYear", box(periods.stream().anyMatch(period -> is(period.path(PERIOD), "ALL_YEAR"))));
+		parameters.put("scopeAnnualPeriod", box(periods.stream().anyMatch(period -> is(period.path(PERIOD), ANNUAL_PERIOD))));
+		put(parameters, "scopePeriodFromTo", joinAll(", ", periods.stream().map(PermitCertificateMapper::toPeriod)));
 		parameters.put("scopeTasting", box(is(permit.path("tasting"), "true") || is(permit.path("servingPermitType"), "TASTING")));
 		parameters.put("beverageBeer", box(beverages.contains("STRONG_BEER")));
 		parameters.put("beverageWine", box(beverages.contains("WINE")));
@@ -82,7 +91,7 @@ public final class PermitCertificateMapper {
 		parameters.put("servingToPublic", box(servingTo.contains("PUBLIC")));
 		parameters.put("servingToClosedCompany", box(servingTo.contains("CLOSED_COMPANY")));
 		put(parameters, "servingHours", joinAll("\n", servingHours.stream().map(Optional::of)));
-		parameters.put("conditions", String.join("\n", strings(permit.path("conditions"))));
+		parameters.put(CONDITIONS, String.join("\n", strings(permit.path(CONDITIONS))));
 		return parameters;
 	}
 
@@ -92,21 +101,19 @@ public final class PermitCertificateMapper {
 		final var holder = permit.path("permitHolder");
 		final var pointOfSale = permit.path("pointOfSale");
 		final var salesPeriod = permit.path("salesPeriod");
-		final var indefinite = is(salesPeriod.path("period"), "INDEFINITE");
-		final var temporary = is(salesPeriod.path("period"), "TEMPORARY");
+		final var indefinite = is(salesPeriod.path(PERIOD), "INDEFINITE");
+		final var temporary = is(salesPeriod.path(PERIOD), "TEMPORARY");
 		final var salesTypes = strings(permit.path("salesTypes"));
 
 		putDecision(parameters, decision, caseNumber);
-		put(parameters, "decisionOfficerAndCaseNumber", join(", ", text(decision.path("caseOfficer")), caseNumber));
+		put(parameters, "decisionOfficerAndCaseNumber", join(", ", text(decision.path(ISSUED_BY).path("name")), caseNumber));
 		putPermitHolder(parameters, holder);
-		put(parameters, "permitHolderCareOf", text(holder.path("address").path("careOf")));
+		put(parameters, "permitHolderCareOf", text(holder.path(ADDRESS).path("careOf")));
 		parameters.put("validityIndefinite", box(indefinite));
 		parameters.put("validityTemporary", box(temporary));
-		if (indefinite) {
-			put(parameters, "validFrom", text(salesPeriod.path("from")).or(() -> text(decision.path("validFrom"))));
-		}
+		put(parameters, VALID_FROM, text(decision.path(VALID_FROM)));
 		if (temporary) {
-			put(parameters, "temporaryPeriod", join(" – ", text(salesPeriod.path("from")), text(salesPeriod.path("to"))));
+			put(parameters, "temporaryPeriod", join(RANGE, text(salesPeriod.path("from")), text(salesPeriod.path("to"))));
 		}
 		putPlace(parameters, pointOfSale);
 		put(parameters, "premisesPropertyDesignation", text(pointOfSale.path("propertyDesignation")));
@@ -119,34 +126,44 @@ public final class PermitCertificateMapper {
 
 	private static void putDecision(final Map<String, Object> parameters, final JsonNode decision, final Optional<String> caseNumber) {
 		put(parameters, "caseNumber", caseNumber);
-		put(parameters, "decisionDate", text(decision.path("decisionDate")));
+		put(parameters, DECISION_DATE, text(decision.path(DECISION_DATE)));
 		put(parameters, "decisionMaker", text(decision.path("decisionMaker")));
 		put(parameters, "decisionText", text(decision.path("decisionText")));
 		put(parameters, "replacesDecision", text(decision.path("replacesDecision")));
 		put(parameters, "executionDate", text(decision.path("executionDate")));
-		put(parameters, "issuedByNameAndTitle", join(", ", text(decision.path("issuedBy").path("name")), text(decision.path("issuedBy").path("title"))));
-		put(parameters, "issuedByUnit", text(decision.path("issuedBy").path("unit")));
+		put(parameters, "issuedByNameAndTitle", join(", ", text(decision.path(ISSUED_BY).path("name")), text(decision.path(ISSUED_BY).path("title"))));
+		put(parameters, "issuedByUnit", text(decision.path(ISSUED_BY).path("unit")));
 	}
 
 	private static void putPermitHolder(final Map<String, Object> parameters, final JsonNode holder) {
 		put(parameters, "permitHolderName", text(holder.path("name")));
 		put(parameters, "permitHolderOrgNumber", text(holder.path("organizationNumber")));
-		put(parameters, "permitHolderStreet", text(holder.path("address").path("street")));
-		put(parameters, "permitHolderPostalAddress", toPostalAddress(holder.path("address")));
+		put(parameters, "permitHolderStreet", text(holder.path(ADDRESS).path("street")));
+		put(parameters, "permitHolderPostalAddress", toPostalAddress(holder.path(ADDRESS)));
 	}
 
 	private static void putPlace(final Map<String, Object> parameters, final JsonNode place) {
 		put(parameters, "premisesName", text(place.path("name")));
-		put(parameters, "premisesStreet", text(place.path("address").path("street")));
-		put(parameters, "premisesPostalAddress", toPostalAddress(place.path("address")));
+		put(parameters, "premisesStreet", text(place.path(ADDRESS).path("street")));
+		put(parameters, "premisesPostalAddress", toPostalAddress(place.path(ADDRESS)));
 		put(parameters, "premisesPhone", text(place.path("phoneNumber")));
 	}
 
-	/** "05-01 – 09-30 (Slutet sällskap, uteservering)", with what the period has. */
-	private static Optional<String> toAnnualPeriod(final JsonNode period) {
-		final var dates = join(" – ", text(period.path("from")), text(period.path("to")));
+	/**
+	 * "05-01 – 09-30 (Slutet sällskap, uteservering)" of an annual period, "2026-06-01 – 2026-08-31" of a fixed one, with
+	 * what the period has. A period all year has no dates to show.
+	 */
+	private static Optional<String> toPeriod(final JsonNode period) {
+		final Optional<String> dates;
+		if (is(period.path(PERIOD), ANNUAL_PERIOD)) {
+			dates = join(RANGE, text(period.path("from")), text(period.path("to")));
+		} else if (is(period.path(PERIOD), "FIXED_PERIOD")) {
+			dates = join(RANGE, text(period.path("fromDate")), text(period.path("toDate")));
+		} else {
+			return Optional.empty();
+		}
 		final var appliesTo = join(", ", text(period.path("audience")).map(AUDIENCES::get), text(period.path("location")).map(LOCATIONS::get),
-			text(period.path("description")));
+			text(period.path(DESCRIPTION)));
 		return dates.isPresent() ? join(" ", dates, appliesTo.map("(%s)"::formatted)) : appliesTo;
 	}
 
@@ -154,7 +171,7 @@ public final class PermitCertificateMapper {
 	private static Optional<String> toServingHour(final JsonNode hour) {
 		final var appliesTo = join(", ", text(hour.path("audience")).map(AUDIENCES::get), text(hour.path("location")).map(LOCATIONS::get));
 		final var time = join("–", text(hour.path("from")), text(hour.path("to")));
-		final var description = text(hour.path("description"));
+		final var description = text(hour.path(DESCRIPTION));
 		final var what = time.isPresent() ? join(" ", time, description.map("(%s)"::formatted)) : description;
 		return what.map(value -> appliesTo.map(prefix -> "%s: %s".formatted(StringUtils.capitalize(prefix), value)).orElse(value));
 	}

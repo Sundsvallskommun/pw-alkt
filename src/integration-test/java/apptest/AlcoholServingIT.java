@@ -348,16 +348,20 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/2281/assignments")));
 	}
 
-	/** The case worker has not written the JSON parameter of the decision, which no retry brings, so no draft is made. */
+	/**
+	 * The case worker has not written the JSON parameter of the decision, which no retry brings. The restaurant number is
+	 * the first thing read from it, so neither a number nor a draft is made.
+	 */
 	@Test
 	void test012_decisionWithoutJsonParameterLeavesAnIncidentAndNoPermit() throws JacksonException {
 		final var processInstanceId = runUntilTheDecision();
 
-		awaitIncidentAt(ALCOHOL_SERVING.getKey(), processInstanceId, "external_task_create_asset");
+		awaitIncidentAt(ALCOHOL_SERVING.getKey(), processInstanceId, "external_task_resolve_restaurant_number");
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase");
 		verifyAllStubs();
 		wiremock.verify(1, getRequestedFor(urlPathEqualTo(DECISION_JSON_PARAMETER_PATH)));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/.*")));
 		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/2281/asset-drafts.*")));
 		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-templating/.*/render/pdf"))
 			.withRequestBody(matchingJsonPath("$.identifier", equalTo("serving-permit-certificate"))));

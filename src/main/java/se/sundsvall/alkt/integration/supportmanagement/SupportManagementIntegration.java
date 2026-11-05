@@ -10,7 +10,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
-import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
@@ -21,9 +20,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import se.sundsvall.dept44.problem.Problem;
+import tools.jackson.databind.JsonNode;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toMap;
@@ -97,11 +98,18 @@ public class SupportManagementIntegration {
 	}
 
 	/** A decision without the parameter is a fault in the decision, which a retry does not fix. */
-	public JsonParameter getDecisionJsonParameter(final String municipalityId, final String namespace, final String errandId, final String decisionId, final String key) {
+	/**
+	 * The value of the JSON parameter of the decision. The case worker writes it, so a decision without it, or with no
+	 * value in it, fails without retry.
+	 */
+	public JsonNode getDecisionJson(final String municipalityId, final String namespace, final String errandId, final String decisionId, final String key) {
 		final var response = failWithoutRetryOn(NOT_FOUND, "Decision '%s' of errand '%s' has no JSON parameter '%s'".formatted(decisionId, errandId, key),
 			() -> supportManagementClient.getDecisionJsonParameter(municipalityId, namespace, errandId, decisionId, key));
-		return Optional.ofNullable(response.getBody())
+		final var parameter = Optional.ofNullable(response.getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "JSON parameter '%s' of decision '%s' came back without content".formatted(key, decisionId)));
+		return Optional.ofNullable(parameter.getValue())
+			.filter(value -> !value.isNull())
+			.orElseThrow(() -> new NonRetryableException("JSON parameter '%s' of decision '%s' of errand '%s' has no value".formatted(key, decisionId, errandId)));
 	}
 
 	public String createDecision(final String municipalityId, final String namespace, final String errandId, final Decision decision) {

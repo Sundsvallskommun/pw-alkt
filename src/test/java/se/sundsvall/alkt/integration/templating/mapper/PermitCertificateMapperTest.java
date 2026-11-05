@@ -61,7 +61,6 @@ class PermitCertificateMapperTest {
 		    "outcome": "APPROVAL_WITH_CONDITIONS",
 		    "decisionText": "Bifall med villkor",
 		    "decisionMaker": "Alkoholhandläggare",
-		    "caseOfficer": "Kim Karlsson",
 		    "decisionDate": "2026-10-29",
 		    "executionDate": "2026-10-30",
 		    "validFrom": "2026-11-01",
@@ -94,7 +93,6 @@ class PermitCertificateMapperTest {
 		    "caseRegistrationNumber": "ALKT-2026-000200",
 		    "decisionText": "Bifall",
 		    "decisionMaker": "Tobakshandläggare",
-		    "caseOfficer": "Kim Karlsson",
 		    "decisionDate": "2026-10-29",
 		    "executionDate": "2026-10-30",
 		    "validFrom": "2026-11-01",
@@ -134,7 +132,7 @@ class PermitCertificateMapperTest {
 			entry("servingAreaSeats", "80"),
 			entry("scopeAllYear", "true"),
 			entry("scopeAnnualPeriod", "true"),
-			entry("scopePeriodFromTo", "05-01 – 09-30 (Slutet sällskap, uteservering), 12-01 – 02-28 (uteservering)"),
+			entry("scopePeriodFromTo", "05-01 – 09-30 (Slutet sällskap, uteservering), 12-01 – 02-28 (uteservering), 2027-07-01 – 2027-07-04"),
 			entry("scopeTasting", "false"),
 			entry("beverageBeer", "true"),
 			entry("beverageWine", "true"),
@@ -231,6 +229,7 @@ class PermitCertificateMapperTest {
 			entry("permitHolderCareOf", "Kim Karlsson"),
 			entry("validityIndefinite", "false"),
 			entry("validityTemporary", "true"),
+			entry("validFrom", "2026-11-01"),
 			entry("temporaryPeriod", "2026-11-01 – 2027-10-31"),
 			entry("premisesName", "Tobaksaffären"),
 			entry("premisesStreet", "Köpmangatan 5"),
@@ -243,8 +242,9 @@ class PermitCertificateMapperTest {
 			entry("information", "Försäljning får bara ske från disken.\nTillståndet gäller inte e-cigaretter."));
 	}
 
+	/** The decision says from when the permit is valid, whenever the applicant wished to start selling. */
 	@Test
-	void aTobaccoPermitUntilFurtherNoticeIsValidFromTheStartOfItsSales() {
+	void aTobaccoPermitIsValidFromTheFirstDayOfItsDecision() {
 		final var result = toCertificateParameters(TOBACCO, json("""
 			{ "salesPeriod": { "period": "INDEFINITE", "from": "2026-12-01" }, "decision": { "validFrom": "2026-11-01" } }
 			"""), APPROVAL, "ALKT-2026-000123");
@@ -252,11 +252,22 @@ class PermitCertificateMapperTest {
 		assertThat(result)
 			.containsEntry("validityIndefinite", "true")
 			.containsEntry("validityTemporary", "false")
-			.containsEntry("validFrom", "2026-12-01")
+			.containsEntry("validFrom", "2026-11-01")
 			.doesNotContainKey("temporaryPeriod");
 		assertThat(toCertificateParameters(TOBACCO, json("""
-			{ "salesPeriod": { "period": "INDEFINITE" }, "decision": { "validFrom": "2026-11-01" } }
-			"""), APPROVAL, "ALKT-2026-000123")).containsEntry("validFrom", "2026-11-01");
+			{ "salesPeriod": { "period": "INDEFINITE", "from": "2026-12-01" } }
+			"""), APPROVAL, "ALKT-2026-000123")).doesNotContainKey("validFrom");
+	}
+
+	/** The certificate names the case worker who issued the decision, never a case officer. */
+	@Test
+	void aTobaccoPermitNamesTheCaseWorkerWhoIssuedTheDecision() {
+		assertThat(toCertificateParameters(TOBACCO, json("""
+			{ "decision": { "caseOfficer": "Alex Andersson", "issuedBy": { "name": "Kim Karlsson" } } }
+			"""), APPROVAL, "ALKT-2026-000123")).containsEntry("decisionOfficerAndCaseNumber", "Kim Karlsson, ALKT-2026-000123");
+		assertThat(toCertificateParameters(TOBACCO, json("""
+			{ "decision": { "caseOfficer": "Alex Andersson" } }
+			"""), APPROVAL, "ALKT-2026-000123")).containsEntry("decisionOfficerAndCaseNumber", "ALKT-2026-000123");
 	}
 
 	/** The certificate shows the case number it is given, not one of the JSON parameter. */

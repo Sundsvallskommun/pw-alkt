@@ -22,9 +22,9 @@ class PermitSchemaTest {
 	}
 
 	@Test
-	void onlyTheAlcoholDecisionHasTheNewRestaurantNumber() {
-		assertThat(ALCOHOL.getDecisionOnlyFields()).containsExactly(List.of("premises", "newRestaurantNumber"));
-		assertThat(TOBACCO.getDecisionOnlyFields()).isEmpty();
+	void everyDecisionHasItsClausesAndOnlyTheAlcoholDecisionTheNewRestaurantNumber() {
+		assertThat(ALCOHOL.getDecisionOnlyFields()).containsExactly(List.of("premises", "newRestaurantNumber"), List.of("decision", "clauses"));
+		assertThat(TOBACCO.getDecisionOnlyFields()).containsExactly(List.of("decision", "clauses"));
 	}
 
 	@Test
