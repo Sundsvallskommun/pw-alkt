@@ -16,6 +16,23 @@ import static se.sundsvall.alkt.service.model.PermitSchema.TOBACCO;
 
 class PermitCertificateMapperTest {
 
+	/** What serving-permit-certificate reads, in Sundsvall and in Timrå alike. */
+	private static final String[] SERVING_TEMPLATE_PLACEHOLDERS = {
+		"caseNumber", "conditions", "decisionDate", "decisionDateAndCaseNumber", "decisionMaker", "decisionText", "executionDate", "issuedByNameAndTitle", "issuedByUnit",
+		"permitHolderName", "permitHolderOrgNumber", "permitHolderPhone", "permitHolderPostalAddress", "permitHolderStreet", "premisesName", "premisesPhone",
+		"premisesPostalAddress", "premisesRestaurantNumber", "premisesStreet", "replacesDecision", "scopePeriodFromTo", "servingAreaDescription",
+		"servingAreaDrawingReference", "servingAreaMaxPersons", "servingAreaSeats", "servingHours", "validFrom", "beverageBeer", "beverageOtherFermented",
+		"beverageSpirits", "beverageWine", "scopeAllYear", "scopeAnnualPeriod", "scopeTasting", "servingToClosedCompany", "servingToPublic"
+	};
+
+	/** What tobacco-permit-certificate reads, in Sundsvall and in Timrå alike. */
+	private static final String[] TOBACCO_TEMPLATE_PLACEHOLDERS = {
+		"caseNumber", "decisionDate", "decisionMaker", "decisionOfficerAndCaseNumber", "decisionText", "executionDate", "information", "issuedByNameAndTitle",
+		"issuedByUnit", "permitHolderCareOf", "permitHolderName", "permitHolderOrgNumber", "permitHolderPostalAddress", "permitHolderStreet", "premisesName",
+		"premisesPhone", "premisesPostalAddress", "premisesPropertyDesignation", "premisesStreet", "replacesDecision", "temporaryPeriod", "validFrom",
+		"salesOnline", "salesRetail", "salesWholesale", "validityIndefinite", "validityTemporary"
+	};
+
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 	private static final Decision APPROVAL = new Decision().id("decision-id").outcome("APPROVAL");
 
@@ -150,11 +167,11 @@ class PermitCertificateMapperTest {
 	}
 
 	@Test
-	void aServingPermitWithoutACaseNumberLeavesItOut() {
+	void aServingPermitWithoutACaseNumberSendsItEmpty() {
 		final var result = toCertificateParameters(ALCOHOL, json(SERVING_PERMIT), APPROVAL, " ");
 
 		assertThat(result)
-			.doesNotContainKey("caseNumber")
+			.containsEntry("caseNumber", "")
 			.containsEntry("decisionDateAndCaseNumber", "2026-10-29");
 	}
 
@@ -169,22 +186,13 @@ class PermitCertificateMapperTest {
 			.containsEntry("scopePeriodFromTo", "Under skolloven");
 	}
 
-	/** The template is strict, so a value the permit lacks is left out and the template names it. */
+	/** The template is strict, so every placeholder it reads is sent, empty or unticked when the permit has no value. */
 	@Test
-	void aServingPermitWithoutValuesLeavesThemOutButKeepsTheBoxesAndTheConditions() {
+	void aServingPermitWithoutValuesSendsEveryPlaceholderOfTheTemplateEmpty() {
 		final var result = toCertificateParameters(ALCOHOL, json("{}"), APPROVAL, null);
 
-		assertThat(result).containsOnly(
-			entry("scopeAllYear", "false"),
-			entry("scopeAnnualPeriod", "false"),
-			entry("scopeTasting", "false"),
-			entry("beverageBeer", "false"),
-			entry("beverageWine", "false"),
-			entry("beverageOtherFermented", "false"),
-			entry("beverageSpirits", "false"),
-			entry("servingToPublic", "false"),
-			entry("servingToClosedCompany", "false"),
-			entry("conditions", ""));
+		assertThat(result).containsOnlyKeys(SERVING_TEMPLATE_PLACEHOLDERS);
+		assertThat(result.values()).allMatch(value -> "".equals(value) || "false".equals(value));
 	}
 
 	@Test
@@ -204,7 +212,7 @@ class PermitCertificateMapperTest {
 			"""), APPROVAL, "ALKT-2026-000123");
 
 		assertThat(result)
-			.doesNotContainKey("premisesName")
+			.containsEntry("premisesName", "")
 			.containsEntry("premisesPostalAddress", "85230")
 			.containsEntry("issuedByNameAndTitle", "Handläggare");
 	}
@@ -219,6 +227,7 @@ class PermitCertificateMapperTest {
 			entry("decisionMaker", "Tobakshandläggare"),
 			entry("decisionText", "Bifall"),
 			entry("executionDate", "2026-10-30"),
+			entry("replacesDecision", ""),
 			entry("issuedByNameAndTitle", "Kim Karlsson, Handläggare"),
 			entry("issuedByUnit", "Alkohol- och tobaksenheten"),
 			entry("decisionOfficerAndCaseNumber", "Kim Karlsson, ALKT-2026-000200"),
@@ -253,10 +262,10 @@ class PermitCertificateMapperTest {
 			.containsEntry("validityIndefinite", "true")
 			.containsEntry("validityTemporary", "false")
 			.containsEntry("validFrom", "2026-11-01")
-			.doesNotContainKey("temporaryPeriod");
+			.containsEntry("temporaryPeriod", "");
 		assertThat(toCertificateParameters(TOBACCO, json("""
 			{ "salesPeriod": { "period": "INDEFINITE", "from": "2026-12-01" } }
-			"""), APPROVAL, "ALKT-2026-000123")).doesNotContainKey("validFrom");
+			"""), APPROVAL, "ALKT-2026-000123")).containsEntry("validFrom", "");
 	}
 
 	/** The certificate names the case worker who issued the decision, never a case officer. */
@@ -280,15 +289,13 @@ class PermitCertificateMapperTest {
 			.containsEntry("decisionOfficerAndCaseNumber", "Kim Karlsson, TSN 2026/0153");
 	}
 
+	/** The template is strict, so every placeholder it reads is sent, empty or unticked when the permit has no value. */
 	@Test
-	void aTobaccoPermitWithoutValuesLeavesThemOutButKeepsTheBoxesAndTheInformation() {
-		assertThat(toCertificateParameters(TOBACCO, json("{}"), APPROVAL, null)).containsOnly(
-			entry("validityIndefinite", "false"),
-			entry("validityTemporary", "false"),
-			entry("salesRetail", "false"),
-			entry("salesWholesale", "false"),
-			entry("salesOnline", "false"),
-			entry("information", ""));
+	void aTobaccoPermitWithoutValuesSendsEveryPlaceholderOfTheTemplateEmpty() {
+		final var result = toCertificateParameters(TOBACCO, json("{}"), APPROVAL, null);
+
+		assertThat(result).containsOnlyKeys(TOBACCO_TEMPLATE_PLACEHOLDERS);
+		assertThat(result.values()).allMatch(value -> "".equals(value) || "false".equals(value));
 	}
 
 	@Test

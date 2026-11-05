@@ -9,18 +9,17 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.PermitSchema;
+import se.sundsvall.alkt.util.JsonText;
 import tools.jackson.databind.JsonNode;
 
 import static java.util.stream.Collectors.joining;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL_WITH_CONDITIONS;
+import static se.sundsvall.alkt.util.JsonText.text;
 
 /**
  * Maps the JSON parameter of a permit to the placeholders of its certificate: serving-permit-certificate for the
- * alcohol schema and tobacco-permit-certificate for the tobacco schema. A value the permit does not have is left out,
- * so
- * the strict template answers 400 naming it instead of rendering an empty field. Only conditions and information, which
- * a
- * permit may well have none of, become empty text, and a box is ticked or not.
+ * alcohol schema and tobacco-permit-certificate for the tobacco schema. Every placeholder is sent, as empty text when
+ * the permit has no value for it, the way Draken's preview of the certificate sends it, and a box is ticked or not.
  */
 public final class PermitCertificateMapper {
 
@@ -112,9 +111,7 @@ public final class PermitCertificateMapper {
 		parameters.put("validityIndefinite", box(indefinite));
 		parameters.put("validityTemporary", box(temporary));
 		put(parameters, VALID_FROM, text(decision.path(VALID_FROM)));
-		if (temporary) {
-			put(parameters, "temporaryPeriod", join(RANGE, text(salesPeriod.path("from")), text(salesPeriod.path("to"))));
-		}
+		put(parameters, "temporaryPeriod", temporary ? join(RANGE, text(salesPeriod.path("from")), text(salesPeriod.path("to"))) : Optional.empty());
 		putPlace(parameters, pointOfSale);
 		put(parameters, "premisesPropertyDesignation", text(pointOfSale.path("propertyDesignation")));
 		parameters.put("salesRetail", box(salesTypes.contains("RETAIL")));
@@ -190,7 +187,7 @@ public final class PermitCertificateMapper {
 	}
 
 	private static void put(final Map<String, Object> parameters, final String key, final Optional<String> value) {
-		value.ifPresent(present -> parameters.put(key, present));
+		parameters.put(key, value.orElse(""));
 	}
 
 	private static String box(final boolean checked) {
@@ -201,18 +198,9 @@ public final class PermitCertificateMapper {
 		return text(node).map(value::equals).orElse(false);
 	}
 
-	private static Optional<String> text(final JsonNode node) {
-		return Optional.of(node)
-			.filter(JsonNode::isValueNode)
-			.filter(value -> !value.isNull())
-			.map(JsonNode::asString)
-			.map(String::strip)
-			.filter(StringUtils::isNotBlank);
-	}
-
 	private static List<String> strings(final JsonNode array) {
 		return array.values().stream()
-			.map(PermitCertificateMapper::text)
+			.map(JsonText::text)
 			.flatMap(Optional::stream)
 			.toList();
 	}

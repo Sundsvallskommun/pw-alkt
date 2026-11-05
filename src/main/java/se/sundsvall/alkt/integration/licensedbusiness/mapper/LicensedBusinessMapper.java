@@ -14,6 +14,7 @@ import se.sundsvall.alkt.exception.NonRetryableException;
 import tools.jackson.databind.JsonNode;
 
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toFirstDay;
+import static se.sundsvall.alkt.util.JsonText.text;
 
 /** Maps the premises in the JSON parameter of the decision to what licensed business keeps of it. */
 public final class LicensedBusinessMapper {
@@ -92,13 +93,5 @@ public final class LicensedBusinessMapper {
 
 	private static String toTenDigits(final String orgNumber) {
 		return StringUtils.right(orgNumber.replaceAll("\\D", ""), 10);
-	}
-
-	private static Optional<String> text(final JsonNode node) {
-		return Optional.of(node)
-			.filter(JsonNode::isValueNode)
-			.map(JsonNode::asString)
-			.map(String::strip)
-			.filter(StringUtils::isNotBlank);
 	}
 }

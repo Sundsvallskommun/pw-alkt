@@ -135,7 +135,10 @@ the JSON parameter. A decision without its JSON parameter, and a JSON parameter 
 
 The restaurant number and the premises it is kept at come from `premises` in the JSON parameter of the decision: the
 number in `restaurantNumber` the case worker chose, a new one when `newRestaurantNumber` is `true`, and otherwise the
-first free number at `address`, or a new one when none is free.
+first free number at `address`, or a new one when none is free. The number and the address are kept in the process
+once chosen, so when the premises of a decision are corrected after that, the process is restarted from
+`ResolveRestaurantNumberTask` rather than retried at a later step. A number created for a permit that is never made
+stays free at the address, where the next errand without a choice of its own can be given it.
 
 ### Notifications
 

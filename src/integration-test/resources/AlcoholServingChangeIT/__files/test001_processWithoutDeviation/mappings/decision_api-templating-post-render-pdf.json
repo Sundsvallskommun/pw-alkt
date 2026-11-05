@@ -60,7 +60,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.parameters.replacesDecision",
-					"absent": true
+					"equalTo": ""
 				}
 			}
 		]

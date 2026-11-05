@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.util.JsonText;
 import tools.jackson.databind.JsonNode;
 
 import static java.util.Comparator.nullsLast;
@@ -107,9 +108,8 @@ public final class InspectionProtocolMapper {
 	/** The texts of an answer, which is one text or, for a question with several choices, a list of them. */
 	private static List<String> textsOf(final JsonNode answer) {
 		return (answer.isArray() ? answer.values().stream() : Stream.of(answer))
-			.filter(value -> value.isValueNode() && !value.isNull())
-			.map(JsonNode::asString)
-			.filter(StringUtils::isNotBlank)
+			.map(JsonText::text)
+			.flatMap(Optional::stream)
 			.toList();
 	}
 

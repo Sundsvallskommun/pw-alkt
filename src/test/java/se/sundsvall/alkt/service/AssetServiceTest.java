@@ -771,21 +771,24 @@ class AssetServiceTest {
 		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.of(2100, 9, 30));
 	}
 
-	/** A field the template requires cannot be removed: the render fails on it before the permit is touched. */
+	/**
+	 * The certificate is rendered before the permit is touched, so a certificate that cannot be made leaves the permit as
+	 * it was.
+	 */
 	@Test
-	void updateAssetLeavesThePermitAloneWhenTheChangeRemovesAFieldTheCertificateRequires() {
+	void updateAssetLeavesThePermitAloneWhenTheCertificateCannotBeRendered() {
 		givenAPermitToChange(approval(), """
 			{ "premises": { "name": "Runt Hörnet", "phoneNumber": "060-123456" } }
 			""", """
 			{ "premises": { "phoneNumber": null } }
 			""");
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture()))
-			.thenThrow(new NonRetryableException("Template 'serving-permit-certificate' cannot be rendered from the given parameters: Missing placeholder 'premisesPhone'"));
+			.thenThrow(new NonRetryableException("Template 'serving-permit-certificate' cannot be rendered from the given parameters"));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class);
 
-		assertThat(templateParametersCaptor.getValue()).containsEntry("premisesName", "Runt Hörnet").doesNotContainKey("premisesPhone");
+		assertThat(templateParametersCaptor.getValue()).containsEntry("premisesName", "Runt Hörnet").containsEntry("premisesPhone", "");
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
 	}
