@@ -1,0 +1,39 @@
+{
+	"name": "decision_resolve-restaurant-number-worker---api-support-management-put-process-failed",
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "FAILED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].errorCode",
+					"equalTo": "INCIDENT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].message",
+					"contains": "Decision '7b2e1c90-4d3a-4f6e-9a21-5c8d0e7f1a42' of errand '3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31' has no JSON parameter 'aot_alcohol_decision'"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}

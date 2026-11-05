@@ -58,13 +58,67 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.serveringstid",
-					"equalTo": "Servering får ske mellan 11.00 och 01.00."
+					"expression": "$.additionalParameters",
+					"absent": true
 				}
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.premisesRestaurantNumber",
+					"expression": "$.jsonParameters[0].key",
+					"equalTo": "aot_alcohol_party_asset"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].schemaId",
+					"equalTo": "2281_aot_alcohol_party_asset_0.1"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.errandId",
+					"equalTo": "3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.clauses",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.conditions",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.newRestaurantNumber",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.servingHours[0].to",
+					"equalTo": "01:00"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.restaurantNumber",
 					"equalTo": "22620001"
 				}
 			}

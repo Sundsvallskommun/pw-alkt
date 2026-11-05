@@ -5,10 +5,10 @@
 		"urlPath": "/api-licensed-business/2262/addresses/lookup",
 		"queryParameters": {
 			"streetAddress": {
-				"equalTo": "Storgatan 33"
+				"equalTo": "Köpmangatan 5"
 			},
 			"postalCode": {
-				"equalTo": "852 30"
+				"equalTo": "86132"
 			}
 		}
 	},
@@ -18,9 +18,9 @@
 		},
 		"jsonBody": {
 			"id": "8be2e4a1-3d4f-4b2e-9c18-2f6d5a7b1c33",
-			"streetAddress": "Storgatan 33",
-			"postalCode": "852 30",
-			"postalArea": "Sundsvall",
+			"streetAddress": "Köpmangatan 5",
+			"postalCode": "86132",
+			"postalArea": "Timrå",
 			"municipalityId": "2262"
 		},
 		"status": 200

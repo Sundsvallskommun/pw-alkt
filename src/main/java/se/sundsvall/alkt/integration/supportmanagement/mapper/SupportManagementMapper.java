@@ -34,7 +34,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Comparator.nullsLast;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static se.sundsvall.alkt.Constants.DECISION_METHOD_AUTOMATIC;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOME_APPROVAL;
@@ -75,9 +74,9 @@ public final class SupportManagementMapper {
 	private static final String ORIGINAL_FORM_SUFFIX = "_original";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 
-	static final String DECISION_TYPE_PERMIT = "PERMIT";
-	static final String ERRAND_RESOURCE_TYPE = "case";
-	static final String ERRAND_SERVICE = "supportmanagement";
+	private static final String DECISION_TYPE_PERMIT = "PERMIT";
+	private static final String ERRAND_RESOURCE_TYPE = "case";
+	private static final String ERRAND_SERVICE = "supportmanagement";
 
 	private SupportManagementMapper() {}
 
@@ -202,14 +201,6 @@ public final class SupportManagementMapper {
 		return Optional.ofNullable(decision.getDecidedAt()).map(decidedAt -> decidedAt.atZoneSameInstant(SWEDISH_TIME).toLocalDate());
 	}
 
-	/** The keys of the parameters of the decision that have no value, which a change removes from the permit. */
-	public static Set<String> toRemovedParameterKeys(final Decision decision) {
-		return Optional.ofNullable(decision.getParameters()).orElse(emptyList()).stream()
-			.filter(parameter -> Optional.ofNullable(parameter.getValues()).orElse(emptyList()).stream().allMatch(StringUtils::isBlank))
-			.map(Parameter::getKey)
-			.collect(toSet());
-	}
-
 	public static Decision toDecisionCompletion(final OffsetDateTime decidedAt) {
 		return new Decision()
 			.status(DECISION_STATUS_COMPLETED)
@@ -251,11 +242,16 @@ public final class SupportManagementMapper {
 
 	/** The terms of the decision are its conditions, one per line in their order, and empty for a decision without any. */
 	public static String toConditions(final Decision decision) {
+		return String.join("\n", toConditionList(decision));
+	}
+
+	/** The texts of the terms of the decision in their order, a term without text left out. */
+	public static List<String> toConditionList(final Decision decision) {
 		return Optional.ofNullable(decision.getTerms()).orElse(emptyList()).stream()
 			.sorted(Comparator.comparing(DecisionTerm::getSortOrder, nullsLast(Comparator.naturalOrder())))
 			.map(DecisionTerm::getText)
 			.filter(StringUtils::isNotBlank)
-			.collect(joining("\n"));
+			.toList();
 	}
 
 	public static ReportTarget toReportTarget(final ExternalTask externalTask) {
@@ -270,7 +266,6 @@ public final class SupportManagementMapper {
 
 	/**
 	 * The instance id is left out of the body: Support Management takes it from the path and rejects a different one.
-	 * errandVersion stands in for an If-Match for a step that only read the errand; null skips the version check.
 	 */
 	public static ErrandProcessReport toErrandProcessReport(final ReportTarget target, final ProcessStateReport report) {
 		return new ErrandProcessReport()
@@ -280,7 +275,6 @@ public final class SupportManagementMapper {
 			.currentActivityId(report.currentActivityId())
 			.currentActivityName(report.currentActivityName())
 			.externalTaskId(target.externalTaskId())
-			.errandVersion(report.errandVersion())
 			.error(report.error())
 			.activities(report.activities())
 			.awaitingSignals(toProcessSignals(report.awaitingSignals()));

@@ -10,7 +10,7 @@
   <bpmn:message id="message_closure_completed" name="closure_completed" />
   <bpmn:message id="message_process_cancelled" name="process_cancelled" />
   <bpmn:process id="internal-inspection" name="PROCESS Internal inspection" isExecutable="true" camunda:historyTimeToLive="P30D">
-    <bpmn:documentation>Skeleton of the process. The phases run in sequence and each one waits for a case worker to move the errand on through the user interface; the activities within a phase are added as the business logic is implemented.</bpmn:documentation>
+    <bpmn:documentation>The phases run in sequence and each one waits for a case worker to move the errand on through the user interface.</bpmn:documentation>
     <bpmn:startEvent id="start_process" name="Start process">
       <bpmn:documentation>The start of the process execution</bpmn:documentation>
       <bpmn:outgoing>flow_start_process_to_registration</bpmn:outgoing>

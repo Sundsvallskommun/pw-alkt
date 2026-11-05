@@ -25,9 +25,8 @@ public class ErrandService {
 
 	/**
 	 * The day the process reached the step, which is the day the application was complete and the investigation could
-	 * start,
-	 * also when the step succeeds only on a later retry. Every other parameter is sent back as read, and a change to the
-	 * errand since the read makes the step rerun on a fresh one.
+	 * start, also when the step succeeds only on a later retry. Every other parameter is sent back as read, and a change to
+	 * the errand since the read makes the step rerun on a fresh one.
 	 */
 	public LocalDate setCompleteAt(final String municipalityId, final String namespace, final String errandId, final Instant reachedAt) {
 		final var completeAt = LocalDate.ofInstant(reachedAt, clock.getZone());

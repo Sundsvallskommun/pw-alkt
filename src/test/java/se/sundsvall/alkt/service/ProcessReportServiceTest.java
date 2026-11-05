@@ -99,12 +99,11 @@ class ProcessReportServiceTest {
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_complete_process");
 		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
 
-		service.report(externalTaskMock, ProcessStateReport.completed().withErrandVersion(7L));
+		service.report(externalTaskMock, ProcessStateReport.completed());
 
 		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
 		verifyNoMoreInteractions(supportManagementIntegrationMock);
 		assertThat(captor.getValue().getProcessStatus()).isEqualTo("COMPLETED");
-		assertThat(captor.getValue().getErrandVersion()).isEqualTo(7L);
 		assertThat(captor.getValue().getProcessKey()).isEqualTo(PROCESS_KEY);
 		assertThat(captor.getValue().getExternalTaskId()).isEqualTo(EXTERNAL_TASK_ID);
 		// A report naming no activity is placed at the task's, so the row does not lose the one it has

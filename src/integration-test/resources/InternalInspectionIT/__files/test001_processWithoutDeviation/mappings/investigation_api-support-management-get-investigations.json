@@ -21,27 +21,6 @@
 				"completedAt": "2026-09-20T10:00:00+02:00",
 				"modified": "2026-09-20T10:00:00+02:00",
 				"title": "Tillsyn av serveringsställe",
-				"parameters": [
-					{
-						"key": "permitHolderName",
-						"values": [
-							"Runt Hörnet AB"
-						]
-					},
-					{
-						"key": "summary",
-						"values": [
-							"approved"
-						]
-					},
-					{
-						"key": "coordinatedWith",
-						"values": [
-							"police",
-							"taxAgency"
-						]
-					}
-				],
 				"type": "internal_inspection"
 			}
 		],

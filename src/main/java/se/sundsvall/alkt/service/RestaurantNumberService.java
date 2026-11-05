@@ -1,64 +1,73 @@
 package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.licensedbusiness.Assignment;
+import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import se.sundsvall.alkt.configuration.PermitJsonProperties;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.licensedbusiness.LicensedBusinessIntegration;
 import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper;
 import se.sundsvall.alkt.service.model.ResolvedRestaurantNumber;
+import se.sundsvall.alkt.service.model.RestaurantNumbersBeforeCreate;
+import tools.jackson.databind.JsonNode;
 
-import static java.lang.Boolean.parseBoolean;
 import static java.util.Collections.emptyList;
-import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER;
-import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
+import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.asksForANewRestaurantNumber;
+import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.findChosenRestaurantNumber;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.isActiveFor;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.isAssignedTo;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAddress;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAssignmentCreateRequest;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toValidFrom;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
+import static se.sundsvall.alkt.service.model.PermitSchema.ALCOHOL;
 
+/**
+ * Resolves and assigns the restaurant number of a serving permit by the premises in the JSON parameter of its decision.
+ */
 @Service
 public class RestaurantNumberService {
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final PartyIntegration partyIntegration;
 	private final LicensedBusinessIntegration licensedBusinessIntegration;
+	private final PermitJsonProperties permitJsonProperties;
 
 	RestaurantNumberService(final SupportManagementIntegration supportManagementIntegration, final PartyIntegration partyIntegration,
-		final LicensedBusinessIntegration licensedBusinessIntegration) {
+		final LicensedBusinessIntegration licensedBusinessIntegration, final PermitJsonProperties permitJsonProperties) {
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.partyIntegration = partyIntegration;
 		this.licensedBusinessIntegration = licensedBusinessIntegration;
+		this.permitJsonProperties = permitJsonProperties;
 	}
 
 	/**
-	 * The number the case worker chose at the premises, a new one when they asked for it, and otherwise the premises' first
-	 * free number or a new one when there is none. Nothing is assigned yet. Before a number is created the free numbers
-	 * are handed to saveAvailableBeforeCreate, and a rerun gets them back as availableBeforeCreate, null on a first run.
+	 * The number the case worker chose at the premises in the decision, a new one when the decision asks for it, and
+	 * otherwise the premises' first free number or a new one when there is none. Nothing is assigned yet. Before a number
+	 * is created the free numbers at the address are handed to saveBeforeCreate, and a rerun gets them back as
+	 * beforeCreate, null on a first run. They count only at the address they were taken at, so a rerun after the premises
+	 * moved creates its number anew.
 	 */
-	public ResolvedRestaurantNumber resolveRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final List<String> availableBeforeCreate,
-		final Consumer<List<String>> saveAvailableBeforeCreate) {
+	public ResolvedRestaurantNumber resolveRestaurantNumber(final String municipalityId, final String namespace, final String errandId,
+		final RestaurantNumbersBeforeCreate beforeCreate, final Consumer<RestaurantNumbersBeforeCreate> saveBeforeCreate) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		requireAssignableHolder(municipalityId, errand, errandId);
-		final var parameters = toParameterValues(errand.getParameters());
+		final var decisionJson = getDecisionJson(municipalityId, namespace, errandId, getCompletedDecision(municipalityId, namespace, errandId));
 		final var premisesMunicipalityId = toPremisesMunicipalityId(errand);
-		final var addressId = licensedBusinessIntegration.findOrCreateAddress(premisesMunicipalityId, toAddress(parameters, errandId));
+		final var addressId = licensedBusinessIntegration.findOrCreateAddress(premisesMunicipalityId, toAddress(decisionJson, errandId));
 
-		final var number = Optional.ofNullable(parameters.get(ERRAND_PARAMETER_RESTAURANT_NUMBER))
+		final var number = findChosenRestaurantNumber(decisionJson)
 			.map(chosen -> requireAtAddress(premisesMunicipalityId, addressId, chosen, errandId))
-			.orElseGet(() -> newOrAvailableRestaurantNumber(premisesMunicipalityId, addressId, parameters, availableBeforeCreate, saveAvailableBeforeCreate));
+			.orElseGet(() -> newOrAvailableRestaurantNumber(premisesMunicipalityId, addressId, decisionJson, beforeCreate, saveBeforeCreate));
 
 		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(premisesMunicipalityId, number);
 		return new ResolvedRestaurantNumber(number, addressId, toAssignmentId(latestAssignment));
@@ -66,18 +75,18 @@ public class RestaurantNumberService {
 
 	/**
 	 * The number the permit holder already holds at the premises, for a permit that runs beside the holder's permanent one.
-	 * The case worker's choice must be one of them. Nothing is written to licensed business, as an assignment would end
-	 * the one of the permanent permit.
+	 * The case worker's choice in the decision must be one of them. Nothing is written to licensed business, as an
+	 * assignment would end the one of the permanent permit.
 	 */
 	public String findRestaurantNumberOfHolder(final String municipalityId, final String namespace, final String errandId) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		final var parameters = toParameterValues(errand.getParameters());
+		final var decisionJson = getDecisionJson(municipalityId, namespace, errandId, getCompletedDecision(municipalityId, namespace, errandId));
 		final var orgNumber = partyIntegration.getLegalId(municipalityId, getPermitHolder(errand, errandId).getExternalId());
 		final var premisesMunicipalityId = toPremisesMunicipalityId(errand);
-		final var addressId = licensedBusinessIntegration.findAddressId(premisesMunicipalityId, toAddress(parameters, errandId))
+		final var addressId = licensedBusinessIntegration.findAddressId(premisesMunicipalityId, toAddress(decisionJson, errandId))
 			.orElseThrow(() -> new NonRetryableException("The premises address of errand '%s' is unknown to licensed business, so it has no restaurant number".formatted(errandId)));
 
-		return Optional.ofNullable(parameters.get(ERRAND_PARAMETER_RESTAURANT_NUMBER))
+		return findChosenRestaurantNumber(decisionJson)
 			.map(number -> requireHeldBy(premisesMunicipalityId, addressId, number, orgNumber, errandId))
 			.orElseGet(() -> findTheOnlyNumberHeldBy(premisesMunicipalityId, addressId, orgNumber, errandId));
 	}
@@ -85,8 +94,7 @@ public class RestaurantNumberService {
 	public boolean assignRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final String restaurantNumber, final String addressId,
 		final String latestAssignmentIdSeen) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		final var decision = supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
-			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no completed decision to assign restaurant number '%s' by".formatted(errandId, restaurantNumber)));
+		final var decision = getCompletedDecision(municipalityId, namespace, errandId);
 		final var permitHolder = getPermitHolder(errand, errandId);
 		final var holderName = getHolderName(permitHolder, errandId);
 		final var orgNumber = partyIntegration.getLegalId(municipalityId, permitHolder.getExternalId());
@@ -102,11 +110,20 @@ public class RestaurantNumberService {
 				.formatted(restaurantNumber, errandId));
 		}
 
-		final var parameters = toParameterValues(errand.getParameters());
+		final var decisionJson = getDecisionJson(municipalityId, namespace, errandId, decision);
 		final var restaurantNumberId = licensedBusinessIntegration.getRestaurantNumberId(premisesMunicipalityId, restaurantNumber);
-		final var request = toAssignmentCreateRequest(restaurantNumberId, addressId, orgNumber, holderName, parameters, decision);
+		final var request = toAssignmentCreateRequest(restaurantNumberId, addressId, orgNumber, holderName, decisionJson, decision);
 		licensedBusinessIntegration.createAssignment(premisesMunicipalityId, restaurantNumber, request);
 		return true;
+	}
+
+	private Decision getCompletedDecision(final String municipalityId, final String namespace, final String errandId) {
+		return supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no completed decision to take the restaurant number from".formatted(errandId)));
+	}
+
+	private JsonNode getDecisionJson(final String municipalityId, final String namespace, final String errandId, final Decision decision) {
+		return supportManagementIntegration.getDecisionJson(municipalityId, namespace, errandId, decision.getId(), permitJsonProperties.of(ALCOHOL).decisionKey());
 	}
 
 	private void requireAssignableHolder(final String municipalityId, final Errand errand, final String errandId) {
@@ -130,8 +147,8 @@ public class RestaurantNumberService {
 			throw new NonRetryableException("The permit holder of errand '%s' holds no restaurant number at the premises".formatted(errandId));
 		}
 		if (numbers.size() > 1) {
-			throw new NonRetryableException("The permit holder of errand '%s' holds %d restaurant numbers at the premises, one was expected. Choose one with the parameter '%s'"
-				.formatted(errandId, numbers.size(), ERRAND_PARAMETER_RESTAURANT_NUMBER));
+			throw new NonRetryableException("The permit holder of errand '%s' holds %d restaurant numbers at the premises, one was expected. Choose one in the decision"
+				.formatted(errandId, numbers.size()));
 		}
 		return numbers.getFirst();
 	}
@@ -149,24 +166,25 @@ public class RestaurantNumberService {
 		return number;
 	}
 
-	private String newOrAvailableRestaurantNumber(final String municipalityId, final String addressId, final Map<String, String> parameters,
-		final List<String> availableBeforeCreate, final Consumer<List<String>> saveAvailableBeforeCreate) {
+	private String newOrAvailableRestaurantNumber(final String municipalityId, final String addressId, final JsonNode decisionJson,
+		final RestaurantNumbersBeforeCreate beforeCreate, final Consumer<RestaurantNumbersBeforeCreate> saveBeforeCreate) {
 		final var available = licensedBusinessIntegration.getAvailableRestaurantNumbers(municipalityId, addressId);
-		if (!parseBoolean(parameters.get(ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER)) && !available.isEmpty()) {
+		if (!asksForANewRestaurantNumber(decisionJson) && !available.isEmpty()) {
 			return available.getFirst();
 		}
 
-		return findCreatedByAnEarlierRun(available, availableBeforeCreate)
+		return findCreatedByAnEarlierRun(addressId, available, beforeCreate)
 			.orElseGet(() -> {
-				saveAvailableBeforeCreate.accept(available);
+				saveBeforeCreate.accept(new RestaurantNumbersBeforeCreate(addressId, available));
 				return licensedBusinessIntegration.createRestaurantNumber(municipalityId, addressId);
 			});
 	}
 
-	private static Optional<String> findCreatedByAnEarlierRun(final List<String> available, final List<String> availableBeforeCreate) {
-		return Optional.ofNullable(availableBeforeCreate)
+	private static Optional<String> findCreatedByAnEarlierRun(final String addressId, final List<String> available, final RestaurantNumbersBeforeCreate beforeCreate) {
+		return Optional.ofNullable(beforeCreate)
+			.filter(before -> addressId.equals(before.addressId()))
 			.flatMap(before -> available.stream()
-				.filter(number -> !before.contains(number))
+				.filter(number -> !before.numbers().contains(number))
 				.findFirst());
 	}
 

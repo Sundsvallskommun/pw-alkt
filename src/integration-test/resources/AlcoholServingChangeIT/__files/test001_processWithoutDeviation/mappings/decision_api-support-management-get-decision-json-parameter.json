@@ -1,0 +1,57 @@
+{
+	"name": "decision_api-support-management-get-decision-json-parameter",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44/decisions/3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b/json-parameters/aot_alcohol_decision",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"key": "aot_alcohol_decision",
+			"schemaId": "2281_aot_alcohol_decision_1.0",
+			"value": {
+				"additionalScopes": null,
+				"caseRegistrationNumber": "ALKT-2026-000001",
+				"decision": {
+					"clauses": "att ändra serveringstiden",
+					"decisionDate": "2026-09-20",
+					"decisionMaker": "Alkoholhandläggare",
+					"decisionText": "Bifall",
+					"executionDate": "2026-09-21",
+					"issuedBy": {
+						"name": "Kim Karlsson",
+						"title": "Handläggare",
+						"unit": "Alkohol- och tobaksenheten"
+					},
+					"legalBasis": "8 kap. 2 § alkohollagen (2010:1622)",
+					"outcome": "APPROVAL",
+					"validFrom": "2026-10-01"
+				},
+				"errandId": "7c1e4a9b-2d63-4f18-9a05-6b3e8d1f2a44",
+				"premises": {
+					"newRestaurantNumber": false,
+					"restaurantNumber": "22819999"
+				},
+				"servingArea": {
+					"description": "Matsal och bar",
+					"seatsOutdoor": null
+				},
+				"servingHours": [
+					{
+						"from": "11:00",
+						"to": "02:00"
+					}
+				]
+			},
+			"version": 0
+		},
+		"status": 200
+	}
+}

@@ -12,48 +12,33 @@ import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/ExternalInspectionIT/", classes = Application.class, sharedContext = false)
 class ExternalInspectionIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345";
 
 	@Test
 	void test001_processWithoutDeviation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
+		final var processInstanceId = startProcess(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
-
-		// Wait for the process to park in each phase, then signal that phase completed
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
-		awaitProcessState(processInstanceId, "await_inspection_approved", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_inspection_approved");
 		awaitReportAt("decision_phase");
 		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "inspection_approved");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "closure");
 
-		// Wait for process to finish
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
-		// Verify mocked stubs
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 		wiremock.verify(0, postRequestedFor(urlPathMatching(".*/communication/conversations.*")));
 
-		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
@@ -104,18 +89,9 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test002_stopsInRegistration() throws JacksonException {
-		// === Start process ===
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
+		final var processInstanceId = startProcess(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
-
-		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_registration_completed");
 
 		// The WAITING report is asserted by its mapping: the phase, its name and the signal the button carries
 		verifyAllStubs();
@@ -129,19 +105,11 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test003_cancelledInRegistration() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
 		cancelProcess(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// The WAITING report is asserted by its mapping to offer the cancellation alongside the phase gate
 		verifyAllStubs();
@@ -155,21 +123,13 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test004_cancelledInInvestigation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
 		cancelProcess(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		verifyAllStubs();
 
@@ -190,26 +150,18 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test005_actionErrandRequested() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
-		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_action_errand_requested");
 		awaitReportAt("decision_phase");
 		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "action_errand_requested");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// The action errand, its relation to the inspection and its content are asserted by the POST errands mapping
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
@@ -228,32 +180,24 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test006_actionErrandWithoutDeficienciesGoesBack() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
-		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_action_errand_requested");
 		awaitReportAt("decision_phase");
 		final var reportsBefore = countReportsAt("decision_phase");
 		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "action_errand_requested");
 
 		// The errand has no deficiencies: no action errand, a warning in the log, and the choice is offered again
-		awaitProcessState(processInstanceId, "await_inspection_approved", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_inspection_approved");
 		awaitReportsAt("decision_phase", reportsBefore + 1);
 		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "inspection_approved");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
@@ -271,32 +215,24 @@ class ExternalInspectionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test007_actionErrandAfterDeficienciesAdded() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, EXTERNAL_INSPECTION.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "investigation");
-		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_action_errand_requested");
 		awaitReportAt("decision_phase");
 		final var reportsBefore = countReportsAt("decision_phase");
 		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "action_errand_requested");
 
 		// The first attempt finds no deficiencies; the GET errand mapping has them once the refusal is reported
-		awaitProcessState(processInstanceId, "await_action_errand_requested", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_action_errand_requested");
 		awaitReportsAt("decision_phase", reportsBefore + 1);
 		sendSignal(ERRAND_ID, EXTERNAL_INSPECTION.getKey(), "action_errand_requested");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, EXTERNAL_INSPECTION.getKey(), "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// The order of the refusal and the done entry is asserted by the scenario of the create action errand reports
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");

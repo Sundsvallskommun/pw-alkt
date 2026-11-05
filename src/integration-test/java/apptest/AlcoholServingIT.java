@@ -10,47 +10,37 @@ import tools.jackson.core.JacksonException;
 import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
 import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.awaitility.Awaitility.await;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.ACCEPTED;
-import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/AlcoholServingIT/", classes = Application.class, sharedContext = false)
 class AlcoholServingIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31";
+	private static final String DECISION_JSON_PARAMETER_PATH = "/api-support-management/2281/ALKT/errands/%s/decisions/7b2e1c90-4d3a-4f6e-9a21-5c8d0e7f1a42/json-parameters/aot_alcohol_decision"
+		.formatted(ERRAND_ID);
 
 	@Test
 	void test001_processWithoutDeviation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
 		// The PDF of the submission is on the errand before the registration waits
-		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_registration_completed");
 		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/attachments".formatted(ERRAND_ID)))
 			.withAnyRequestBodyPart(aMultipart().withHeader("Content-Disposition", containing("filename=\"Inkommet ärende ALKT-2026-000001.pdf\""))));
 
-		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a
-		// decision event
+		// The decision phase moves on by a decision event
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
@@ -58,10 +48,8 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "closure");
 
-		// Wait for process to finish
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
-		// Verify mocked stubs
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 
@@ -87,7 +75,6 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_asset#done' && @.severity == 'INFO')].message",
 				containing("x-request-id"))));
 
-		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
@@ -150,18 +137,9 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test002_stopsInRegistration() throws JacksonException {
-		// === Start process ===
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
+		final var processInstanceId = startProcess(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
-
-		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_registration_completed");
 		awaitWaitingReportAt("registration_phase");
 
 		// The WAITING report is asserted by its mapping: the phase, its name and the signal the button carries
@@ -178,21 +156,13 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test003_decisionRejectedBeforeThePhaseCreatesNoAssetAndDoesNotWait() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
 
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitWaitingReportAt("follow_up_phase");
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "follow_up_phase");
@@ -208,19 +178,11 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test004_cancelledInRegistration() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
 		cancelProcess(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// The WAITING report is asserted by its mapping to offer the cancellation alongside the phase gate
 		verifyAllStubs();
@@ -236,21 +198,13 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test005_cancelledInInvestigation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
 		cancelProcess(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase");
 		verifyAllStubs();
@@ -278,26 +232,18 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test006_cancelledWhileAwaitingTheDecision() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
 
 		// No decision yet, so the phase waits for one, and the cancellation is the only button it offers
-		awaitProcessState(processInstanceId, "await_decision_updated", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_decision_updated");
 		awaitReportAt("decision_phase");
 		sendSignal(ERRAND_ID, ALCOHOL_SERVING.getKey(), "process_cancelled");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase");
 		verifyAllStubs();
@@ -333,24 +279,11 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 	/** An approval with conditions grants the permit as well, so the process takes the same path as an approval. */
 	@Test
 	void test007_approvalWithConditionsCreatesThePermit() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
-
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey());
+		final var processInstanceId = runUntilTheDecision();
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
@@ -363,21 +296,13 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 	/** A decision not to try the errand grants no permit, so the phase ends without one and without waiting. */
 	@Test
 	void test008_inadmissibleDecisionCreatesNoPermit() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
 
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitWaitingReportAt("follow_up_phase");
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "follow_up_phase");
@@ -414,55 +339,65 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 	/** The number was free when it was chosen, but another errand assigned it before this one could. */
 	@Test
 	void test011_anotherErrandAssignedTheNumberFirstLeavesAnIncident() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
+		final var processInstanceId = runUntilTheDecision();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
-
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
-		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
-		completeDecision(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey());
-
-		await()
-			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, ALCOHOL_SERVING.getKey()).stream()
-				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())
-					&& "external_task_assign_restaurant_number".equals(incident.getActivityId())));
-		// The failure report and the alert are sent after the incident is raised, the alert last
-		await()
-			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.untilAsserted(() -> wiremock.verify(postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack"))));
+		awaitIncidentAt(ALCOHOL_SERVING.getKey(), processInstanceId, "external_task_assign_restaurant_number");
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase");
 		verifyAllStubs();
 		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-licensed-business/2281/assignments")));
 	}
 
-	private void runThroughAnApproval() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
+	/**
+	 * The case worker has not written the JSON parameter of the decision, which no retry brings. The restaurant number is
+	 * the first thing read from it, so neither a number nor a draft is made.
+	 */
+	@Test
+	void test012_decisionWithoutJsonParameterLeavesAnIncidentAndNoPermit() throws JacksonException {
+		final var processInstanceId = runUntilTheDecision();
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ALCOHOL_SERVING.getKey());
+		awaitIncidentAt(ALCOHOL_SERVING.getKey(), processInstanceId, "external_task_resolve_restaurant_number");
+
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase");
+		verifyAllStubs();
+		wiremock.verify(1, getRequestedFor(urlPathEqualTo(DECISION_JSON_PARAMETER_PATH)));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-licensed-business/.*")));
+		wiremock.verify(0, anyRequestedFor(urlPathMatching("/api-party-assets/2281/asset-drafts.*")));
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-templating/.*/render/pdf"))
+			.withRequestBody(matchingJsonPath("$.identifier", equalTo("serving-permit-certificate"))));
+	}
+
+	/** party-assets validates the JSON parameter as the draft is created, so its refusal leaves no draft behind. */
+	@Test
+	void test013_jsonParameterRefusedByPartyAssetsLeavesAnIncidentAndNoDraft() throws JacksonException {
+		final var processInstanceId = runUntilTheDecision();
+
+		awaitIncidentAt(ALCOHOL_SERVING.getKey(), processInstanceId, "external_task_create_asset");
+
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase");
+		verifyAllStubs();
+		wiremock.verify(1, postRequestedFor(urlPathEqualTo("/api-party-assets/2281/asset-drafts")));
+		wiremock.verify(0, patchRequestedFor(urlPathMatching("/api-party-assets/2281/asset-drafts/.*")));
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-party-assets/2281/assets/.*/attachments")));
+		wiremock.verify(0, deleteRequestedFor(urlPathMatching("/api-party-assets/2281/assets/.*")));
+	}
+
+	private String runUntilTheDecision() throws JacksonException {
+		final var processInstanceId = startProcess(ERRAND_ID, ALCOHOL_SERVING.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "investigation");
 		completeDecision(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey());
+		return processInstanceId;
+	}
+
+	private void runThroughAnApproval() throws JacksonException {
+		final var processInstanceId = runUntilTheDecision();
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, ALCOHOL_SERVING.getKey(), "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();

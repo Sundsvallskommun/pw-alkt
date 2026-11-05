@@ -5,10 +5,10 @@
 		"urlPath": "/api-licensed-business/2281/addresses/lookup",
 		"queryParameters": {
 			"streetAddress": {
-				"equalTo": "Storgatan 33"
+				"equalTo": "Storgatan 1"
 			},
 			"postalCode": {
-				"equalTo": "852 30"
+				"equalTo": "85230"
 			}
 		}
 	},
@@ -18,8 +18,8 @@
 		},
 		"jsonBody": {
 			"id": "8be2e4a1-3d4f-4b2e-9c18-2f6d5a7b1c33",
-			"streetAddress": "Storgatan 33",
-			"postalCode": "852 30",
+			"streetAddress": "Storgatan 1",
+			"postalCode": "85230",
 			"postalArea": "Sundsvall",
 			"municipalityId": "2281"
 		},

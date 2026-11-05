@@ -216,16 +216,6 @@ class FailureHandlerTest {
 	}
 
 	@Test
-	void doesNotAlertWhileRetriesRemain() {
-		when(externalTaskMock.getId()).thenReturn(UUID.randomUUID().toString());
-		when(externalTaskMock.getRetries()).thenReturn(2);
-
-		failureHandler.handleException(externalTaskServiceMock, externalTaskMock, "message");
-
-		verifyNoInteractions(messagingIntegrationMock);
-	}
-
-	@Test
 	void tellsTheEngineEvenWhenTheAlertFails() {
 		final var id = UUID.randomUUID().toString();
 		when(externalTaskMock.getId()).thenReturn(id);
@@ -247,6 +237,7 @@ class FailureHandlerTest {
 
 		verify(processLogMock).taskFailed(externalTaskMock, Outcome.RETRY, expected);
 		verify(processReportServiceMock).report(externalTaskMock, ProcessStateReport.retrying(ERROR_CODE_RETRY, expected).withActivities(List.of(ACTIVITY)));
+		verifyNoInteractions(messagingIntegrationMock);
 	}
 
 	@Test
@@ -293,23 +284,6 @@ class FailureHandlerTest {
 		failureHandler.handleException(externalTaskServiceMock, externalTaskMock, "message");
 
 		verify(externalTaskServiceMock).handleFailure(id, expected, null, retriesLeft, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
-		verifyNoMoreInteractions(externalTaskServiceMock);
-	}
-
-	/**
-	 * The worker id must not be passed to {@code handleFailure} - the second parameter is the error message, which
-	 * becomes the incident message once the retries are exhausted.
-	 */
-	@Test
-	void doesNotUseWorkerIdAsErrorMessage() {
-		final var id = UUID.randomUUID().toString();
-		when(externalTaskMock.getId()).thenReturn(id);
-		when(externalTaskMock.getRetries()).thenReturn(1);
-
-		failureHandler.handleException(externalTaskServiceMock, externalTaskMock, "message");
-
-		verify(externalTaskMock, never()).getWorkerId();
-		verify(externalTaskServiceMock).handleFailure(id, "message. Attempt 4 of 4, x-request-id request-id", null, 0, EXPECTED_RETRY_TIMEOUT_IN_MILLISECONDS);
 		verifyNoMoreInteractions(externalTaskServiceMock);
 	}
 

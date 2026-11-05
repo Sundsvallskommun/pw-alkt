@@ -14,30 +14,6 @@
 		"bodyPatterns": [
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.forsaljningstid",
-					"equalTo": "Försäljning får ske mellan 11.00 och 02.00."
-				}
-			},
-			{
-				"matchesJsonPath": {
-					"expression": "$.additionalParameters.permitHolderName",
-					"equalTo": "Runt Hörnet AB"
-				}
-			},
-			{
-				"matchesJsonPath": {
-					"expression": "$.additionalParameters.errandId",
-					"equalTo": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d"
-				}
-			},
-			{
-				"matchesJsonPath": {
-					"expression": "$.additionalParameters.conditions",
-					"equalTo": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
-				}
-			},
-			{
-				"matchesJsonPath": {
 					"expression": "$.validTo",
 					"absent": true
 				}
@@ -62,14 +38,68 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.jsonParameters",
+					"expression": "$.additionalParameters",
 					"absent": true
 				}
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.forsaljningsstalle",
+					"expression": "$.jsonParameters[0].key",
+					"equalTo": "aot_tobacco_party_asset"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].schemaId",
+					"equalTo": "2281_aot_tobacco_party_asset_0.1"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.errandId",
+					"equalTo": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.caseRegistrationNumber",
+					"equalTo": "ALKT-2025-000042"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.salesTypes[1]",
+					"equalTo": "DISTANCE_SELLING"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.salesPeriod.from",
+					"equalTo": "2025-05-01"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.conditions[0]",
+					"equalTo": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.clauses",
 					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.decisionText",
+					"equalTo": "Bifall"
 				}
 			}
 		]

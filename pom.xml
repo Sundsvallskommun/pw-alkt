@@ -45,7 +45,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.testcontainers</groupId>
-			<artifactId>testcontainers-junit-jupiter</artifactId>
+			<artifactId>testcontainers</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -145,6 +145,9 @@
 						</goals>
 						<configuration>
 							<inputSpec>src/main/resources/integrations/party-assets.yaml</inputSpec>
+							<!-- The value of a JSON parameter is any JSON, which the generated JsonNode model would drop. -->
+							<typeMappings>JsonNode=JsonNode</typeMappings>
+							<importMappings>JsonNode=tools.jackson.databind.JsonNode</importMappings>
 							<output>${generated-sources-path}</output>
 							<generatorName>spring</generatorName>
 							<generateApis>false</generateApis>

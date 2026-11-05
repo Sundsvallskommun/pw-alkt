@@ -17,6 +17,7 @@ import static generated.se.sundsvall.supportmanagement.ConversationType.EXTERNAL
 import static generated.se.sundsvall.supportmanagement.Identifier.TypeEnum.PARTY_ID;
 import static java.lang.Boolean.FALSE;
 import static java.util.Collections.emptyList;
+import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
@@ -29,6 +30,8 @@ public class CustomerMessageService {
 	static final String CONVERSATION_TOPIC_CUSTOMER = "Mina Sidor";
 
 	static final int MESSAGE_PAGE_SIZE = 100;
+	// More pages than this is a paging that does not end, rather than a conversation that long.
+	static final int MAX_MESSAGE_PAGES = 100;
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final CustomerMessageProperties properties;
@@ -74,17 +77,19 @@ public class CustomerMessageService {
 	}
 
 	private boolean isAlreadySent(final String municipalityId, final String namespace, final String errandId, final String conversationId, final String content) {
-		for (var page = 0;; page++) {
+		for (var page = 0; page < MAX_MESSAGE_PAGES; page++) {
 			final var messages = supportManagementIntegration.getConversationMessages(municipalityId, namespace, errandId, conversationId, page, MESSAGE_PAGE_SIZE);
 			final var onPage = Optional.ofNullable(messages.content()).orElse(emptyList());
 			if (onPage.stream().anyMatch(message -> isSentByProcess(message, content))) {
 				return true;
 			}
-			// An empty page ends the search as well, so a paging that never says last cannot hold the step.
+			// An empty page ends the search as well as the last one does
 			if (onPage.isEmpty() || !FALSE.equals(messages.last())) {
 				return false;
 			}
 		}
+		// Sending now could send the message twice, so the step fails instead
+		throw Problem.valueOf(BAD_GATEWAY, "The messages of conversation '%s' of errand '%s' did not end within %d pages".formatted(conversationId, errandId, MAX_MESSAGE_PAGES));
 	}
 
 	private static boolean isSentByProcess(final Message message, final String content) {

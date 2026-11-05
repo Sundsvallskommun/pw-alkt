@@ -27,9 +27,9 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
- * Reports a failed external task back to the engine, to the activity log, and to Slack once it becomes an incident. The
- * description of the failure becomes the incident message once the retries are exhausted, so it carries the attempt and
- * the request id as well.
+ * Reports a failed or skipped external task back to the engine and to the activity log, and alerts Slack once a failure
+ * becomes an incident or makes the process skip its step. The description of the failure becomes the incident message
+ * once the retries are exhausted, so it carries the attempt and the request id as well.
  */
 @Component
 public class FailureHandler {
@@ -131,9 +131,9 @@ public class FailureHandler {
 	 * engine is told first on purpose, so a cancelled step is not reported FAILED; any other fault in telling it skips the
 	 * report and the alert.
 	 */
-	private static boolean tellEngine(final ExternalTask externalTask, final Runnable handleFailure) {
+	private static boolean tellEngine(final ExternalTask externalTask, final Runnable tell) {
 		try {
-			handleFailure.run();
+			tell.run();
 			return true;
 		} catch (final NotFoundException e) {
 			LOG.info(LOG_TASK_GONE, sanitizeForLogging(externalTask.getId()), sanitizeForLogging(externalTask.getProcessInstanceId()));

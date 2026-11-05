@@ -10,6 +10,7 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
@@ -19,16 +20,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import se.sundsvall.dept44.problem.Problem;
+import tools.jackson.databind.JsonNode;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toMap;
+import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
+import static se.sundsvall.alkt.util.RemoteAnswers.failWithoutRetryOn;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
 @Component
@@ -91,6 +99,33 @@ public class SupportManagementIntegration {
 	public List<Decision> getDecisions(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getDecisions(municipalityId, namespace, errandId).getBody())
 			.orElse(emptyList());
+	}
+
+	/**
+	 * The value of the JSON parameter of the decision. The case worker writes it, so a decision without it, or with no
+	 * value in it, fails without retry.
+	 */
+	public JsonNode getDecisionJson(final String municipalityId, final String namespace, final String errandId, final String decisionId, final String key) {
+		return getJsonValue("decision '%s'".formatted(decisionId), errandId, key,
+			() -> supportManagementClient.getDecisionJsonParameter(municipalityId, namespace, errandId, decisionId, key));
+	}
+
+	/**
+	 * The value of the JSON parameter of the investigation. The case worker writes it, so an investigation without it, or
+	 * with no value in it, fails without retry.
+	 */
+	public JsonNode getInvestigationJson(final String municipalityId, final String namespace, final String errandId, final String investigationId, final String key) {
+		return getJsonValue("investigation '%s'".formatted(investigationId), errandId, key,
+			() -> supportManagementClient.getInvestigationJsonParameter(municipalityId, namespace, errandId, investigationId, key));
+	}
+
+	private static JsonNode getJsonValue(final String owner, final String errandId, final String key, final Supplier<ResponseEntity<JsonParameter>> request) {
+		final var response = failWithoutRetryOn(NOT_FOUND, "%s of errand '%s' has no JSON parameter '%s'".formatted(capitalize(owner), errandId, key), request);
+		final var parameter = Optional.ofNullable(response.getBody())
+			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "JSON parameter '%s' of %s came back without content".formatted(key, owner)));
+		return Optional.ofNullable(parameter.getValue())
+			.filter(value -> !value.isNull())
+			.orElseThrow(() -> new NonRetryableException("JSON parameter '%s' of %s of errand '%s' has no value".formatted(key, owner, errandId)));
 	}
 
 	public String createDecision(final String municipalityId, final String namespace, final String errandId, final Decision decision) {

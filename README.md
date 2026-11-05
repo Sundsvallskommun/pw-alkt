@@ -60,8 +60,12 @@ This microservice depends on the following services:
     number on.
   - **Repository:** [https://github.com/Sundsvallskommun/api-service-party](https://github.com/Sundsvallskommun/api-service-party)
 - **Templating**
-  - **Purpose:** Renders the permit certificate and the inspection protocol.
+  - **Purpose:** Renders the submission PDF, the decision basis, the permit certificate and the inspection protocol.
   - **Repository:** [https://github.com/Sundsvallskommun/api-service-templating](https://github.com/Sundsvallskommun/api-service-templating)
+- **JsonSchema**
+  - **Purpose:** Holds the schema and UI schema of the submission form, which the submission PDF and the decision basis
+    are laid out by. party-assets validates the JSON parameter of a permit against its schema there.
+  - **Repository:** [https://github.com/Sundsvallskommun/api-service-json-schema](https://github.com/Sundsvallskommun/api-service-json-schema)
 - **Messaging**
   - **Purpose:** Posts incident alerts to Slack.
   - **Repository:** [https://github.com/Sundsvallskommun/api-service-messaging](https://github.com/Sundsvallskommun/api-service-messaging)
@@ -103,7 +107,7 @@ curl -X POST http://localhost:8080/2281/ALKT/process/errand-events \
 The `processKey` of the event names the process. The models are in `src/main/resources/processmodels`, one folder
 per table below.
 
-In Timrå an application or notification leaves Review only once the errand parameter `externalReferenceNumber` holds
+In Timrå an application or notification leaves Review only once the errand parameter `externalCaseRegistrationNumber` holds
 the case number from the records of Timrå. The municipality comes from the errand parameter `premisesMunicipalityId`.
 An errand without it raises an incident.
 
@@ -119,6 +123,22 @@ An errand without it raises an incident.
 | `tobacco-sales-closure`    | Closure of permit-regulated sale of tobacco | Checks the permit, checks the decision, ends the permit                            | `TobaccoSalesPermit`   |
 
 Every application tells the customer that the processing has started.
+
+A permit is built from the JSON parameter of its decision in Support Management, under the key `aot_alcohol_decision`
+or `aot_tobacco_decision`, and saved in party-assets as a JSON parameter by the schema `aot_alcohol_party_asset` or
+`aot_tobacco_party_asset`. The process sets what it owns: `errandId`, `caseRegistrationNumber`, the restaurant number
+and the conditions from the terms of the decision. It leaves out what only a decision has, `premises.newRestaurantNumber`
+and `decision.clauses`. A change puts the JSON parameter of the change decision on top of the one of the permit, and
+leaves `errandId`, `caseRegistrationNumber`, `migration` and the restaurant number as they are. A list in the change
+replaces the permit's, an empty list counts as left out, and only null removes a list. The certificate is rendered from
+the JSON parameter. A decision without its JSON parameter, and a JSON parameter party-assets refuses, raise an incident.
+
+The restaurant number and the premises it is kept at come from `premises` in the JSON parameter of the decision: the
+number in `restaurantNumber` the case worker chose, a new one when `newRestaurantNumber` is `true`, and otherwise the
+first free number at `address`, or a new one when none is free. The number and the address are kept in the process
+once chosen, so when the premises of a decision are corrected after that, the process is restarted from
+`ResolveRestaurantNumberTask` rather than retried at a later step. A number created for a permit that is never made
+stays free at the address, where the next errand without a choice of its own can be given it.
 
 ### Notifications
 
@@ -145,6 +165,11 @@ today, raises an incident before any decision is written.
 | `external-inspection` | External inspection | Creates the protocol, creates the action errand when asked to | None                   |
 | `internal-inspection` | Internal inspection | Creates the protocol, creates the action errand when asked to | None                   |
 | `action-errand`       | Action errand       | Checks the decision                                           | None yet               |
+
+The protocol is rendered from the answers in the JSON parameter of the completed investigation, under the key
+`aot_inspection_serving_permit` for an investigation of type `serving_permit` and `aot_inspection_internal` for one of
+type `internal_inspection`, with the checkpoints and observations of the errand. An investigation without its JSON
+parameter raises an incident.
 
 The action errand gets the title `Åtgärdsärende`, status `NEW`, priority `MEDIUM`, and the case worker assigned to
 the inspection as reporter. An inspection without deficiencies or without an assigned case worker sends the process
@@ -188,7 +213,7 @@ Configuration is crucial for the application to run successfully. Ensure all nec
       token-uri: http://token_url
       client-id: client-id
       client-secret: client-secret
-    # the same for operaton, party-assets, licensed-business, party, templating and messaging
+    # the same for operaton, party-assets, licensed-business, party, templating, json-schema and messaging
     messaging:
       slack:
         token: slack-token
@@ -204,6 +229,23 @@ Configuration is crucial for the application to run successfully. Ensure all nec
   The label the action errand gets. Its metadata in Support Management names the process key `action-errand`. Label ids
   differ between environments.
 
+- **JSON parameter of a permit:**
+
+  ```yaml
+  permit-json:
+    alcohol:
+      schema-version: "0.1"
+      decision-key: aot_alcohol_decision
+    tobacco:
+      schema-version: "0.1"
+      decision-key: aot_tobacco_decision
+  ```
+
+  The version of the schema each permit is written by, as `{municipalityId}_aot_alcohol_party_asset_{version}` or
+  `{municipalityId}_aot_tobacco_party_asset_{version}`, and the
+  key of the JSON parameter of the decision. A new version is taken into use by changing it here. The schema must be
+  registered in json-schema for the municipality of the errands.
+
 - **Texts for the customer and the activity log:**
 
   ```yaml
@@ -218,8 +260,9 @@ Configuration is crucial for the application to run successfully. Ensure all nec
         failed: Beslutet kunde inte kontrolleras. Processen har stannat och felet behöver åtgärdas
   ```
 
-  Every step and phase of the models needs its texts, or the service does not start. `application-it.yaml` holds the
-  full set. A key with an underscore must be in brackets.
+  A step listed under `steps` needs its `done`, `retry` and `failed` texts, or the service does not start. A step or
+  phase without an entry is logged under its name in the model. `application-it.yaml` holds the full set. A key with an
+  underscore must be in brackets.
 
 ### Additional Notes
 

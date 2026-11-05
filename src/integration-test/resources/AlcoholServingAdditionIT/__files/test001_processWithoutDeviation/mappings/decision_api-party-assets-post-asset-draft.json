@@ -58,19 +58,61 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.serveringstid",
-					"equalTo": "Servering får ske mellan 11.00 och 01.00."
+					"expression": "$.additionalParameters",
+					"absent": true
 				}
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.conditions",
+					"expression": "$.jsonParameters[0].key",
+					"equalTo": "aot_alcohol_party_asset"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].schemaId",
+					"equalTo": "2281_aot_alcohol_party_asset_0.1"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.errandId",
+					"equalTo": "0b93f26d-8c47-4e51-b27a-9d4c5e6f7081"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.conditions[0]",
 					"equalTo": "Ordningsvakt ska finnas efter 23.00."
 				}
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.premisesRestaurantNumber",
+					"expression": "$.jsonParameters[0].value.premises.newRestaurantNumber",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.servingHours[0].to",
+					"equalTo": "01:00"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.restaurantNumber",
 					"equalTo": "22810001"
 				}
 			}

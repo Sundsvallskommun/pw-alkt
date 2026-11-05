@@ -118,6 +118,28 @@ class PartyAssetsIntegrationTest {
 		verify(partyAssetsClientMock, never()).createDraftAsset(any(), any(), any());
 	}
 
+	/** party-assets validates the JSON parameter against its schema as the draft is created, and refuses it with 400. */
+	@Test
+	void createDraftAssetFailsWithoutRetryWhenPartyAssetsRefusesTheDraft() {
+		final var asset = asset();
+		final var problem = new ClientProblem(BAD_REQUEST, "jsonParameters[0]: $.premises.restaurantNumber: does not match the regex pattern");
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.createDraftAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageStartingWith("The draft asset of errand '%s' cannot be created".formatted(ERRAND_ID))
+			.hasCause(problem);
+	}
+
+	@Test
+	void createDraftAssetLeavesAnyOtherFailureToBeRetried() {
+		final var asset = asset();
+		final var problem = new ClientProblem(BAD_GATEWAY, "Party assets is down");
+		when(partyAssetsClientMock.createDraftAsset(MUNICIPALITY_ID, SOURCE_REFERENCE, asset)).thenThrow(problem);
+
+		assertThatThrownBy(() -> partyAssetsIntegration.createDraftAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, asset)).isSameAs(problem);
+	}
+
 	@Test
 	void createDraftAssetFailsWhenTheAnswerCarriesNoLocation() {
 		final var asset = asset();

@@ -26,8 +26,8 @@ public class SupportManagementConfiguration {
 	@Bean
 	FeignBuilderCustomizer feignBuilderCustomizer(ClientRegistrationRepository clientRepository, SupportManagementProperties properties) {
 		return FeignMultiCustomizer.create()
-			// 404, 409 and 412 keep their status: an errand that is gone, a report refused for good or an errand that moved under
-			// the report are answers, not gateway faults
+			// 404, 409 and 412 keep their status: an errand, or a JSON parameter of a decision, that is not there, a report
+			// refused for good or an errand that moved under the report are answers, not gateway faults
 			.withErrorDecoder(new ProblemErrorDecoder(CLIENT_ID, List.of(NOT_FOUND.value(), CONFLICT.value(), PRECONDITION_FAILED.value())))
 			.withRequestTimeoutsInSeconds(properties.connectTimeout(), properties.readTimeout())
 			.withRetryableOAuth2InterceptorForClientRegistration(clientRepository.findByRegistrationId(CLIENT_ID))

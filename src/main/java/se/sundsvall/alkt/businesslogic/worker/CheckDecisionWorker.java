@@ -38,7 +38,7 @@ public class CheckDecisionWorker extends AbstractTaskWorker {
 			throw new NonRetryableException("Decision outcome %s is not an outcome of process %s".formatted(outcome, processType.getKey()));
 		}
 
-		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
+		final var report = running(externalTask)
 			.withVariables(Map.of(PROCESS_VARIABLE_DECISION_OUTCOME, outcome));
 
 		if (DECISION_OUTCOME_NONE.equals(outcome)) {

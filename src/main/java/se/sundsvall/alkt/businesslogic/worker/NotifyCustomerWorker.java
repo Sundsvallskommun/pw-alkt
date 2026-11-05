@@ -18,8 +18,7 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 @ExternalTaskSubscription(topicName = "NotifyCustomerTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class NotifyCustomerWorker extends AbstractTaskWorker {
 
-	// An input parameter of the step in the bpmn schema, not a process variable.
-	static final String PROCESS_VARIABLE_MESSAGE = "message";
+	static final String INPUT_PARAMETER_MESSAGE = "message";
 
 	private final CustomerMessageService customerMessageService;
 
@@ -30,12 +29,12 @@ public class NotifyCustomerWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final String message = Optional.ofNullable(externalTask.<String>getVariable(PROCESS_VARIABLE_MESSAGE))
+		final String message = Optional.ofNullable(externalTask.<String>getVariable(INPUT_PARAMETER_MESSAGE))
 			.filter(StringUtils::isNotBlank)
 			.orElseThrow(() -> new NonRetryableException("Step '%s' has no input parameter '%s' naming the message to send"
-				.formatted(externalTask.getActivityId(), PROCESS_VARIABLE_MESSAGE)));
+				.formatted(externalTask.getActivityId(), INPUT_PARAMETER_MESSAGE)));
 
-		final var report = ProcessStateReport.running(externalTask.getActivityId(), null);
+		final var report = running(externalTask);
 		if (customerMessageService.sendMessage(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), message)) {
 			logInfo("Message {} was sent to the customer of errand {}", sanitizeForLogging(message), sanitizeForLogging(getErrandId(externalTask)));
 			return report.withLogMessage("Message '%s' sent".formatted(message));

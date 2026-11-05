@@ -27,22 +27,13 @@ import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 @WireMockAppTestSuite(files = "classpath:/RetryIncidentIT/", classes = Application.class, sharedContext = false)
 class RetryIncidentIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "9696b9e6-6753-48ca-aa9d-cd1ca7f18d70";
 	private static final String STUCK_ACTIVITY = "external_task_create_decision";
 	private static final JsonMapper JSON_MAPPER = JsonMapper.builder().findAndAddModules().build();
 
 	@Test
 	void test001_errandChangeRetriesTheStuckStep() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, CATERING_OCCASION.getKey());
 		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
 		awaitIncidentAt(CATERING_OCCASION.getKey(), processInstanceId, STUCK_ACTIVITY);
 		assertThat(operatonClient.findExternalTasks(processInstanceId, true))
@@ -66,7 +57,7 @@ class RetryIncidentIT extends AbstractOperatonAppTest {
 			.sendRequest();
 
 		assertThat(operatonClient.findExternalTasks(processInstanceId, true)).isEmpty();
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitReportAt("follow_up_phase");
 
 		assertThat(operatonClient.findIncidents(TENANT_ID_ALKT, CATERING_OCCASION.getKey()))

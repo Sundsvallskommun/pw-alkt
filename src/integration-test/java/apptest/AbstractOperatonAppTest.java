@@ -60,6 +60,7 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 
 	protected static final int DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS = 30;
 	protected static final String ERRAND_EVENTS_PATH = "/2281/ALKT/process/errand-events";
+	protected static final String REQUEST_FILE = "request.json";
 
 	private static final String TOKEN_PATH = "/api-gateway/token";
 	// The external task client's client registration carries no scope, unlike the token requests of the Feign clients
@@ -105,7 +106,10 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 		registry.add("camunda.bpm.client.base-url", () -> baseUrl);
 	}
 
-	/** Every process test waits out the same deployment before it can start anything. */
+	/**
+	 * Every process test waits out the same deployment before it can start anything. Sets the Awaitility defaults every
+	 * await of the test uses as well.
+	 */
 	@BeforeEach
 	void awaitDeployments() {
 		setDefaultPollInterval(500, MILLISECONDS);
@@ -176,10 +180,23 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 			.toList();
 	}
 
-	protected void awaitProcessCompleted(String processId, long timeoutInSeconds) {
+	/** Posts the event of the test's request file, which starts the process of the errand, and waits for its instance. */
+	protected String startProcess(String errandId, String processKey) {
+		setupCall()
+			.withServicePath(ERRAND_EVENTS_PATH)
+			.withHttpMethod(POST)
+			.withRequest(REQUEST_FILE)
+			.withExpectedResponseStatus(ACCEPTED)
+			.withExpectedResponseBodyIsNull()
+			.sendRequest();
+
+		return awaitProcessInstance(errandId, processKey);
+	}
+
+	protected void awaitProcessCompleted(String processId) {
 		await()
 			.ignoreExceptions()
-			.atMost(timeoutInSeconds, SECONDS)
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
 			.failFast("Wiremock has mismatch!", () -> !wiremock.findNearMissesForUnmatchedRequests().getNearMisses().isEmpty())
 			.until(() -> operatonClient.getHistoricProcessInstance(processId).map(HistoricProcessInstanceDto::getState).orElse(null), equalTo(COMPLETED));
 	}
@@ -213,8 +230,8 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	}
 
 	/**
-	 * The stubs of a WAITING report match in any scenario state, so a late report of an earlier phase would pass them. The
-	 * order is asserted from the journal instead, and a repeated report of the same phase counts once.
+	 * Not every stub of a WAITING report is held to a scenario state, so a late report of an earlier phase can pass them.
+	 * The order is asserted from the journal instead, and a repeated report of the same phase counts once.
 	 */
 	protected void assertWaitingReportsInOrder(String... activityIds) {
 		final var reported = wiremock.findAll(putRequestedFor(urlPathMatching(".*/processes/.*")).withRequestBody(matchingJsonPath("$[?(@.processStatus == 'WAITING')]")))
@@ -233,10 +250,10 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 		return wiremock.findAll(putRequestedFor(urlPathMatching(".*/processes/.*")).withRequestBody(matchingJsonPath(jsonPath))).size();
 	}
 
-	protected void awaitProcessState(String processInstanceId, String state, long timeoutInSeconds) {
+	protected void awaitProcessState(String processInstanceId, String state) {
 		await()
 			.ignoreExceptions()
-			.atMost(timeoutInSeconds, SECONDS)
+			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
 			.failFast("Wiremock has mismatch!", () -> !wiremock.findNearMissesForUnmatchedRequests().getNearMisses().isEmpty())
 			.until(() -> operatonClient.getEventSubscriptions(processInstanceId, null).stream().filter(eventSubscription -> state.equals(eventSubscription.getActivityId())).count(), equalTo(1L));
 	}
@@ -262,14 +279,14 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	}
 
 	protected void completePhase(String errandId, String processInstanceId, String processKey, String phase) {
-		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase));
 		awaitWaitingReportAt("%s_phase".formatted(phase));
 
 		sendSignal(errandId, processKey, "%s_completed".formatted(phase));
 	}
 
 	protected void cancelProcess(String errandId, String processInstanceId, String processKey, String phase) {
-		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_%s_completed".formatted(phase));
 		awaitWaitingReportAt("%s_phase".formatted(phase));
 
 		sendSignal(errandId, processKey, "process_cancelled");
@@ -286,7 +303,7 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	}
 
 	protected void completeDecision(String errandId, String processInstanceId, String processKey) {
-		awaitProcessState(processInstanceId, "await_decision_updated", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_decision_updated");
 		awaitWaitingReportAt("decision_phase");
 
 		setupCall()

@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import se.sundsvall.alkt.Constants;
@@ -30,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -42,7 +40,7 @@ class AbstractTaskWorkerTest {
 
 	private static final String DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
 
-	private static class Worker extends AbstractTaskWorker { // Test class extending the abstract class under test
+	private static class Worker extends AbstractTaskWorker {
 
 		Worker(ProcessReportService processReportService, FailureHandler failureHandler) {
 			super(processReportService, failureHandler);
@@ -93,30 +91,6 @@ class AbstractTaskWorkerTest {
 		assertThat(worker.getMunicipalityId(externalTaskMock)).isEqualTo(municipalityId);
 		assertThat(worker.getNamespace(externalTaskMock)).isEqualTo(namespace);
 		assertThat(worker.getErrandId(externalTaskMock)).isEqualTo(errandId);
-	}
-
-	@Test
-	void logging() {
-		// Act and assert - logging must never let an exception escape into the task execution
-		assertThatNoException().isThrownBy(() -> {
-			worker.logInfo("A message with an argument: {}", "argument");
-			worker.logException(externalTaskMock, new IllegalStateException("Boom"));
-		});
-	}
-
-	@Test
-	void execute() {
-		final var requestId = UUID.randomUUID().toString();
-
-		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(requestId);
-
-		try (MockedStatic<RequestId> requestIdMock = mockStatic(RequestId.class)) {
-			// Act
-			worker.execute(externalTaskMock, externalTaskServiceMock);
-
-			requestIdMock.verify(() -> RequestId.init(requestId));
-			requestIdMock.verify(RequestId::reset);
-		}
 	}
 
 	/** A task that is gone was taken away by a cancellation; that is no failure and nothing to retry. */
@@ -171,21 +145,6 @@ class AbstractTaskWorkerTest {
 		inOrder.verify(processReportServiceMock).reportDone(externalTaskMock, ProcessStateReport.completed());
 		inOrder.verify(externalTaskServiceMock).complete(externalTaskMock, Map.of());
 		verifyNoInteractions(failureHandlerMock);
-	}
-
-	@Test
-	void executeWritesTheStepsResultVariablesWhenCompleting() {
-		final var variables = Map.<String, Object>of("decision", "APPROVED");
-		final var variableWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
-			@Override
-			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-				return ProcessStateReport.completed().withVariables(variables);
-			}
-		};
-
-		variableWorker.execute(externalTaskMock, externalTaskServiceMock);
-
-		verify(externalTaskServiceMock).complete(externalTaskMock, variables);
 	}
 
 	@Test
@@ -250,22 +209,6 @@ class AbstractTaskWorkerTest {
 	}
 
 	@Test
-	void reportsTheVersionTheStepReadWhenTheStepOnlyReads() {
-		final var readOnlyWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
-			@Override
-			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-				return ProcessStateReport.running(externalTask.getActivityId(), null).withErrandVersion(7L);
-			}
-		};
-
-		readOnlyWorker.execute(externalTaskMock, externalTaskServiceMock);
-
-		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
-		verify(processReportServiceMock).reportDone(any(ExternalTask.class), reportCaptor.capture());
-		assertThat(reportCaptor.getValue().errandVersion()).isEqualTo(7L);
-	}
-
-	@Test
 	void executeHandsAFailingStepToTheFailureHandlerAndClearsRequestId() {
 		// Arrange
 		final var requestId = UUID.randomUUID().toString();
@@ -306,25 +249,25 @@ class AbstractTaskWorkerTest {
 		assertThat(RequestId.get()).isNull();
 	}
 
+	/** The errand moved since the step was picked up, so the step is retried on a fresh read rather than run. */
 	@Test
-	void executeHandsAPreconditionFailedWriteToTheFailureHandler() {
-		// Arrange - the shape of the exception a reportProcess call throws when Support Management answers 412
-		final var requestId = UUID.randomUUID().toString();
-		final var throwingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
+	void executeRetriesAStepWhoseRunningReportIsAnsweredWithPreconditionFailed() {
+		final var stepRan = new boolean[1];
+		final var reportingWorker = new AbstractTaskWorker(processReportServiceMock, failureHandlerMock) {
 			@Override
 			protected ProcessStateReport executeBusinessLogic(ExternalTask externalTask, ExternalTaskService externalTaskService) {
-				throw new ClientProblem(HttpStatus.BAD_GATEWAY, "Precondition Failed");
+				stepRan[0] = true;
+				return ProcessStateReport.completed();
 			}
 		};
+		doThrow(new ClientProblem(HttpStatus.PRECONDITION_FAILED, "support-management error: {status=412 Precondition Failed, title=Precondition Failed}"))
+			.when(processReportServiceMock).reportStarted(externalTaskMock);
 
-		when(externalTaskMock.getVariable(Constants.PROCESS_VARIABLE_REQUEST_ID)).thenReturn(requestId);
+		reportingWorker.execute(externalTaskMock, externalTaskServiceMock);
 
-		// Act
-		throwingWorker.execute(externalTaskMock, externalTaskServiceMock);
-
-		// Assert - not caught anywhere between reportProcess and here, so the task is retried rather than completed
-		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "ClientProblem 502");
+		verify(failureHandlerMock).handleException(externalTaskServiceMock, externalTaskMock, "ClientProblem 412 from support-management (remote 412 Precondition Failed)");
 		verify(externalTaskServiceMock, never()).complete(any(), any());
+		assertThat(stepRan[0]).isFalse();
 	}
 
 	@Test

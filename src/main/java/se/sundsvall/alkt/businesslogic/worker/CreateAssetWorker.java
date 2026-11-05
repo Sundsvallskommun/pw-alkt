@@ -30,7 +30,7 @@ public class CreateAssetWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} has asset {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withLogMessage("Asset '%s' found or created".formatted(assetId));
 	}
 }

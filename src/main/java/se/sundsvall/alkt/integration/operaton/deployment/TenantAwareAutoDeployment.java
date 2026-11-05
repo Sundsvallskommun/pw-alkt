@@ -56,7 +56,6 @@ public class TenantAwareAutoDeployment {
 	}
 
 	private void deployResources(final ProcessArchive processArchive, final List<Resource> resourcesToDeploy, final String type) {
-		// Validate that name is present
 		requireNotBlank(processArchive.name(), "Processname must be set");
 
 		for (final var processResource : resourcesToDeploy) {
@@ -69,7 +68,7 @@ public class TenantAwareAutoDeployment {
 				final var content = readContent(processResource);
 
 				operatonClient.deploy(
-					processArchive.tenant(), // tenantId
+					processArchive.tenant(),
 					processResource.getFilename(),
 					true, // changedOnly
 					true, // duplicateFiltering

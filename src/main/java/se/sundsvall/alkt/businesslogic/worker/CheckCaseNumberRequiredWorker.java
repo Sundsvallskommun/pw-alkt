@@ -31,7 +31,7 @@ public class CheckCaseNumberRequiredWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} requires a case number: {}", sanitizeForLogging(getErrandId(externalTask)), caseNumberRequired);
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withVariables(Map.of(PROCESS_VARIABLE_CASE_NUMBER_REQUIRED, caseNumberRequired));
 	}
 }

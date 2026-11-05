@@ -29,7 +29,7 @@ public class SetCompleteAtWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} was complete at {}", sanitizeForLogging(getErrandId(externalTask)), completeAt);
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withLogMessage("Complete at %s".formatted(completeAt));
 	}
 }

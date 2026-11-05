@@ -1,0 +1,87 @@
+{
+	"name": "decision_api-support-management-get-decision-json-parameter",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/decisions/7b2e1c90-4d3a-4f6e-9a21-5c8d0e7f1a42/json-parameters/aot_alcohol_decision",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"key": "aot_alcohol_decision",
+			"schemaId": "2281_aot_alcohol_decision_1.0",
+			"value": {
+				"beverages": [
+					"WINE",
+					"STRONG_BEER"
+				],
+				"caseRegistrationNumber": "ALKT-2026-000001",
+				"decision": {
+					"decisionDate": "2026-09-20",
+					"decisionMaker": "Alkoholhandläggare",
+					"decisionText": "Bifall",
+					"executionDate": "2026-09-21",
+					"issuedBy": {
+						"name": "Kim Karlsson",
+						"title": "Handläggare",
+						"unit": "Alkohol- och tobaksenheten"
+					},
+					"legalBasis": "8 kap. 2 § alkohollagen (2010:1622)",
+					"outcome": "APPROVAL",
+					"validFrom": "2026-10-01"
+				},
+				"errandId": "3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31",
+				"permitHolder": {
+					"address": {
+						"city": "Sundsvall",
+						"postalCode": "852 30",
+						"street": "Storgatan 1"
+					},
+					"name": "Runt Hörnet AB",
+					"organizationNumber": "556677-8899",
+					"phoneNumber": "060-123456"
+				},
+				"premises": {
+					"address": {
+						"city": "Sundsvall",
+						"postalCode": "85230",
+						"street": "Storgatan 1"
+					},
+					"municipalityId": "2281",
+					"name": "Restaurang Runt Hörnet",
+					"newRestaurantNumber": true,
+					"phoneNumber": "060-654321"
+				},
+				"servingArea": {
+					"description": "Matsal och bar",
+					"drawingReference": "ritning.pdf",
+					"maxPersons": 120,
+					"seatsIndoor": 60
+				},
+				"servingHours": [
+					{
+						"from": "11:00",
+						"to": "01:00"
+					}
+				],
+				"servingPeriods": [
+					{
+						"period": "ALL_YEAR"
+					}
+				],
+				"servingPermitType": "PERMANENT_SERVING",
+				"servingTo": [
+					"PUBLIC"
+				]
+			},
+			"version": 0
+		},
+		"status": 200
+	}
+}

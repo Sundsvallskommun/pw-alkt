@@ -28,4 +28,16 @@ class AssetTypeTest {
 	void aNotificationHasNoCertificateTemplate(final AssetType assetType) {
 		assertThat(assetType.getCertificateTemplate()).isEmpty();
 	}
+
+	@Test
+	void eachPermitFollowsTheSchemaOfItsArea() {
+		assertThat(ALCOHOL_SERVING_PERMIT.getPermitSchema()).contains(PermitSchema.ALCOHOL);
+		assertThat(TOBACCO_SALES_PERMIT.getPermitSchema()).contains(PermitSchema.TOBACCO);
+	}
+
+	@ParameterizedTest
+	@EnumSource(mode = MATCH_ALL, names = ".*_NOTIFICATION")
+	void aNotificationHasNoPermitSchema(final AssetType assetType) {
+		assertThat(assetType.getPermitSchema()).isEmpty();
+	}
 }

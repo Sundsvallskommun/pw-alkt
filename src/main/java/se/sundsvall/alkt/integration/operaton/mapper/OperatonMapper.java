@@ -46,7 +46,7 @@ public final class OperatonMapper {
 			.resultEnabled(true);
 	}
 
-	public static VariableValueDto toVariableValueDto(final ValueType valueType, final Object value) {
+	private static VariableValueDto toVariableValueDto(final ValueType valueType, final Object value) {
 		return new VariableValueDto()
 			.type(valueType.getName())
 			.value(value);

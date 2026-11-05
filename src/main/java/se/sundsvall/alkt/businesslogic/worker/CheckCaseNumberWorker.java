@@ -11,6 +11,7 @@ import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.CaseNumberCheck;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
+import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -33,12 +34,12 @@ public class CheckCaseNumberWorker extends AbstractTaskWorker {
 
 		logInfo("Case number of errand {}: {}", sanitizeForLogging(errandId), check);
 
-		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
+		final var report = running(externalTask)
 			.withVariables(Map.of(PROCESS_VARIABLE_CASE_NUMBER_ACCEPTED, check != CaseNumberCheck.MISSING));
 		return switch (check) {
 			case NOT_NEEDED -> report;
 			case PRESENT -> report.withLogMessage("Case number checked");
-			case MISSING -> report.withRejection("Errand '%s' in Timrå has no case number in externalCaseRegistrationNumber".formatted(errandId));
+			case MISSING -> report.withRejection("Errand '%s' in Timrå has no case number in %s".formatted(errandId, ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER));
 		};
 	}
 }

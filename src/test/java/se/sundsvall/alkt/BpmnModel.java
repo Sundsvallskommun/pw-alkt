@@ -41,6 +41,28 @@ final class BpmnModel {
 		return files;
 	}
 
+	/** Every model in every folder, so a test over them cannot leave a new one out. */
+	static List<String> allModels() throws Exception {
+		final var files = new ArrayList<String>();
+		for (final Resource resource : new PathMatchingResourcePatternResolver().getResources("classpath*:processmodels/*/*.bpmn")) {
+			final var url = resource.getURL().toString();
+			files.add(url.substring(url.lastIndexOf("processmodels/")));
+		}
+		return files;
+	}
+
+	String processId() {
+		return ((Element) document.getElementsByTagNameNS(BPMN_NAMESPACE, "process").item(0)).getAttribute("id");
+	}
+
+	boolean hasServiceTaskOfTopic(final String topic) {
+		final var tasks = document.getElementsByTagNameNS(BPMN_NAMESPACE, "serviceTask");
+		return IntStream.range(0, tasks.getLength())
+			.mapToObj(tasks::item)
+			.map(Element.class::cast)
+			.anyMatch(task -> topic.equals(task.getAttributeNS(CAMUNDA_NAMESPACE, "topic")));
+	}
+
 	Element element(final String id) {
 		final var all = document.getElementsByTagNameNS(BPMN_NAMESPACE, "*");
 		return IntStream.range(0, all.getLength())
@@ -60,7 +82,6 @@ final class BpmnModel {
 			.toList();
 	}
 
-	/** The flow from source to target. */
 	Element flow(final String sourceId, final String targetId) {
 		final var scope = (Element) element(sourceId).getParentNode();
 		return children(scope, "sequenceFlow").stream()
@@ -73,7 +94,6 @@ final class BpmnModel {
 		return flow(sourceId, targetId).getElementsByTagNameNS(BPMN_NAMESPACE, "conditionExpression").item(0).getTextContent().trim();
 	}
 
-	/** The boundary event attached to the element. */
 	Element boundaryOf(final String attachedToId) {
 		final var scope = (Element) element(attachedToId).getParentNode();
 		return children(scope, "boundaryEvent").stream()

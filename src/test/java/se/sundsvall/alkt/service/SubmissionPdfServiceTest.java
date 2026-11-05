@@ -12,6 +12,10 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -149,9 +153,14 @@ class SubmissionPdfServiceTest {
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, pdf);
 	}
 
-	@Test
-	void anErrandACaseWorkerCreatedIsSkippedWithoutFetchingRenderingOrUploading() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().channel("WEB_UI"));
+	/** An errand a case worker created, or one that came in by email or without channel, has no form to make a PDF of. */
+	@ParameterizedTest
+	@NullSource
+	@ValueSource(strings = {
+		"WEB_UI", "EMAIL"
+	})
+	void anErrandThatDidNotComeInThroughTheEServiceIsSkippedWithoutFetchingRenderingOrUploading(final String channel) {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().channel(channel));
 
 		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.SKIPPED);
 
@@ -160,41 +169,10 @@ class SubmissionPdfServiceTest {
 		verify(supportManagementIntegrationMock, never()).createPdfAttachment(anyString(), anyString(), anyString(), anyString(), any());
 	}
 
-	@Test
-	void anErrandThatCameInByEmailIsSkipped() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().channel("EMAIL"));
-
-		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.SKIPPED);
-
-		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
-	}
-
-	@Test
-	void anErrandWithoutChannelIsSkipped() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().channel(null));
-
-		assertThat(submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(SubmissionPdfOutcome.SKIPPED);
-
-		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
-	}
-
-	@Test
-	void anErrandFromTheEServiceWithoutJsonParametersFailsWithoutRetry() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().jsonParameters(List.of()));
-
-		assertThatThrownBy(() -> submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand from the e-service has no JSON parameters to make a submission PDF of");
-
-		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verifyNoInteractions(jsonSchemaIntegrationMock, templatingIntegrationMock, partyIntegrationMock);
-	}
-
-	@Test
-	void anErrandFromTheEServiceWithNullJsonParametersFailsWithoutRetry() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().jsonParameters(null));
+	@ParameterizedTest
+	@NullAndEmptySource
+	void anErrandFromTheEServiceWithoutJsonParametersFailsWithoutRetry(final List<JsonParameter> jsonParameters) {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand().jsonParameters(jsonParameters));
 
 		assertThatThrownBy(() -> submissionPdfService.createSubmissionPdf(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)

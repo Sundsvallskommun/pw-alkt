@@ -22,8 +22,8 @@ class SubmissionPdfStepModelTest {
 	private static final String TOPIC = "CreateSubmissionPdfTask";
 
 	/**
-	 * Each model with where a done and a skipped step go on to. A notification a case worker created waits in the
-	 * registration.
+	 * Each model, with the element a done step and a skipped step go on to. A notification a case worker created waits in
+	 * the registration.
 	 */
 	private static Stream<Arguments> models() {
 		return Stream.of(
@@ -41,18 +41,22 @@ class SubmissionPdfStepModelTest {
 			Arguments.of("processmodels/notification/tobacco-free-nicotine-product-sales.bpmn", "external_task_check_case_number_required", "await_registration_completed"));
 	}
 
+	private static Stream<String> modelPaths() {
+		return models().map(arguments -> (String) arguments.get()[0]);
+	}
+
 	@Test
 	void everyApplicationAndNotificationModelIsCovered() throws Exception {
 		final var files = new ArrayList<String>();
 		files.addAll(BpmnModel.modelsIn("application"));
 		files.addAll(BpmnModel.modelsIn("notification"));
 
-		assertThat(files).containsExactlyInAnyOrderElementsOf(models().map(arguments -> (String) arguments.get()[0]).toList());
+		assertThat(files).containsExactlyInAnyOrderElementsOf(modelPaths().toList());
 	}
 
 	@ParameterizedTest
-	@MethodSource("models")
-	void theStepIsTheFirstAfterTheStartOfTheRegistration(final String path, final String nextWhenDone, final String nextWhenSkipped) throws Exception {
+	@MethodSource("modelPaths")
+	void theStepIsTheFirstAfterTheStartOfTheRegistration(final String path) throws Exception {
 		final var model = BpmnModel.read(path);
 		final var start = BpmnModel.children(model.element("registration_phase"), "startEvent").getFirst();
 

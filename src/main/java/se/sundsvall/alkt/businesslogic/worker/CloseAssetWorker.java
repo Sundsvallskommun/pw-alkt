@@ -12,12 +12,9 @@ import se.sundsvall.alkt.service.model.ProcessStateReport;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
-@ExternalTaskSubscription(topicName = "CloseAssetTask", lockDuration = CloseAssetWorker.LOCK_DURATION_IN_MILLISECONDS)
+// A second run is harmless: If-Match turns it into a retry that finds the permit closed.
+@ExternalTaskSubscription(topicName = "CloseAssetTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class CloseAssetWorker extends AbstractTaskWorker {
-
-	// The same lock as the other steps that write to party-assets. A second run is harmless: If-Match turns it into a retry
-	// that finds the permit closed.
-	static final long LOCK_DURATION_IN_MILLISECONDS = 15 * 60 * 1000L;
 
 	private final AssetService assetService;
 
@@ -33,7 +30,7 @@ public class CloseAssetWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} ended asset {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withLogMessage("Asset '%s' closed".formatted(assetId));
 	}
 }
