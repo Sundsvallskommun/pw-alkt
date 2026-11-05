@@ -17,14 +17,50 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.parameters.serveringstid",
-					"equalTo": "Servering får ske mellan 11.00 och 01.00."
+					"expression": "$.parameters.caseNumber",
+					"equalTo": "TSN 2026/0153"
 				}
 			},
 			{
 				"matchesJsonPath": {
 					"expression": "$.parameters.permitHolderName",
 					"equalTo": "Runt Hörnet AB"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.decisionText",
+					"equalTo": "Bifall"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.issuedByNameAndTitle",
+					"equalTo": "Kim Karlsson, Handläggare"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.premisesName",
+					"equalTo": "Restaurang Runt Hörnet"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.servingHours",
+					"equalTo": "11:00–01:00"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.beverageWine",
+					"equalTo": "true"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.beverageSpirits",
+					"equalTo": "false"
 				}
 			},
 			{

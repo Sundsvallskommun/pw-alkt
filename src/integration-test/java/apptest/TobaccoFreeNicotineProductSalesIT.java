@@ -12,28 +12,17 @@ import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_FREE_NICOTINE_PRODUCT_SALES;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/TobaccoFreeNicotineProductSalesIT/", classes = Application.class, sharedContext = false)
 class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "3b7e2c91-5d4a-4e8f-a1c6-9f0d2b8e7a54";
 
 	@Test
 	void test001_processWithoutDeviation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "registration");
@@ -41,13 +30,10 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "closure");
 
-		// Wait for process to finish
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
-		// Verify mocked stubs
 		verifyAllStubs();
 
-		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
@@ -99,21 +85,12 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test002_approvesTheNotificationAndCreatesThePermitBeforeFollowUp() throws JacksonException {
-		// === Start process ===
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "registration");
 
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitWaitingReportAt("follow_up_phase");
 
 		// The mappings assert every call: the decision written as a draft, linked to the attachment and completed, the permit
@@ -153,22 +130,14 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test003_cancelledInFollowUp() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "registration");
 
 		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "follow_up");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// The mappings assert the cancellation offered on the RUNNING report of the decision and next to the gate of follow up,
 		// and the process reported COMPLETED once it is used. The decision and the permit made before it stay as they are.
@@ -202,16 +171,8 @@ class TobaccoFreeNicotineProductSalesIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test004_errandWithoutPermitHolderLeavesAnIncidentBeforeTheDecision() throws JacksonException {
-		// === Start process === the errand has no stakeholder with role PRIMARY
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
+		// The errand has no stakeholder with role PRIMARY
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_FREE_NICOTINE_PRODUCT_SALES.getKey(), "registration");

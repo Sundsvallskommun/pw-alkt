@@ -17,8 +17,7 @@ import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 @ExternalTaskSubscription(topicName = "CreateDecisionBasisTask", lockDuration = AbstractTaskWorker.LOCK_DURATION_COVERING_TIMEOUTS_IN_MILLISECONDS)
 public class CreateDecisionBasisWorker extends AbstractTaskWorker {
 
-	// Input parameter of the step in the bpmn schema, not a process variable.
-	static final String PROCESS_VARIABLE_DECISION_BASIS_TEMPLATE = "decisionBasisTemplate";
+	static final String INPUT_PARAMETER_DECISION_BASIS_TEMPLATE = "decisionBasisTemplate";
 
 	private final DecisionBasisService decisionBasisService;
 
@@ -29,7 +28,7 @@ public class CreateDecisionBasisWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final String template = externalTask.getVariable(PROCESS_VARIABLE_DECISION_BASIS_TEMPLATE);
+		final String template = externalTask.getVariable(INPUT_PARAMETER_DECISION_BASIS_TEMPLATE);
 		if (isBlank(template)) {
 			throw new NonRetryableException("The step has no decision basis template, see the input parameters in the bpmn schema");
 		}
@@ -38,7 +37,7 @@ public class CreateDecisionBasisWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} has decision basis {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(attachmentId));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withLogMessage("Decision basis '%s' found or created".formatted(attachmentId));
 	}
 }

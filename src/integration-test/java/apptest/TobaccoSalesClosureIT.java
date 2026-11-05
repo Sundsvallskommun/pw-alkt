@@ -11,31 +11,19 @@ import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES_CLOSURE;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/TobaccoSalesClosureIT/", classes = Application.class, sharedContext = false)
 class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "2c84f70a-6e95-4b31-8d6f-1a7b3c9e50d4";
 
 	@Test
 	void test001_processWithoutDeviation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
-
-		// Wait for the process to park in each phase, then signal that phase completed. The decision phase moves on by a
-		// decision event
+		// The decision phase moves on by a decision event
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "investigation");
@@ -43,14 +31,11 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "closure");
 
-		// Wait for process to finish
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
-		// Verify mocked stubs
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
 
-		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
@@ -112,18 +97,9 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test002_stopsInRegistration() throws JacksonException {
-		// === Start process ===
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
-
-		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_registration_completed");
 		awaitWaitingReportAt("registration_phase");
 
 		// The WAITING report is asserted by its mapping: the phase, its name and the signal the button carries
@@ -141,19 +117,11 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test003_cancelledInRegistration() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
 		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "registration");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// The WAITING report is asserted by its mapping to offer the cancellation alongside the phase gate
 		verifyAllStubs();
@@ -170,21 +138,13 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test004_cancelledInInvestigation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "review");
 		cancelProcess(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "investigation");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase");
 		verifyAllStubs();
@@ -213,21 +173,13 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test005_decisionRejectedBeforeThePhaseEndsNoAssetAndDoesNotWait() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "registration");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES_CLOSURE.getKey(), "investigation");
 
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitWaitingReportAt("follow_up_phase");
 
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "follow_up_phase");
@@ -242,16 +194,8 @@ class TobaccoSalesClosureIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test006_permitOfAnotherTypeLeavesAnIncident() throws JacksonException {
-		// === Start process === the errand names a low-alcohol beer permit of the same holder
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
+		// The errand names a low-alcohol beer permit of the same holder
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_SALES_CLOSURE.getKey());
 
 		awaitIncidentAt(TOBACCO_SALES_CLOSURE.getKey(), processInstanceId, "external_task_check_permit");
 

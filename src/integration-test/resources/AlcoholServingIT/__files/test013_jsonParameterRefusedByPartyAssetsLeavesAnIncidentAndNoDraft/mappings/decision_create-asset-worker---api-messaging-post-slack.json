@@ -1,0 +1,29 @@
+{
+	"name": "decision_create-asset-worker---api-messaging-post-slack",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/slack",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.message",
+					"contains": "[2281][ALKT][alcohol-serving] Incident in external_task_create_asset for errand 3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.message",
+					"contains": "refused: jsonParameters[0]: Constraint Violation: /servingArea/maxPersons: must have a maximum value of 100"
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 201
+	}
+}

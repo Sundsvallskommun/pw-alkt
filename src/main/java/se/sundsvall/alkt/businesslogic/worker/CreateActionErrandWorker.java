@@ -32,7 +32,7 @@ public class CreateActionErrandWorker extends AbstractTaskWorker {
 		final var result = actionErrandService.createActionErrand(getMunicipalityId(externalTask), getNamespace(externalTask), errandId);
 		final var actionErrandId = Optional.ofNullable(result.actionErrandId());
 
-		final var report = ProcessStateReport.running(externalTask.getActivityId(), null)
+		final var report = running(externalTask)
 			.withVariables(Map.of(PROCESS_VARIABLE_ACTION_ERRAND_CREATED, actionErrandId.isPresent()));
 
 		return actionErrandId

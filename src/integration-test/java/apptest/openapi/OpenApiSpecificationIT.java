@@ -11,7 +11,6 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.Resource;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.util.UriComponentsBuilder;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.util.ResourceUtils;
 import tools.jackson.core.JacksonException;
@@ -53,12 +52,6 @@ class OpenApiSpecificationIT {
 
 	private static final YAMLMapper YAML_MAPPER = new YAMLMapper();
 
-	@Value("${openapi.name}")
-	private String openApiName;
-
-	@Value("${openapi.version}")
-	private String openApiVersion;
-
 	@Value("classpath:/api/openapi.yaml")
 	private Resource openApiResource;
 
@@ -84,11 +77,7 @@ class OpenApiSpecificationIT {
 	 * @return the current OpenAPI specification
 	 */
 	private String getCurrentOpenApiSpecification() {
-		final var uri = UriComponentsBuilder.fromPath("/api-docs.yaml")
-			.buildAndExpand(openApiName, openApiVersion)
-			.toUri();
-
-		return restTemplate.getForObject(uri, String.class);
+		return restTemplate.getForObject("/api-docs.yaml", String.class);
 	}
 
 	/**

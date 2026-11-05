@@ -17,8 +17,14 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.parameters.serveringstid",
-					"equalTo": "Servering får ske mellan 11.00 och 02.00."
+					"expression": "$.parameters.caseNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.decisionText",
+					"equalTo": "Bifall"
 				}
 			},
 			{
@@ -29,13 +35,31 @@
 			},
 			{
 				"matchesJsonPath": {
+					"expression": "$.parameters.premisesRestaurantNumber",
+					"equalTo": "22810001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.servingHours",
+					"equalTo": "11:00–02:00"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.servingAreaDescription",
+					"equalTo": "Matsal och bar"
+				}
+			},
+			{
+				"matchesJsonPath": {
 					"expression": "$.parameters.conditions",
 					"equalTo": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
 				}
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.parameters.uteservering",
+					"expression": "$.parameters.replacesDecision",
 					"absent": true
 				}
 			}

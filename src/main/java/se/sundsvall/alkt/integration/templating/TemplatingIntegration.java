@@ -5,15 +5,12 @@ import generated.se.sundsvall.templating.RenderResponse;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import se.sundsvall.alkt.exception.NonRetryableException;
-import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static se.sundsvall.alkt.util.FailureDescription.describe;
+import static se.sundsvall.alkt.util.RemoteAnswers.failWithoutRetryOn;
 
 @Component
 public class TemplatingIntegration {
@@ -30,15 +27,8 @@ public class TemplatingIntegration {
 
 	/** A 400 means the parameters do not fill the template, which no retry fixes. */
 	public byte[] renderPdf(final String municipalityId, final String templateId, final String version, final Map<String, Object> parameters) {
-		final ResponseEntity<RenderResponse> response;
-		try {
-			response = templatingClient.renderPdf(municipalityId, new RenderRequest().identifier(templateId).version(version).parameters(parameters));
-		} catch (final ClientProblem e) {
-			if (BAD_REQUEST.equals(e.getStatus())) {
-				throw new NonRetryableException("Template '%s' cannot be rendered from the given parameters: %s".formatted(templateId, describe(e)), e);
-			}
-			throw e;
-		}
+		final var response = failWithoutRetryOn(BAD_REQUEST, "Template '%s' cannot be rendered from the given parameters".formatted(templateId),
+			() -> templatingClient.renderPdf(municipalityId, new RenderRequest().identifier(templateId).version(version).parameters(parameters)));
 
 		return Optional.ofNullable(response.getBody())
 			.map(RenderResponse::getOutput)

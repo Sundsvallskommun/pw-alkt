@@ -24,12 +24,92 @@
 			"status": "ACTIVE",
 			"title": "Beslut om serveringstillstånd",
 			"additionalParameters": {
-				"errandId": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d",
-				"serveringstid": "Servering får ske mellan 11.00 och 01.00.",
-				"permitHolderName": "Runt Hörnet AB",
-				"conditions": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar.",
-				"uteservering": "Servering får ske på uteserveringen mot torget."
-			}
+				"errandId": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d"
+			},
+			"jsonParameters": [
+				{
+					"key": "aot_alcohol_party_asset",
+					"schemaId": "2281_aot_alcohol_party_asset_0.1",
+					"value": {
+						"additionalScopes": [
+							"OUTDOOR_SERVING"
+						],
+						"beverages": [
+							"WINE",
+							"STRONG_BEER"
+						],
+						"caseRegistrationNumber": "ALKT-2025-000042",
+						"conditions": [
+							"Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
+						],
+						"decision": {
+							"caseRegistrationNumber": "ALKT-2025-000042",
+							"decisionDate": "2025-04-20",
+							"decisionMaker": "Alkoholhandläggare",
+							"decisionText": "Bifall med villkor",
+							"executionDate": "2025-04-21",
+							"issuedBy": {
+								"name": "Kim Karlsson",
+								"title": "Handläggare",
+								"unit": "Alkohol- och tobaksenheten"
+							},
+							"legalBasis": "8 kap. 2 § alkohollagen (2010:1622)",
+							"outcome": "APPROVAL_WITH_CONDITIONS",
+							"replacesDecision": "2019-05-01 / IAN-2019-45",
+							"validFrom": "2025-05-01"
+						},
+						"errandId": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d",
+						"permitHolder": {
+							"address": {
+								"city": "Sundsvall",
+								"postalCode": "852 30",
+								"street": "Storgatan 1"
+							},
+							"name": "Runt Hörnet AB",
+							"organizationNumber": "556677-8899",
+							"phoneNumber": "060-123456"
+						},
+						"premises": {
+							"address": {
+								"city": "Sundsvall",
+								"postalCode": "85230",
+								"street": "Storgatan 1"
+							},
+							"municipalityId": "2281",
+							"name": "Restaurang Runt Hörnet",
+							"phoneNumber": "060-654321",
+							"restaurantNumber": "22810001"
+						},
+						"servingArea": {
+							"description": "Matsal och bar samt uteservering mot torget",
+							"drawingReference": "ritning.pdf",
+							"maxPersons": 120,
+							"seatsIndoor": 60,
+							"seatsOutdoor": 40
+						},
+						"servingHours": [
+							{
+								"from": "11:00",
+								"to": "01:00"
+							},
+							{
+								"from": "11:00",
+								"location": "OUTDOOR",
+								"to": "22:00"
+							}
+						],
+						"servingPeriods": [
+							{
+								"period": "ALL_YEAR"
+							}
+						],
+						"servingPermitType": "PERMANENT_SERVING",
+						"servingTo": [
+							"PUBLIC"
+						]
+					}
+				}
+			]
 		},
 		"status": 200
 	}

@@ -48,6 +48,11 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	/** A step that failed says so by throwing: a returned report always completes the task. */
 	protected abstract ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService);
 
+	/** The report of a step that is done, with the process running on from the activity of the task. */
+	protected static ProcessStateReport running(final ExternalTask externalTask) {
+		return ProcessStateReport.running(externalTask.getActivityId(), null);
+	}
+
 	@Override
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init(externalTask.getVariable(PROCESS_VARIABLE_REQUEST_ID));
@@ -107,17 +112,15 @@ public abstract class AbstractTaskWorker implements ExternalTaskHandler {
 	private void reportProcessState(final ExternalTask externalTask, final ProcessStatus status, final Runnable report) {
 		try {
 			report.run();
-		} catch (final ClientProblem e) {
-			if (PRECONDITION_FAILED.equals(e.getStatus())) {
-				throw e;
-			}
-			logger.error("Could not report {} for task {}", status, sanitizeForLogging(externalTask.getId()), e);
 		} catch (final Exception e) {
+			if (e instanceof final ClientProblem problem && PRECONDITION_FAILED.equals(problem.getStatus())) {
+				throw problem;
+			}
 			logger.error("Could not report {} for task {}", status, sanitizeForLogging(externalTask.getId()), e);
 		}
 	}
 
-	// Only after complete: the engine moves on when the task completes, so before that there is no subscription to read.
+	// Only once the engine has moved on, by complete or a thrown BPMN error: before that there is no subscription to read.
 	protected void reportWaitState(final ExternalTask externalTask) {
 		try {
 			processReportService.reportWaitState(

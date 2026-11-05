@@ -28,8 +28,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.ACCEPTED;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
@@ -49,7 +47,6 @@ import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES
 })
 class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID_INCIDENT = "a3690d5e-8f14-42b7-95ca-6d81e0b4f273";
 	private static final String SCENARIO_INCIDENT = "incident-is-reported-once";
 	private static final String PROCESSES_PATH_INCIDENT = "/api-support-management/2281/ALKT/errands/%s/processes".formatted(ERRAND_ID_INCIDENT);
@@ -79,7 +76,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test001_incidentIsReportedOnce() throws JacksonException {
-		// === Start process === every report it sends is refused, so the first work step leaves an incident behind
+		// Every report it sends is refused, so the first work step leaves an incident behind
 		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT, LOW_ALCOHOL_BEER_SALES.getKey());
 
 		await()
@@ -111,11 +108,10 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test002_instanceThatVanishedIsSettled() throws JacksonException {
-		// === Start process ===
 		final var processInstanceId = startProcess(ERRAND_ID_VANISHED, EXTERNAL_INSPECTION.getKey());
 
 		// Someone cancels the instance from outside, and nothing reports it
-		awaitProcessState(processInstanceId, "await_registration_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_registration_completed");
 		operatonClient.deleteProcessInstance(processInstanceId, false);
 
 		runReconciliation();
@@ -126,14 +122,14 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	/** Support Management being down does not fail a step, so the instance ends and its row stays RUNNING until settled. */
 	@Test
 	void test003_instanceThatEndedWhileSupportManagementWasDownIsSettled() throws JacksonException {
-		// === Start process === every report it sends on the way is answered with 500 and swallowed
+		// Every report it sends on the way is answered with 500 and swallowed
 		final var processInstanceId = startProcess(ERRAND_ID_ENDED_WHILE_DOWN, CATERING_OCCASION.getKey());
 
 		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.getKey(), "registration");
 		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.getKey(), "follow_up");
 		completePhase(ERRAND_ID_ENDED_WHILE_DOWN, processInstanceId, CATERING_OCCASION.getKey(), "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// Support Management is back and never heard the process end
 		wiremock.setScenarioState("support-management-comes-back", "support-management-is-back");
@@ -165,22 +161,10 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 				.withHeader("Content-Encoding", "identity")));
 	}
 
-	private String startProcess(final String errandId, final String processKey) throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		return awaitProcessInstance(errandId, processKey);
-	}
-
 	/** A sweep runs as its own process instance, so the test waits it out before looking at what it sent. */
 	private void runReconciliation() {
 		final var run = operatonClient.startProcessWithTenant(PROCESS_KEY_RECONCILIATION, TENANT_ID_ALKT, new StartProcessInstanceDto());
 
-		awaitProcessCompleted(run.getId(), DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(run.getId());
 	}
 }

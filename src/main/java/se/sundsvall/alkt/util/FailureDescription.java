@@ -13,8 +13,9 @@ import se.sundsvall.dept44.problem.ThrowableProblem;
 
 /**
  * A failure described for the process log, the incident and the alert. The text of another service's answer is left
- * out, since there is no telling what it holds, except the name of a template parameter templating missed; our own
- * messages carry ids only and are kept.
+ * out, since there is no telling what it holds, except the name of a template parameter templating missed and the
+ * paths and rules of the schema a JSON parameter breaks when party-assets refuses it. Our own messages carry ids only
+ * and are kept.
  */
 public final class FailureDescription {
 
@@ -23,9 +24,10 @@ public final class FailureDescription {
 	private static final Pattern CLIENT_ID = Pattern.compile("^([a-z][a-z-]*) error: ");
 	private static final Pattern REMOTE_STATUS_BEFORE_TITLE = Pattern.compile("status=(\\d{3}) [^,}]*, title=");
 	private static final Pattern REMOTE_STATUS_LAST = Pattern.compile("status=(\\d{3}) [^,}]*}$");
-	// The one piece of another service's text that is kept: the placeholder a decision left empty, which is the case
-	// worker's to fix and only an identifier.
+	// The placeholder a decision left empty, which is the case worker's to fix and only an identifier.
 	private static final Pattern MISSING_TEMPLATE_PARAMETER = Pattern.compile("^templating error: \\{detail=Missing template parameter '(\\w+)'");
+	// The violations of a JSON parameter, which json-schema gives as the paths and the rules of the schema they break.
+	private static final Pattern REFUSED_JSON_PARAMETER = Pattern.compile("^party-assets error: \\{detail=(jsonParameters\\[\\d+]: .+), status=400 [^,}]*, title=Constraint Violation}$");
 
 	private FailureDescription() {}
 
@@ -70,6 +72,9 @@ public final class FailureDescription {
 		MISSING_TEMPLATE_PARAMETER.matcher(detail).results()
 			.findFirst()
 			.ifPresent(result -> description.append(", missing template parameter '%s'".formatted(result.group(1))));
+		REFUSED_JSON_PARAMETER.matcher(detail).results()
+			.findFirst()
+			.ifPresent(result -> description.append(", refused: %s".formatted(result.group(1))));
 
 		return description.toString();
 	}

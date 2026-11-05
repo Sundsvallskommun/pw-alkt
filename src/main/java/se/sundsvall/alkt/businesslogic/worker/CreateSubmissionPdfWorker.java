@@ -33,6 +33,6 @@ public class CreateSubmissionPdfWorker extends AbstractTaskWorker {
 		};
 
 		logInfo("Errand {}: {}", sanitizeForLogging(errandId), logMessage);
-		return ProcessStateReport.running(externalTask.getActivityId(), null).withLogMessage(logMessage);
+		return running(externalTask).withLogMessage(logMessage);
 	}
 }

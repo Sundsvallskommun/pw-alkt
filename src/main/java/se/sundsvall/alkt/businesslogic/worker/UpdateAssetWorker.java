@@ -28,7 +28,7 @@ public class UpdateAssetWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} changed asset {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withLogMessage("Asset '%s' updated".formatted(assetId));
 	}
 }

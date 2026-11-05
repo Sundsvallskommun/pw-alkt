@@ -70,7 +70,6 @@ public final class Constants {
 	public static final String PERMIT_PARAMETER_LEGAL_BASIS = "legalBasis";
 	public static final String PERMIT_PARAMETER_DELEGATION_REFERENCE = "delegationReference";
 	public static final String PERMIT_PARAMETER_CONDITIONS = "conditions";
-	// Named as the placeholder of the permit certificate, which is rendered from the parameters of the permit.
 	public static final String PERMIT_PARAMETER_RESTAURANT_NUMBER = "premisesRestaurantNumber";
 
 	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
@@ -80,7 +79,7 @@ public final class Constants {
 	public static final String ERRAND_PARAMETER_PREMISES_POSTAL_AREA = "premisesPostalArea";
 	public static final String ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID = "premisesMunicipalityId";
 	// A number at the premises, or "true" in newRestaurantNumber for a new one. Without either the first free number is
-	// used.
+	// used, or a new one when none is free.
 	public static final String ERRAND_PARAMETER_RESTAURANT_NUMBER = "restaurantNumber";
 	public static final String ERRAND_PARAMETER_NEW_RESTAURANT_NUMBER = "newRestaurantNumber";
 	public static final String ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER = "externalCaseRegistrationNumber";

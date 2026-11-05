@@ -28,7 +28,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_REQUEST_ID;
-import static se.sundsvall.alkt.businesslogic.worker.NotifyCustomerWorker.PROCESS_VARIABLE_MESSAGE;
+import static se.sundsvall.alkt.businesslogic.worker.NotifyCustomerWorker.INPUT_PARAMETER_MESSAGE;
 
 @ExtendWith(MockitoExtension.class)
 class NotifyCustomerWorkerTest {
@@ -62,7 +62,7 @@ class NotifyCustomerWorkerTest {
 		true, false
 	})
 	void sendsTheMessageNamedByTheStep(final boolean sent) {
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MESSAGE)).thenReturn(MESSAGE);
+		when(externalTaskMock.getVariable(INPUT_PARAMETER_MESSAGE)).thenReturn(MESSAGE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
@@ -81,7 +81,7 @@ class NotifyCustomerWorkerTest {
 	@NullAndEmptySource
 	@ValueSource(strings = " ")
 	void failsWithoutRetryWhenTheStepNamesNoMessage(final String message) {
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MESSAGE)).thenReturn(message);
+		when(externalTaskMock.getVariable(INPUT_PARAMETER_MESSAGE)).thenReturn(message);
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
 
 		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock))
@@ -94,7 +94,7 @@ class NotifyCustomerWorkerTest {
 	@Test
 	void reportsTheWaitStateWhenAFailingStepIsSkipped() {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_REQUEST_ID)).thenReturn("request-id");
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MESSAGE)).thenReturn(MESSAGE);
+		when(externalTaskMock.getVariable(INPUT_PARAMETER_MESSAGE)).thenReturn(MESSAGE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);

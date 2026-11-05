@@ -10,6 +10,7 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
@@ -48,15 +49,6 @@ public interface SupportManagementClient {
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@PathVariable String errandId);
-
-	@PatchMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
-	ResponseEntity<Errand> patchErrand(
-		@PathVariable String municipalityId,
-		@PathVariable String namespace,
-		@PathVariable String errandId,
-		@RequestHeader("If-Match") String ifMatch,
-		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
-		@RequestBody Errand errand);
 
 	@PatchMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/parameters", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
 	ResponseEntity<Void> updateErrandParameters(
@@ -118,6 +110,14 @@ public interface SupportManagementClient {
 		@PathVariable String decisionId,
 		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
 		@RequestBody Decision decision);
+
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions/{decisionId}/json-parameters/{key}", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<JsonParameter> getDecisionJsonParameter(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String decisionId,
+		@PathVariable String key);
 
 	/** Links an attachment already on the errand, nothing is uploaded. */
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions/{decisionId}/attachments/{attachmentId}", produces = APPLICATION_JSON_VALUE)

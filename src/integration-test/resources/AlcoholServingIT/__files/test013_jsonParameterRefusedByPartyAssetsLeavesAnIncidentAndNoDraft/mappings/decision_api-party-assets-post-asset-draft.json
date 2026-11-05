@@ -1,0 +1,131 @@
+{
+	"name": "decision_api-party-assets-post-asset-draft",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-party-assets/2281/asset-drafts",
+		"queryParameters": {
+			"sourceReference": {
+				"equalTo": "LINK|3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31;case;supportmanagement;ALKT|"
+			}
+		},
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.status",
+					"equalTo": "DRAFT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.assetId",
+					"equalTo": "7b2e1c90-4d3a-4f6e-9a21-5c8d0e7f1a42"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.partyId",
+					"equalTo": "d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.type",
+					"equalTo": "AlcoholServingPermit"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.issued",
+					"equalTo": "2026-10-01"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.title",
+					"equalTo": "Beslut om serveringstillstånd"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].key",
+					"equalTo": "aot_alcohol_party_asset"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].schemaId",
+					"equalTo": "2281_aot_alcohol_party_asset_0.1"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.errandId",
+					"equalTo": "3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.conditions",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.newRestaurantNumber",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.servingHours[0].to",
+					"equalTo": "01:00"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.restaurantNumber",
+					"equalTo": "22810001"
+				}
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/problem+json"
+		},
+		"jsonBody": {
+			"title": "Constraint Violation",
+			"status": 400,
+			"violations": [
+				{
+					"field": "jsonParameters[0]",
+					"message": "Constraint Violation: /servingArea/maxPersons: must have a maximum value of 100"
+				}
+			]
+		},
+		"status": 400
+	}
+}

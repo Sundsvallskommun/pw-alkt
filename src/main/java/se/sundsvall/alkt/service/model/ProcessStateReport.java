@@ -22,7 +22,6 @@ public record ProcessStateReport(
 	ProcessStatus status,
 	String currentActivityId,
 	String currentActivityName,
-	Long errandVersion,
 	ProcessError error,
 	List<ProcessActivity> activities,
 	List<AwaitingSignal> awaitingSignals,
@@ -45,7 +44,7 @@ public record ProcessStateReport(
 	}
 
 	private static ProcessStateReport of(final ProcessStatus status, final String activityId, final String activityName, final ProcessError error) {
-		return new ProcessStateReport(status, activityId, activityName, null, error, null, null, null, null, false);
+		return new ProcessStateReport(status, activityId, activityName, error, null, null, null, null, false);
 	}
 
 	public static ProcessStateReport running(final String activityId, final String activityName) {
@@ -69,35 +68,31 @@ public record ProcessStateReport(
 	}
 
 	public ProcessStateReport atActivity(final String activityId) {
-		return new ProcessStateReport(status, activityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, activityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport named(final String activityName) {
-		return new ProcessStateReport(status, currentActivityId, activityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, activityName, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withLogMessage(final String logMessage) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withRejection(final String logMessage) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, true);
-	}
-
-	public ProcessStateReport withErrandVersion(final Long errandVersion) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, true);
 	}
 
 	public ProcessStateReport withActivities(final List<ProcessActivity> activities) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withAwaitingSignals(final List<AwaitingSignal> awaitingSignals) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	public ProcessStateReport withVariables(final Map<String, Object> variables) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, errandVersion, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
 	}
 
 	private static ProcessError toError(final String code, final String message) {

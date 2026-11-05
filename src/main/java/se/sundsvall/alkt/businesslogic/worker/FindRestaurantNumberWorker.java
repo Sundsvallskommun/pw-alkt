@@ -30,7 +30,7 @@ public class FindRestaurantNumberWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} has restaurant number {} of its permit holder", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(restaurantNumber));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withVariables(Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBER, restaurantNumber))
 			.withLogMessage("Restaurant number '%s' found".formatted(restaurantNumber));
 	}

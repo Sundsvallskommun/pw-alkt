@@ -19,9 +19,16 @@
 			"partyId": "8f2a4c6e-1b3d-4e5f-9a7b-0c1d2e3f4a5b",
 			"type": "TobaccoSalesPermit",
 			"status": "ACTIVE",
-			"additionalParameters": {
-				"forsaljningstid": "Försäljning får ske mellan 11.00 och 01.00."
-			}
+			"jsonParameters": [
+				{
+					"key": "aot_tobacco_party_asset",
+					"schemaId": "2281_aot_tobacco_party_asset_0.1",
+					"value": {
+						"errandId": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d",
+						"caseRegistrationNumber": "ALKT-2025-000042"
+					}
+				}
+			]
 		},
 		"status": 200
 	}

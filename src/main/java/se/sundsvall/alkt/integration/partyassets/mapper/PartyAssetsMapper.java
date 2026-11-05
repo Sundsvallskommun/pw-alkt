@@ -2,50 +2,60 @@ package se.sundsvall.alkt.integration.partyassets.mapper;
 
 import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import generated.se.sundsvall.partyassets.AssetJsonParameter;
 import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.service.model.AssetType;
+import se.sundsvall.alkt.service.model.PermitSchema;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
+import tools.jackson.databind.JsonNode;
 
 import static generated.se.sundsvall.partyassets.Status.DRAFT;
 import static generated.se.sundsvall.partyassets.Status.EXPIRED;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecidedOn;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toFirstDay;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toRemovedParameterKeys;
 
 public final class PartyAssetsMapper {
 
-	// Set by pw-alkt from the errand and the decision, so a decision cannot remove them.
-	private static final Set<String> PERMIT_PARAMETERS_OF_THE_PROCESS = Set.of(PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
-		PERMIT_PARAMETER_DELEGATION_REFERENCE, PERMIT_PARAMETER_CONDITIONS, PERMIT_PARAMETER_RESTAURANT_NUMBER);
-
 	static final String ATTACHMENT_PART_NAME = "attachment";
-	static final String CERTIFICATE_FILE_NAME = "tillstandsbevis.pdf";
-	static final String CERTIFICATE_CATEGORY = "Tillståndsbevis";
+	private static final String CERTIFICATE_FILE_NAME = "tillstandsbevis.pdf";
+	private static final String CERTIFICATE_CATEGORY = "Tillståndsbevis";
 	static final String ORIGIN = "SUPPORTMANAGEMENT";
 
 	private PartyAssetsMapper() {}
 
-	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType assetType,
-		final String restaurantNumber) {
+	/** A notification carries the errand that granted it and what its decision says as additional parameters. */
+	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType assetType) {
+		return toDraft(decision, partyId, assetType)
+			.additionalParameters(toAdditionalParameters(decision, errandId));
+	}
+
+	/** A permit is written by its JSON parameter alone, without additional parameters. */
+	public static AssetCreateRequest toPermitCreateRequest(final Decision decision, final String partyId, final AssetType assetType, final AssetJsonParameter permit) {
+		return toDraft(decision, partyId, assetType)
+			.jsonParameters(List.of(permit));
+	}
+
+	private static AssetCreateRequest toDraft(final Decision decision, final String partyId, final AssetType assetType) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
 			.status(DRAFT)
@@ -54,24 +64,37 @@ public final class PartyAssetsMapper {
 			.type(assetType.getValue())
 			.issued(toFirstDay(decision).orElse(null))
 			.validTo(decision.getValidTo())
-			.title(decision.getTitle())
-			.additionalParameters(toAdditionalParameters(decision, errandId, restaurantNumber));
+			.title(decision.getTitle());
 	}
 
 	/**
-	 * The decision's parameters go on top of the asset's, and one without a value removes the key. validTo and conditions
-	 * stay unless the decision gives new ones, errandId keeps naming the granting errand and premisesRestaurantNumber keeps
-	 * the number licensed business holds.
+	 * The change of a permit: the validTo of the decision, unless it gives none, and the JSON parameter of the permit
+	 * replaced. party-assets replaces the whole list, so the other JSON parameters of the asset are sent as they are. Any
+	 * additional parameters are removed, as the JSON parameter holds the permit.
 	 */
-	public static AssetUpdateRequest toAssetUpdateRequest(final Asset current, final Decision decision) {
-		final var parameters = new LinkedHashMap<>(Optional.ofNullable(current.getAdditionalParameters()).orElse(emptyMap()));
-		parameters.putAll(toDecisionParameters(decision));
-		toRemovedParameterKeys(decision).stream()
-			.filter(key -> !PERMIT_PARAMETERS_OF_THE_PROCESS.contains(key))
-			.forEach(parameters::remove);
-		return new AssetUpdateRequest()
+	public static AssetUpdateRequest toPermitUpdateRequest(final Asset current, final Decision decision, final AssetJsonParameter permit) {
+		final var others = Optional.ofNullable(current.getJsonParameters()).orElse(emptyList()).stream()
+			.filter(parameter -> !permit.getKey().equals(parameter.getKey()));
+		final var update = new AssetUpdateRequest()
 			.validTo(decision.getValidTo())
-			.additionalParameters(parameters);
+			.jsonParameters(Stream.concat(others, Stream.of(permit)).toList());
+		if (!Optional.ofNullable(current.getAdditionalParameters()).orElse(emptyMap()).isEmpty()) {
+			update.additionalParameters(emptyMap());
+		}
+		return update;
+	}
+
+	public static AssetJsonParameter toPermitParameter(final PermitSchema schema, final String schemaId, final JsonNode value) {
+		return new AssetJsonParameter()
+			.key(schema.getName())
+			.schemaId(schemaId)
+			.value(value);
+	}
+
+	public static Optional<AssetJsonParameter> findPermitParameter(final Asset asset, final PermitSchema schema) {
+		return Optional.ofNullable(asset.getJsonParameters()).orElse(emptyList()).stream()
+			.filter(parameter -> schema.getName().equals(parameter.getKey()))
+			.findFirst();
 	}
 
 	/**
@@ -105,14 +128,14 @@ public final class PartyAssetsMapper {
 		return new AssetFile(new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, CERTIFICATE_FILE_NAME, APPLICATION_PDF_VALUE, content), CERTIFICATE_CATEGORY);
 	}
 
-	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId, final String restaurantNumber) {
+	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId) {
 		final var parameters = new LinkedHashMap<String, String>();
 		parameters.put(PERMIT_PARAMETER_ERRAND_ID, errandId);
 		parameters.putAll(toDecisionParameters(decision));
-		Optional.ofNullable(restaurantNumber).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_RESTAURANT_NUMBER, value));
 		return parameters;
 	}
 
+	/** A parameter wins over the legal basis and delegation reference, the terms over a parameter named conditions. */
 	private static Map<String, String> toDecisionParameters(final Decision decision) {
 		final var parameters = new LinkedHashMap<String, String>();
 		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_LEGAL_BASIS, value));
@@ -121,7 +144,6 @@ public final class PartyAssetsMapper {
 		parameters.remove(PERMIT_PARAMETER_CONDITIONS);
 		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_CONDITIONS, value));
 		parameters.remove(PERMIT_PARAMETER_ERRAND_ID);
-		parameters.remove(PERMIT_PARAMETER_RESTAURANT_NUMBER);
 		return parameters;
 	}
 }

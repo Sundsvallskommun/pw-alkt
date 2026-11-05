@@ -29,7 +29,7 @@ public class CheckPermitWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} names permit {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withLogMessage("Permit '%s' checked".formatted(assetId));
 	}
 }

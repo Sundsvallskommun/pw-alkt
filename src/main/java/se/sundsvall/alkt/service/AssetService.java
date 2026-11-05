@@ -2,28 +2,33 @@ package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import generated.se.sundsvall.partyassets.AssetJsonParameter;
 import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import se.sundsvall.alkt.configuration.PermitJsonProperties;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
+import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.integration.partyassets.model.VersionedAsset;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.alkt.service.model.AssetType;
+import se.sundsvall.alkt.service.model.PermitSchema;
 import se.sundsvall.dept44.common.validators.annotation.impl.ValidUuidConstraintValidator;
 import se.sundsvall.dept44.problem.Problem;
+import tools.jackson.databind.JsonNode;
 
 import static generated.se.sundsvall.partyassets.Status.ACTIVE;
 import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -31,14 +36,21 @@ import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.findPermitParameter;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitCreateRequest;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitParameter;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitUpdateRequest;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PermitJsonMapper.toChangedPermit;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PermitJsonMapper.toGrantedPermit;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditionList;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
-import static se.sundsvall.alkt.integration.templating.mapper.TemplatingMapper.toTemplateParameters;
+import static se.sundsvall.alkt.integration.templating.mapper.PermitCertificateMapper.toCertificateParameters;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
 
 @Service
@@ -49,25 +61,27 @@ public class AssetService {
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final PartyAssetsIntegration partyAssetsIntegration;
 	private final TemplatingIntegration templatingIntegration;
+	private final PermitJsonProperties permitJsonProperties;
 	private final Clock clock;
 
 	AssetService(final SupportManagementIntegration supportManagementIntegration, final PartyAssetsIntegration partyAssetsIntegration, final TemplatingIntegration templatingIntegration,
-		final Clock clock) {
+		final PermitJsonProperties permitJsonProperties, final Clock clock) {
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.partyAssetsIntegration = partyAssetsIntegration;
 		this.templatingIntegration = templatingIntegration;
+		this.permitJsonProperties = permitJsonProperties;
 		this.clock = clock;
 	}
 
 	/**
-	 * An asset type without a certificate template gets no certificate, and without a restaurant number the asset carries
-	 * none. A decision with a validTo must end after today, as party-assets refuses to activate the asset otherwise.
+	 * A permit is built from the JSON parameter of its decision and gets a certificate rendered from it, and without a
+	 * restaurant number it carries none. A notification gets the parameters of its decision as additional parameters and
+	 * no certificate. A decision with a validTo must end after today, as party-assets refuses to activate the asset
+	 * otherwise.
 	 */
 	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final AssetType assetType, final String restaurantNumber) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
-		if (isBlank(decision.getId())) {
-			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
-		}
+		requireId(decision, errandId);
 
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var partyId = toPartyId(errand)
@@ -80,27 +94,36 @@ public class AssetService {
 			})
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return createAsset(municipalityId, toPremisesMunicipalityId(errand), namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType, restaurantNumber), assetType);
+				return assetType.getPermitSchema()
+					.map(schema -> createPermit(municipalityId, namespace, errandId, errand, decision, partyId, assetType, schema, restaurantNumber))
+					.orElseGet(() -> createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType), Optional.empty()));
 			});
 	}
 
 	/**
-	 * Changes the permit the errand names. party-assets keeps the earlier content as a revision. An asset type without a
-	 * certificate template leaves the certificate as it is.
+	 * Changes the permit the errand names: the JSON parameter of the change decision goes on top of the one of the permit,
+	 * and the certificate is rendered anew from the result. party-assets keeps the earlier content as a revision.
 	 */
 	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final AssetType assetType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
+		requireId(decision, errandId);
+		final var schema = assetType.getPermitSchema()
+			.orElseThrow(() -> new NonRetryableException("An asset of type '%s' is not changed by a decision".formatted(assetType.getValue())));
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		final var versioned = getPermitToChange(municipalityId, errand, errandId, assetType);
+		final var versioned = getPermitOfTheErrand(municipalityId, errand, errandId, assetType);
 		final var asset = versioned.asset();
 		final var assetId = asset.getId();
+		requireActive(asset);
+		final var current = requirePermitParameter(asset, schema);
 
-		final var update = toAssetUpdateRequest(asset, decision);
-		final var certificate = assetType.getCertificateTemplate()
-			.map(template -> toCertificateFile(templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, toTemplateParameters(decision, update.getAdditionalParameters()))));
+		final var permit = toChangedPermit(schema, current.getValue(), getDecisionJson(municipalityId, namespace, errandId, decision, schema), toCaseRegistrationNumber(errand, errandId),
+			toConditionList(decision));
+		final var parameter = toPermitParameter(schema, toSchemaId(municipalityId, schema), permit);
+		final var update = toPermitUpdateRequest(asset, decision, parameter);
+		final var certificate = renderCertificate(assetType, schema, permit, decision, errand);
 
-		if (changes(update, asset)) {
+		if (changes(update, asset, current, parameter)) {
 			partyAssetsIntegration.updateAsset(municipalityId, assetId, versioned.version(), update);
 		}
 		certificate.ifPresent(file -> partyAssetsIntegration.replaceCertificate(municipalityId, assetId, file));
@@ -147,11 +170,20 @@ public class AssetService {
 			});
 	}
 
-	/** The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. */
+	/**
+	 * The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. A permit of
+	 * an asset type with a schema must hold its JSON parameter, as a change goes on top of it.
+	 */
 	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId, final AssetType assetType) {
 		final var versioned = getPermitOfTheErrand(municipalityId, errand, errandId, assetType);
 		requireActive(versioned.asset());
+		assetType.getPermitSchema().ifPresent(schema -> requirePermitParameter(versioned.asset(), schema));
 		return versioned;
+	}
+
+	private static AssetJsonParameter requirePermitParameter(final Asset asset, final PermitSchema schema) {
+		return findPermitParameter(asset, schema)
+			.orElseThrow(() -> new NonRetryableException("Asset '%s' has no JSON parameter '%s' to change".formatted(asset.getId(), schema.getName())));
 	}
 
 	private VersionedAsset getPermitOfTheErrand(final String municipalityId, final Errand errand, final String errandId, final AssetType assetType) {
@@ -183,6 +215,12 @@ public class AssetService {
 		}
 	}
 
+	private static void requireId(final Decision decision, final String errandId) {
+		if (isBlank(decision.getId())) {
+			throw Problem.valueOf(UNPROCESSABLE_CONTENT, "Decision of errand '%s' has no id to identify its asset by".formatted(errandId));
+		}
+	}
+
 	private Decision getApprovingDecision(final String municipalityId, final String namespace, final String errandId) {
 		final var decision = supportManagementIntegration.getCompletedDecision(municipalityId, namespace, errandId)
 			.orElseThrow(() -> Problem.valueOf(NOT_FOUND, "Errand '%s' has no completed decision to base an asset on".formatted(errandId)));
@@ -193,6 +231,25 @@ public class AssetService {
 		return decision;
 	}
 
+	/** The decision is the case worker's, so a decision without its JSON parameter is not something a retry fixes. */
+	private JsonNode getDecisionJson(final String municipalityId, final String namespace, final String errandId, final Decision decision, final PermitSchema schema) {
+		final var key = permitJsonProperties.of(schema).decisionKey();
+		return Optional.ofNullable(supportManagementIntegration.getDecisionJsonParameter(municipalityId, namespace, errandId, decision.getId(), key).getValue())
+			.filter(value -> !value.isNull())
+			.orElseThrow(() -> new NonRetryableException("JSON parameter '%s' of decision '%s' of errand '%s' has no value".formatted(key, decision.getId(), errandId)));
+	}
+
+	private String toSchemaId(final String municipalityId, final PermitSchema schema) {
+		return schema.toSchemaId(municipalityId, permitJsonProperties.of(schema).schemaVersion());
+	}
+
+	/** The case number of the errand is its own errand number, also in Timrå, whose number the decision holds. */
+	private static String toCaseRegistrationNumber(final Errand errand, final String errandId) {
+		return Optional.ofNullable(errand.getErrandNumber())
+			.filter(StringUtils::isNotBlank)
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no errand number to give the permit as its case number".formatted(errandId)));
+	}
+
 	private static Optional<String> toAssetId(final Errand errand) {
 		return Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
 			.filter(parameter -> ERRAND_PARAMETER_ASSET_ID.equals(parameter.getKey()))
@@ -201,8 +258,10 @@ public class AssetService {
 			.findFirst();
 	}
 
-	private static boolean changes(final AssetUpdateRequest update, final Asset asset) {
-		return !update.getAdditionalParameters().equals(Optional.ofNullable(asset.getAdditionalParameters()).orElse(emptyMap()))
+	private static boolean changes(final AssetUpdateRequest update, final Asset asset, final AssetJsonParameter current, final AssetJsonParameter permit) {
+		return update.getAdditionalParameters() != null
+			|| !Objects.equals(current.getSchemaId(), permit.getSchemaId())
+			|| !Objects.equals(current.getValue(), permit.getValue())
 			|| (update.getValidTo() != null && !update.getValidTo().equals(asset.getValidTo()));
 	}
 
@@ -222,16 +281,34 @@ public class AssetService {
 			});
 	}
 
-	private String createAsset(final String municipalityId, final String certificateMunicipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
-		final AssetType assetType) {
+	/**
+	 * The permit and its certificate are made before the draft is created, so a decision that does not fill them leaves no
+	 * draft. party-assets validates the JSON parameter of the permit against its schema as the draft is created.
+	 */
+	private String createPermit(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision, final String partyId,
+		final AssetType assetType, final PermitSchema schema, final String restaurantNumber) {
+		final var permit = toGrantedPermit(schema, getDecisionJson(municipalityId, namespace, errandId, decision, schema), errandId, toCaseRegistrationNumber(errand, errandId),
+			restaurantNumber, toConditionList(decision));
+		final var certificate = renderCertificate(assetType, schema, permit, decision, errand);
+		return createAsset(municipalityId, namespace, errandId, decision, toPermitCreateRequest(decision, partyId, assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit)),
+			certificate);
+	}
+
+	/** Rendered in the municipality of the premises, with the case number the errand has there. */
+	private Optional<AssetFile> renderCertificate(final AssetType assetType, final PermitSchema schema, final JsonNode permit, final Decision decision, final Errand errand) {
+		return assetType.getCertificateTemplate()
+			.map(template -> toCertificateFile(templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, toCertificateParameters(schema, permit, decision, toCaseNumber(errand)))));
+	}
+
+	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,
+		final Optional<AssetFile> certificate) {
 		final var assetId = partyAssetsIntegration.createDraftAsset(municipalityId, namespace, errandId, request);
 
 		try {
 			Optional.ofNullable(decision.getAttachments()).orElse(emptyList())
 				.forEach(attachment -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
 					toAssetFile(attachment, supportManagementIntegration.getAttachment(municipalityId, namespace, errandId, attachment.getId()))));
-			assetType.getCertificateTemplate().ifPresent(template -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId,
-				toCertificateFile(templatingIntegration.renderPdf(certificateMunicipalityId, template, toTemplateParameters(decision, request.getAdditionalParameters())))));
+			certificate.ifPresent(file -> partyAssetsIntegration.addAttachmentToDraft(municipalityId, assetId, file));
 			partyAssetsIntegration.activateAsset(municipalityId, assetId);
 		} catch (final NonRetryableException e) {
 			throw new NonRetryableException(removeDraftAsset(municipalityId, assetId, e), e);

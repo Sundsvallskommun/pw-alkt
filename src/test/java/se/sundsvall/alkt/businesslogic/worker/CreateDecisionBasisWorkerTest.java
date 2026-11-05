@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.businesslogic.worker.CreateDecisionBasisWorker.PROCESS_VARIABLE_DECISION_BASIS_TEMPLATE;
+import static se.sundsvall.alkt.businesslogic.worker.CreateDecisionBasisWorker.INPUT_PARAMETER_DECISION_BASIS_TEMPLATE;
 
 @ExtendWith(MockitoExtension.class)
 class CreateDecisionBasisWorkerTest {
@@ -54,7 +54,7 @@ class CreateDecisionBasisWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_DECISION_BASIS_TEMPLATE)).thenReturn(TEMPLATE);
+		when(externalTaskMock.getVariable(INPUT_PARAMETER_DECISION_BASIS_TEMPLATE)).thenReturn(TEMPLATE);
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_decision_basis");
 		when(decisionBasisServiceMock.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).thenReturn("attachment-id");
 

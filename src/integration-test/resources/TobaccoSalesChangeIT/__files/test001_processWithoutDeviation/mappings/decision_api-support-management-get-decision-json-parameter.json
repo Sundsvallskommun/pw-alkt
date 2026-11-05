@@ -1,0 +1,44 @@
+{
+	"name": "decision_api-support-management-get-decision-json-parameter",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3/decisions/3e5f7a91-2b4c-4d6e-8f0a-1c2d3e4f5a6b/json-parameters/aot_tobacco_decision",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"key": "aot_tobacco_decision",
+			"schemaId": "2281_aot_tobacco_decision_1.0",
+			"value": {
+				"decision": {
+					"caseOfficer": "Kim Karlsson",
+					"decisionDate": "2026-09-20",
+					"decisionMaker": "Tobakshandläggare",
+					"decisionText": "Bifall",
+					"executionDate": "2026-09-21",
+					"issuedBy": {
+						"name": "Kim Karlsson",
+						"title": "Handläggare",
+						"unit": "Alkohol- och tobaksenheten"
+					},
+					"outcome": "APPROVAL",
+					"validFrom": "2026-10-01"
+				},
+				"errandId": "9e6b0c45-1f72-4a83-b5d9-8c2e4f7a10b3",
+				"salesTypes": [
+					"RETAIL",
+					"DISTANCE_SELLING"
+				]
+			},
+			"version": 0
+		},
+		"status": 200
+	}
+}

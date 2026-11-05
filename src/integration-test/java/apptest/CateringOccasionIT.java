@@ -17,37 +17,25 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/CateringOccasionIT/", classes = Application.class, sharedContext = false)
 class CateringOccasionIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "9696b9e6-6753-48ca-aa9d-cd1ca7f18d70";
 
 	@Test
 	void test001_processWithoutDeviation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
+		final var processInstanceId = startProcess(ERRAND_ID, CATERING_OCCASION.getKey());
 
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
-
-		// The first four phases hold no catch event in this model, so follow up is the first one to park
+		// From the e-service in Sundsvall: the registration and the review pass without a case worker, and investigation and
+		// decision have no catch event, so follow up is the first one to park
 		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "closure");
 
-		// Wait for process to finish
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
-		// Verify mocked stubs
 		verifyAllStubs();
 
 		// The PDF of the submission was put on the errand in the registration, which then ended without waiting
@@ -56,13 +44,12 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_submission_pdf#done')]")));
 
-		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
 				tuple("Start process", "start_process"),
 
-				// Registration - no catch event, so the phase walks straight through
+				// Registration - from the e-service, so the phase passes without waiting
 				tuple("Registration", "registration_phase"),
 				tuple("Start registration phase", "start_registration_phase"),
 				tuple("Create submission PDF", "external_task_create_submission_pdf"),
@@ -106,21 +93,12 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test002_approvesTheNotificationAndCreatesThePermitBeforeFollowUp() throws JacksonException {
-		// === Start process ===
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, CATERING_OCCASION.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
 
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitWaitingReportAt("follow_up_phase");
 
 		// The mappings assert every call: the decision written as a draft, linked to the attachment and completed, the permit
@@ -160,22 +138,14 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test003_cancelledInFollowUp() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, CATERING_OCCASION.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
 
 		cancelProcess(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "follow_up");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// The mappings assert the cancellation offered on the RUNNING report of the decision and next to the gate of follow up,
 		// and the process reported COMPLETED once it is used. The decision and the permit made before it stay as they are.
@@ -210,15 +180,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 	@Test
 	void test004_errandWithoutPermitHolderLeavesAnIncidentBeforeTheDecision() throws JacksonException {
 		// The errand has no stakeholder with role PRIMARY
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, CATERING_OCCASION.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
@@ -233,18 +195,10 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test005_timraErrandFromTheEServiceWaitsInTheReview() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, CATERING_OCCASION.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, CATERING_OCCASION.getKey());
 
 		// From the e-service, so the registration ends on its own. The premises are in Timrå, so the review waits
-		awaitProcessState(processInstanceId, "await_review_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_review_completed");
 		awaitWaitingReportAt("review_phase");
 
 		verifyAllStubs();

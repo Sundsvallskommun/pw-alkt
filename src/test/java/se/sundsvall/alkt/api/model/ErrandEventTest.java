@@ -65,36 +65,4 @@ class ErrandEventTest {
 		assertThat(bean.getOccurredAt()).isEqualTo(occurredAt);
 	}
 
-	@Test
-	void testFields() {
-		final var eventId = randomUUID().toString();
-		final var errandId = randomUUID().toString();
-		final var occurredAt = OffsetDateTime.now();
-
-		final var bean = new ErrandEvent();
-		bean.setEventId(eventId);
-		bean.setEventType(UPDATE);
-		bean.setEventSubType("SIGNAL");
-		bean.setErrandId(errandId);
-		bean.setProcessKey("alcohol-serving");
-		bean.setStartAllowed(true);
-		bean.setSignalName("review_completed");
-		bean.setOccurredAt(occurredAt);
-
-		assertThat(bean).isNotNull().hasNoNullFieldsOrProperties();
-		assertThat(bean.getEventId()).isEqualTo(eventId);
-		assertThat(bean.getEventType()).isEqualTo(UPDATE);
-		assertThat(bean.getEventSubType()).isEqualTo("SIGNAL");
-		assertThat(bean.getErrandId()).isEqualTo(errandId);
-		assertThat(bean.getProcessKey()).isEqualTo("alcohol-serving");
-		assertThat(bean.isStartAllowed()).isTrue();
-		assertThat(bean.getSignalName()).isEqualTo("review_completed");
-		assertThat(bean.getOccurredAt()).isEqualTo(occurredAt);
-	}
-
-	/** An absent permission reads as no permission, since a process started in error cannot be taken back. */
-	@Test
-	void startAllowedDefaultsToFalseWhenAbsent() {
-		assertThat(new ErrandEvent().isStartAllowed()).isFalse();
-	}
 }

@@ -22,7 +22,6 @@ class ProcessStateReportTest {
 		assertThat(report.status()).isEqualTo(RUNNING);
 		assertThat(report.currentActivityId()).isEqualTo("activityId");
 		assertThat(report.currentActivityName()).isEqualTo("activityName");
-		assertThat(report.errandVersion()).isNull();
 		assertThat(report.error()).isNull();
 		assertThat(report.activities()).isEmpty();
 		assertThat(report.variables()).isEmpty();
@@ -46,7 +45,6 @@ class ProcessStateReportTest {
 		assertThat(report.status()).isEqualTo(COMPLETED);
 		assertThat(report.currentActivityId()).isNull();
 		assertThat(report.currentActivityName()).isNull();
-		assertThat(report.errandVersion()).isNull();
 		assertThat(report.error()).isNull();
 		assertThat(report.activities()).isEmpty();
 		assertThat(report.variables()).isEmpty();
@@ -83,7 +81,7 @@ class ProcessStateReportTest {
 
 	@Test
 	void nullCollectionsBecomeEmpty() {
-		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null, null, null, false);
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null, null, false);
 
 		assertThat(report.activities()).isEmpty();
 		assertThat(report.awaitingSignals()).isEmpty();
@@ -94,7 +92,7 @@ class ProcessStateReportTest {
 	void activitiesAreCopied() {
 		final var activities = new ArrayList<>(List.of(new ProcessActivity().activityType("PHASE")));
 
-		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, activities, null, null, null, false);
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, activities, null, null, null, false);
 		activities.clear();
 
 		assertThat(report.activities()).hasSize(1);
@@ -102,21 +100,12 @@ class ProcessStateReportTest {
 
 	@Test
 	void atActivityKeepsEverythingElse() {
-		final var report = ProcessStateReport.failed("INCIDENT", "Timeout").withErrandVersion(7L).atActivity("investigation_phase");
+		final var report = ProcessStateReport.failed("INCIDENT", "Timeout").atActivity("investigation_phase");
 
 		assertThat(report.status()).isEqualTo(FAILED);
 		assertThat(report.currentActivityId()).isEqualTo("investigation_phase");
-		assertThat(report.errandVersion()).isEqualTo(7L);
 		assertThat(report.error().getCode()).isEqualTo("INCIDENT");
 		assertThat(report.activities()).isEmpty();
-	}
-
-	@Test
-	void withErrandVersionReplacesOnlyTheVersion() {
-		final var report = ProcessStateReport.completed().withErrandVersion(7L);
-
-		assertThat(report.errandVersion()).isEqualTo(7L);
-		assertThat(report.status()).isEqualTo(COMPLETED);
 	}
 
 	@Test

@@ -14,28 +14,17 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.E_CIGARETTE_SALES;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/ECigaretteSalesIT/", classes = Application.class, sharedContext = false)
 class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15";
 
 	@Test
 	void test001_processWithoutDeviation() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, E_CIGARETTE_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "registration");
@@ -45,7 +34,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "review");
 		await().until(() -> countReports("$.activities[?(@.activityId =~ /external_task_check_case_number#rejected#.*/)]") == 1);
 		awaitReportsAt("review_phase", 2);
-		awaitProcessState(processInstanceId, "await_review_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_review_completed");
 
 		// The case worker fills in the case number and completes the review again
 		wiremock.setScenarioState("timra-case-number", "case-number-filled");
@@ -54,17 +43,14 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "closure");
 
-		// Wait for process to finish
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
-		// Verify mocked stubs
 		verifyAllStubs();
 		assertWaitingReportsInOrder("registration_phase", "review_phase", "follow_up_phase", "closure_phase");
 
 		// The process never writes to the errand itself, so its errand number and case number stay as the case worker left them
 		wiremock.verify(0, patchRequestedFor(urlPathMatching("/api-support-management/2281/ALKT/errands/%s(/parameters)?".formatted(ERRAND_ID))));
 
-		// Verify process pathway
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
@@ -122,21 +108,12 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test002_approvesTheNotificationAndCreatesThePermitBeforeFollowUp() throws JacksonException {
-		// === Start process ===
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, E_CIGARETTE_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "registration");
 
-		awaitProcessState(processInstanceId, "await_follow_up_completed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitWaitingReportAt("follow_up_phase");
 
 		// The mappings assert every call: the decision written as a draft, linked to the attachment and completed, the permit
@@ -176,22 +153,14 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test003_cancelledInFollowUp() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, E_CIGARETTE_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "registration");
 
 		cancelProcess(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "follow_up");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		// The mappings assert the cancellation offered on the RUNNING report of the decision and next to the gate of follow up,
 		// and the process reported COMPLETED once it is used. The decision and the permit made before it stay as they are.
@@ -225,16 +194,8 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test004_errandWithoutPermitHolderLeavesAnIncidentBeforeTheDecision() throws JacksonException {
-		// === Start process === the errand has no stakeholder with role PRIMARY
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, E_CIGARETTE_SALES.getKey());
+		// The errand has no stakeholder with role PRIMARY
+		final var processInstanceId = startProcess(ERRAND_ID, E_CIGARETTE_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration
 		completePhase(ERRAND_ID, processInstanceId, E_CIGARETTE_SALES.getKey(), "registration");

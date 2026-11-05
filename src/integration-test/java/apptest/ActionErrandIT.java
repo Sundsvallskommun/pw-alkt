@@ -9,28 +9,17 @@ import tools.jackson.core.JacksonException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.ACCEPTED;
 import static se.sundsvall.alkt.service.model.ProcessType.ACTION_ERRAND;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/ActionErrandIT/", classes = Application.class, sharedContext = false)
 class ActionErrandIT extends AbstractOperatonAppTest {
 
-	private static final String REQUEST_FILE = "request.json";
 	private static final String ERRAND_ID = "9d1c3b5a-7e2f-4a6c-8b0d-1e3f5a7c9b2d";
 
 	@Test
 	void test001_processWithWarning() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ACTION_ERRAND.getKey());
 
 		// The registration passes straight through. The decision phase moves on by a decision event
 		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "review");
@@ -39,7 +28,7 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		assertWaitingReportsInOrder("review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
@@ -96,25 +85,17 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test002_noDecisionNeeded() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ACTION_ERRAND.getKey());
 
 		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "review");
 		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "investigation");
-		awaitProcessState(processInstanceId, "await_decision_not_needed", DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessState(processInstanceId, "await_decision_not_needed");
 		awaitReportAt("decision_phase");
 		sendSignal(ERRAND_ID, ACTION_ERRAND.getKey(), "decision_not_needed");
 		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "follow_up");
 		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "closure");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		assertWaitingReportsInOrder("review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
 		verifyAllStubs();
@@ -158,19 +139,11 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test003_cancelledInReview() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ACTION_ERRAND.getKey());
 
 		cancelProcess(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "review");
 
-		awaitProcessCompleted(processInstanceId, DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS);
+		awaitProcessCompleted(processInstanceId);
 
 		verifyAllStubs();
 
@@ -186,15 +159,7 @@ class ActionErrandIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test004_outcomeOfAnotherProcessLeavesAnIncident() throws JacksonException {
-		setupCall()
-			.withServicePath(ERRAND_EVENTS_PATH)
-			.withHttpMethod(POST)
-			.withRequest(REQUEST_FILE)
-			.withExpectedResponseStatus(ACCEPTED)
-			.withExpectedResponseBodyIsNull()
-			.sendRequest();
-
-		final var processInstanceId = awaitProcessInstance(ERRAND_ID, ACTION_ERRAND.getKey());
+		final var processInstanceId = startProcess(ERRAND_ID, ACTION_ERRAND.getKey());
 
 		// The decision has the outcome of a permit. Support Management locks a completed decision, so it cannot be corrected
 		completePhase(ERRAND_ID, processInstanceId, ACTION_ERRAND.getKey(), "review");

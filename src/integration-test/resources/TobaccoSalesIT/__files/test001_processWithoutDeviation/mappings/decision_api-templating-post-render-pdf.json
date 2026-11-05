@@ -17,8 +17,8 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.parameters.forsaljningstid",
-					"equalTo": "Försäljning får ske mellan 11.00 och 01.00."
+					"expression": "$.parameters.caseNumber",
+					"equalTo": "TSN 2026/0153"
 				}
 			},
 			{
@@ -29,7 +29,43 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.parameters.conditions",
+					"expression": "$.parameters.decisionText",
+					"equalTo": "Bifall"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.issuedByNameAndTitle",
+					"equalTo": "Kim Karlsson, Handläggare"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.premisesName",
+					"equalTo": "Tobaksbutiken Runt Hörnet"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.salesRetail",
+					"equalTo": "true"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.validityIndefinite",
+					"equalTo": "true"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.validFrom",
+					"equalTo": "2026-10-01"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.information",
 					"equalTo": ""
 				}
 			}

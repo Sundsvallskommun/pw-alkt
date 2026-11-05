@@ -127,6 +127,7 @@ public class ProcessReconciliationService {
 		}
 
 		resolveTarget(instance.getId(), instance.getProcessDefinitionKey(), null)
+			// An incident row is FAILED but not settled: the instance lived on and may since have been cancelled or terminated.
 			.ifPresent(target -> reportUnless(target, row -> isTerminal(row) && !isIncident(row),
 				() -> wasCancelled(instance) ? ended.atActivity(ACTIVITY_CANCEL_PROCESS) : ended));
 	}
@@ -199,7 +200,6 @@ public class ProcessReconciliationService {
 		return FAILED.name().equals(row.getProcessStatus()) && row.getError() != null && ERROR_CODE_INCIDENT.equals(row.getError().getCode());
 	}
 
-	// An incident row is FAILED but not settled: the instance lived on and may since have been cancelled or terminated.
 	private static boolean isTerminal(final ErrandProcess row) {
 		return COMPLETED.name().equals(row.getProcessStatus()) || FAILED.name().equals(row.getProcessStatus());
 	}

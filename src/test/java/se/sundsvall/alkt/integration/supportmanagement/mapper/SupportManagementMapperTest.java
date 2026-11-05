@@ -63,7 +63,7 @@ class SupportManagementMapperTest {
 		final var occurredAt = OffsetDateTime.now();
 		final var activity = new ProcessActivity().activityType("INCIDENT").activityId("investigation_phase").severity("ERROR").occurredAt(occurredAt);
 		final var error = new ProcessError().code("INCIDENT").message("Timeout");
-		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", 7L, error, List.of(activity), List.of(), Map.of(), null, false);
+		final var report = new ProcessStateReport(FAILED, "investigation_phase", "Investigation", error, List.of(activity), List.of(), Map.of(), null, false);
 
 		final var result = SupportManagementMapper.toErrandProcessReport(target, report);
 
@@ -74,7 +74,6 @@ class SupportManagementMapperTest {
 		assertThat(result.getCurrentActivityId()).isEqualTo("investigation_phase");
 		assertThat(result.getCurrentActivityName()).isEqualTo("Investigation");
 		assertThat(result.getExternalTaskId()).isEqualTo(externalTaskId);
-		assertThat(result.getErrandVersion()).isEqualTo(7L);
 		assertThat(result.getError()).isSameAs(error);
 		assertThat(result.getActivities()).containsExactly(activity);
 		assertThat(result.getAwaitingSignals()).isEmpty();
@@ -104,7 +103,6 @@ class SupportManagementMapperTest {
 		assertThat(result.getProcessStatus()).isEqualTo("COMPLETED");
 		assertThat(result.getCurrentActivityId()).isNull();
 		assertThat(result.getExternalTaskId()).isNull();
-		assertThat(result.getErrandVersion()).isNull();
 		assertThat(result.getError()).isNull();
 		assertThat(result.getActivities()).isEmpty();
 		assertThat(result.getAwaitingSignals()).isEmpty();
@@ -177,21 +175,16 @@ class SupportManagementMapperTest {
 		assertThat(SupportManagementMapper.toFirstDay(decision)).contains(LocalDate.of(2026, 3, 1));
 	}
 
+	/** In winter time Sweden is one hour ahead of UTC, so 23.30 UTC is the next day and 22.30 UTC the same. */
 	@Test
-	void toFirstDayIsEmptyWithoutAnyDate() {
-		assertThat(SupportManagementMapper.toFirstDay(new Decision())).isEmpty();
+	void toFirstDayFallsBackOnTheSwedishDayAlsoInWinterTime() {
+		assertThat(SupportManagementMapper.toFirstDay(new Decision().decidedAt(OffsetDateTime.parse("2026-01-14T22:30:00Z")))).contains(LocalDate.of(2026, 1, 14));
+		assertThat(SupportManagementMapper.toFirstDay(new Decision().decidedAt(OffsetDateTime.parse("2026-01-14T23:30:00Z")))).contains(LocalDate.of(2026, 1, 15));
 	}
 
 	@Test
-	void toRemovedParameterKeysAreThoseWithoutAValue() {
-		final var decision = new Decision().parameters(List.of(
-			new Parameter().key("serveringstid").values(List.of("11.00–02.00")),
-			new Parameter().key("uteservering").values(List.of()),
-			new Parameter().key("ordningsvakt").values(List.of(" ", "")),
-			new Parameter().key("matsal")));
-
-		assertThat(SupportManagementMapper.toRemovedParameterKeys(decision)).containsExactlyInAnyOrder("uteservering", "ordningsvakt", "matsal");
-		assertThat(SupportManagementMapper.toRemovedParameterKeys(new Decision().parameters(null))).isEmpty();
+	void toFirstDayIsEmptyWithoutAnyDate() {
+		assertThat(SupportManagementMapper.toFirstDay(new Decision())).isEmpty();
 	}
 
 	@Test
@@ -308,20 +301,25 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
-	void toConditionsPutsTheTermsOnePerLineInTheirOrderLeavingOutBlankOnes() {
+	void toConditionsPutsTheTermsOnePerLineAndIsEmptyWithoutTerms() {
+		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(2).text("Godkänd matsal ska finnas."), new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
+
+		assertThat(SupportManagementMapper.toConditions(decision)).isEqualTo("Serveringsområdet ska vara avgränsat.\nGodkänd matsal ska finnas.");
+		assertThat(SupportManagementMapper.toConditions(new Decision().terms(null))).isEmpty();
+	}
+
+	@Test
+	void toConditionListGivesTheTermsInTheirOrderLeavingOutThoseWithoutText() {
 		final var decision = new Decision().terms(List.of(
 			new DecisionTerm().text("Ordningsvakt ska finnas efter 23.00."),
 			new DecisionTerm().sortOrder(2).text("Godkänd matsal ska finnas."),
 			new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat."),
-			new DecisionTerm().sortOrder(3).text(" ")));
+			new DecisionTerm().sortOrder(3).text(" "),
+			new DecisionTerm().sortOrder(4)));
 
-		assertThat(SupportManagementMapper.toConditions(decision))
-			.isEqualTo("Serveringsområdet ska vara avgränsat.\nGodkänd matsal ska finnas.\nOrdningsvakt ska finnas efter 23.00.");
-	}
-
-	@Test
-	void toConditionsIsEmptyForADecisionWithoutTerms() {
-		assertThat(SupportManagementMapper.toConditions(new Decision().terms(null))).isEmpty();
+		assertThat(SupportManagementMapper.toConditionList(decision))
+			.containsExactly("Serveringsområdet ska vara avgränsat.", "Godkänd matsal ska finnas.", "Ordningsvakt ska finnas efter 23.00.");
+		assertThat(SupportManagementMapper.toConditionList(new Decision().terms(null))).isEmpty();
 	}
 
 	@Test

@@ -74,6 +74,28 @@ class FailureDescriptionTest {
 	}
 
 	@Test
+	void namesWhatPartyAssetsRefusesInAPermit() {
+		final var problem = new ClientProblem(BAD_REQUEST, "party-assets error: {detail=jsonParameters[0]: Constraint Violation: /premises/restaurantNumber: does not match the regex "
+			+ "pattern ^[0-9]{8}$, jsonParameters[0]: Constraint Violation: /servingArea/seatsIndoor: string found, integer expected, status=400 Bad Request, title=Constraint Violation}");
+
+		assertThat(FailureDescription.describe(problem))
+			.isEqualTo("ClientProblem 400 from party-assets (remote 400 Bad Request), refused: jsonParameters[0]: Constraint Violation: /premises/restaurantNumber: does not match "
+				+ "the regex pattern ^[0-9]{8}$, jsonParameters[0]: Constraint Violation: /servingArea/seatsIndoor: string found, integer expected");
+	}
+
+	/** Only the violations of a JSON parameter are kept, so any other refusal stays out. */
+	@Test
+	void keepsNoOtherRefusalText() {
+		final var notAViolation = new ClientProblem(BAD_REQUEST, "party-assets error: {detail=Status reason 199001012385 is not allowed, status=400 Bad Request, title=Bad Request}");
+		final var notOfAJsonParameter = new ClientProblem(BAD_REQUEST, "party-assets error: {detail=title: 199001012385, status=400 Bad Request, title=Constraint Violation}");
+		final var fromAnotherService = new ClientProblem(BAD_REQUEST, "support-management error: {detail=jsonParameters[0]: 199001012385, status=400 Bad Request, title=Constraint Violation}");
+
+		assertThat(FailureDescription.describe(notAViolation)).isEqualTo("ClientProblem 400 from party-assets (remote 400 Bad Request)");
+		assertThat(FailureDescription.describe(notOfAJsonParameter)).isEqualTo("ClientProblem 400 from party-assets (remote 400 Bad Request)");
+		assertThat(FailureDescription.describe(fromAnotherService)).isEqualTo("ClientProblem 400 from support-management (remote 400 Bad Request)");
+	}
+
+	@Test
 	void namesTheServiceATokenCouldNotBeObtainedFor() {
 		final var error = new OAuth2Error("invalid_client", "Client 199001012385 is unknown", null);
 		final var exception = new ClientAuthorizationException(error, "party-assets", new OAuth2AuthorizationException(error));

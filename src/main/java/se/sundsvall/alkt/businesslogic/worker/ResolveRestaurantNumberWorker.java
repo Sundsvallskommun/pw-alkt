@@ -41,7 +41,7 @@ public class ResolveRestaurantNumberWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} gets restaurant number {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(resolved.number()));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withVariables(Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBER, resolved.number(), PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID, resolved.addressId(),
 				PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT, resolved.latestAssignmentId()))
 			.withLogMessage("Restaurant number '%s' resolved".formatted(resolved.number()));

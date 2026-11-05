@@ -23,13 +23,62 @@
 			"issued": "2025-05-01",
 			"status": "ACTIVE",
 			"title": "Beslut om tobakstillstånd",
-			"additionalParameters": {
-				"errandId": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d",
-				"forsaljningstid": "Försäljning får ske mellan 11.00 och 01.00.",
-				"permitHolderName": "Runt Hörnet AB",
-				"conditions": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar.",
-				"forsaljningsstalle": "Försäljning får ske från kiosken mot torget."
-			}
+			"jsonParameters": [
+				{
+					"key": "aot_tobacco_party_asset",
+					"schemaId": "2281_aot_tobacco_party_asset_0.1",
+					"value": {
+						"caseRegistrationNumber": "ALKT-2025-000042",
+						"conditions": [
+							"Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
+						],
+						"decision": {
+							"caseOfficer": "Kim Karlsson",
+							"caseRegistrationNumber": "ALKT-2025-000042",
+							"decisionDate": "2025-04-20",
+							"decisionMaker": "Tobakshandläggare",
+							"decisionText": "Bifall med villkor",
+							"executionDate": "2025-04-21",
+							"issuedBy": {
+								"name": "Kim Karlsson",
+								"title": "Handläggare",
+								"unit": "Alkohol- och tobaksenheten"
+							},
+							"outcome": "APPROVAL_WITH_CONDITIONS",
+							"replacesDecision": "2019-05-01 / IAN-2019-45",
+							"validFrom": "2025-05-01"
+						},
+						"errandId": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d",
+						"information": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar.",
+						"permitHolder": {
+							"address": {
+								"city": "Sundsvall",
+								"postalCode": "852 30",
+								"street": "Storgatan 1"
+							},
+							"name": "Runt Hörnet AB",
+							"organizationNumber": "556677-8899"
+						},
+						"pointOfSale": {
+							"address": {
+								"city": "Sundsvall",
+								"postalCode": "85230",
+								"street": "Storgatan 1"
+							},
+							"municipalityId": "2281",
+							"name": "Tobaksbutiken Runt Hörnet",
+							"phoneNumber": "060-654321"
+						},
+						"salesPeriod": {
+							"from": "2025-05-01",
+							"period": "INDEFINITE"
+						},
+						"salesTypes": [
+							"RETAIL"
+						]
+					}
+				}
+			]
 		},
 		"status": 200
 	}

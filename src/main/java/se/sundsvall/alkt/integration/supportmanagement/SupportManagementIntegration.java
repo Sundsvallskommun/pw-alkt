@@ -10,6 +10,7 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
@@ -27,8 +28,10 @@ import se.sundsvall.dept44.problem.Problem;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toMap;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.DECISION_STATUS_COMPLETED;
+import static se.sundsvall.alkt.util.RemoteAnswers.failWithoutRetryOn;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
 @Component
@@ -91,6 +94,14 @@ public class SupportManagementIntegration {
 	public List<Decision> getDecisions(final String municipalityId, final String namespace, final String errandId) {
 		return Optional.ofNullable(supportManagementClient.getDecisions(municipalityId, namespace, errandId).getBody())
 			.orElse(emptyList());
+	}
+
+	/** A decision without the parameter is a fault in the decision, which a retry does not fix. */
+	public JsonParameter getDecisionJsonParameter(final String municipalityId, final String namespace, final String errandId, final String decisionId, final String key) {
+		final var response = failWithoutRetryOn(NOT_FOUND, "Decision '%s' of errand '%s' has no JSON parameter '%s'".formatted(decisionId, errandId, key),
+			() -> supportManagementClient.getDecisionJsonParameter(municipalityId, namespace, errandId, decisionId, key));
+		return Optional.ofNullable(response.getBody())
+			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "JSON parameter '%s' of decision '%s' came back without content".formatted(key, decisionId)));
 	}
 
 	public String createDecision(final String municipalityId, final String namespace, final String errandId, final Decision decision) {

@@ -27,14 +27,18 @@ import static generated.se.sundsvall.supportmanagement.Identifier.TypeEnum.UNKNO
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.service.CustomerMessageService.CONVERSATION_TOPIC_CUSTOMER;
+import static se.sundsvall.alkt.service.CustomerMessageService.MAX_MESSAGE_PAGES;
 import static se.sundsvall.alkt.service.CustomerMessageService.MESSAGE_PAGE_SIZE;
 
 @ExtendWith(MockitoExtension.class)
@@ -131,6 +135,23 @@ class CustomerMessageServiceTest {
 
 		verify(supportManagementIntegrationMock, never()).getConversationMessages(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, 1, MESSAGE_PAGE_SIZE);
 		verify(supportManagementIntegrationMock).createConversationMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CONVERSATION_ID, new MessageRequest().content(CONTENT));
+	}
+
+	/** A paging that never ends must not send the message again, nor hold the step. */
+	@Test
+	void failsWithoutSendingWhenThePagingDoesNotEnd() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithCustomer());
+		when(supportManagementIntegrationMock.getConversations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(customerConversation()));
+		when(supportManagementIntegrationMock.getConversationMessages(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(CONVERSATION_ID), anyInt(), eq(MESSAGE_PAGE_SIZE)))
+			.thenReturn(new MessagePage(List.of(customerMessage()), false));
+
+		assertThatThrownBy(() -> service.sendMessage(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, MESSAGE))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("did not end within %d pages".formatted(MAX_MESSAGE_PAGES));
+
+		verify(supportManagementIntegrationMock, times(MAX_MESSAGE_PAGES)).getConversationMessages(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(CONVERSATION_ID), anyInt(),
+			eq(MESSAGE_PAGE_SIZE));
+		verify(supportManagementIntegrationMock, never()).createConversationMessage(any(), any(), any(), any(), any());
 	}
 
 	@Test

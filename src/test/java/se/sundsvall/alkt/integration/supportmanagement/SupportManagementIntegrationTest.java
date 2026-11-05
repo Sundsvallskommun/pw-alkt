@@ -10,6 +10,7 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ErrandProcessOverview;
 import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
 import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
@@ -29,8 +30,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
+import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
+import tools.jackson.databind.node.JsonNodeFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,7 +42,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 
 @ExtendWith(MockitoExtension.class)
@@ -190,6 +196,43 @@ class SupportManagementIntegrationTest {
 		when(supportManagementClientMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(ResponseEntity.ok(List.of(draft)));
 
 		assertThat(supportManagementIntegration.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).containsExactly(draft);
+	}
+
+	@Test
+	void getDecisionJsonParameterAnswersWithTheParameter() {
+		final var parameter = new JsonParameter().key("aot_alcohol_decision").schemaId("2281_aot_alcohol_decision_1.0").value(JsonNodeFactory.instance.objectNode());
+		when(supportManagementClientMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).thenReturn(ResponseEntity.ok(parameter));
+
+		assertThat(supportManagementIntegration.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).isSameAs(parameter);
+	}
+
+	/** The case worker writes the parameter, so a decision without it waits for the case worker, not for a retry. */
+	@Test
+	void getDecisionJsonParameterFailsWithoutRetryWhenTheDecisionHasNone() {
+		final var problem = new ClientProblem(NOT_FOUND, "No JSON parameter with key 'aot_alcohol_decision'");
+		when(supportManagementClientMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).thenThrow(problem);
+
+		assertThatThrownBy(() -> supportManagementIntegration.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision"))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageStartingWith("Decision 'decision-id' of errand '%s' has no JSON parameter 'aot_alcohol_decision'".formatted(ERRAND_ID))
+			.hasCause(problem);
+	}
+
+	@Test
+	void getDecisionJsonParameterLeavesAnyOtherFailureToBeRetried() {
+		final var problem = new ClientProblem(BAD_GATEWAY, "Support management is down");
+		when(supportManagementClientMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).thenThrow(problem);
+
+		assertThatThrownBy(() -> supportManagementIntegration.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).isSameAs(problem);
+	}
+
+	@Test
+	void getDecisionJsonParameterFailsWithoutABody() {
+		when(supportManagementClientMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).thenReturn(ResponseEntity.ok().build());
+
+		assertThatThrownBy(() -> supportManagementIntegration.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision"))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("came back without content");
 	}
 
 	@Test

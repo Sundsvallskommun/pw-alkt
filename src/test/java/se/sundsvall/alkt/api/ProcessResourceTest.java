@@ -12,10 +12,12 @@ import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.alkt.service.ProcessService;
 
 import static java.util.UUID.randomUUID;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.UPDATE;
 
 @AutoConfigureWebTestClient
@@ -62,21 +64,16 @@ class ProcessResourceTest {
 	 */
 	@Test
 	void acceptsAnEventWithoutTheStartPermission() {
+		final var errandId = randomUUID().toString();
 
-		// Arrange
-		final var errandEvent = new ErrandEvent();
-		errandEvent.setEventId(randomUUID().toString());
-		errandEvent.setEventType(UPDATE);
-		errandEvent.setErrandId(randomUUID().toString());
-
-		// Act
 		webTestClient.post().uri(PATH)
-			.bodyValue(errandEvent)
+			.contentType(APPLICATION_JSON)
+			.bodyValue("""
+				{ "eventId": "%s", "eventType": "UPDATE", "errandId": "%s" }
+				""".formatted(randomUUID(), errandId))
 			.exchange()
 			.expectStatus().isAccepted();
 
-		// Assert
-		assertThat(errandEvent.isStartAllowed()).isFalse();
-		verify(processServiceMock).handleErrandEvent("2281", "ALKT", errandEvent);
+		verify(processServiceMock).handleErrandEvent(eq("2281"), eq("ALKT"), argThat(event -> errandId.equals(event.getErrandId()) && !event.isStartAllowed()));
 	}
 }

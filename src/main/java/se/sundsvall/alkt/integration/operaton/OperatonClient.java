@@ -1,7 +1,6 @@
 package se.sundsvall.alkt.integration.operaton;
 
 import feign.form.FormData;
-import generated.se.sundsvall.operaton.ActivityInstanceDto;
 import generated.se.sundsvall.operaton.CorrelationMessageDto;
 import generated.se.sundsvall.operaton.DeploymentDto;
 import generated.se.sundsvall.operaton.DeploymentWithDefinitionsDto;
@@ -45,7 +44,7 @@ public interface OperatonClient {
 	@PostMapping(path = "process-definition/key/{key}/tenant-id/{tenantId}/start", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
 	ProcessInstanceWithVariablesDto startProcessWithTenant(@PathVariable String key, @PathVariable String tenantId, StartProcessInstanceDto startProcessInstanceDto);
 
-	/** One result, since the correlation is not sent with all=true. */
+	/** One result, except for the cancellation, which is sent with all=true and answers one per process it reached. */
 	@PostMapping(path = "message", consumes = APPLICATION_JSON_VALUE, produces = APPLICATION_JSON_VALUE)
 	List<MessageCorrelationResultWithVariableDto> correlateMessage(CorrelationMessageDto correlationMessageDto);
 
@@ -70,9 +69,6 @@ public interface OperatonClient {
 		@RequestParam("businessKey") String businessKey,
 		@RequestParam("processDefinitionKey") String processDefinitionKey,
 		@RequestParam("tenantIdIn") String tenantIdIn);
-
-	@GetMapping(path = "process-instance/{id}/activity-instances", produces = APPLICATION_JSON_VALUE)
-	ActivityInstanceDto getProcessActivityInstance(@PathVariable String id);
 
 	@DeleteMapping(path = "process-instance/{id}")
 	void deleteProcessInstance(@PathVariable String id, @RequestParam("failIfNotExists") boolean failIfNotExists);

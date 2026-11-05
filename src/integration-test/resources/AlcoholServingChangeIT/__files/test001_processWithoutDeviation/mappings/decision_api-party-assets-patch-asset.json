@@ -14,30 +14,6 @@
 		"bodyPatterns": [
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.serveringstid",
-					"equalTo": "Servering får ske mellan 11.00 och 02.00."
-				}
-			},
-			{
-				"matchesJsonPath": {
-					"expression": "$.additionalParameters.permitHolderName",
-					"equalTo": "Runt Hörnet AB"
-				}
-			},
-			{
-				"matchesJsonPath": {
-					"expression": "$.additionalParameters.errandId",
-					"equalTo": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d"
-				}
-			},
-			{
-				"matchesJsonPath": {
-					"expression": "$.additionalParameters.conditions",
-					"equalTo": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
-				}
-			},
-			{
-				"matchesJsonPath": {
 					"expression": "$.validTo",
 					"absent": true
 				}
@@ -62,13 +38,109 @@
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.jsonParameters",
+					"expression": "$.additionalParameters",
+					"equalToJson": "{}"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].key",
+					"equalTo": "aot_alcohol_party_asset"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].schemaId",
+					"equalTo": "2281_aot_alcohol_party_asset_0.1"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.errandId",
+					"equalTo": "2a4c6e80-1b3d-4f5a-8c7e-9d0f1a2b3c4d"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.caseRegistrationNumber",
+					"equalTo": "ALKT-2025-000042"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.restaurantNumber",
+					"equalTo": "22810001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.newRestaurantNumber",
 					"absent": true
 				}
 			},
 			{
 				"matchesJsonPath": {
-					"expression": "$.additionalParameters.uteservering",
+					"expression": "$.jsonParameters[0].value.premises.name",
+					"equalTo": "Restaurang Runt Hörnet"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.servingHours[0].to",
+					"equalTo": "02:00"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.servingHours[1]",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.additionalScopes",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.servingArea.seatsOutdoor",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.servingArea.description",
+					"equalTo": "Matsal och bar"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.servingArea.drawingReference",
+					"equalTo": "ritning.pdf"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.conditions[0]",
+					"equalTo": "Ordningsvakt ska finnas efter 01.00 på fredagar och lördagar."
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000001"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.decisionText",
+					"equalTo": "Bifall"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.replacesDecision",
 					"absent": true
 				}
 			}

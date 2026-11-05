@@ -2,12 +2,14 @@ package se.sundsvall.alkt.service;
 
 import generated.se.sundsvall.partyassets.Asset;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
+import generated.se.sundsvall.partyassets.AssetJsonParameter;
 import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.partyassets.Status;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
@@ -17,11 +19,14 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -29,6 +34,8 @@ import org.mockito.Captor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import se.sundsvall.alkt.configuration.PermitJsonProperties;
+import se.sundsvall.alkt.configuration.PermitJsonProperties.Settings;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
@@ -37,6 +44,9 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.NullNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,6 +65,7 @@ import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
 import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SALES_NOTIFICATION;
+import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_SALES_PERMIT;
 
 @ExtendWith(MockitoExtension.class)
 class AssetServiceTest {
@@ -62,13 +73,19 @@ class AssetServiceTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
+	private static final String ERRAND_NUMBER = "ALKT-2026-000123";
 	private static final String DECISION_ID = "decision-id";
 	private static final String PARTY_ID = "party-id";
 	private static final String ASSET_ID = "9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d";
 	private static final String CERTIFICATE_TEMPLATE = "serving-permit-certificate";
+	private static final String ALCOHOL_DECISION_KEY = "aot_alcohol_decision";
+	private static final String TOBACCO_DECISION_KEY = "aot_tobacco_decision";
+	private static final String ALCOHOL_PERMIT_KEY = "aot_alcohol_party_asset";
+	private static final String ALCOHOL_SCHEMA_ID = "2281_aot_alcohol_party_asset_0.1";
 	private static final String VERSION = "\"3\"";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	private static final LocalDate TODAY = LocalDate.of(2026, 10, 6);
+	private static final JsonMapper JSON = JsonMapper.builder().build();
 
 	@Mock
 	private SupportManagementIntegration supportManagementIntegrationMock;
@@ -96,6 +113,7 @@ class AssetServiceTest {
 	@BeforeEach
 	void setUp() {
 		assetService = new AssetService(supportManagementIntegrationMock, partyAssetsIntegrationMock, templatingIntegrationMock,
+			new PermitJsonProperties(new Settings("0.1", ALCOHOL_DECISION_KEY), new Settings("1.0", TOBACCO_DECISION_KEY)),
 			Clock.fixed(TODAY.atTime(12, 0).atZone(SWEDISH_TIME).toInstant(), SWEDISH_TIME));
 	}
 
@@ -128,28 +146,73 @@ class AssetServiceTest {
 		verifyNoInteractions(templatingIntegrationMock);
 	}
 
+	/** A notification has no decision of the case worker, so it keeps the parameters of its decision. */
 	@Test
-	void findOrCreateAssetAttachesTheCertificateRenderedFromTheDecisionBeforeActivating() throws IOException {
+	void findOrCreateAssetGivesANotificationTheParametersOfItsDecisionAndNoJsonParameter() {
+		givenADraftFor(approval().legalBasis("8 kap. 6 § alkohollagen"));
+
+		assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null);
+
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
+		assertThat(assetCaptor.getValue().getAdditionalParameters()).containsEntry("errandId", ERRAND_ID).containsEntry("legalBasis", "8 kap. 6 § alkohollagen");
+		assertThat(assetCaptor.getValue().getJsonParameters()).isNull();
+		verify(supportManagementIntegrationMock, never()).getDecisionJsonParameter(any(), any(), any(), any(), any());
+	}
+
+	@Test
+	void findOrCreateAssetBuildsThePermitFromTheJsonOfTheDecisionAndAttachesItsCertificateBeforeActivating() throws IOException {
 		final var attachment = new ErrandAttachment().id("first").fileName("beslut.pdf").mimeType("application/pdf");
 		final var pdf = "%PDF-1.7".getBytes();
 
-		givenADraftFor(approval()
+		givenAPermitDraftFor(approval()
+			.title("Beslut om serveringstillstånd")
 			.attachments(List.of(attachment))
-			.parameters(List.of(new Parameter().key("caseNumber").values(List.of("IAN-2026-00209")), new Parameter().key("permitHolderName").values(List.of("Runt Hörnet AB"))))
-			.terms(List.of(new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat."))));
+			.terms(List.of(new DecisionTerm().sortOrder(2).text("Bordsservering ute."), new DecisionTerm().sortOrder(1).text("Ordningsvakt efter 23.00."))), ALCOHOL_DECISION_KEY, """
+				{
+				  "errandId": "another-errand",
+				  "caseRegistrationNumber": "ANOTHER-NUMBER",
+				  "permitHolder": { "name": "Runt Hörnet AB" },
+				  "premises": { "name": "Runt Hörnet", "restaurantNumber": "22819999", "newRestaurantNumber": true },
+				  "conditions": ["Från beslutets JSON."]
+				}
+				""");
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
-		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, CERTIFICATE_TEMPLATE,
-			Map.of("caseNumber", "IAN-2026-00209", "permitHolderName", "Runt Hörnet AB", "errandId", ERRAND_ID, "conditions", "Serveringsområdet ska vara avgränsat.")))
-			.thenReturn(pdf);
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn(pdf);
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, "22810001")).isEqualTo(ASSET_ID);
 
-		final InOrder inOrder = inOrder(templatingIntegrationMock, partyAssetsIntegrationMock);
-		inOrder.verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
-		inOrder.verify(partyAssetsIntegrationMock).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), attachmentCaptor.capture());
+		final InOrder inOrder = inOrder(supportManagementIntegrationMock, templatingIntegrationMock, partyAssetsIntegrationMock);
+		inOrder.verify(supportManagementIntegrationMock).getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
 		inOrder.verify(templatingIntegrationMock).renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any());
-		inOrder.verify(partyAssetsIntegrationMock).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), attachmentCaptor.capture());
+		inOrder.verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
+		inOrder.verify(partyAssetsIntegrationMock, times(2)).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), attachmentCaptor.capture());
 		inOrder.verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+
+		final var request = assetCaptor.getValue();
+		assertThat(request.getAssetId()).isEqualTo(DECISION_ID);
+		assertThat(request.getType()).isEqualTo(ALCOHOL_SERVING_PERMIT.getValue());
+		assertThat(request.getTitle()).isEqualTo("Beslut om serveringstillstånd");
+		assertThat(request.getAdditionalParameters()).isNull();
+		assertThat(request.getJsonParameters()).singleElement().satisfies(parameter -> {
+			assertThat(parameter.getKey()).isEqualTo(ALCOHOL_PERMIT_KEY);
+			assertThat(parameter.getSchemaId()).isEqualTo(ALCOHOL_SCHEMA_ID);
+			assertThat(parameter.getValue()).isEqualTo(json("""
+				{
+				  "errandId": "errand-id",
+				  "caseRegistrationNumber": "ALKT-2026-000123",
+				  "permitHolder": { "name": "Runt Hörnet AB" },
+				  "premises": { "name": "Runt Hörnet", "restaurantNumber": "22810001" },
+				  "conditions": ["Ordningsvakt efter 23.00.", "Bordsservering ute."],
+				  "decision": { "caseRegistrationNumber": "ALKT-2026-000123" }
+				}
+				"""));
+		});
+		assertThat(templateParametersCaptor.getValue())
+			.containsEntry("caseNumber", ERRAND_NUMBER)
+			.containsEntry("permitHolderName", "Runt Hörnet AB")
+			.containsEntry("premisesName", "Runt Hörnet")
+			.containsEntry("premisesRestaurantNumber", "22810001")
+			.containsEntry("conditions", "Ordningsvakt efter 23.00.\nBordsservering ute.");
 
 		final var certificate = attachmentCaptor.getAllValues().getLast();
 		assertThat(certificate.file().getOriginalFilename()).isEqualTo("tillstandsbevis.pdf");
@@ -158,88 +221,185 @@ class AssetServiceTest {
 	}
 
 	@Test
-	void findOrCreateAssetPutsTheRestaurantNumberOnThePermitAndItsCertificate() {
-		givenADraftFor(approval());
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
+	void findOrCreateAssetBuildsATobaccoPermitByTheTobaccoSchema() {
+		givenAPermitDraftFor(approval(), TOBACCO_DECISION_KEY, """
+			{ "pointOfSale": { "name": "Tobaksaffären" } }
+			""");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq("tobacco-permit-certificate"), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, "22810001")).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TOBACCO_SALES_PERMIT, null)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
-		assertThat(assetCaptor.getValue().getAdditionalParameters()).containsEntry("premisesRestaurantNumber", "22810001");
-		assertThat(templateParametersCaptor.getValue()).containsEntry("premisesRestaurantNumber", "22810001");
+		assertThat(assetCaptor.getValue().getJsonParameters()).singleElement().satisfies(parameter -> {
+			assertThat(parameter.getKey()).isEqualTo("aot_tobacco_party_asset");
+			assertThat(parameter.getSchemaId()).isEqualTo("2281_aot_tobacco_party_asset_1.0");
+			assertThat(parameter.getValue().path("pointOfSale").path("name").asString()).isEqualTo("Tobaksaffären");
+		});
+		assertThat(templateParametersCaptor.getValue()).containsEntry("premisesName", "Tobaksaffären");
 	}
 
-	/** The conditions come from the terms only, so a parameter named conditions does not make up for missing terms. */
+	/**
+	 * The permit has the own case number also in Timrå, whose number the case worker gives in the decision. The
+	 * certificate is Timrå's and shows the number Timrå has for the deciding errand.
+	 */
 	@Test
-	void findOrCreateAssetRemovesTheDraftOfAnApprovalWithConditionsThatHasAConditionsParameterButNoTerms() {
-		givenADraftFor(approval().outcome("APPROVAL_WITH_CONDITIONS")
-			.parameters(List.of(new Parameter().key("conditions").values(List.of("Ordningsvakt efter 23.00.")))));
+	void findOrCreateAssetOfAPremisesInTimraHasTheOwnCaseNumberAndTheCertificateTheOneOfTimra() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")), new Parameter().key("externalCaseRegistrationNumber").values(List.of("TIMRA-1")))));
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, """
+			{ "externalCaseRegistrationNumber": "2026/0456", "premises": { "municipalityId": "2262" } }
+			""");
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, "22620001")).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
+		final var permit = assetCaptor.getValue().getJsonParameters().getFirst();
+		assertThat(permit.getSchemaId()).isEqualTo(ALCOHOL_SCHEMA_ID);
+		assertThat(permit.getValue().path("caseRegistrationNumber").asString()).isEqualTo(ERRAND_NUMBER);
+		assertThat(permit.getValue().path("externalCaseRegistrationNumber").asString()).isEqualTo("2026/0456");
+		assertThat(templateParametersCaptor.getValue()).containsEntry("caseNumber", "TIMRA-1");
+		// party-assets keeps every permit under the municipality of the call, the certificate is Timrå's own
+		verify(partyAssetsIntegrationMock).findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID);
+		verify(partyAssetsIntegrationMock).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
+		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
+	}
+
+	@Test
+	void findOrCreateAssetFailsWithoutRetryAndCreatesNoDraftForAnErrandInTimraWithoutItsCaseNumber() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
+			.id(ERRAND_ID)
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, "{}");
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' in Timrå has no case number in externalCaseRegistrationNumber");
+
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	@Test
+	void findOrCreateAssetFailsWithoutRetryAndCreatesNoDraftWhenTheDecisionHasNoJsonParameter() {
+		givenNoAssetYetFor(approval());
+		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY))
+			.thenThrow(new NonRetryableException("Decision 'decision-id' of errand 'errand-id' has no JSON parameter 'aot_alcohol_decision'"));
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("has no JSON parameter 'aot_alcohol_decision'");
+
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	@Test
+	void findOrCreateAssetFailsWithoutRetryAndCreatesNoDraftWhenTheJsonParameterOfTheDecisionHasNoValue() {
+		givenNoAssetYetFor(approval());
+		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY))
+			.thenReturn(new JsonParameter().key(ALCOHOL_DECISION_KEY).value(NullNode.getInstance()));
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("JSON parameter 'aot_alcohol_decision' of decision 'decision-id' of errand 'errand-id' has no value");
+
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
+	}
+
+	@ParameterizedTest
+	@NullAndEmptySource
+	@ValueSource(strings = " ")
+	void findOrCreateAssetFailsWithoutRetryAndCreatesNoDraftWhenTheErrandHasNoErrandNumber(final String errandNumber) {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().errandNumber(errandNumber));
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, "{}");
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no errand number to give the permit as its case number");
+
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
+	}
+
+	/** party-assets validates the JSON parameter as the draft is created, so a refused one leaves no draft behind. */
+	@Test
+	void findOrCreateAssetFailsWithoutRetryAndLeavesNoDraftWhenPartyAssetsRefusesTheJsonParameter() {
+		givenNoAssetYetFor(approval());
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, """
+			{ "premises": { "restaurantNumber": "123" } }
+			""");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any()))
+			.thenThrow(new NonRetryableException("The draft asset of errand 'errand-id' cannot be created: ClientProblem 400"));
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageContaining("cannot be created");
+
+		verify(partyAssetsIntegrationMock, never()).addAttachmentToDraft(any(), any(), any());
+		verify(partyAssetsIntegrationMock, never()).activateAsset(any(), any());
+		verify(partyAssetsIntegrationMock, never()).removeDraftAsset(any(), any());
+	}
+
+	/**
+	 * The conditions come from the terms only, so conditions in the JSON of the decision do not make up for missing terms.
+	 */
+	@Test
+	void findOrCreateAssetCreatesNoDraftOfAnApprovalWithConditionsThatHasConditionsInItsJsonButNoTerms() {
+		givenNoAssetYetFor(approval().outcome("APPROVAL_WITH_CONDITIONS"));
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, """
+			{ "conditions": ["Ordningsvakt efter 23.00."] }
+			""");
 
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessageContaining("approval with conditions but has no conditions");
 
 		verifyNoInteractions(templatingIntegrationMock);
-		verify(partyAssetsIntegrationMock, never()).activateAsset(any(), any());
-		verify(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 	}
 
-	@Test
-	void findOrCreateAssetRemovesTheDraftWhenTheCertificateCannotBeRendered() {
-		givenADraftFor(approval());
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenThrow(new ClientProblem(BAD_GATEWAY, "Templating is down"));
-
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
-			.isInstanceOf(Problem.class)
-			.hasMessageContaining("removed again")
-			.hasMessageContaining("ClientProblem 502")
-			.hasMessageNotContaining("Templating is down");
-
-		verify(partyAssetsIntegrationMock, never()).addAttachmentToDraft(any(), any(), any());
-		verify(partyAssetsIntegrationMock, never()).activateAsset(any(), any());
-		verify(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
+	private static Stream<RuntimeException> renderFailures() {
+		return Stream.of(new ClientProblem(BAD_GATEWAY, "Templating is down"), new NonRetryableException("Missing template parameter 'premisesName'"));
 	}
 
-	/** A decision that does not fill the template is the case worker's to fix, so the draft goes and no retry follows. */
-	@Test
-	void findOrCreateAssetRemovesTheDraftAndFailsWithoutRetryWhenTheDecisionDoesNotFillTheCertificate() {
-		givenADraftFor(approval());
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any()))
-			.thenThrow(new NonRetryableException("Missing template parameter 'premisesName'"));
+	/** The certificate is rendered before the draft, so a render that fails, for whatever reason, leaves no draft. */
+	@ParameterizedTest
+	@MethodSource("renderFailures")
+	void findOrCreateAssetCreatesNoDraftWhenTheCertificateCannotBeRendered(final RuntimeException failure) {
+		givenNoAssetYetFor(approval());
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenThrow(failure);
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining("removed again")
-			.hasMessageContaining("Missing template parameter 'premisesName'");
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isSameAs(failure);
 
-		verify(partyAssetsIntegrationMock, never()).activateAsset(any(), any());
-		verify(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 	}
 
 	/** The asset id is the only way to find the draft left behind, so it travels with the incident as well. */
 	@Test
-	void findOrCreateAssetCarriesTheAssetIdWithoutRetryWhenTheDraftOfAnUnfilledCertificateCannotBeRemoved() {
+	void findOrCreateAssetCarriesTheAssetIdWithoutRetryWhenTheDraftOfARefusedActivationCannotBeRemoved() {
 		givenADraftFor(approval());
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any()))
-			.thenThrow(new NonRetryableException("Missing template parameter 'premisesName'"));
+		doThrow(new NonRetryableException("Asset '%s' cannot be activated".formatted(ASSET_ID))).when(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
 
-		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining(ASSET_ID)
-			.hasMessageContaining("Missing template parameter 'premisesName'")
+			.hasMessageContaining("Draft asset '%s'".formatted(ASSET_ID))
+			.hasMessageContaining("cannot be activated")
 			.hasMessageContaining("ClientProblem 502")
 			.hasMessageNotContaining("Party assets is down");
-	}
-
-	@Test
-	void findOrCreateAssetCreatesNoCertificateForANotification() {
-		givenADraftFor(approval());
-
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
-
-		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
-		verifyNoInteractions(templatingIntegrationMock);
 	}
 
 	@Test
@@ -252,6 +412,7 @@ class AssetServiceTest {
 
 		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 		verify(supportManagementIntegrationMock, never()).getAttachment(any(), any(), any(), any());
+		verify(supportManagementIntegrationMock, never()).getDecisionJsonParameter(any(), any(), any(), any(), any());
 	}
 
 	/** The permit was created when its decision still ended after today, so a rerun does not check it again. */
@@ -389,12 +550,15 @@ class AssetServiceTest {
 
 	/** An approval with conditions grants the permit as well, so it is created the same way. */
 	@Test
-	void findOrCreateAssetCreatesTheAssetOfAnApprovalWithConditions() {
-		givenADraftFor(new Decision().id(DECISION_ID).outcome("APPROVAL_WITH_CONDITIONS"));
+	void findOrCreateAssetCreatesThePermitOfAnApprovalWithConditions() {
+		givenAPermitDraftFor(approval().outcome("APPROVAL_WITH_CONDITIONS").terms(List.of(new DecisionTerm().sortOrder(1).text("Ordningsvakt efter 23.00."))),
+			ALCOHOL_DECISION_KEY, "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
 	}
 
 	@ParameterizedTest
@@ -438,18 +602,32 @@ class AssetServiceTest {
 	}
 
 	@Test
-	void updateAssetRendersTheCertificateBeforeItPatchesTheAssetAndReplacesTheCertificate() throws IOException {
+	void updateAssetPutsTheChangeOnThePermitRendersTheCertificateBeforeItPatchesTheAssetAndReplacesTheCertificate() throws IOException {
 		final var pdf = "%PDF-1.7".getBytes();
-		final var asset = activeAsset().additionalParameters(Map.of(
-			"errandId", "granting-errand-id",
-			"permitHolderName", "Runt Hörnet AB",
-			"serveringstid", "11.00–01.00",
-			"conditions", "Ordningsvakt efter 23.00."));
+		final var other = new AssetJsonParameter().key("other").schemaId("2281_other_1.0").value(json("{}"));
+		final var asset = activeAsset().jsonParameters(List.of(permitParameter("""
+			{
+			  "errandId": "granting-errand-id",
+			  "caseRegistrationNumber": "ALKT-2026-000001",
+			  "permitHolder": { "name": "Runt Hörnet AB" },
+			  "premises": { "name": "Runt Hörnet", "restaurantNumber": "22810001", "phoneNumber": "060-123456" },
+			  "servingHours": [{ "from": "11:00", "to": "01:00" }],
+			  "conditions": ["Ordningsvakt efter 23.00."],
+			  "decision": { "caseRegistrationNumber": "ALKT-2026-000001", "decisionText": "Bifall med villkor" }
+			}
+			"""), other));
 
 		givenAnErrandNaming(approval()
 			.validTo(LocalDate.of(2099, 9, 30))
-			.parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00"))))
 			.terms(List.of(new DecisionTerm().sortOrder(1).text("Ordningsvakt efter 01.00."))));
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, """
+			{
+			  "errandId": "change-errand",
+			  "premises": { "name": "Runt Hörnet Bar", "restaurantNumber": "22819999", "newRestaurantNumber": true },
+			  "servingHours": [{ "from": "11:00", "to": "02:00" }],
+			  "decision": { "decisionText": "Bifall" }
+			}
+			""");
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn(pdf);
 
@@ -460,15 +638,29 @@ class AssetServiceTest {
 		inOrder.verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
 		inOrder.verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), attachmentCaptor.capture());
 
-		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.of(2099, 9, 30));
-		assertThat(updateCaptor.getValue().getAdditionalParameters())
-			.containsEntry("permitHolderName", "Runt Hörnet AB")
-			.containsEntry("serveringstid", "11.00–02.00")
-			.containsEntry("conditions", "Ordningsvakt efter 01.00.")
-			.containsEntry("errandId", "granting-errand-id");
+		final var update = updateCaptor.getValue();
+		assertThat(update.getValidTo()).isEqualTo(LocalDate.of(2099, 9, 30));
+		assertThat(update.getAdditionalParameters()).isNull();
+		assertThat(update.getJsonParameters()).hasSize(2).contains(other);
+		final var permit = update.getJsonParameters().stream().filter(parameter -> ALCOHOL_PERMIT_KEY.equals(parameter.getKey())).findFirst().orElseThrow();
+		assertThat(permit.getSchemaId()).isEqualTo(ALCOHOL_SCHEMA_ID);
+		assertThat(permit.getValue()).isEqualTo(json("""
+			{
+			  "errandId": "granting-errand-id",
+			  "caseRegistrationNumber": "ALKT-2026-000001",
+			  "permitHolder": { "name": "Runt Hörnet AB" },
+			  "premises": { "name": "Runt Hörnet Bar", "restaurantNumber": "22810001", "phoneNumber": "060-123456" },
+			  "servingHours": [{ "from": "11:00", "to": "02:00" }],
+			  "conditions": ["Ordningsvakt efter 01.00."],
+			  "decision": { "caseRegistrationNumber": "ALKT-2026-000123", "decisionText": "Bifall" }
+			}
+			"""));
 		assertThat(templateParametersCaptor.getValue())
-			.containsEntry("permitHolderName", "Runt Hörnet AB")
-			.containsEntry("serveringstid", "11.00–02.00")
+			.containsEntry("caseNumber", ERRAND_NUMBER)
+			.containsEntry("premisesName", "Runt Hörnet Bar")
+			.containsEntry("premisesRestaurantNumber", "22810001")
+			.containsEntry("servingHours", "11:00–02:00")
+			.containsEntry("decisionText", "Bifall")
 			.containsEntry("conditions", "Ordningsvakt efter 01.00.");
 		assertThat(attachmentCaptor.getValue().file().getBytes()).isEqualTo(pdf);
 		assertThat(attachmentCaptor.getValue().category()).isEqualTo("Tillståndsbevis");
@@ -476,40 +668,30 @@ class AssetServiceTest {
 	}
 
 	/** A change that sets no conditions leaves those of the permit in place, on the asset and on its certificate. */
-	@Test
-	void updateAssetKeepsTheConditionsOfThePermitWhenTheChangeSetsNone() {
-		final var asset = activeAsset().additionalParameters(Map.of("conditions", "Ordningsvakt efter 23.00."));
-
-		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"APPROVAL", "APPROVAL_WITH_CONDITIONS"
+	})
+	void updateAssetKeepsTheConditionsOfThePermitWhenTheChangeSetsNone(final String outcome) {
+		givenAPermitToChange(approval().outcome(outcome), """
+			{ "conditions": ["Ordningsvakt efter 23.00."] }
+			""", """
+			{ "conditions": ["Från ändringens JSON."] }
+			""");
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
 		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
-		assertThat(updateCaptor.getValue().getAdditionalParameters()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
-		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
-	}
-
-	@Test
-	void updateAssetKeepsTheConditionsOfThePermitForAnApprovalWithConditionsThatSetsNone() {
-		final var asset = activeAsset().additionalParameters(Map.of("conditions", "Ordningsvakt efter 23.00."));
-
-		givenAnErrandNaming(approval().outcome("APPROVAL_WITH_CONDITIONS").parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
-
-		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
-
-		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
-		assertThat(updateCaptor.getValue().getAdditionalParameters()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
+		assertThat(updateCaptor.getValue().getJsonParameters().getFirst().getValue().path("conditions")).isEqualTo(json("""
+			["Ordningsvakt efter 23.00."]
+			"""));
 		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "Ordningsvakt efter 23.00.");
 	}
 
 	@Test
 	void updateAssetFailsWithoutRetryOnAnApprovalWithConditionsWhenNeitherItNorThePermitHasConditions() {
-		givenAnErrandNaming(approval().outcome("APPROVAL_WITH_CONDITIONS"));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+		givenAPermitToChange(approval().outcome("APPROVAL_WITH_CONDITIONS"), "{}", "{}");
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
@@ -522,12 +704,12 @@ class AssetServiceTest {
 	/** A rerun after the certificate failed finds the change made, and only the certificate is left to do. */
 	@Test
 	void updateAssetOnlyReplacesTheCertificateWhenTheAssetAlreadyHasTheChange() {
-		final var asset = activeAsset()
-			.validTo(LocalDate.of(2099, 9, 30))
-			.additionalParameters(Map.of("errandId", "granting-errand-id", "serveringstid", "11.00–02.00"));
-
-		givenAnErrandNaming(approval().validTo(LocalDate.of(2099, 9, 30)).parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+		final var changed = """
+			{ "errandId": "granting-errand-id", "servingHours": [{ "from": "11:00", "to": "02:00" }], "decision": { "caseRegistrationNumber": "ALKT-2026-000123" } }
+			""";
+		givenAChangeOf(activeAsset().validTo(LocalDate.of(2099, 9, 30)).jsonParameters(List.of(permitParameter(changed))), approval().validTo(LocalDate.of(2099, 9, 30)), """
+			{ "servingHours": [{ "from": "11:00", "to": "02:00" }] }
+			""");
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
@@ -536,10 +718,41 @@ class AssetServiceTest {
 		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
 	}
 
+	/** A new version of the schema is taken into use with the first change after the configuration names it. */
+	@Test
+	void updateAssetWritesThePermitByTheConfiguredVersionOfTheSchema() {
+		final var changed = """
+			{ "decision": { "caseRegistrationNumber": "ALKT-2026-000123" } }
+			""";
+		givenAChangeOf(activeAsset().jsonParameters(List.of(new AssetJsonParameter().key(ALCOHOL_PERMIT_KEY).schemaId("2281_aot_alcohol_party_asset_0.0").value(json(changed)))),
+			approval(), "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getJsonParameters()).extracting(AssetJsonParameter::getSchemaId).containsExactly(ALCOHOL_SCHEMA_ID);
+	}
+
+	/** The JSON parameter holds the permit, so the additional parameters of a permit go with its first change. */
+	@Test
+	void updateAssetRemovesTheAdditionalParametersOfThePermit() {
+		final var changed = """
+			{ "decision": { "caseRegistrationNumber": "ALKT-2026-000123" } }
+			""";
+		givenAChangeOf(activeAsset().additionalParameters(Map.of("errandId", "granting-errand-id")).jsonParameters(List.of(permitParameter(changed))), approval(), "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
+
+		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), updateCaptor.capture());
+		assertThat(updateCaptor.getValue().getAdditionalParameters()).isNotNull().isEmpty();
+	}
+
 	@Test
 	void updateAssetEndsThePermitTodayAtTheEarliest() {
-		givenAnErrandNaming(approval().validTo(TODAY));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+		givenAPermitToChange(approval().validTo(TODAY), "{}", "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
@@ -561,12 +774,11 @@ class AssetServiceTest {
 
 	@Test
 	void updateAssetPatchesTheAssetWhenOnlyItsValidToChanges() {
-		final var asset = activeAsset()
-			.validTo(LocalDate.of(2099, 9, 30))
-			.additionalParameters(Map.of("serveringstid", "11.00–02.00"));
-
-		givenAnErrandNaming(approval().validTo(LocalDate.of(2100, 9, 30)).parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+		final var changed = """
+			{ "decision": { "caseRegistrationNumber": "ALKT-2026-000123" } }
+			""";
+		givenAChangeOf(activeAsset().validTo(LocalDate.of(2099, 9, 30)).jsonParameters(List.of(permitParameter(changed))), approval().validTo(LocalDate.of(2100, 9, 30)), "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
 
 		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 
@@ -574,63 +786,66 @@ class AssetServiceTest {
 		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(LocalDate.of(2100, 9, 30));
 	}
 
-	/**
-	 * The template is strict, so a placeholder still needs a value when neither the permit nor the change has conditions.
-	 */
+	/** A field the template requires cannot be removed: the render fails on it before the permit is touched. */
 	@Test
-	void updateAssetRendersEmptyConditionsWhenThePermitHasNone() {
-		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
-
-		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
-
-		assertThat(templateParametersCaptor.getValue()).containsEntry("conditions", "");
-	}
-
-	/** A key the template requires cannot be removed: the render fails on it before the permit is touched. */
-	@Test
-	void updateAssetRendersTheCertificateWithoutARemovedKeyAndLeavesThePermitAloneWhenTheTemplateRequiresIt() {
-		final var asset = activeAsset().additionalParameters(Map.of("serveringstid", "11.00–01.00", "serveringsyta", "Matsalen"));
-
-		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringsyta").values(List.of()))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+	void updateAssetLeavesThePermitAloneWhenTheChangeRemovesAFieldTheCertificateRequires() {
+		givenAPermitToChange(approval(), """
+			{ "premises": { "name": "Runt Hörnet", "phoneNumber": "060-123456" } }
+			""", """
+			{ "premises": { "phoneNumber": null } }
+			""");
 		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture()))
-			.thenThrow(new NonRetryableException("Template 'serving-permit-certificate' cannot be rendered from the given parameters: Missing placeholder 'serveringsyta'"));
+			.thenThrow(new NonRetryableException("Template 'serving-permit-certificate' cannot be rendered from the given parameters: Missing placeholder 'premisesPhone'"));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class);
 
-		assertThat(templateParametersCaptor.getValue()).containsEntry("serveringstid", "11.00–01.00").doesNotContainKey("serveringsyta");
+		assertThat(templateParametersCaptor.getValue()).containsEntry("premisesName", "Runt Hörnet").doesNotContainKey("premisesPhone");
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
 	}
 
 	@Test
-	void updateAssetLeavesTheAssetAloneWhenTheCertificateCannotBeRendered() {
+	void updateAssetFailsWithoutRetryWhenTheChangeDecisionHasNoJsonParameter() {
 		givenAnErrandNaming(approval());
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
-		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any()))
-			.thenThrow(new NonRetryableException("Missing template parameter 'premisesName'"));
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().jsonParameters(List.of(permitParameter("{}")))));
+		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY))
+			.thenThrow(new NonRetryableException("Decision 'decision-id' of errand 'errand-id' has no JSON parameter 'aot_alcohol_decision'"));
 
 		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Missing template parameter 'premisesName'");
+			.hasMessageContaining("has no JSON parameter");
 
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
-		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	/** A permit without the JSON parameter of its own schema has nothing for the change to go on top of. */
+	@Test
+	void updateAssetFailsWithoutRetryOnAPermitWithoutItsJsonParameter() {
+		givenAnErrandNaming(approval());
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()
+			.additionalParameters(Map.of("errandId", "granting-errand-id"))
+			.jsonParameters(List.of(new AssetJsonParameter().key("aot_tobacco_party_asset").value(json("{}"))))));
+
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Asset '%s' has no JSON parameter 'aot_alcohol_party_asset' to change".formatted(ASSET_ID));
+
+		verify(supportManagementIntegrationMock, never()).getDecisionJsonParameter(any(), any(), any(), any(), any());
+		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
+		verifyNoInteractions(templatingIntegrationMock);
 	}
 
 	@Test
-	void updateAssetLeavesTheCertificateAloneOfANotification() {
-		givenAnErrandNaming(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00")))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().type(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.getValue())));
+	void updateAssetFailsWithoutRetryOnAnAssetTypeThatIsNotChangedByADecision() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
 
-		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION)).isEqualTo(ASSET_ID);
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("An asset of type 'LowAlcoholBeerSalesNotification' is not changed by a decision");
 
-		verify(partyAssetsIntegrationMock).updateAsset(eq(MUNICIPALITY_ID), eq(ASSET_ID), eq(VERSION), any());
-		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
-		verifyNoInteractions(templatingIntegrationMock);
+		verifyNoInteractions(partyAssetsIntegrationMock, templatingIntegrationMock);
 	}
 
 	@ParameterizedTest
@@ -668,12 +883,23 @@ class AssetServiceTest {
 
 	@Test
 	void getPermitToChangeAnswersWithTheActivePermitOfTheHolder() {
-		final var versioned = versioned(activeAsset());
+		final var versioned = versioned(activeAsset().jsonParameters(List.of(permitParameter("{}"))));
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned);
 
 		assertThat(assetService.getPermitToChange(MUNICIPALITY_ID, errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isSameAs(versioned);
 		verifyNoInteractions(supportManagementIntegrationMock, templatingIntegrationMock);
+	}
+
+	/** The change goes on top of the JSON parameter, so a permit without one is refused before the case worker decides. */
+	@Test
+	void getPermitToChangeFailsWithoutRetryOnAPermitWithoutItsJsonParameter() {
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().additionalParameters(Map.of("errandId", "granting-errand-id"))));
+
+		assertThatThrownBy(() -> assetService.getPermitToChange(MUNICIPALITY_ID, errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))),
+			ERRAND_ID, ALCOHOL_SERVING_PERMIT))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Asset '%s' has no JSON parameter 'aot_alcohol_party_asset' to change".formatted(ASSET_ID));
 	}
 
 	@ParameterizedTest
@@ -771,6 +997,17 @@ class AssetServiceTest {
 	}
 
 	@Test
+	void updateAssetFailsOnADecisionWithoutId() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().id(null)));
+
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("no id");
+
+		verifyNoInteractions(partyAssetsIntegrationMock, templatingIntegrationMock);
+	}
+
+	@Test
 	void checkPermitAnswersWithThePermitTheErrandNames() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))));
@@ -829,6 +1066,7 @@ class AssetServiceTest {
 		assertThat(updateCaptor.getValue().getValidTo()).isEqualTo(lastDay);
 		assertThat(updateCaptor.getValue().getStatusReason()).isNull();
 		assertThat(updateCaptor.getValue().getAdditionalParameters()).isNull();
+		assertThat(updateCaptor.getValue().getJsonParameters()).isNull();
 		verifyNoInteractions(templatingIntegrationMock);
 		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
 	}
@@ -966,39 +1204,17 @@ class AssetServiceTest {
 		verifyNoInteractions(partyAssetsIntegrationMock);
 	}
 
-	/** party-assets keeps every permit under the municipality of the call, the certificate is Timrå's own. */
-	@Test
-	void findOrCreateAssetOfAPremisesInTimraCreatesThePermitInSundsvallWithACertificateRenderedInTimra() {
-		final var attachment = new ErrandAttachment().id("first").fileName("beslut.pdf").mimeType("application/pdf");
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval().attachments(List.of(attachment))));
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
-			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
-		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
-		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
-		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
-		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
-
-		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
-
-		verify(partyAssetsIntegrationMock).findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID);
-		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any());
-		verify(partyAssetsIntegrationMock, times(2)).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
-		verify(templatingIntegrationMock).renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any());
-		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
-		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first");
-		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
-	}
-
 	@Test
 	void updateAssetOfAPremisesInTimraChangesThePermitInSundsvallWithACertificateRenderedInTimra() {
-		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(Optional.of(approval().parameters(List.of(new Parameter().key("serveringstid").values(List.of("11.00–02.00"))))));
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().parameters(List.of(
 			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
+			new Parameter().key("externalCaseRegistrationNumber").values(List.of("TIMRA-1")),
 			new Parameter().key("assetId").values(List.of(ASSET_ID)))));
-		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset()));
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, """
+			{ "servingHours": [{ "from": "11:00", "to": "02:00" }] }
+			""");
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().jsonParameters(List.of(permitParameter("{}")))));
 		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
 
 		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
@@ -1009,6 +1225,7 @@ class AssetServiceTest {
 		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
 		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
 		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
 	}
 
@@ -1016,8 +1233,28 @@ class AssetServiceTest {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(decision));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errandWithPermitHolder().parameters(List.of(
-				new Parameter().key("caseNumber").values(List.of("IAN-2026-00209")),
+				new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
+
 				new Parameter().key("assetId").values(List.of(" ", ASSET_ID)))));
+	}
+
+	private void givenAPermitToChange(final Decision decision, final String permitJson, final String changeJson) {
+		givenAChangeOf(activeAsset().jsonParameters(List.of(permitParameter(permitJson))), decision, changeJson);
+	}
+
+	private void givenAChangeOf(final Asset asset, final Decision decision, final String changeJson) {
+		givenAnErrandNaming(decision);
+		givenTheDecisionJson(ALCOHOL_DECISION_KEY, changeJson);
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(asset));
+	}
+
+	private void givenTheDecisionJson(final String key, final String value) {
+		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, key))
+			.thenReturn(new JsonParameter().key(key).schemaId("2281_%s_1.0".formatted(key)).value(json(value)));
+	}
+
+	private static AssetJsonParameter permitParameter(final String value) {
+		return new AssetJsonParameter().key(ALCOHOL_PERMIT_KEY).schemaId(ALCOHOL_SCHEMA_ID).value(json(value));
 	}
 
 	private static VersionedAsset versioned(final Asset asset) {
@@ -1029,10 +1266,19 @@ class AssetServiceTest {
 	}
 
 	private void givenADraftFor(final Decision decision) {
+		givenNoAssetYetFor(decision);
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+	}
+
+	private void givenAPermitDraftFor(final Decision decision, final String decisionKey, final String decisionJson) {
+		givenADraftFor(decision);
+		givenTheDecisionJson(decisionKey, decisionJson);
+	}
+
+	private void givenNoAssetYetFor(final Decision decision) {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(decision));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
 		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
-		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
 	}
 
 	private static Decision approval() {
@@ -1040,6 +1286,13 @@ class AssetServiceTest {
 	}
 
 	private static Errand errandWithPermitHolder() {
-		return new Errand().stakeholders(List.of(new Stakeholder().role("APPLICANT").externalId("applicant-id"), new Stakeholder().role("PRIMARY").externalId(PARTY_ID)));
+		return new Errand()
+			.errandNumber(ERRAND_NUMBER)
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2281"))))
+			.stakeholders(List.of(new Stakeholder().role("APPLICANT").externalId("applicant-id"), new Stakeholder().role("PRIMARY").externalId(PARTY_ID)));
+	}
+
+	private static JsonNode json(final String text) {
+		return JSON.readTree(text);
 	}
 }

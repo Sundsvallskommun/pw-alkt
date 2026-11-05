@@ -29,7 +29,7 @@ public class CreateChangeDraftWorker extends AbstractTaskWorker {
 
 		logInfo("Errand {} has decision draft {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(decisionId));
 
-		return ProcessStateReport.running(externalTask.getActivityId(), null)
+		return running(externalTask)
 			.withLogMessage("Errand has decision '%s'".formatted(decisionId));
 	}
 }

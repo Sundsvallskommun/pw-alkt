@@ -107,7 +107,7 @@ public class ProcessLog {
 		return entry(ACTIVITY_TYPE_PHASE, phaseId, name, SEVERITY_INFO, null, "Phase '%s' entered".formatted(phaseId), now());
 	}
 
-	/** The id is the activity alone, as it always was, so that an incident already in the log is not written again. */
+	/** The id is the activity alone, so that an incident already in the log is not written again. */
 	public ProcessActivity incident(final String processDefinitionId, final String activityId, final String message, final OffsetDateTime occurredAt) {
 		final var name = stepText(activityId, Outcome.FAILED).orElseGet(() -> orId(operatonIntegration.labelOf(processDefinitionId, activityId), activityId));
 		return entry(ACTIVITY_TYPE_INCIDENT, activityId, name, SEVERITY_ERROR, ERROR_CODE_INCIDENT, message, orNow(occurredAt));

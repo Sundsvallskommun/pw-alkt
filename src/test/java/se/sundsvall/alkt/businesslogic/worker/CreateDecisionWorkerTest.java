@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
-import static se.sundsvall.alkt.businesslogic.worker.CreateDecisionWorker.PROCESS_VARIABLE_VALID_TO_PARAMETER;
+import static se.sundsvall.alkt.businesslogic.worker.CreateDecisionWorker.INPUT_PARAMETER_VALID_TO_PARAMETER;
 import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SERVING;
 
@@ -69,7 +69,7 @@ class CreateDecisionWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_MUNICIPALITY_ID)).thenReturn(MUNICIPALITY_ID);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_NAMESPACE)).thenReturn(NAMESPACE);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_VALID_TO_PARAMETER)).thenReturn("occasionEndDate");
+		when(externalTaskMock.getVariable(INPUT_PARAMETER_VALID_TO_PARAMETER)).thenReturn("occasionEndDate");
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(CATERING_OCCASION.getKey());
 		when(externalTaskMock.getActivityId()).thenReturn("external_task_create_decision");
 		when(decisionServiceMock.approveAutomatically(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CATERING_OCCASION, "occasionEndDate")).thenReturn("decision-id");

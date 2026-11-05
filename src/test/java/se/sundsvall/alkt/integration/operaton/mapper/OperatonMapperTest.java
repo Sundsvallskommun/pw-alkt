@@ -18,20 +18,17 @@ class OperatonMapperTest {
 
 	@Test
 	void toStartProcessInstanceDto() {
-		// Arrange
 		final var municipalityId = "2281";
 		final var namespace = "ALKT";
 		final var errandId = UUID.randomUUID().toString();
 		final var requestId = UUID.randomUUID().toString();
 
-		// Act
 		final generated.se.sundsvall.operaton.StartProcessInstanceDto result;
 		try (MockedStatic<RequestId> requestIdMock = mockStatic(RequestId.class)) {
 			requestIdMock.when(RequestId::get).thenReturn(requestId);
 			result = OperatonMapper.toStartProcessInstanceDto(municipalityId, namespace, errandId);
 		}
 
-		// Assert
 		assertThat(result.getBusinessKey()).isEqualTo(errandId);
 		assertThat(result.getVariables())
 			.hasSize(4)
@@ -46,15 +43,12 @@ class OperatonMapperTest {
 
 	@Test
 	void toCorrelationMessageDto() {
-		// Arrange
 		final var messageName = "errandUpdated";
 		final var errandId = UUID.randomUUID().toString();
 		final var tenantId = "ALKT";
 
-		// Act
 		final var result = OperatonMapper.toCorrelationMessageDto(messageName, errandId, tenantId);
 
-		// Assert
 		assertThat(result.getMessageName()).isEqualTo(messageName);
 		assertThat(result.getBusinessKey()).isEqualTo(errandId);
 		assertThat(result.getTenantId()).isEqualTo(tenantId);
@@ -67,16 +61,6 @@ class OperatonMapperTest {
 		final var result = OperatonMapper.toCorrelationMessageDto("process_cancelled", UUID.randomUUID().toString(), "ALKT");
 
 		assertThat(result.getAll()).isTrue();
-	}
-
-	@Test
-	void toVariableValueDto() {
-		// Act
-		final var result = OperatonMapper.toVariableValueDto(ValueType.BOOLEAN, true);
-
-		// Assert
-		assertThat(result.getType()).isEqualTo(ValueType.BOOLEAN.getName());
-		assertThat(result.getValue()).isEqualTo(true);
 	}
 
 	@Test

@@ -8,13 +8,10 @@ import generated.se.sundsvall.partyassets.DraftAssetUpdateRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.configuration.PartyAssetsProperties;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.integration.partyassets.model.VersionedAsset;
-import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 
 import static generated.se.sundsvall.partyassets.Status.ACTIVE;
@@ -23,7 +20,7 @@ import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandRelation;
-import static se.sundsvall.alkt.util.FailureDescription.describe;
+import static se.sundsvall.alkt.util.RemoteAnswers.failWithoutRetryOn;
 import static se.sundsvall.alkt.util.ResponseUtil.getIdOfCreatedResource;
 
 @Component
@@ -45,15 +42,7 @@ public class PartyAssetsIntegration {
 
 	/** The id comes from the customer, so one that names no asset is not something a retry fixes. */
 	public VersionedAsset getAsset(final String municipalityId, final String id) {
-		final ResponseEntity<Asset> response;
-		try {
-			response = partyAssetsClient.getAsset(municipalityId, id);
-		} catch (final ClientProblem e) {
-			if (NOT_FOUND.equals(e.getStatus())) {
-				throw new NonRetryableException("Asset '%s' cannot be read: %s".formatted(id, describe(e)), e);
-			}
-			throw e;
-		}
+		final var response = failWithoutRetryOn(NOT_FOUND, "Asset '%s' cannot be read".formatted(id), () -> partyAssetsClient.getAsset(municipalityId, id));
 		final var asset = Optional.ofNullable(response.getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Asset '%s' came back without content".formatted(id)));
 		return new VersionedAsset(asset, response.getHeaders().getETag());
@@ -64,14 +53,7 @@ public class PartyAssetsIntegration {
 	 * party-assets refuses, which a retry does not change.
 	 */
 	public void updateAsset(final String municipalityId, final String id, final String version, final AssetUpdateRequest asset) {
-		try {
-			partyAssetsClient.updateAsset(municipalityId, id, version, asset);
-		} catch (final ClientProblem e) {
-			if (BAD_REQUEST.equals(e.getStatus())) {
-				throw new NonRetryableException("Asset '%s' cannot be updated: %s".formatted(id, describe(e)), e);
-			}
-			throw e;
-		}
+		failWithoutRetryOn(BAD_REQUEST, "Asset '%s' cannot be updated".formatted(id), () -> partyAssetsClient.updateAsset(municipalityId, id, version, asset));
 	}
 
 	/**
@@ -88,11 +70,16 @@ public class PartyAssetsIntegration {
 		partyAssetsClient.createAttachment(municipalityId, assetId, certificate.file(), certificate.category(), null, replaces);
 	}
 
+	/**
+	 * A 400 is a draft party-assets refuses, for instance a JSON parameter that does not follow its schema. No draft is
+	 * created then, and a retry does not change it.
+	 */
 	public String createDraftAsset(final String municipalityId, final String namespace, final String errandId, final AssetCreateRequest asset) {
 		idsOf(partyAssetsClient.getDraftAssets(municipalityId, asset.getPartyId(), asset.getAssetId()).getBody())
 			.forEach(draftId -> partyAssetsClient.deleteAsset(municipalityId, draftId));
 
-		return getIdOfCreatedResource(partyAssetsClient.createDraftAsset(municipalityId, toErrandRelation(properties.relationType(), errandId, namespace), asset), SERVICE);
+		return getIdOfCreatedResource(failWithoutRetryOn(BAD_REQUEST, "The draft asset of errand '%s' cannot be created".formatted(errandId),
+			() -> partyAssetsClient.createDraftAsset(municipalityId, toErrandRelation(properties.relationType(), errandId, namespace), asset)), SERVICE);
 	}
 
 	public void addAttachmentToDraft(final String municipalityId, final String assetId, final AssetFile attachment) {
@@ -101,14 +88,7 @@ public class PartyAssetsIntegration {
 
 	/** party-assets refuses to activate a permit whose validTo has passed, which a retry does not change. */
 	public void activateAsset(final String municipalityId, final String assetId) {
-		try {
-			partyAssetsClient.updateDraftAsset(municipalityId, assetId, new DraftAssetUpdateRequest().status(ACTIVE));
-		} catch (final ClientProblem e) {
-			if (BAD_REQUEST.equals(e.getStatus())) {
-				throw new NonRetryableException("Asset '%s' cannot be activated: %s".formatted(assetId, describe(e)), e);
-			}
-			throw e;
-		}
+		failWithoutRetryOn(BAD_REQUEST, "Asset '%s' cannot be activated".formatted(assetId), () -> partyAssetsClient.updateDraftAsset(municipalityId, assetId, new DraftAssetUpdateRequest().status(ACTIVE)));
 	}
 
 	public void removeDraftAsset(final String municipalityId, final String assetId) {

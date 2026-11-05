@@ -30,7 +30,7 @@ public class AssignRestaurantNumberWorker extends AbstractTaskWorker {
 		final String restaurantNumber = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER);
 		final String addressId = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID);
 		final String latestAssignmentIdSeen = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT);
-		final var report = ProcessStateReport.running(externalTask.getActivityId(), null);
+		final var report = running(externalTask);
 
 		if (!restaurantNumberService.assignRestaurantNumber(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), restaurantNumber, addressId,
 			latestAssignmentIdSeen)) {
