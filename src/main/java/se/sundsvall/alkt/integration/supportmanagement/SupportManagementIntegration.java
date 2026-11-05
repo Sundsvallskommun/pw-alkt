@@ -97,7 +97,6 @@ public class SupportManagementIntegration {
 			.orElse(emptyList());
 	}
 
-	/** A decision without the parameter is a fault in the decision, which a retry does not fix. */
 	/**
 	 * The value of the JSON parameter of the decision. The case worker writes it, so a decision without it, or with no
 	 * value in it, fails without retry.
