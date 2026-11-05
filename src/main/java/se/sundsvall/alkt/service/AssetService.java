@@ -276,8 +276,8 @@ public class AssetService {
 	}
 
 	/**
-	 * The permit and its certificate are made before the draft is created, so a decision that does not fill them leaves no
-	 * draft. party-assets validates the JSON parameter of the permit against its schema as the draft is created.
+	 * The permit and its certificate are made before the draft is created, so a permit or a certificate that cannot be made
+	 * leaves no draft. party-assets validates the JSON parameter of the permit against its schema as the draft is created.
 	 */
 	private String createPermit(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision,
 		final AssetType assetType, final String restaurantNumber) {

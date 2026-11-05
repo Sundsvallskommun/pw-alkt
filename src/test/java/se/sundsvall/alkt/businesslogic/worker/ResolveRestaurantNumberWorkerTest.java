@@ -18,6 +18,7 @@ import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.RestaurantNumberService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 import se.sundsvall.alkt.service.model.ResolvedRestaurantNumber;
+import se.sundsvall.alkt.service.model.RestaurantNumbersBeforeCreate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +34,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT;
 import static se.sundsvall.alkt.businesslogic.worker.ResolveRestaurantNumberWorker.PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE;
+import static se.sundsvall.alkt.businesslogic.worker.ResolveRestaurantNumberWorker.PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE_ADDRESS_ID;
 
 @ExtendWith(MockitoExtension.class)
 class ResolveRestaurantNumberWorkerTest {
@@ -57,7 +59,7 @@ class ResolveRestaurantNumberWorkerTest {
 	private ExternalTaskService externalTaskServiceMock;
 
 	@Captor
-	private ArgumentCaptor<Consumer<List<String>>> saveCaptor;
+	private ArgumentCaptor<Consumer<RestaurantNumbersBeforeCreate>> saveCaptor;
 
 	@InjectMocks
 	private ResolveRestaurantNumberWorker worker;
@@ -72,6 +74,7 @@ class ResolveRestaurantNumberWorkerTest {
 
 	@Test
 	void handsTheNumberToTheEngine() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE_ADDRESS_ID)).thenReturn(null);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn(null);
 		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), any())).thenReturn(new ResolvedRestaurantNumber("22810001", "address-id", "assignment-id"));
 
@@ -85,30 +88,44 @@ class ResolveRestaurantNumberWorkerTest {
 
 	@Test
 	void savesTheFreeNumbersInTheEngineAtOnce() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE_ADDRESS_ID)).thenReturn(null);
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn(null);
 		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), saveCaptor.capture())).thenReturn(new ResolvedRestaurantNumber("22810003", "address-id", "assignment-id"));
 
 		worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
-		saveCaptor.getValue().accept(List.of("22810001", "22810002"));
+		saveCaptor.getValue().accept(new RestaurantNumbersBeforeCreate("address-id", List.of("22810001", "22810002")));
 
-		verify(externalTaskServiceMock).setVariables(externalTaskMock, Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE, "22810001,22810002"));
+		verify(externalTaskServiceMock).setVariables(externalTaskMock, Map.of(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE_ADDRESS_ID, "address-id", PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE, "22810001,22810002"));
 	}
 
 	/** An empty list is saved as an empty string, which must come back as no free numbers rather than as none saved. */
 	@Test
 	void handsTheFreeNumbersAnEarlierRunSavedToTheService() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE_ADDRESS_ID)).thenReturn("address-id");
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn("");
-		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(List.of()), any())).thenReturn(new ResolvedRestaurantNumber("22810001", "address-id", "assignment-id"));
+		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(new RestaurantNumbersBeforeCreate("address-id", List.of())), any())).thenReturn(new ResolvedRestaurantNumber("22810001", "address-id",
+			"assignment-id"));
 
 		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock).variables()).containsEntry(PROCESS_VARIABLE_RESTAURANT_NUMBER, "22810001");
 	}
 
 	@Test
 	void splitsTheSavedNumbers() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE_ADDRESS_ID)).thenReturn("address-id");
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn("22810001,22810002");
-		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(List.of("22810001", "22810002")), any()))
+		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(new RestaurantNumbersBeforeCreate("address-id", List.of("22810001", "22810002"))), any()))
 			.thenReturn(new ResolvedRestaurantNumber("22810003", "address-id", ""));
 
 		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock).variables()).containsEntry(PROCESS_VARIABLE_RESTAURANT_NUMBER, "22810003");
+	}
+
+	/** Numbers saved without the address they were taken at cannot be told apart from those of another address. */
+	@Test
+	void handsNoFreeNumbersSavedWithoutTheirAddressToTheService() {
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE_ADDRESS_ID)).thenReturn(null);
+		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBERS_BEFORE_CREATE)).thenReturn("22810001");
+		when(restaurantNumberServiceMock.resolveRestaurantNumber(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), any())).thenReturn(new ResolvedRestaurantNumber("22810002", "address-id", ""));
+
+		assertThat(worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock).variables()).containsEntry(PROCESS_VARIABLE_RESTAURANT_NUMBER, "22810002");
 	}
 }

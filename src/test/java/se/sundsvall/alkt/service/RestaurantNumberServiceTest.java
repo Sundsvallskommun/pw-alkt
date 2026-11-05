@@ -31,6 +31,7 @@ import se.sundsvall.alkt.integration.licensedbusiness.LicensedBusinessIntegratio
 import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.ResolvedRestaurantNumber;
+import se.sundsvall.alkt.service.model.RestaurantNumbersBeforeCreate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -71,7 +72,7 @@ class RestaurantNumberServiceTest {
 	private LicensedBusinessIntegration licensedBusinessIntegrationMock;
 
 	@Mock
-	private Consumer<List<String>> saveAvailableBeforeCreateMock;
+	private Consumer<RestaurantNumbersBeforeCreate> saveAvailableBeforeCreateMock;
 
 	@Captor
 	private ArgumentCaptor<Address> addressCaptor;
@@ -135,7 +136,7 @@ class RestaurantNumberServiceTest {
 		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo(new ResolvedRestaurantNumber("22810002", ADDRESS_ID, ""));
 
 		verifyResolveRead("22810002");
-		verify(saveAvailableBeforeCreateMock).accept(List.of(NUMBER));
+		verify(saveAvailableBeforeCreateMock).accept(new RestaurantNumbersBeforeCreate(ADDRESS_ID, List.of(NUMBER)));
 		verify(licensedBusinessIntegrationMock).createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID);
 	}
 
@@ -145,11 +146,29 @@ class RestaurantNumberServiceTest {
 		givenResolvable(errand(), premises("\"newRestaurantNumber\": true"));
 		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of(NUMBER, "22810002"));
 
-		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, List.of(NUMBER), saveAvailableBeforeCreateMock))
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, new RestaurantNumbersBeforeCreate(ADDRESS_ID, List.of(NUMBER)), saveAvailableBeforeCreateMock))
 			.isEqualTo(new ResolvedRestaurantNumber("22810002", ADDRESS_ID, ""));
 
 		verifyResolveRead("22810002");
 		verifyNoInteractions(saveAvailableBeforeCreateMock);
+	}
+
+	/**
+	 * The earlier run was at the address the premises had before they were corrected, so a number free at this address is
+	 * not one it created.
+	 */
+	@Test
+	void resolveCreatesTheNewNumberWhenTheEarlierRunWasAtAnotherAddress() {
+		givenResolvable(errand(), premises("\"newRestaurantNumber\": true"));
+		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of(NUMBER, "22810002"));
+		when(licensedBusinessIntegrationMock.createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn("22810003");
+
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, new RestaurantNumbersBeforeCreate("other-address-id", List.of(NUMBER)),
+			saveAvailableBeforeCreateMock)).isEqualTo(new ResolvedRestaurantNumber("22810003", ADDRESS_ID, ""));
+
+		verifyResolveRead("22810003");
+		verify(saveAvailableBeforeCreateMock).accept(new RestaurantNumbersBeforeCreate(ADDRESS_ID, List.of(NUMBER, "22810002")));
+		verify(licensedBusinessIntegrationMock).createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID);
 	}
 
 	/** The earlier run failed before its create, so nothing new is free and the rerun creates the number. */
@@ -159,11 +178,11 @@ class RestaurantNumberServiceTest {
 		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of(NUMBER));
 		when(licensedBusinessIntegrationMock.createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn("22810002");
 
-		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, List.of(NUMBER), saveAvailableBeforeCreateMock))
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, new RestaurantNumbersBeforeCreate(ADDRESS_ID, List.of(NUMBER)), saveAvailableBeforeCreateMock))
 			.isEqualTo(new ResolvedRestaurantNumber("22810002", ADDRESS_ID, ""));
 
 		verifyResolveRead("22810002");
-		verify(saveAvailableBeforeCreateMock).accept(List.of(NUMBER));
+		verify(saveAvailableBeforeCreateMock).accept(new RestaurantNumbersBeforeCreate(ADDRESS_ID, List.of(NUMBER)));
 		verify(licensedBusinessIntegrationMock).createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID);
 	}
 
@@ -191,7 +210,7 @@ class RestaurantNumberServiceTest {
 		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo(new ResolvedRestaurantNumber("22810002", ADDRESS_ID, ""));
 
 		verifyResolveRead("22810002");
-		verify(saveAvailableBeforeCreateMock).accept(List.of());
+		verify(saveAvailableBeforeCreateMock).accept(new RestaurantNumbersBeforeCreate(ADDRESS_ID, List.of()));
 		verify(licensedBusinessIntegrationMock).createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID);
 	}
 
@@ -490,7 +509,7 @@ class RestaurantNumberServiceTest {
 		verifyTheErrandAndTheDecisionRead();
 		verify(licensedBusinessIntegrationMock).findOrCreateAddress(eq("2262"), any());
 		verify(licensedBusinessIntegrationMock).getAvailableRestaurantNumbers("2262", ADDRESS_ID);
-		verify(saveAvailableBeforeCreateMock).accept(List.of());
+		verify(saveAvailableBeforeCreateMock).accept(new RestaurantNumbersBeforeCreate(ADDRESS_ID, List.of()));
 		verify(licensedBusinessIntegrationMock).createRestaurantNumber("2262", ADDRESS_ID);
 		verify(licensedBusinessIntegrationMock).findLatestAssignment("2262", "22620001");
 	}

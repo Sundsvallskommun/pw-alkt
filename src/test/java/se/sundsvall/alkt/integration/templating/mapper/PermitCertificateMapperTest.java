@@ -16,7 +16,10 @@ import static se.sundsvall.alkt.service.model.PermitSchema.TOBACCO;
 
 class PermitCertificateMapperTest {
 
-	/** What serving-permit-certificate reads, in Sundsvall and in Timrå alike. */
+	/**
+	 * What serving-permit-certificate reads, in Sundsvall and in Timrå alike, copied from the template in templating. A
+	 * template that reads something new needs it added here.
+	 */
 	private static final String[] SERVING_TEMPLATE_PLACEHOLDERS = {
 		"caseNumber", "conditions", "decisionDate", "decisionDateAndCaseNumber", "decisionMaker", "decisionText", "executionDate", "issuedByNameAndTitle", "issuedByUnit",
 		"permitHolderName", "permitHolderOrgNumber", "permitHolderPhone", "permitHolderPostalAddress", "permitHolderStreet", "premisesName", "premisesPhone",
@@ -25,7 +28,10 @@ class PermitCertificateMapperTest {
 		"beverageSpirits", "beverageWine", "scopeAllYear", "scopeAnnualPeriod", "scopeTasting", "servingToClosedCompany", "servingToPublic"
 	};
 
-	/** What tobacco-permit-certificate reads, in Sundsvall and in Timrå alike. */
+	/**
+	 * What tobacco-permit-certificate reads, in Sundsvall and in Timrå alike, copied from the template in templating. A
+	 * template that reads something new needs it added here.
+	 */
 	private static final String[] TOBACCO_TEMPLATE_PLACEHOLDERS = {
 		"caseNumber", "decisionDate", "decisionMaker", "decisionOfficerAndCaseNumber", "decisionText", "executionDate", "information", "issuedByNameAndTitle",
 		"issuedByUnit", "permitHolderCareOf", "permitHolderName", "permitHolderOrgNumber", "permitHolderPostalAddress", "permitHolderStreet", "premisesName",

@@ -16,6 +16,7 @@ import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper;
 import se.sundsvall.alkt.service.model.ResolvedRestaurantNumber;
+import se.sundsvall.alkt.service.model.RestaurantNumbersBeforeCreate;
 import tools.jackson.databind.JsonNode;
 
 import static java.util.Collections.emptyList;
@@ -52,11 +53,12 @@ public class RestaurantNumberService {
 	/**
 	 * The number the case worker chose at the premises in the decision, a new one when the decision asks for it, and
 	 * otherwise the premises' first free number or a new one when there is none. Nothing is assigned yet. Before a number
-	 * is created the free numbers are handed to saveAvailableBeforeCreate, and a rerun gets them back as
-	 * availableBeforeCreate, null on a first run.
+	 * is created the free numbers at the address are handed to saveBeforeCreate, and a rerun gets them back as
+	 * beforeCreate, null on a first run. They count only at the address they were taken at, so a rerun after the premises
+	 * moved creates its number anew.
 	 */
-	public ResolvedRestaurantNumber resolveRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final List<String> availableBeforeCreate,
-		final Consumer<List<String>> saveAvailableBeforeCreate) {
+	public ResolvedRestaurantNumber resolveRestaurantNumber(final String municipalityId, final String namespace, final String errandId,
+		final RestaurantNumbersBeforeCreate beforeCreate, final Consumer<RestaurantNumbersBeforeCreate> saveBeforeCreate) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		requireAssignableHolder(municipalityId, errand, errandId);
 		final var decisionJson = getDecisionJson(municipalityId, namespace, errandId, getCompletedDecision(municipalityId, namespace, errandId));
@@ -65,7 +67,7 @@ public class RestaurantNumberService {
 
 		final var number = findChosenRestaurantNumber(decisionJson)
 			.map(chosen -> requireAtAddress(premisesMunicipalityId, addressId, chosen, errandId))
-			.orElseGet(() -> newOrAvailableRestaurantNumber(premisesMunicipalityId, addressId, decisionJson, availableBeforeCreate, saveAvailableBeforeCreate));
+			.orElseGet(() -> newOrAvailableRestaurantNumber(premisesMunicipalityId, addressId, decisionJson, beforeCreate, saveBeforeCreate));
 
 		final var latestAssignment = licensedBusinessIntegration.findLatestAssignment(premisesMunicipalityId, number);
 		return new ResolvedRestaurantNumber(number, addressId, toAssignmentId(latestAssignment));
@@ -164,24 +166,25 @@ public class RestaurantNumberService {
 		return number;
 	}
 
-	private String newOrAvailableRestaurantNumber(final String municipalityId, final String addressId, final JsonNode decisionJson, final List<String> availableBeforeCreate,
-		final Consumer<List<String>> saveAvailableBeforeCreate) {
+	private String newOrAvailableRestaurantNumber(final String municipalityId, final String addressId, final JsonNode decisionJson,
+		final RestaurantNumbersBeforeCreate beforeCreate, final Consumer<RestaurantNumbersBeforeCreate> saveBeforeCreate) {
 		final var available = licensedBusinessIntegration.getAvailableRestaurantNumbers(municipalityId, addressId);
 		if (!asksForANewRestaurantNumber(decisionJson) && !available.isEmpty()) {
 			return available.getFirst();
 		}
 
-		return findCreatedByAnEarlierRun(available, availableBeforeCreate)
+		return findCreatedByAnEarlierRun(addressId, available, beforeCreate)
 			.orElseGet(() -> {
-				saveAvailableBeforeCreate.accept(available);
+				saveBeforeCreate.accept(new RestaurantNumbersBeforeCreate(addressId, available));
 				return licensedBusinessIntegration.createRestaurantNumber(municipalityId, addressId);
 			});
 	}
 
-	private static Optional<String> findCreatedByAnEarlierRun(final List<String> available, final List<String> availableBeforeCreate) {
-		return Optional.ofNullable(availableBeforeCreate)
+	private static Optional<String> findCreatedByAnEarlierRun(final String addressId, final List<String> available, final RestaurantNumbersBeforeCreate beforeCreate) {
+		return Optional.ofNullable(beforeCreate)
+			.filter(before -> addressId.equals(before.addressId()))
 			.flatMap(before -> available.stream()
-				.filter(number -> !before.contains(number))
+				.filter(number -> !before.numbers().contains(number))
 				.findFirst());
 	}
 
