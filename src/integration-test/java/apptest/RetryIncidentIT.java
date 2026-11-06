@@ -1,6 +1,7 @@
 package apptest;
 
 import generated.se.sundsvall.operaton.ExternalTaskDto;
+import generated.se.sundsvall.operaton.ProcessInstanceDto;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
@@ -20,8 +21,8 @@ import static se.sundsvall.alkt.api.model.ErrandEvent.EventType.UPDATE;
 import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 
 /**
- * A step that stands on an incident is tried once more when the case worker changes the errand. Catering occasion is
- * used since its first work step raises the incident at once on an errand without a permit holder.
+ * A step that stands on an incident is tried once more when the case worker changes the errand, or starts it again.
+ * Catering occasion is used since its first work step raises the incident at once on an errand without a permit holder.
  */
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/RetryIncidentIT/", classes = Application.class, sharedContext = false)
@@ -33,6 +34,18 @@ class RetryIncidentIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test001_errandChangeRetriesTheStuckStep() throws JacksonException {
+		// The case worker adds the permit holder
+		assertStuckStepRetriedBy("ERRAND", false);
+	}
+
+	@Test
+	void test002_startAgainRetriesTheStuckStep() throws JacksonException {
+		// The case worker corrects the errand by a change that sends no event, and starts the errand again. Support
+		// Management allows the start since it holds the process as failed.
+		assertStuckStepRetriedBy("PROCESS", true);
+	}
+
+	private void assertStuckStepRetriedBy(final String eventSubType, final boolean startAllowed) throws JacksonException {
 		final var processInstanceId = startProcess(ERRAND_ID, CATERING_OCCASION.getKey());
 		completePhase(ERRAND_ID, processInstanceId, CATERING_OCCASION.getKey(), "registration");
 		awaitIncidentAt(CATERING_OCCASION.getKey(), processInstanceId, STUCK_ACTIVITY);
@@ -40,7 +53,6 @@ class RetryIncidentIT extends AbstractOperatonAppTest {
 			.extracting(ExternalTaskDto::getActivityId)
 			.containsExactly(STUCK_ACTIVITY);
 
-		// The case worker adds the permit holder
 		wiremock.setScenarioState("errand", "corrected");
 		setupCall()
 			.withServicePath(ERRAND_EVENTS_PATH)
@@ -48,10 +60,10 @@ class RetryIncidentIT extends AbstractOperatonAppTest {
 			.withRequest(JSON_MAPPER.writeValueAsString(ErrandEvent.create()
 				.withEventId(UUID.randomUUID().toString())
 				.withEventType(UPDATE)
-				.withEventSubType("ERRAND")
+				.withEventSubType(eventSubType)
 				.withErrandId(ERRAND_ID)
 				.withProcessKey(CATERING_OCCASION.getKey())
-				.withStartAllowed(false)))
+				.withStartAllowed(startAllowed)))
 			.withExpectedResponseStatus(ACCEPTED)
 			.withExpectedResponseBodyIsNull()
 			.sendRequest();
@@ -60,6 +72,9 @@ class RetryIncidentIT extends AbstractOperatonAppTest {
 		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitReportAt("follow_up_phase");
 
+		assertThat(operatonClient.findProcessInstances(ERRAND_ID, CATERING_OCCASION.getKey(), TENANT_ID_ALKT))
+			.extracting(ProcessInstanceDto::getId)
+			.containsExactly(processInstanceId);
 		assertThat(operatonClient.findIncidents(TENANT_ID_ALKT, CATERING_OCCASION.getKey()))
 			.noneMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId()));
 		wiremock.verify(1, postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack")));

@@ -189,6 +189,17 @@ back to the choice with a refusal in the activity log. An inspection without a p
 `process-reconciliation` runs every five minutes in the engine and reports processes that ended or stopped without
 telling Support Management. It is not started by an event.
 
+### Incidents
+
+A step that fails is tried again `camunda.worker.max.retries` times, `camunda.worker.retry.timeout` milliseconds apart,
+before it raises an incident and alerts Slack. A failure no retry can fix raises the incident at once. Support
+Management then holds the process as failed.
+
+The step on an incident is tried once more when the errand or its decision is changed in Support Management, or when
+the errand is started again there, which Support Management offers once the process has failed. The start takes up the
+process that is already there. A change Support Management sends no event about, such as a change of an errand
+parameter, needs the start.
+
 ## Configuration
 
 Configuration is crucial for the application to run successfully. Ensure all necessary settings are configured in

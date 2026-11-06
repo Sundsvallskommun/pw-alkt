@@ -1,0 +1,25 @@
+{
+	"name": "decision_api-party-assets-post-attachment",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-party-assets/2281/assets/2c4e6a80-9b1d-4e35-a7c9-e1f3a5b7c9d2/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ANY",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "filename=\"anmalan.pdf\""
+					}
+				}
+			}
+		]
+	},
+	"response": {
+		"status": 201
+	}
+}

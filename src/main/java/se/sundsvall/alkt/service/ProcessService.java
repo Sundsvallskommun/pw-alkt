@@ -28,6 +28,7 @@ public class ProcessService {
 	private static final String SUB_TYPE_SIGNAL = "SIGNAL";
 	private static final String SUB_TYPE_DECISION = "DECISION";
 	private static final String SUB_TYPE_ERRAND = "ERRAND";
+	private static final String SUB_TYPE_PROCESS = "PROCESS";
 
 	private final OperatonIntegration operatonIntegration;
 	private final ProcessReportService processReportService;
@@ -48,18 +49,21 @@ public class ProcessService {
 			startProcess(municipalityId, namespace, errandEvent);
 		} else {
 			correlateMessage(municipalityId, namespace, errandEvent);
-			if (errandEvent.getEventType() == ErrandEvent.EventType.UPDATE && isCorrection(errandEvent.getEventSubType())) {
+			if (errandEvent.getEventType() == ErrandEvent.EventType.UPDATE && givesStuckTasksANewAttempt(errandEvent.getEventSubType())) {
 				instances.forEach(instance -> retryStuckTasks(errandEvent, instance.getId()));
 			}
 		}
 	}
 
-	private static boolean isCorrection(final String eventSubType) {
-		return SUB_TYPE_ERRAND.equalsIgnoreCase(eventSubType) || SUB_TYPE_DECISION.equalsIgnoreCase(eventSubType);
+	// Support Management holds a process standing on an incident as failed and offers to start the errand again. A start
+	// that finds the instance still there is the case worker asking for it to go on, and is the only way to do so after
+	// a change that sends no event, such as one of the errand parameters.
+	private static boolean givesStuckTasksANewAttempt(final String eventSubType) {
+		return SUB_TYPE_ERRAND.equalsIgnoreCase(eventSubType) || SUB_TYPE_DECISION.equalsIgnoreCase(eventSubType) || SUB_TYPE_PROCESS.equalsIgnoreCase(eventSubType);
 	}
 
-	// A case worker who corrected the errand or its decision gets the step that stood on an incident tried once more. The
-	// message is already correlated, so a failure here must cost the retry rather than the event.
+	// A case worker who corrected the errand or its decision, or started it again, gets the step that stood on an incident
+	// tried once more. The message is already correlated, so a failure here must cost the retry rather than the event.
 	private void retryStuckTasks(final ErrandEvent errandEvent, final String processInstanceId) {
 		try {
 			operatonIntegration.retryStuckExternalTasks(processInstanceId)
