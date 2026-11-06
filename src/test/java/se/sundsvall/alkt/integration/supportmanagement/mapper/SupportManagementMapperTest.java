@@ -15,10 +15,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.model.AwaitingSignal;
@@ -385,5 +388,32 @@ class SupportManagementMapperTest {
 	@Test
 	void toPremisesMunicipalityIdIsSundsvallForAnErrandWithoutParameters() {
 		assertThat(SupportManagementMapper.toPremisesMunicipalityId(new Errand().parameters(null))).isEqualTo("2281");
+	}
+
+	@Test
+	void toCaseFileNameNamesTheFileForTheErrandNumber() {
+		final var errand = new Errand().errandNumber("ALKT-2026-000123").parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2281"))));
+
+		assertThat(SupportManagementMapper.toCaseFileName("Tillståndsbevis", errand)).isEqualTo("Tillståndsbevis ALKT-2026-000123.pdf");
+	}
+
+	private static Stream<Arguments> caseNumbersOfTimra() {
+		return Stream.of(
+			Arguments.of("TSN 2026/0153", "Tillståndsbevis TSN 2026-0153.pdf"),
+			Arguments.of("TSN 2026\\0153", "Tillståndsbevis TSN 2026-0153.pdf"),
+			Arguments.of("TSN \"2026\"/0153", "Tillståndsbevis TSN 2026-0153.pdf"),
+			Arguments.of("TSN 2026/0153\r\nContent-Type: text/html", "Tillståndsbevis TSN 2026-0153 Content-Type: text-html.pdf"),
+			Arguments.of(" TSN\t2026/0153\u0000 ", "Tillståndsbevis TSN 2026-0153.pdf"));
+	}
+
+	/** The case number of Timrå is typed by the case worker, and the name travels quoted in the header of the upload. */
+	@ParameterizedTest
+	@MethodSource("caseNumbersOfTimra")
+	void toCaseFileNameLeavesOutWhatTheHeaderOfTheUploadCannotCarry(final String caseNumber, final String fileName) {
+		final var errand = new Errand().errandNumber("ALKT-2026-000123").parameters(List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
+			new Parameter().key("externalCaseRegistrationNumber").values(List.of(caseNumber))));
+
+		assertThat(SupportManagementMapper.toCaseFileName("Tillståndsbevis", errand)).isEqualTo(fileName);
 	}
 }

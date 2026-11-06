@@ -23,11 +23,13 @@ import static java.util.Collections.emptyList;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.asksForANewRestaurantNumber;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.findChosenRestaurantNumber;
+import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.findRestaurantNumber;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.isActiveFor;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.isAssignedTo;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAddress;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toAssignmentCreateRequest;
 import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.toValidFrom;
+import static se.sundsvall.alkt.integration.licensedbusiness.mapper.LicensedBusinessMapper.withRestaurantNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.service.model.PermitSchema.ALCOHOL;
 
@@ -114,6 +116,26 @@ public class RestaurantNumberService {
 		final var restaurantNumberId = licensedBusinessIntegration.getRestaurantNumberId(premisesMunicipalityId, restaurantNumber);
 		final var request = toAssignmentCreateRequest(restaurantNumberId, addressId, orgNumber, holderName, decisionJson, decision);
 		licensedBusinessIntegration.createAssignment(premisesMunicipalityId, restaurantNumber, request);
+		return true;
+	}
+
+	/**
+	 * Writes the restaurant number into the premises of the JSON parameter of the decision when the decision asked for a
+	 * new one, so that the decision names the number the permit got. A decision that chose its number, or left the choice
+	 * to the process, is left as the case worker wrote it. A JSON parameter changed since it was read fails the write with
+	 * a 412, and a rerun reads it anew. Returns whether it was written.
+	 */
+	public boolean recordNewRestaurantNumber(final String municipalityId, final String namespace, final String errandId, final String restaurantNumber) {
+		final var decision = getCompletedDecision(municipalityId, namespace, errandId);
+		final var parameter = supportManagementIntegration.getDecisionJsonParameter(municipalityId, namespace, errandId, decision.getId(),
+			permitJsonProperties.of(ALCOHOL).decisionKey());
+		final var decisionJson = parameter.getValue();
+		if (!asksForANewRestaurantNumber(decisionJson) || findRestaurantNumber(decisionJson).filter(restaurantNumber::equals).isPresent()) {
+			return false;
+		}
+
+		supportManagementIntegration.updateDecisionJsonParameter(municipalityId, namespace, errandId, decision.getId(),
+			parameter.value(withRestaurantNumber(decisionJson, restaurantNumber)));
 		return true;
 	}
 

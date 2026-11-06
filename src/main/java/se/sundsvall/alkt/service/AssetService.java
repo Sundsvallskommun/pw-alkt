@@ -8,14 +8,17 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.configuration.PermitJsonProperties;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
+import se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.integration.partyassets.model.VersionedAsset;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
@@ -46,6 +49,8 @@ import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PermitJsonMapper.toChangedPermit;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PermitJsonMapper.toGrantedPermit;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseFileName;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditionList;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
@@ -75,9 +80,9 @@ public class AssetService {
 
 	/**
 	 * A permit is built from the JSON parameter of its decision and gets a certificate rendered from it, and without a
-	 * restaurant number it carries none. A notification gets the parameters of its decision as additional parameters and
-	 * no certificate. A decision with a validTo must end after today, as party-assets refuses to activate the asset
-	 * otherwise.
+	 * restaurant number it carries none. The certificate is kept on the errand as well, also by a rerun that finds the
+	 * permit already made. A notification gets the parameters of its decision as additional parameters and no certificate.
+	 * A decision with a validTo must end after today, as party-assets refuses to activate the asset otherwise.
 	 */
 	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final AssetType assetType, final String restaurantNumber) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
@@ -89,6 +94,9 @@ public class AssetService {
 		return partyAssetsIntegration.findAsset(municipalityId, partyId, decision.getId())
 			.map(asset -> {
 				requireAssetType(asset, assetType);
+				if (assetType.getCertificateTemplate().isPresent()) {
+					keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> partyAssetsIntegration.findCertificate(municipalityId, asset.getId()));
+				}
 				return asset.getId();
 			})
 			.orElseGet(() -> {
@@ -101,7 +109,8 @@ public class AssetService {
 
 	/**
 	 * Changes the permit the errand names: the JSON parameter of the change decision goes on top of the one of the permit,
-	 * and the certificate is rendered anew from the result. party-assets keeps the earlier content as a revision.
+	 * and the certificate is rendered anew from the result and kept on the errand as well. party-assets keeps the earlier
+	 * content as a revision.
 	 */
 	public String updateAsset(final String municipalityId, final String namespace, final String errandId, final AssetType assetType) {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
@@ -125,7 +134,10 @@ public class AssetService {
 		if (changes(update, asset, current, parameter)) {
 			partyAssetsIntegration.updateAsset(municipalityId, assetId, versioned.version(), update);
 		}
-		certificate.ifPresent(file -> partyAssetsIntegration.replaceCertificate(municipalityId, assetId, file));
+		certificate.ifPresent(content -> {
+			partyAssetsIntegration.replaceCertificate(municipalityId, assetId, toCertificateFile(content));
+			keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> Optional.of(content));
+		});
 		return assetId;
 	}
 
@@ -278,6 +290,8 @@ public class AssetService {
 	/**
 	 * The permit and its certificate are made before the draft is created, so a permit or a certificate that cannot be made
 	 * leaves no draft. party-assets validates the JSON parameter of the permit against its schema as the draft is created.
+	 * The certificate goes on the errand once the permit is active, so an errand never shows a certificate of a permit
+	 * that was not made, and a copy that cannot be uploaded leaves the permit in place for the rerun to find.
 	 */
 	private String createPermit(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision,
 		final AssetType assetType, final String restaurantNumber) {
@@ -286,7 +300,9 @@ public class AssetService {
 			restaurantNumber, toConditionList(decision));
 		final var certificate = renderCertificate(assetType, schema, permit, decision, errand);
 		final var request = toPermitCreateRequest(decision, requirePartyId(errand, errandId), assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit));
-		return createAsset(municipalityId, namespace, errandId, decision, request, certificate);
+		final var assetId = createAsset(municipalityId, namespace, errandId, decision, request, certificate.map(PartyAssetsMapper::toCertificateFile));
+		certificate.ifPresent(content -> keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> Optional.of(content)));
+		return assetId;
 	}
 
 	private static String requirePartyId(final Errand errand, final String errandId) {
@@ -295,9 +311,25 @@ public class AssetService {
 	}
 
 	/** Rendered in the municipality of the premises, with the case number the errand has there. */
-	private Optional<AssetFile> renderCertificate(final AssetType assetType, final PermitSchema schema, final JsonNode permit, final Decision decision, final Errand errand) {
+	private Optional<byte[]> renderCertificate(final AssetType assetType, final PermitSchema schema, final JsonNode permit, final Decision decision, final Errand errand) {
 		return assetType.getCertificateTemplate()
-			.map(template -> toCertificateFile(templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, toCertificateParameters(schema, permit, decision, toCaseNumber(errand)))));
+			.map(template -> templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, toCertificateParameters(schema, permit, decision, toCaseNumber(errand))));
+	}
+
+	/**
+	 * Uploads the certificate to the errand as an attachment of its own, named for the case number the certificate shows.
+	 * A rerun finds the copy an earlier attempt uploaded by its file name and by it being uploaded after the decision was
+	 * created, and asks for the certificate only when the errand has no copy.
+	 */
+	private void keepCertificateOnErrand(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision,
+		final Supplier<Optional<byte[]>> certificate) {
+		final var fileName = toCaseFileName("Tillståndsbevis", errand);
+		// Support Management stamps the decision and the attachment by the same clock, and a copy from before the decision
+		// is the one of an earlier decision of the errand
+		final var decisionCreated = Optional.ofNullable(decision.getCreated()).orElse(OffsetDateTime.MIN);
+		if (findAttachmentId(supportManagementIntegration.getAttachments(municipalityId, namespace, errandId), fileName, decisionCreated).isEmpty()) {
+			certificate.get().ifPresent(content -> supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, content));
+		}
 	}
 
 	private String createAsset(final String municipalityId, final String namespace, final String errandId, final Decision decision, final AssetCreateRequest request,

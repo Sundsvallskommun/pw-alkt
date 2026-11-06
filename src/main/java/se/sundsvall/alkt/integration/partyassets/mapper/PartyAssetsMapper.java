@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.partyassets.mapper;
 
 import generated.se.sundsvall.partyassets.Asset;
+import generated.se.sundsvall.partyassets.AssetAttachment;
 import generated.se.sundsvall.partyassets.AssetCreateRequest;
 import generated.se.sundsvall.partyassets.AssetJsonParameter;
 import generated.se.sundsvall.partyassets.AssetUpdateRequest;
@@ -126,6 +127,11 @@ public final class PartyAssetsMapper {
 
 	public static AssetFile toCertificateFile(final byte[] content) {
 		return new AssetFile(new ByteArrayMultipartFile(ATTACHMENT_PART_NAME, CERTIFICATE_FILE_NAME, APPLICATION_PDF_VALUE, content), CERTIFICATE_CATEGORY);
+	}
+
+	/** An attachment is the certificate of its asset by the category the certificate is attached in. */
+	public static boolean isCertificate(final AssetAttachment attachment) {
+		return CERTIFICATE_CATEGORY.equals(attachment.getCategory());
 	}
 
 	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId) {

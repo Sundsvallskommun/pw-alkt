@@ -18,8 +18,10 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.task.ExternalTask;
@@ -61,6 +63,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class SupportManagementMapper {
+
+	private static final Pattern CONTROL_CHARACTERS = Pattern.compile("\\p{Cntrl}");
 
 	// The parameters of a change errand that are not part of the change the customer asks for. Every other one is.
 	private static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
@@ -132,6 +136,16 @@ public final class SupportManagementMapper {
 
 	public static Optional<String> findCaseNumber(final Errand errand) {
 		return Optional.ofNullable(toParameterValues(errand.getParameters()).get(ERRAND_PARAMETER_EXTERNAL_CASE_REGISTRATION_NUMBER));
+	}
+
+	/**
+	 * The file name of a PDF the process puts on the errand: the title followed by the case number. A slash or backslash
+	 * in the case number becomes a dash, and quotes and control characters are left out, as the name travels quoted in
+	 * the header of the upload.
+	 */
+	public static String toCaseFileName(final String title, final Errand errand) {
+		final var caseNumber = CONTROL_CHARACTERS.matcher(StringUtils.replaceChars(Objects.toString(toCaseNumber(errand), ""), "/\\\"", "--")).replaceAll(" ");
+		return "%s %s.pdf".formatted(title, StringUtils.normalizeSpace(caseNumber));
 	}
 
 	public static List<Measure> toActiveMeasures(final List<Measure> measures, final String type) {

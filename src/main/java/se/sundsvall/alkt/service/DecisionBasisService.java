@@ -17,10 +17,9 @@ import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Label
 import tools.jackson.databind.node.MissingNode;
 
 import static java.util.Collections.emptyList;
-import static org.apache.commons.lang3.StringUtils.replace;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findFormParameter;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseFileName;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCompletedAt;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.toTemplateParameters;
@@ -61,7 +60,7 @@ public class DecisionBasisService {
 			throw new NonRetryableException("Errand '%s' has %d investigations that are not cancelled, the decision basis is created from exactly one".formatted(errandId, investigations.size()));
 		}
 		final var investigation = investigations.getFirst();
-		final var fileName = "Beslutsunderlag %s.pdf".formatted(replace(toCaseNumber(errand), "/", "-"));
+		final var fileName = toCaseFileName("Beslutsunderlag", errand);
 		final var completed = toCompletedAt(investigation);
 		final var attachments = supportManagementIntegration.getAttachments(municipalityId, namespace, errandId);
 		return findAttachmentId(attachments, fileName, completed)

@@ -133,12 +133,25 @@ leaves `errandId`, `caseRegistrationNumber`, `migration` and the restaurant numb
 replaces the permit's, an empty list counts as left out, and only null removes a list. The certificate is rendered from
 the JSON parameter. A decision without its JSON parameter, and a JSON parameter party-assets refuses, raise an incident.
 
+The certificate is attached to the permit in party-assets, and once it is there a copy is uploaded to the errand as an
+attachment of its own, named `Tillståndsbevis <case number>.pdf` with a `/` or `\` of the case number as `-` and its
+quotes and control characters left out, as the decision basis and the inspection protocol are named. A change uploads
+its new certificate the same way, so the copy on each errand is the certificate its decision gave. A rerun finds a copy
+uploaded since the decision was created and uploads no second one, and a rerun that finds the permit already made copies
+the certificate party-assets holds. party-assets also links the permit to the errand by a relation as the permit is
+created.
+
 The restaurant number and the premises it is kept at come from `premises` in the JSON parameter of the decision: the
 number in `restaurantNumber` the case worker chose, a new one when `newRestaurantNumber` is `true`, and otherwise the
 first free number at `address`, or a new one when none is free. The number and the address are kept in the process
 once chosen, so when the premises of a decision are corrected after that, the process is restarted from
 `ResolveRestaurantNumberTask` rather than retried at a later step. A number created for a permit that is never made
 stays free at the address, where the next errand without a choice of its own can be given it.
+
+When `newRestaurantNumber` is `true`, the process writes the new number into `premises.restaurantNumber` of the JSON
+parameter of the decision once it is assigned, so that the decision names the number the permit got. A number beside
+`newRestaurantNumber` `true` is therefore never read as the case worker's choice. A decision that chose its number, or
+left the choice to the process, is not written to.
 
 ### Notifications
 
@@ -188,6 +201,17 @@ back to the choice with a refusal in the activity log. An inspection without a p
 
 `process-reconciliation` runs every five minutes in the engine and reports processes that ended or stopped without
 telling Support Management. It is not started by an event.
+
+### Incidents
+
+A step that fails is tried again `camunda.worker.max.retries` times, `camunda.worker.retry.timeout` milliseconds apart,
+before it raises an incident and alerts Slack. A failure no retry can fix raises the incident at once. Support
+Management then holds the process as failed.
+
+The step on an incident is tried once more when the errand or its decision is changed in Support Management, or when
+the errand is started again there, which Support Management offers once the process has failed. The start takes up the
+process that is already there. A change Support Management sends no event about, such as a change of an errand
+parameter, needs the start.
 
 ## Configuration
 
