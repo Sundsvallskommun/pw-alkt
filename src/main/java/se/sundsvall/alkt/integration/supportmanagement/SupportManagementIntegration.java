@@ -12,7 +12,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Statement;
 import generated.se.sundsvall.supportmanagement.StatementOutcome;
@@ -24,6 +23,7 @@ import java.util.function.Supplier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.integration.supportmanagement.model.ErrandPage;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import se.sundsvall.dept44.problem.Problem;
@@ -189,7 +189,7 @@ public class SupportManagementIntegration {
 
 	public Optional<String> findErrandIdByExternalTag(final String municipalityId, final String namespace, final String key, final String value) {
 		return Optional.ofNullable(supportManagementClient.findErrands(municipalityId, namespace, "externalTags.key:'%s' and externalTags.value:'%s'".formatted(key, value)).getBody())
-			.map(PageErrand::getContent)
+			.map(ErrandPage::content)
 			.orElse(emptyList())
 			.stream()
 			.map(Errand::getId)

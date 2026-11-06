@@ -12,7 +12,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Statement;
 import generated.se.sundsvall.supportmanagement.StatementOutcome;
@@ -34,6 +33,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.integration.supportmanagement.model.ErrandPage;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
@@ -434,9 +434,17 @@ class SupportManagementIntegrationTest {
 	@Test
 	void findErrandIdByExternalTagAnswersWithTheFirstMatch() {
 		when(supportManagementClientMock.findErrands(MUNICIPALITY_ID, NAMESPACE, "externalTags.key:'inspectionErrandId' and externalTags.value:'" + ERRAND_ID + "'"))
-			.thenReturn(ResponseEntity.ok(new PageErrand().content(List.of(new Errand().id("action-errand-id")))));
+			.thenReturn(ResponseEntity.ok(new ErrandPage(List.of(new Errand().id("action-errand-id")))));
 
 		assertThat(supportManagementIntegration.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).contains("action-errand-id");
+	}
+
+	@Test
+	void findErrandIdByExternalTagAnswersWithNothingForAPageWithoutContent() {
+		when(supportManagementClientMock.findErrands(MUNICIPALITY_ID, NAMESPACE, "externalTags.key:'inspectionErrandId' and externalTags.value:'" + ERRAND_ID + "'"))
+			.thenReturn(ResponseEntity.ok(new ErrandPage(null)));
+
+		assertThat(supportManagementIntegration.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).isEmpty();
 	}
 
 	@Test

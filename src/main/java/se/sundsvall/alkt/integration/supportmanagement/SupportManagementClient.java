@@ -12,7 +12,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Statement;
 import generated.se.sundsvall.supportmanagement.StatementOutcome;
@@ -31,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.integration.supportmanagement.configuration.SupportManagementConfiguration;
+import se.sundsvall.alkt.integration.supportmanagement.model.ErrandPage;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 
 import static org.springframework.http.HttpHeaders.IF_MATCH;
@@ -201,7 +201,7 @@ public interface SupportManagementClient {
 		@PathVariable String errandId);
 
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands", produces = APPLICATION_JSON_VALUE)
-	ResponseEntity<PageErrand> findErrands(
+	ResponseEntity<ErrandPage> findErrands(
 		@PathVariable String municipalityId,
 		@PathVariable String namespace,
 		@RequestParam("filter") String filter);
