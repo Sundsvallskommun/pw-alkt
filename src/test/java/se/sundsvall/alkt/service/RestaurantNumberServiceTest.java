@@ -6,6 +6,7 @@ import generated.se.sundsvall.licensedbusiness.AssignmentCreateRequest;
 import generated.se.sundsvall.licensedbusiness.LicenseHolder;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
@@ -53,6 +54,7 @@ class RestaurantNumberServiceTest {
 	private static final String ERRAND_ID = "errand-id";
 	private static final String DECISION_ID = "decision-id";
 	private static final String DECISION_KEY = "aot_alcohol_decision";
+	private static final String DECISION_SCHEMA_ID = "2281_aot_alcohol_decision_1.0";
 	private static final String ADDRESS_ID = "address-id";
 	private static final String PARTY_ID = "party-id";
 	private static final String ORG_NUMBER = "5566124144";
@@ -79,6 +81,9 @@ class RestaurantNumberServiceTest {
 
 	@Captor
 	private ArgumentCaptor<AssignmentCreateRequest> assignmentCaptor;
+
+	@Captor
+	private ArgumentCaptor<JsonParameter> jsonParameterCaptor;
 
 	private RestaurantNumberService restaurantNumberService;
 
@@ -112,10 +117,9 @@ class RestaurantNumberServiceTest {
 		assertThat(addressCaptor.getValue().getPostalArea()).isEqualTo("Sundsvall");
 	}
 
-	/** A chosen number wins over a new one asked for. */
 	@Test
 	void resolveFailsWhenTheChosenNumberIsNotAtThePremises() {
-		givenResolvable(errand(), premises("\"restaurantNumber\": \"22810001\"", "\"newRestaurantNumber\": true"));
+		givenResolvable(errand(), premises("\"restaurantNumber\": \"22810001\""));
 		when(licensedBusinessIntegrationMock.isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER)).thenReturn(false);
 
 		assertThatThrownBy(() -> restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock))
@@ -125,6 +129,23 @@ class RestaurantNumberServiceTest {
 		verifyTheErrandAndTheDecisionRead();
 		verify(licensedBusinessIntegrationMock).findOrCreateAddress(eq(MUNICIPALITY_ID), any());
 		verify(licensedBusinessIntegrationMock).isRestaurantNumberAtAddress(MUNICIPALITY_ID, ADDRESS_ID, NUMBER);
+	}
+
+	/**
+	 * The number beside the request is the one an earlier run wrote to the decision before the premises were corrected, so
+	 * it is no choice, and the new premises get a number of their own.
+	 */
+	@Test
+	void resolveCreatesANewNumberWhenAskedForOneEvenWithANumberBesideTheRequest() {
+		givenResolvable(errand(), premises("\"restaurantNumber\": \"22810001\"", "\"newRestaurantNumber\": true"));
+		when(licensedBusinessIntegrationMock.getAvailableRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of());
+		when(licensedBusinessIntegrationMock.createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn("22810002");
+
+		assertThat(restaurantNumberService.resolveRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, saveAvailableBeforeCreateMock)).isEqualTo(new ResolvedRestaurantNumber("22810002", ADDRESS_ID, ""));
+
+		verifyResolveRead("22810002");
+		verify(saveAvailableBeforeCreateMock).accept(new RestaurantNumbersBeforeCreate(ADDRESS_ID, List.of()));
+		verify(licensedBusinessIntegrationMock).createRestaurantNumber(MUNICIPALITY_ID, ADDRESS_ID);
 	}
 
 	@Test
@@ -439,6 +460,71 @@ class RestaurantNumberServiceTest {
 	}
 
 	@Test
+	void findTakesTheOnlyNumberTheHolderHoldsWhenTheDecisionAskedForANewOne() {
+		givenAKnownPremisesOf(errand(), premises("\"restaurantNumber\": \"22810002\"", "\"newRestaurantNumber\": true"));
+		when(licensedBusinessIntegrationMock.getActiveRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID)).thenReturn(List.of(NUMBER));
+		when(licensedBusinessIntegrationMock.findLatestAssignment(MUNICIPALITY_ID, NUMBER)).thenReturn(Optional.of(activeAssignmentOf(ORG_NUMBER)));
+
+		assertThat(restaurantNumberService.findRestaurantNumberOfHolder(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo(NUMBER);
+
+		verifyFindRead();
+		verify(licensedBusinessIntegrationMock).getActiveRestaurantNumbers(MUNICIPALITY_ID, ADDRESS_ID);
+		verify(licensedBusinessIntegrationMock).findLatestAssignment(MUNICIPALITY_ID, NUMBER);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"\"newRestaurantNumber\": true", "\"newRestaurantNumber\": true, \"restaurantNumber\": \"22810002\""
+	})
+	void recordWritesTheNumberIntoTheDecisionThatAskedForANewOne(final String fields) {
+		givenTheDecisionJsonParameter(premises(fields));
+
+		assertThat(restaurantNumberService.recordNewRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER)).isTrue();
+
+		verifyTheDecisionJsonParameterRead();
+		verify(supportManagementIntegrationMock).updateDecisionJsonParameter(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(DECISION_ID), jsonParameterCaptor.capture());
+		assertThat(jsonParameterCaptor.getValue().getKey()).isEqualTo(DECISION_KEY);
+		assertThat(jsonParameterCaptor.getValue().getSchemaId()).isEqualTo(DECISION_SCHEMA_ID);
+		assertThat(jsonParameterCaptor.getValue().getVersion()).isEqualTo(3L);
+		assertThat(jsonParameterCaptor.getValue().getValue()).isEqualTo(premises("\"newRestaurantNumber\": true", "\"restaurantNumber\": \"22810001\""));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"\"newRestaurantNumber\": true, \"restaurantNumber\": \"22810001\"",
+		"\"restaurantNumber\": \"22810001\"",
+		"\"newRestaurantNumber\": false",
+		"\"newRestaurantNumber\": \"true\""
+	})
+	void recordLeavesTheDecisionThatAlreadyHasTheNumberOrDidNotAskForANewOne(final String fields) {
+		givenTheDecisionJsonParameter(premises(fields));
+
+		assertThat(restaurantNumberService.recordNewRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER)).isFalse();
+
+		verifyTheDecisionJsonParameterRead();
+	}
+
+	@Test
+	void recordLeavesADecisionWithoutPremises() {
+		givenTheDecisionJsonParameter(json("{}"));
+
+		assertThat(restaurantNumberService.recordNewRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER)).isFalse();
+
+		verifyTheDecisionJsonParameterRead();
+	}
+
+	@Test
+	void recordFailsWithoutACompletedDecision() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> restaurantNumberService.recordNewRestaurantNumber(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, NUMBER))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no completed decision to take the restaurant number from");
+
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+	}
+
+	@Test
 	void assignLeavesANumberAlreadyAssignedByAnEarlierRun() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand());
 		givenDecisionAndHolder();
@@ -559,6 +645,17 @@ class RestaurantNumberServiceTest {
 
 	private void givenTheDecisionJson(final JsonNode decisionJson) {
 		when(supportManagementIntegrationMock.getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, DECISION_KEY)).thenReturn(decisionJson);
+	}
+
+	private void givenTheDecisionJsonParameter(final JsonNode decisionJson) {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(DECISION));
+		when(supportManagementIntegrationMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, DECISION_KEY))
+			.thenReturn(new JsonParameter().key(DECISION_KEY).schemaId(DECISION_SCHEMA_ID).version(3L).value(decisionJson));
+	}
+
+	private void verifyTheDecisionJsonParameterRead() {
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, DECISION_KEY);
 	}
 
 	private void givenAKnownPremisesOf(final Errand errand, final JsonNode decisionJson) {

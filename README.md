@@ -140,6 +140,11 @@ once chosen, so when the premises of a decision are corrected after that, the pr
 `ResolveRestaurantNumberTask` rather than retried at a later step. A number created for a permit that is never made
 stays free at the address, where the next errand without a choice of its own can be given it.
 
+When `newRestaurantNumber` is `true`, the process writes the new number into `premises.restaurantNumber` of the JSON
+parameter of the decision once it is assigned, so that the decision names the number the permit got. A number beside
+`newRestaurantNumber` `true` is therefore never read as the case worker's choice. A decision that chose its number, or
+left the choice to the process, is not written to.
+
 ### Notifications
 
 |              Process key              |                  Errand                   |         What the service does         |             Asset in party-assets             |

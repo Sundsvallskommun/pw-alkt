@@ -67,6 +67,61 @@ class LicensedBusinessMapperTest {
 		assertThat(LicensedBusinessMapper.findChosenRestaurantNumber(json("{}"))).isEmpty();
 	}
 
+	/**
+	 * The process writes the number it created beside the request for a new one, and a rerun must not take it as a choice.
+	 */
+	@Test
+	void findChosenRestaurantNumberFindsNoChoiceBesideARequestForANewNumber() {
+		final var decisionJson = json("""
+			{ "premises": { "newRestaurantNumber": true, "restaurantNumber": "22810002" } }
+			""");
+
+		assertThat(LicensedBusinessMapper.findChosenRestaurantNumber(decisionJson)).isEmpty();
+		assertThat(LicensedBusinessMapper.findRestaurantNumber(decisionJson)).contains("22810002");
+	}
+
+	@Test
+	void findChosenRestaurantNumberTakesTheNumberBesideANewNumberThatIsNotAsked() {
+		assertThat(LicensedBusinessMapper.findChosenRestaurantNumber(json("""
+			{ "premises": { "newRestaurantNumber": false, "restaurantNumber": "22810001" } }
+			"""))).contains("22810001");
+	}
+
+	@Test
+	void withRestaurantNumberPutsTheNumberAtThePremisesOfACopy() {
+		final var decisionJson = json("""
+			{ "premises": { "name": "Harrys Pub", "newRestaurantNumber": true }, "beverages": [ "WINE" ] }
+			""");
+
+		final var result = LicensedBusinessMapper.withRestaurantNumber(decisionJson, "22810002");
+
+		assertThat(result).isEqualTo(json("""
+			{ "premises": { "name": "Harrys Pub", "newRestaurantNumber": true, "restaurantNumber": "22810002" }, "beverages": [ "WINE" ] }
+			"""));
+		assertThat(decisionJson.path("premises").has("restaurantNumber")).isFalse();
+	}
+
+	@Test
+	void withRestaurantNumberReplacesTheNumberAlreadyThere() {
+		final var result = LicensedBusinessMapper.withRestaurantNumber(json("""
+			{ "premises": { "newRestaurantNumber": true, "restaurantNumber": "22810001" } }
+			"""), "22810002");
+
+		assertThat(result.path("premises").path("restaurantNumber").asString()).isEqualTo("22810002");
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"{}", "{ \"premises\": [] }", "{ \"premises\": null }"
+	})
+	void withRestaurantNumberFailsWithoutAPremisesObject(final String decisionJson) {
+		final var json = json(decisionJson);
+
+		assertThatThrownBy(() -> LicensedBusinessMapper.withRestaurantNumber(json, "22810002"))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessage("The decision has no premises to put restaurant number '22810002' in");
+	}
+
 	@Test
 	void asksForANewRestaurantNumberOnlyByTheBooleanTrue() {
 		assertThat(LicensedBusinessMapper.asksForANewRestaurantNumber(json("""

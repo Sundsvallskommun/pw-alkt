@@ -119,6 +119,17 @@ public interface SupportManagementClient {
 		@PathVariable String decisionId,
 		@PathVariable String key);
 
+	@PutMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions/{decisionId}/json-parameters/{key}", consumes = APPLICATION_JSON_VALUE, produces = ALL_VALUE)
+	ResponseEntity<Void> updateDecisionJsonParameter(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String decisionId,
+		@PathVariable String key,
+		@RequestHeader(name = IF_MATCH, required = false) String ifMatch,
+		@RequestHeader(value = TRIGGER_PROCESS_HEADER, required = false) Boolean triggerProcess,
+		@RequestBody JsonParameter jsonParameter);
+
 	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/investigations/{investigationId}/json-parameters/{key}", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<JsonParameter> getInvestigationJsonParameter(
 		@PathVariable String municipalityId,

@@ -30,14 +30,23 @@ public class AssignRestaurantNumberWorker extends AbstractTaskWorker {
 		final String restaurantNumber = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER);
 		final String addressId = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER_ADDRESS_ID);
 		final String latestAssignmentIdSeen = externalTask.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER_LATEST_ASSIGNMENT);
-		final var report = running(externalTask);
+		final var municipalityId = getMunicipalityId(externalTask);
+		final var namespace = getNamespace(externalTask);
+		final var errandId = getErrandId(externalTask);
 
-		if (!restaurantNumberService.assignRestaurantNumber(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), restaurantNumber, addressId,
-			latestAssignmentIdSeen)) {
-			return report.withLogMessage("Restaurant number '%s' was already assigned".formatted(restaurantNumber));
+		final var assigned = restaurantNumberService.assignRestaurantNumber(municipalityId, namespace, errandId, restaurantNumber, addressId, latestAssignmentIdSeen);
+		if (assigned) {
+			logInfo("Errand {} has restaurant number {} assigned", sanitizeForLogging(errandId), sanitizeForLogging(restaurantNumber));
 		}
 
-		logInfo("Errand {} has restaurant number {} assigned", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(restaurantNumber));
-		return report.withLogMessage("Restaurant number '%s' assigned".formatted(restaurantNumber));
+		// Only once the number is assigned, so that the decision never names a number the holder does not have. A rerun
+		// after a failed write finds the number assigned and writes again.
+		final var recorded = restaurantNumberService.recordNewRestaurantNumber(municipalityId, namespace, errandId, restaurantNumber);
+		if (recorded) {
+			logInfo("Errand {} has restaurant number {} written to its decision", sanitizeForLogging(errandId), sanitizeForLogging(restaurantNumber));
+		}
+
+		return running(externalTask).withLogMessage("Restaurant number '%s' %s%s".formatted(restaurantNumber, assigned ? "assigned" : "was already assigned",
+			recorded ? ", written to the decision" : ""));
 	}
 }
