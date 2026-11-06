@@ -282,6 +282,41 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "external_task_create_asset", "end_decision_phase", "end_process");
+
+		// The certificate attached to the permit is kept on the errand as well
+		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/attachments".formatted(ERRAND_ID)))
+			.withAnyRequestBodyPart(aMultipart()
+				.withHeader("Content-Disposition", containing("filename=\"Tillståndsbevis ALKT-2026-000001.pdf\""))
+				.withBody(equalTo("%PDF-1.7 tillstandsbevis"))));
+	}
+
+	/**
+	 * A step that runs again after the permit was made, for instance because the copy of the certificate on the errand
+	 * failed, finds the permit and copies the certificate party-assets holds to the errand without making it anew.
+	 */
+	@Test
+	void test009_permitAlreadyMadeHasItsCertificateCopiedToTheErrand() throws JacksonException {
+		final var processInstanceId = startProcess(ERRAND_ID, TOBACCO_SALES.getKey());
+
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "registration");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "review");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "investigation");
+		completeDecision(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey());
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "follow_up");
+		completePhase(ERRAND_ID, processInstanceId, TOBACCO_SALES.getKey(), "closure");
+
+		awaitProcessCompleted(processInstanceId);
+
+		assertWaitingReportsInOrder("registration_phase", "review_phase", "investigation_phase", "decision_phase", "follow_up_phase", "closure_phase");
+		verifyAllStubs();
+
+		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/attachments".formatted(ERRAND_ID)))
+			.withAnyRequestBodyPart(aMultipart()
+				.withHeader("Content-Disposition", containing("filename=\"Tillståndsbevis ALKT-2026-000001.pdf\""))
+				.withBody(equalTo("%PDF-1.7 tillstandsbevis"))));
+		wiremock.verify(0, anyRequestedFor(urlPathEqualTo("/api-party-assets/2281/asset-drafts")));
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-party-assets/.*")));
+		wiremock.verify(0, postRequestedFor(urlPathMatching("/api-templating/.*")).withRequestBody(matchingJsonPath("$.identifier", equalTo("tobacco-permit-certificate"))));
 	}
 
 	/** A decision not to try the errand grants no permit, so the phase ends without one and without waiting. */

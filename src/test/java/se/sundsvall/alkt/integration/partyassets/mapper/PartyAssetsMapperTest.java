@@ -1,6 +1,7 @@
 package se.sundsvall.alkt.integration.partyassets.mapper;
 
 import generated.se.sundsvall.partyassets.Asset;
+import generated.se.sundsvall.partyassets.AssetAttachment;
 import generated.se.sundsvall.partyassets.AssetJsonParameter;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
@@ -28,6 +29,7 @@ import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ATTACHMENT_PART_NAME;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.ORIGIN;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.findPermitParameter;
+import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.isCertificate;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
@@ -256,6 +258,14 @@ class PartyAssetsMapperTest {
 		assertThat(result.file().getContentType()).isEqualTo("application/pdf");
 		assertThat(result.file().getBytes()).isEqualTo(content);
 		assertThat(result.category()).isEqualTo("Tillståndsbevis");
+	}
+
+	@Test
+	void isCertificateKnowsTheCertificateByItsCategoryAlone() {
+		assertThat(isCertificate(new AssetAttachment().category(toCertificateFile(new byte[0]).category()))).isTrue();
+		assertThat(isCertificate(new AssetAttachment().category("Tillståndsbevis").fileName("annat.pdf"))).isTrue();
+		assertThat(isCertificate(new AssetAttachment().category("LOKALRITNING").fileName("tillstandsbevis.pdf"))).isFalse();
+		assertThat(isCertificate(new AssetAttachment().fileName("tillstandsbevis.pdf"))).isFalse();
 	}
 
 	@Test

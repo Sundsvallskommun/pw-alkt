@@ -9,9 +9,9 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.dept44.problem.Problem;
 
-import static org.apache.commons.lang3.StringUtils.replace;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseFileName;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCompletedAt;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
@@ -48,7 +48,7 @@ public class InspectionProtocolService {
 				investigation.getType(), PROTOCOLS_BY_INVESTIGATION_TYPE.keySet())));
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var caseNumber = toCaseNumber(errand);
-		final var fileName = "Tillsynsprotokoll %s.pdf".formatted(replace(caseNumber, "/", "-"));
+		final var fileName = toCaseFileName("Tillsynsprotokoll", errand);
 		final var completed = toCompletedAt(investigation);
 		return findAttachmentId(supportManagementIntegration.getAttachments(municipalityId, namespace, errandId), fileName, completed)
 			.orElseGet(() -> {
