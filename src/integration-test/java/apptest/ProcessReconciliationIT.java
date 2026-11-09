@@ -81,7 +81,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 		await()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, LOW_ALCOHOL_BEER_SALES.getKey()).stream()
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, LOW_ALCOHOL_BEER_SALES.getKey(), ANY_INCIDENT_TIME).stream()
 				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
 
 		stubRowsOfTheErrand(processInstanceId);

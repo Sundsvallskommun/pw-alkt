@@ -74,11 +74,15 @@ public class ProcessReconciliationService {
 		settleEndedInstances();
 	}
 
-	/** One incident failing must not stop the others, so each is handled on its own. */
+	/**
+	 * Only incidents raised within the lookback are followed up, so an incident the errand never hears of is reported
+	 * again for that long and then left. One incident failing must not stop the others, so each is handled on its own.
+	 */
 	private void reportIncidents() {
-		final var incidents = operatonClient.findIncidents(TENANT_ID_ALKT, toProcessDefinitionKeyIn(ProcessType.keys()));
+		final var raisedAfter = toLookbackStart();
+		final var incidents = operatonClient.findIncidents(TENANT_ID_ALKT, toProcessDefinitionKeyIn(ProcessType.keys()), raisedAfter);
 		if (!incidents.isEmpty()) {
-			LOG.info("Found {} incidents in tenant {}", incidents.size(), TENANT_ID_ALKT);
+			LOG.info("Found {} incidents in tenant {} raised after {}", incidents.size(), TENANT_ID_ALKT, raisedAfter);
 		}
 
 		for (final var incident : incidents) {
@@ -105,7 +109,7 @@ public class ProcessReconciliationService {
 
 	/** An instance that ended without a final report leaves the errand on RUNNING for good. */
 	private void settleEndedInstances() {
-		final var finishedAfter = toOperatonTimestamp(OffsetDateTime.now(clock.withZone(UTC)).minus(properties.lookback()));
+		final var finishedAfter = toLookbackStart();
 		final var instances = operatonClient.findHistoricProcessInstances(TENANT_ID_ALKT, toProcessDefinitionKeyIn(ProcessType.keys()), true, finishedAfter);
 		if (!instances.isEmpty()) {
 			LOG.info("Found {} instances in tenant {} that ended after {}", instances.size(), TENANT_ID_ALKT, finishedAfter);
@@ -118,6 +122,10 @@ public class ProcessReconciliationService {
 				LOG.error("Could not settle ended process instance {}", sanitizeForLogging(instance.getId()), e);
 			}
 		}
+	}
+
+	private String toLookbackStart() {
+		return toOperatonTimestamp(OffsetDateTime.now(clock.withZone(UTC)).minus(properties.lookback()));
 	}
 
 	private void settleEndedInstance(final HistoricProcessInstanceDto instance) {

@@ -212,7 +212,7 @@ class ProcessReconciliationServiceTest {
 
 	@Test
 	void skipsAnInstanceWithoutAnErrandIdentity() {
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident()));
+		when(operatonClientMock.findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any())).thenReturn(List.of(incident()));
 		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)));
 		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(List.of(
 			variable(PROCESS_VARIABLE_REQUEST_ID, "abc"),
@@ -224,8 +224,19 @@ class ProcessReconciliationServiceTest {
 	}
 
 	@Test
+	void looksBackAsFarAsConfiguredForIncidents() {
+		final var captor = ArgumentCaptor.forClass(String.class);
+
+		service.reconcile();
+
+		verify(operatonClientMock).findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), captor.capture());
+		final var raisedAfter = OffsetDateTime.parse(captor.getValue(), DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
+		assertThat(raisedAfter).isCloseTo(OffsetDateTime.now().minusHours(2), within(1, ChronoUnit.MINUTES));
+	}
+
+	@Test
 	void skipsAnIncidentWhoseInstanceIsGoneFromTheEngine() {
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident()));
+		when(operatonClientMock.findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any())).thenReturn(List.of(incident()));
 		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.empty());
 
 		service.reconcile();
@@ -237,7 +248,7 @@ class ProcessReconciliationServiceTest {
 	@Test
 	void carriesOnWhenOneIncidentCannotBeReported() {
 		final var secondInstanceId = UUID.randomUUID().toString();
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident(), incident().processInstanceId(secondInstanceId)));
+		when(operatonClientMock.findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any())).thenReturn(List.of(incident(), incident().processInstanceId(secondInstanceId)));
 		when(operatonClientMock.getHistoricProcessInstance(any())).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)));
 		when(operatonClientMock.getHistoricVariableInstances(any())).thenReturn(identity());
 		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
@@ -253,7 +264,7 @@ class ProcessReconciliationServiceTest {
 	void doesNothingWithoutIncidentsOrEndedInstances() {
 		service.reconcile();
 
-		verify(operatonClientMock).findIncidents(TENANT, ALL_PROCESS_KEYS);
+		verify(operatonClientMock).findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any());
 		verify(operatonClientMock).findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any());
 		verifyNoMoreInteractions(operatonClientMock);
 		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
@@ -467,7 +478,7 @@ class ProcessReconciliationServiceTest {
 	// Helpers
 
 	private void mockIncident(final IncidentDto incident) {
-		when(operatonClientMock.findIncidents(TENANT, ALL_PROCESS_KEYS)).thenReturn(List.of(incident));
+		when(operatonClientMock.findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any())).thenReturn(List.of(incident));
 		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.of(new HistoricProcessInstanceDto().processDefinitionKey(PROCESS_KEY)
 			.processDefinitionId(PROCESS_DEFINITION_ID)));
 		when(operatonClientMock.getHistoricVariableInstances(PROCESS_INSTANCE_ID)).thenReturn(identity());
