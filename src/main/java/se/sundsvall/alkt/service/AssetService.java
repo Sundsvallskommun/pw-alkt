@@ -136,7 +136,7 @@ public class AssetService {
 		}
 		certificate.ifPresent(content -> {
 			partyAssetsIntegration.replaceCertificate(municipalityId, assetId, toCertificateFile(content));
-			keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> Optional.of(content));
+			keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> certificate);
 		});
 		return assetId;
 	}
@@ -301,7 +301,9 @@ public class AssetService {
 		final var certificate = renderCertificate(assetType, schema, permit, decision, errand);
 		final var request = toPermitCreateRequest(decision, requirePartyId(errand, errandId), assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit));
 		final var assetId = createAsset(municipalityId, namespace, errandId, decision, request, certificate.map(PartyAssetsMapper::toCertificateFile));
-		certificate.ifPresent(content -> keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> Optional.of(content)));
+		if (certificate.isPresent()) {
+			keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> certificate);
+		}
 		return assetId;
 	}
 
@@ -324,8 +326,6 @@ public class AssetService {
 	private void keepCertificateOnErrand(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision,
 		final Supplier<Optional<byte[]>> certificate) {
 		final var fileName = toCaseFileName("Tillståndsbevis", errand);
-		// Support Management stamps the decision and the attachment by the same clock, and a copy from before the decision
-		// is the one of an earlier decision of the errand
 		final var decisionCreated = Optional.ofNullable(decision.getCreated()).orElse(OffsetDateTime.MIN);
 		if (findAttachmentId(supportManagementIntegration.getAttachments(municipalityId, namespace, errandId), fileName, decisionCreated).isEmpty()) {
 			certificate.get().ifPresent(content -> supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, content));

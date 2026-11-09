@@ -134,12 +134,12 @@ replaces the permit's, an empty list counts as left out, and only null removes a
 the JSON parameter. A decision without its JSON parameter, and a JSON parameter party-assets refuses, raise an incident.
 
 The certificate is attached to the permit in party-assets, and once it is there a copy is uploaded to the errand as an
-attachment of its own, named `Tillståndsbevis <case number>.pdf` with a `/` or `\` of the case number as `-` and its
-quotes and control characters left out, as the decision basis and the inspection protocol are named. A change uploads
-its new certificate the same way, so the copy on each errand is the certificate its decision gave. A rerun finds a copy
-uploaded since the decision was created and uploads no second one, and a rerun that finds the permit already made copies
-the certificate party-assets holds. party-assets also links the permit to the errand by a relation as the permit is
-created.
+attachment of its own, named `Tillståndsbevis <case number>.pdf` with a `/` or `\` of the case number as `-`, its quotes
+left out and its control characters as spaces, as the decision basis and the inspection protocol are named. A change
+uploads its new certificate the same way, so the copy on each errand is the certificate its decision gave. A rerun finds
+a copy uploaded since the decision was created and uploads no second one, and a rerun that finds the permit already made
+copies the certificate party-assets holds. party-assets also links the permit to the errand by a relation as the permit
+is created.
 
 The restaurant number and the premises it is kept at come from `premises` in the JSON parameter of the decision: the
 number in `restaurantNumber` the case worker chose, a new one when `newRestaurantNumber` is `true`, and otherwise the

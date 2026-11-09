@@ -110,18 +110,6 @@ class LicensedBusinessMapperTest {
 		assertThat(result.path("premises").path("restaurantNumber").asString()).isEqualTo("22810002");
 	}
 
-	@ParameterizedTest
-	@ValueSource(strings = {
-		"{}", "{ \"premises\": [] }", "{ \"premises\": null }"
-	})
-	void withRestaurantNumberFailsWithoutAPremisesObject(final String decisionJson) {
-		final var json = json(decisionJson);
-
-		assertThatThrownBy(() -> LicensedBusinessMapper.withRestaurantNumber(json, "22810002"))
-			.isInstanceOf(IllegalArgumentException.class)
-			.hasMessage("The decision has no premises to put restaurant number '22810002' in");
-	}
-
 	@Test
 	void asksForANewRestaurantNumberOnlyByTheBooleanTrue() {
 		assertThat(LicensedBusinessMapper.asksForANewRestaurantNumber(json("""

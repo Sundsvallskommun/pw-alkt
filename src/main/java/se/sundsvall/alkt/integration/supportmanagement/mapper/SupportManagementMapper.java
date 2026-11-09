@@ -18,7 +18,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -140,12 +139,12 @@ public final class SupportManagementMapper {
 
 	/**
 	 * The file name of a PDF the process puts on the errand: the title followed by the case number. A slash or backslash
-	 * in the case number becomes a dash, and quotes and control characters are left out, as the name travels quoted in
-	 * the header of the upload.
+	 * in the case number becomes a dash, and as the name travels quoted in the header of the upload, a quote is left out
+	 * and a control character becomes a space.
 	 */
 	public static String toCaseFileName(final String title, final Errand errand) {
-		final var caseNumber = CONTROL_CHARACTERS.matcher(StringUtils.replaceChars(Objects.toString(toCaseNumber(errand), ""), "/\\\"", "--")).replaceAll(" ");
-		return "%s %s.pdf".formatted(title, StringUtils.normalizeSpace(caseNumber));
+		final var caseNumber = StringUtils.remove(StringUtils.replaceChars(toCaseNumber(errand), "/\\", "--"), '"');
+		return "%s %s.pdf".formatted(title, StringUtils.normalizeSpace(CONTROL_CHARACTERS.matcher(caseNumber).replaceAll(" ")));
 	}
 
 	public static List<Measure> toActiveMeasures(final List<Measure> measures, final String type) {

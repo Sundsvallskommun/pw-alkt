@@ -116,12 +116,11 @@ public class SupportManagementIntegration {
 	}
 
 	/**
-	 * Writes the value of the JSON parameter back under its key and schema. Its version turns a change made since the read
-	 * into a 412; without one the version is not checked.
+	 * Writes the value of the JSON parameter back under its key and schema. Its version goes in If-Match, so a change made
+	 * since the read fails the write with a 412; without one the version is not checked.
 	 */
 	public void updateDecisionJsonParameter(final String municipalityId, final String namespace, final String errandId, final String decisionId, final JsonParameter parameter) {
 		final var ifMatch = Optional.ofNullable(parameter.getVersion()).map("\"%s\""::formatted).orElse(null);
-		// The version goes in If-Match: Support Management's model expects none in the body of a write.
 		final var body = new JsonParameter()
 			.key(parameter.getKey())
 			.schemaId(parameter.getSchemaId())
@@ -134,22 +133,18 @@ public class SupportManagementIntegration {
 	 * with no value in it, fails without retry.
 	 */
 	public JsonNode getInvestigationJson(final String municipalityId, final String namespace, final String errandId, final String investigationId, final String key) {
-		return getJsonValue("investigation '%s'".formatted(investigationId), errandId, key,
-			() -> supportManagementClient.getInvestigationJsonParameter(municipalityId, namespace, errandId, investigationId, key));
-	}
-
-	private static JsonNode getJsonValue(final String owner, final String errandId, final String key, final Supplier<ResponseEntity<JsonParameter>> request) {
-		return getJsonParameter(owner, errandId, key, request).getValue();
+		return getJsonParameter("investigation '%s'".formatted(investigationId), errandId, key,
+			() -> supportManagementClient.getInvestigationJsonParameter(municipalityId, namespace, errandId, investigationId, key)).getValue();
 	}
 
 	private static JsonParameter getJsonParameter(final String owner, final String errandId, final String key, final Supplier<ResponseEntity<JsonParameter>> request) {
 		final var response = failWithoutRetryOn(NOT_FOUND, "%s of errand '%s' has no JSON parameter '%s'".formatted(capitalize(owner), errandId, key), request);
 		final var parameter = Optional.ofNullable(response.getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "JSON parameter '%s' of %s came back without content".formatted(key, owner)));
-		if (parameter.getValue() == null || parameter.getValue().isNull()) {
-			throw new NonRetryableException("JSON parameter '%s' of %s of errand '%s' has no value".formatted(key, owner, errandId));
-		}
-		return parameter;
+		return Optional.ofNullable(parameter.getValue())
+			.filter(value -> !value.isNull())
+			.map(value -> parameter)
+			.orElseThrow(() -> new NonRetryableException("JSON parameter '%s' of %s of errand '%s' has no value".formatted(key, owner, errandId)));
 	}
 
 	public String createDecision(final String municipalityId, final String namespace, final String errandId, final Decision decision) {

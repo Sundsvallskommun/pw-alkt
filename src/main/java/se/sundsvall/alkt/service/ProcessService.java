@@ -55,9 +55,7 @@ public class ProcessService {
 		}
 	}
 
-	// Support Management holds a process standing on an incident as failed and offers to start the errand again. A start
-	// that finds the instance still there is the case worker asking for it to go on, and is the only way to do so after
-	// a change that sends no event, such as one of the errand parameters.
+	// A start that finds the instance still there resumes it.
 	private static boolean givesStuckTasksANewAttempt(final String eventSubType) {
 		return SUB_TYPE_ERRAND.equalsIgnoreCase(eventSubType) || SUB_TYPE_DECISION.equalsIgnoreCase(eventSubType) || SUB_TYPE_PROCESS.equalsIgnoreCase(eventSubType);
 	}

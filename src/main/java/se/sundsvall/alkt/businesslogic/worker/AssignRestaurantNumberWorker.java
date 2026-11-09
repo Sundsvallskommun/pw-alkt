@@ -39,8 +39,6 @@ public class AssignRestaurantNumberWorker extends AbstractTaskWorker {
 			logInfo("Errand {} has restaurant number {} assigned", sanitizeForLogging(errandId), sanitizeForLogging(restaurantNumber));
 		}
 
-		// Only once the number is assigned, so that the decision never names a number the holder does not have. A rerun
-		// after a failed write finds the number assigned and writes again.
 		final var recorded = restaurantNumberService.recordNewRestaurantNumber(municipalityId, namespace, errandId, restaurantNumber);
 		if (recorded) {
 			logInfo("Errand {} has restaurant number {} written to its decision", sanitizeForLogging(errandId), sanitizeForLogging(restaurantNumber));

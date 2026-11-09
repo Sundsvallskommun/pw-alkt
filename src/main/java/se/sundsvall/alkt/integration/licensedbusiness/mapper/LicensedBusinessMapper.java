@@ -64,17 +64,10 @@ public final class LicensedBusinessMapper {
 		return text(decisionJson.path(PREMISES).path(RESTAURANT_NUMBER));
 	}
 
-	/**
-	 * A copy of the JSON parameter of the decision with the restaurant number at its premises.
-	 *
-	 * @throws IllegalArgumentException when the decision has no premises object to put it in
-	 */
+	/** A copy of the JSON parameter of the decision with the restaurant number at its premises, which must be an object. */
 	public static JsonNode withRestaurantNumber(final JsonNode decisionJson, final String restaurantNumber) {
 		final JsonNode copy = decisionJson.deepCopy();
-		if (!(copy.get(PREMISES) instanceof final ObjectNode premises)) {
-			throw new IllegalArgumentException("The decision has no premises to put restaurant number '%s' in".formatted(restaurantNumber));
-		}
-		premises.put(RESTAURANT_NUMBER, restaurantNumber);
+		((ObjectNode) copy.get(PREMISES)).put(RESTAURANT_NUMBER, restaurantNumber);
 		return copy;
 	}
 
