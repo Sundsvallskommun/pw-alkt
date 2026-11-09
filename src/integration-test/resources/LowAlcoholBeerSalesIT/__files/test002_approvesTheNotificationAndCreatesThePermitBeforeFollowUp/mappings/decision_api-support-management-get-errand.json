@@ -16,6 +16,26 @@
 		"jsonBody": {
 			"id": "1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56",
 			"title": "Anmälan om försäljning av folköl, Kafé Solsidan",
+			"errandNumber": "ALKT-2026-000012",
+			"jsonParameters": [
+				{
+					"key": "form",
+					"schemaId": "2281_aot_alcohol_folkol_folkol_sales_notification_1.1",
+					"value": {
+						"premisesName": "Kafé Solsidan",
+						"premisesAddressSameAsCompany": "NO",
+						"premisesAddress": {
+							"street": "Badhusparken 2",
+							"postalCode": "85231",
+							"city": "Sundsvall"
+						},
+						"premisesContact": {
+							"phoneNumber": "060-15 40 20",
+							"emailAddress": "info@kafesolsidan.se"
+						}
+					}
+				}
+			],
 			"stakeholders": [
 				{
 					"role": "PRIMARY",

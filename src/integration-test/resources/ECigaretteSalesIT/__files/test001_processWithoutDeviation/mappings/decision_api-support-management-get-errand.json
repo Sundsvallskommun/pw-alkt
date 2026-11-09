@@ -19,11 +19,46 @@
 		"jsonBody": {
 			"id": "6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15",
 			"title": "Anmälan om försäljning av elektroniska cigaretter, Kafé Solsidan",
+			"errandNumber": "ALKT-2026-000014",
+			"jsonParameters": [
+				{
+					"key": "form",
+					"schemaId": "2281_aot_tobacco_ecigarette_sales_notification_0.10",
+					"value": {
+						"pointOfSaleName": "Kafé Solsidan",
+						"pointOfSaleAddressSameAsCompany": "NO",
+						"pointOfSaleAddress": {
+							"street": "Badhusparken 2",
+							"postalCode": "85231",
+							"city": "Sundsvall"
+						},
+						"pointOfSaleContact": {
+							"phoneNumber": "060-15 40 20",
+							"emailAddress": "info@kafesolsidan.se"
+						},
+						"salesPeriod": "INDEFINITE",
+						"salesStartDate": "2026-11-01",
+						"includesDistanceSelling": "YES"
+					}
+				}
+			],
 			"stakeholders": [
 				{
 					"role": "PRIMARY",
 					"externalIdType": "ENTERPRISE",
-					"externalId": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
+					"externalId": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b",
+					"organizationName": "Solsidan Servering AB",
+					"address": "Storgatan 10",
+					"zipCode": "85230",
+					"city": "Sundsvall",
+					"parameters": [
+						{
+							"key": "organizationNumber",
+							"values": [
+								"5591234567"
+							]
+						}
+					]
 				}
 			],
 			"parameters": [

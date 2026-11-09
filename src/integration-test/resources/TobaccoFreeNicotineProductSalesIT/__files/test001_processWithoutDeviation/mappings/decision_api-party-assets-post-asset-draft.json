@@ -49,6 +49,114 @@
 					"expression": "$.title",
 					"equalTo": "Anmälan om försäljning av tobaksfria nikotinprodukter"
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].key",
+					"equalTo": "aot_tobacco_party_asset"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].schemaId",
+					"equalTo": "2281_aot_tobacco_party_asset_0.1"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.errandId",
+					"equalTo": "3b7e2c91-5d4a-4e8f-a1c6-9f0d2b8e7a54"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000015"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.pointOfSale.name",
+					"equalTo": "Kafé Solsidan"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.pointOfSale.address.street",
+					"equalTo": "Badhusparken 2"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.pointOfSale.phoneNumber",
+					"equalTo": "060-15 40 20"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.pointOfSale.emailAddress",
+					"equalTo": "info@kafesolsidan.se"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.pointOfSale.municipalityId",
+					"equalTo": "2281"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.permitHolder.name",
+					"equalTo": "Solsidan Servering AB"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.permitHolder.organizationNumber",
+					"equalTo": "5591234567"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.permitHolder.address.street",
+					"equalTo": "Storgatan 10"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.decisionDate",
+					"equalTo": "2026-09-24"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.validFrom",
+					"equalTo": "2026-09-24"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.salesPeriod.period",
+					"equalTo": "INDEFINITE"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.salesPeriod.from",
+					"equalTo": "2026-11-01"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.salesTypes[0]",
+					"equalTo": "DISTANCE_SELLING"
+				}
 			}
 		]
 	},
