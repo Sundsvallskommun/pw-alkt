@@ -25,6 +25,9 @@ import static se.sundsvall.alkt.service.model.PermitSchema.TOBACCO;
 public final class NotificationJsonMapper {
 
 	private static final String YES = "YES";
+	private static final String STREET = "street";
+	private static final String POSTAL_CODE = "postalCode";
+	private static final String CITY = "city";
 	private static final String ORGANIZATION_NUMBER = "organizationNumber";
 	private static final String INDEFINITE = "INDEFINITE";
 	private static final String TEMPORARY = "TEMPORARY";
@@ -87,18 +90,18 @@ public final class NotificationJsonMapper {
 
 	private static ObjectNode toFormAddress(final JsonNode formAddress) {
 		final var address = JsonNodeFactory.instance.objectNode();
-		putText(address, "street", formAddress.path("street"));
-		putText(address, "postalCode", formAddress.path("postalCode"));
-		putText(address, "city", formAddress.path("city"));
+		putText(address, STREET, formAddress.path(STREET));
+		putText(address, POSTAL_CODE, formAddress.path(POSTAL_CODE));
+		putText(address, CITY, formAddress.path(CITY));
 		return address;
 	}
 
 	private static ObjectNode toStakeholderAddress(final Stakeholder stakeholder) {
 		final var address = JsonNodeFactory.instance.objectNode();
 		putText(address, "careOf", stakeholder.getCareOf());
-		putText(address, "street", stakeholder.getAddress());
-		putText(address, "postalCode", stakeholder.getZipCode());
-		putText(address, "city", stakeholder.getCity());
+		putText(address, STREET, stakeholder.getAddress());
+		putText(address, POSTAL_CODE, stakeholder.getZipCode());
+		putText(address, CITY, stakeholder.getCity());
 		return address;
 	}
 
