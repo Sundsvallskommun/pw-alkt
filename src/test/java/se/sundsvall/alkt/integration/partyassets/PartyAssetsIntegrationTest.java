@@ -307,6 +307,50 @@ class PartyAssetsIntegrationTest {
 		verify(partyAssetsClientMock).createAttachment(MUNICIPALITY_ID, "asset-id", file, "Tillståndsbevis", null, null);
 	}
 
+	@Test
+	void findCertificateFetchesTheAttachmentInTheCategoryOfTheCertificate() {
+		final var pdf = "%PDF-1.7".getBytes();
+		when(partyAssetsClientMock.getAttachments(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(List.of(
+			new AssetAttachment().id("drawing").category("LOKALRITNING"),
+			new AssetAttachment().id("uncategorised"),
+			new AssetAttachment().id("certificate").category("Tillståndsbevis"))));
+		when(partyAssetsClientMock.getAttachment(MUNICIPALITY_ID, "asset-id", "certificate")).thenReturn(ResponseEntity.ok(pdf));
+
+		assertThat(partyAssetsIntegration.findCertificate(MUNICIPALITY_ID, "asset-id")).contains(pdf);
+
+		verify(partyAssetsClientMock).getAttachments(MUNICIPALITY_ID, "asset-id");
+		verify(partyAssetsClientMock).getAttachment(MUNICIPALITY_ID, "asset-id", "certificate");
+		verifyNoMoreInteractions(partyAssetsClientMock);
+	}
+
+	@Test
+	void findCertificateIsEmptyForAnAssetWithoutOne() {
+		when(partyAssetsClientMock.getAttachments(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(List.of(new AssetAttachment().id("drawing").category("LOKALRITNING"))));
+
+		assertThat(partyAssetsIntegration.findCertificate(MUNICIPALITY_ID, "asset-id")).isEmpty();
+
+		verify(partyAssetsClientMock, never()).getAttachment(any(), any(), any());
+	}
+
+	@Test
+	void findCertificateIsEmptyWhenTheAttachmentsComeBackWithoutBody() {
+		when(partyAssetsClientMock.getAttachments(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(null));
+
+		assertThat(partyAssetsIntegration.findCertificate(MUNICIPALITY_ID, "asset-id")).isEmpty();
+
+		verify(partyAssetsClientMock, never()).getAttachment(any(), any(), any());
+	}
+
+	@Test
+	void findCertificateFailsWhenTheCertificateComesBackWithoutContent() {
+		when(partyAssetsClientMock.getAttachments(MUNICIPALITY_ID, "asset-id")).thenReturn(ResponseEntity.ok(List.of(new AssetAttachment().id("certificate").category("Tillståndsbevis"))));
+		when(partyAssetsClientMock.getAttachment(MUNICIPALITY_ID, "asset-id", "certificate")).thenReturn(ResponseEntity.ok(null));
+
+		assertThatThrownBy(() -> partyAssetsIntegration.findCertificate(MUNICIPALITY_ID, "asset-id"))
+			.isInstanceOf(Problem.class)
+			.hasMessageContaining("Attachment 'certificate' of asset 'asset-id' came back without content");
+	}
+
 	private static AssetCreateRequest asset() {
 		return new AssetCreateRequest().partyId(PARTY_ID).assetId(DECISION_ID);
 	}

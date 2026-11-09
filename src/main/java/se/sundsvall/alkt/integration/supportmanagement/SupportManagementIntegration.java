@@ -12,7 +12,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Statement;
 import generated.se.sundsvall.supportmanagement.StatementOutcome;
@@ -24,6 +23,7 @@ import java.util.function.Supplier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.integration.supportmanagement.model.ErrandPage;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import se.sundsvall.dept44.problem.Problem;
@@ -106,8 +106,26 @@ public class SupportManagementIntegration {
 	 * value in it, fails without retry.
 	 */
 	public JsonNode getDecisionJson(final String municipalityId, final String namespace, final String errandId, final String decisionId, final String key) {
-		return getJsonValue("decision '%s'".formatted(decisionId), errandId, key,
+		return getDecisionJsonParameter(municipalityId, namespace, errandId, decisionId, key).getValue();
+	}
+
+	/** The JSON parameter of the decision with its version, which fails as {@link #getDecisionJson} does. */
+	public JsonParameter getDecisionJsonParameter(final String municipalityId, final String namespace, final String errandId, final String decisionId, final String key) {
+		return getJsonParameter("decision '%s'".formatted(decisionId), errandId, key,
 			() -> supportManagementClient.getDecisionJsonParameter(municipalityId, namespace, errandId, decisionId, key));
+	}
+
+	/**
+	 * Writes the value of the JSON parameter back under its key and schema. Its version goes in If-Match, so a change made
+	 * since the read fails the write with a 412; without one the version is not checked.
+	 */
+	public void updateDecisionJsonParameter(final String municipalityId, final String namespace, final String errandId, final String decisionId, final JsonParameter parameter) {
+		final var ifMatch = Optional.ofNullable(parameter.getVersion()).map("\"%s\""::formatted).orElse(null);
+		final var body = new JsonParameter()
+			.key(parameter.getKey())
+			.schemaId(parameter.getSchemaId())
+			.value(parameter.getValue());
+		supportManagementClient.updateDecisionJsonParameter(municipalityId, namespace, errandId, decisionId, parameter.getKey(), ifMatch, false, body);
 	}
 
 	/**
@@ -115,16 +133,17 @@ public class SupportManagementIntegration {
 	 * with no value in it, fails without retry.
 	 */
 	public JsonNode getInvestigationJson(final String municipalityId, final String namespace, final String errandId, final String investigationId, final String key) {
-		return getJsonValue("investigation '%s'".formatted(investigationId), errandId, key,
-			() -> supportManagementClient.getInvestigationJsonParameter(municipalityId, namespace, errandId, investigationId, key));
+		return getJsonParameter("investigation '%s'".formatted(investigationId), errandId, key,
+			() -> supportManagementClient.getInvestigationJsonParameter(municipalityId, namespace, errandId, investigationId, key)).getValue();
 	}
 
-	private static JsonNode getJsonValue(final String owner, final String errandId, final String key, final Supplier<ResponseEntity<JsonParameter>> request) {
+	private static JsonParameter getJsonParameter(final String owner, final String errandId, final String key, final Supplier<ResponseEntity<JsonParameter>> request) {
 		final var response = failWithoutRetryOn(NOT_FOUND, "%s of errand '%s' has no JSON parameter '%s'".formatted(capitalize(owner), errandId, key), request);
 		final var parameter = Optional.ofNullable(response.getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "JSON parameter '%s' of %s came back without content".formatted(key, owner)));
 		return Optional.ofNullable(parameter.getValue())
 			.filter(value -> !value.isNull())
+			.map(value -> parameter)
 			.orElseThrow(() -> new NonRetryableException("JSON parameter '%s' of %s of errand '%s' has no value".formatted(key, owner, errandId)));
 	}
 
@@ -189,7 +208,7 @@ public class SupportManagementIntegration {
 
 	public Optional<String> findErrandIdByExternalTag(final String municipalityId, final String namespace, final String key, final String value) {
 		return Optional.ofNullable(supportManagementClient.findErrands(municipalityId, namespace, "externalTags.key:'%s' and externalTags.value:'%s'".formatted(key, value)).getBody())
-			.map(PageErrand::getContent)
+			.map(ErrandPage::content)
 			.orElse(emptyList())
 			.stream()
 			.map(Errand::getId)

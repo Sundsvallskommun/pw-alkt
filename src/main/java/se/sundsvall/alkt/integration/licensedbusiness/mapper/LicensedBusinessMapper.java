@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toFirstDay;
 import static se.sundsvall.alkt.util.JsonText.text;
@@ -21,6 +22,7 @@ public final class LicensedBusinessMapper {
 
 	private static final String ASSIGNMENT_STATUS_ACTIVE = "ACTIVE";
 	private static final String PREMISES = "premises";
+	private static final String RESTAURANT_NUMBER = "restaurantNumber";
 	private static final String ADDRESS = "address";
 	private static final String STREET = "street";
 	private static final String POSTAL_CODE = "postalCode";
@@ -46,9 +48,27 @@ public final class LicensedBusinessMapper {
 			.postalArea(text(address.path(CITY)).orElseThrow());
 	}
 
-	/** The restaurant number the case worker chose at the premises in the decision, if any. */
+	/**
+	 * The restaurant number the case worker chose at the premises in the decision, if any. A decision that asks for a new
+	 * number chose none, so a number beside the request is the one the process created for it.
+	 */
 	public static Optional<String> findChosenRestaurantNumber(final JsonNode decisionJson) {
-		return text(decisionJson.path(PREMISES).path("restaurantNumber"));
+		if (asksForANewRestaurantNumber(decisionJson)) {
+			return Optional.empty();
+		}
+		return findRestaurantNumber(decisionJson);
+	}
+
+	/** The restaurant number at the premises in the decision, whoever put it there. */
+	public static Optional<String> findRestaurantNumber(final JsonNode decisionJson) {
+		return text(decisionJson.path(PREMISES).path(RESTAURANT_NUMBER));
+	}
+
+	/** A copy of the JSON parameter of the decision with the restaurant number at its premises, which must be an object. */
+	public static JsonNode withRestaurantNumber(final JsonNode decisionJson, final String restaurantNumber) {
+		final JsonNode copy = decisionJson.deepCopy();
+		((ObjectNode) copy.get(PREMISES)).put(RESTAURANT_NUMBER, restaurantNumber);
+		return copy;
 	}
 
 	/** Whether the case worker asked for a new restaurant number in the decision. */

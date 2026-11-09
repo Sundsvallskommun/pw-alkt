@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.integration.partyassets.configuration.PartyAssetsProperties;
+import se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.integration.partyassets.model.VersionedAsset;
 import se.sundsvall.dept44.problem.Problem;
@@ -61,13 +62,21 @@ public class PartyAssetsIntegration {
 	 * asset without one simply gets the certificate.
 	 */
 	public void replaceCertificate(final String municipalityId, final String assetId, final AssetFile certificate) {
-		final var replaces = Optional.ofNullable(partyAssetsClient.getAttachments(municipalityId, assetId).getBody()).orElse(emptyList()).stream()
-			.filter(attachment -> certificate.category().equals(attachment.getCategory()))
-			.map(AssetAttachment::getId)
-			.findFirst()
-			.orElse(null);
+		partyAssetsClient.createAttachment(municipalityId, assetId, certificate.file(), certificate.category(), null, findCertificateId(municipalityId, assetId).orElse(null));
+	}
 
-		partyAssetsClient.createAttachment(municipalityId, assetId, certificate.file(), certificate.category(), null, replaces);
+	/** The content of the certificate of the asset, or nothing when the asset holds none. */
+	public Optional<byte[]> findCertificate(final String municipalityId, final String assetId) {
+		return findCertificateId(municipalityId, assetId)
+			.map(attachmentId -> Optional.ofNullable(partyAssetsClient.getAttachment(municipalityId, assetId, attachmentId).getBody())
+				.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Attachment '%s' of asset '%s' came back without content".formatted(attachmentId, assetId))));
+	}
+
+	private Optional<String> findCertificateId(final String municipalityId, final String assetId) {
+		return Optional.ofNullable(partyAssetsClient.getAttachments(municipalityId, assetId).getBody()).orElse(emptyList()).stream()
+			.filter(PartyAssetsMapper::isCertificate)
+			.map(AssetAttachment::getId)
+			.findFirst();
 	}
 
 	/**

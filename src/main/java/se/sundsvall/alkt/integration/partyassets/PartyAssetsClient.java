@@ -81,6 +81,12 @@ public interface PartyAssetsClient {
 		@PathVariable String municipalityId,
 		@PathVariable String assetId);
 
+	@GetMapping(path = "/{municipalityId}/assets/{assetId}/attachments/{attachmentId}", produces = ALL_VALUE)
+	ResponseEntity<byte[]> getAttachment(
+		@PathVariable String municipalityId,
+		@PathVariable String assetId,
+		@PathVariable String attachmentId);
+
 	@DeleteMapping(path = "/{municipalityId}/assets/{id}", produces = ALL_VALUE)
 	ResponseEntity<Void> deleteAsset(
 		@PathVariable String municipalityId,

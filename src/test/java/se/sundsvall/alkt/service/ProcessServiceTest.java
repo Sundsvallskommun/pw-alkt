@@ -631,9 +631,37 @@ class ProcessServiceTest {
 		verifyNoInteractions(processReportServiceMock);
 	}
 
+	/**
+	 * Support Management holds a process on an incident as failed and lets the case worker start the errand again, which
+	 * must take up the instance that is still there rather than start a second one.
+	 */
+	@Test
+	void retriesStuckTasksWhenTheErrandIsStartedAgain() {
+
+		// Arrange
+		final var errandId = randomUUID().toString();
+		final var processInstanceId = randomUUID().toString();
+		final var errandEvent = event(UPDATE, errandId, PROCESS_KEY, true);
+		errandEvent.setEventSubType("PROCESS");
+		when(operatonIntegrationMock.findProcessInstances(errandId, PROCESS_KEY, TENANT_ID)).thenReturn(List.of(runningInstance(processInstanceId)));
+		when(operatonIntegrationMock.correlateMessage("errandUpdated", errandId, TENANT_ID)).thenReturn(Optional.empty());
+
+		// Act
+		processService.handleErrandEvent(MUNICIPALITY_ID, NAMESPACE, errandEvent);
+
+		// Assert
+		final var inOrder = inOrder(operatonIntegrationMock);
+		inOrder.verify(operatonIntegrationMock).findProcessInstances(errandId, PROCESS_KEY, TENANT_ID);
+		inOrder.verify(operatonIntegrationMock).correlateMessage("errandUpdated", errandId, TENANT_ID);
+		inOrder.verify(operatonIntegrationMock).retryStuckExternalTasks(processInstanceId);
+		verify(operatonIntegrationMock, never()).startProcess(any(), any(), any(), any(), any());
+		verifyNoMoreInteractions(operatonIntegrationMock);
+		verifyNoInteractions(processReportServiceMock);
+	}
+
 	@ParameterizedTest
 	@ValueSource(strings = {
-		"MESSAGE", "ATTACHMENT", "NOTE", "PROCESS"
+		"MESSAGE", "ATTACHMENT", "NOTE"
 	})
 	void retriesNothingForAnotherKindOfChange(final String eventSubType) {
 

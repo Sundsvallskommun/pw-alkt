@@ -282,6 +282,12 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "external_task_create_asset", "end_decision_phase", "end_process");
+
+		// The certificate attached to the permit is kept on the errand as well
+		wiremock.verify(postRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/attachments".formatted(ERRAND_ID)))
+			.withAnyRequestBodyPart(aMultipart()
+				.withHeader("Content-Disposition", containing("filename=\"Tillståndsbevis ALKT-2026-000001.pdf\""))
+				.withBody(equalTo("%PDF-1.7 tillstandsbevis"))));
 	}
 
 	/** A decision not to try the errand grants no permit, so the phase ends without one and without waiting. */

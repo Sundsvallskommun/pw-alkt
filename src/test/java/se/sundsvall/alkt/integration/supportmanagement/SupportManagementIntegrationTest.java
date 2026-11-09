@@ -12,7 +12,6 @@ import generated.se.sundsvall.supportmanagement.ErrandProcessReport;
 import generated.se.sundsvall.supportmanagement.Investigation;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.MessageRequest;
-import generated.se.sundsvall.supportmanagement.PageErrand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Statement;
 import generated.se.sundsvall.supportmanagement.StatementOutcome;
@@ -34,6 +33,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 import se.sundsvall.alkt.exception.NonRetryableException;
+import se.sundsvall.alkt.integration.supportmanagement.model.ErrandPage;
 import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
@@ -247,6 +247,45 @@ class SupportManagementIntegrationTest {
 	}
 
 	@Test
+	void getDecisionJsonParameterAnswersWithTheParameterAndItsVersion() {
+		final var parameter = new JsonParameter().key("aot_alcohol_decision").schemaId("2281_aot_alcohol_decision_1.0").version(4L).value(JsonNodeFactory.instance.objectNode());
+		when(supportManagementClientMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).thenReturn(ResponseEntity.ok(parameter));
+
+		assertThat(supportManagementIntegration.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).isSameAs(parameter);
+	}
+
+	@ParameterizedTest
+	@MethodSource("missingValues")
+	void getDecisionJsonParameterFailsWithoutRetryWhenTheParameterHasNoValue(final JsonNode value) {
+		when(supportManagementClientMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision"))
+			.thenReturn(ResponseEntity.ok(new JsonParameter().key("aot_alcohol_decision").value(value)));
+
+		assertThatThrownBy(() -> supportManagementIntegration.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision"))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("JSON parameter 'aot_alcohol_decision' of decision 'decision-id' of errand '%s' has no value".formatted(ERRAND_ID));
+	}
+
+	@Test
+	void updateDecisionJsonParameterWritesTheValueAtTheVersionWithoutWakingTheProcess() {
+		final var value = JsonNodeFactory.instance.objectNode().put("caseRegistrationNumber", "ALKT-2026-000001");
+		final var parameter = new JsonParameter().key("aot_alcohol_decision").schemaId("2281_aot_alcohol_decision_1.0").version(4L).value(value);
+
+		supportManagementIntegration.updateDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", parameter);
+
+		verify(supportManagementClientMock).updateDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision", "\"4\"", false,
+			new JsonParameter().key("aot_alcohol_decision").schemaId("2281_aot_alcohol_decision_1.0").value(value));
+	}
+
+	@Test
+	void updateDecisionJsonParameterSkipsTheVersionCheckWithoutAVersion() {
+		final var parameter = new JsonParameter().key("aot_alcohol_decision").schemaId("2281_aot_alcohol_decision_1.0").value(JsonNodeFactory.instance.objectNode());
+
+		supportManagementIntegration.updateDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", parameter);
+
+		verify(supportManagementClientMock).updateDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision", null, false, parameter);
+	}
+
+	@Test
 	void getInvestigationJsonAnswersWithTheValueOfTheParameter() {
 		final var parameter = new JsonParameter().key("aot_inspection_internal").value(JsonNodeFactory.instance.objectNode().put("businessName", "Runt Hörnet AB"));
 		when(supportManagementClientMock.getInvestigationJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_inspection_internal"))
@@ -434,9 +473,17 @@ class SupportManagementIntegrationTest {
 	@Test
 	void findErrandIdByExternalTagAnswersWithTheFirstMatch() {
 		when(supportManagementClientMock.findErrands(MUNICIPALITY_ID, NAMESPACE, "externalTags.key:'inspectionErrandId' and externalTags.value:'" + ERRAND_ID + "'"))
-			.thenReturn(ResponseEntity.ok(new PageErrand().content(List.of(new Errand().id("action-errand-id")))));
+			.thenReturn(ResponseEntity.ok(new ErrandPage(List.of(new Errand().id("action-errand-id")))));
 
 		assertThat(supportManagementIntegration.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).contains("action-errand-id");
+	}
+
+	@Test
+	void findErrandIdByExternalTagAnswersWithNothingForAPageWithoutContent() {
+		when(supportManagementClientMock.findErrands(MUNICIPALITY_ID, NAMESPACE, "externalTags.key:'inspectionErrandId' and externalTags.value:'" + ERRAND_ID + "'"))
+			.thenReturn(ResponseEntity.ok(new ErrandPage(null)));
+
+		assertThat(supportManagementIntegration.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).isEmpty();
 	}
 
 	@Test

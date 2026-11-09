@@ -1,0 +1,36 @@
+{
+	"name": "decision_api-support-management-post-attachment-certificate",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/5a2d7e13-4b98-4c26-8f71-3e0a9b6d5c82/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ALL",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "filename=\"Tillståndsbevis TSN 2026-0153.pdf\""
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalTo": "%PDF-1.7 tillstandsbevis"
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Location": "http://localhost/2281/ALKT/errands/5a2d7e13-4b98-4c26-8f71-3e0a9b6d5c82/attachments/c3e1f0a2-7b4d-4e59-8a16-2d9f5b7c0e83"
+		},
+		"status": 201
+	}
+}

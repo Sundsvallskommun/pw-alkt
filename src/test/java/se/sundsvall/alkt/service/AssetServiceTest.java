@@ -14,7 +14,9 @@ import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,6 +85,8 @@ class AssetServiceTest {
 	private static final String VERSION = "\"3\"";
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
 	private static final LocalDate TODAY = LocalDate.of(2026, 10, 6);
+	private static final OffsetDateTime DECISION_CREATED = OffsetDateTime.of(2026, 10, 5, 9, 0, 0, 0, ZoneOffset.UTC);
+	private static final String CERTIFICATE_COPY = "Tillståndsbevis ALKT-2026-000123.pdf";
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
 	@Mock
@@ -237,6 +241,153 @@ class AssetServiceTest {
 	}
 
 	/**
+	 * The copy goes up once the permit is active, so an errand never shows the certificate of a permit that was not made.
+	 */
+	@Test
+	void findOrCreateAssetKeepsTheCertificateOnTheErrandOnceThePermitIsActive() {
+		final var pdf = "%PDF-1.7".getBytes();
+		givenAPermitDraftFor(approval().created(DECISION_CREATED), ALCOHOL_DECISION_KEY, "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn(pdf);
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(List.of(new ErrandAttachment().id("decision-basis").fileName("Beslutsunderlag ALKT-2026-000123.pdf").created(DECISION_CREATED.minusDays(1))));
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, "22810001")).isEqualTo(ASSET_ID);
+
+		final InOrder inOrder = inOrder(supportManagementIntegrationMock, partyAssetsIntegrationMock);
+		inOrder.verify(partyAssetsIntegrationMock).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), attachmentCaptor.capture());
+		inOrder.verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		inOrder.verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		inOrder.verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_COPY, pdf);
+		assertThat(attachmentCaptor.getValue().category()).isEqualTo("Tillståndsbevis");
+		verify(partyAssetsIntegrationMock, never()).findCertificate(any(), any());
+	}
+
+	@Test
+	void findOrCreateAssetNamesTheCopyOnTheErrandForTheCaseNumberOfTheCertificateWithoutItsSlash() {
+		final var pdf = "%PDF-1.7".getBytes();
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder()
+			.parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")), new Parameter().key("externalCaseRegistrationNumber").values(List.of("TSN 2026/0153")))));
+		givenTheDecisionJson(TOBACCO_DECISION_KEY, "{}");
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq("tobacco-permit-certificate"), templateParametersCaptor.capture())).thenReturn(pdf);
+
+		assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TOBACCO_SALES_PERMIT, null);
+
+		assertThat(templateParametersCaptor.getValue()).containsEntry("caseNumber", "TSN 2026/0153");
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillståndsbevis TSN 2026-0153.pdf", pdf);
+	}
+
+	/** The permit is active when the copy is made, so a copy that fails leaves it for the rerun to find. */
+	@Test
+	void findOrCreateAssetLeavesTheActivePermitInPlaceWhenTheCopyCannotBeUploaded() {
+		final var failure = Problem.valueOf(BAD_GATEWAY, "Support management is down");
+		givenAPermitDraftFor(approval(), ALCOHOL_DECISION_KEY, "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+		when(supportManagementIntegrationMock.createPdfAttachment(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(CERTIFICATE_COPY), any())).thenThrow(failure);
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isSameAs(failure);
+
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(partyAssetsIntegrationMock, never()).removeDraftAsset(any(), any());
+	}
+
+	/**
+	 * A rerun after the permit was made may come from a copy that failed, so it copies the certificate party-assets holds.
+	 */
+	@Test
+	void findOrCreateAssetCopiesTheCertificateOfThePermitAlreadyMadeToTheErrand() {
+		final var pdf = "%PDF-1.7".getBytes();
+		givenThePermitAlreadyMadeFor(approval().created(DECISION_CREATED));
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(List.of(new ErrandAttachment().id("decision-basis").fileName("Beslutsunderlag ALKT-2026-000123.pdf").created(DECISION_CREATED.plusMinutes(5))));
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(pdf));
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
+
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_COPY, pdf);
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	/** A copy uploaded since the decision was created is the one an earlier attempt made. */
+	@ParameterizedTest
+	@ValueSource(longs = {
+		0, 1
+	})
+	void findOrCreateAssetUploadsNoSecondCopyOfTheCertificate(final long secondsAfterTheDecision) {
+		givenThePermitAlreadyMadeFor(approval().created(DECISION_CREATED));
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(certificateCopy(DECISION_CREATED.plusSeconds(secondsAfterTheDecision))));
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock, never()).findCertificate(any(), any());
+		verify(supportManagementIntegrationMock, never()).createPdfAttachment(any(), any(), any(), any(), any());
+	}
+
+	/** A copy from before the decision belongs to an earlier decision of the errand. */
+	@Test
+	void findOrCreateAssetCopiesTheCertificateBesideTheCopyOfAnEarlierDecision() {
+		final var pdf = "%PDF-1.7".getBytes();
+		givenThePermitAlreadyMadeFor(approval().created(DECISION_CREATED));
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(certificateCopy(DECISION_CREATED.minusSeconds(1))));
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(pdf));
+
+		assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null);
+
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_COPY, pdf);
+	}
+
+	@Test
+	void findOrCreateAssetTakesAnyCopyOfTheNameForTheCopyOfADecisionWithoutCreationTime() {
+		givenThePermitAlreadyMadeFor(approval());
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(certificateCopy(DECISION_CREATED.minusYears(1))));
+
+		assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null);
+
+		verify(partyAssetsIntegrationMock, never()).findCertificate(any(), any());
+		verify(supportManagementIntegrationMock, never()).createPdfAttachment(any(), any(), any(), any(), any());
+	}
+
+	@Test
+	void findOrCreateAssetCopiesNothingOfAPermitAlreadyMadeWithoutACertificate() {
+		givenThePermitAlreadyMadeFor(approval());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.empty());
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null)).isEqualTo(ASSET_ID);
+
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock, never()).createPdfAttachment(any(), any(), any(), any(), any());
+	}
+
+	@Test
+	void findOrCreateAssetKeepsNoCertificateOnTheErrandOfANotification() {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(approval()));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID))
+			.thenReturn(Optional.of(activeAsset().type(LOW_ALCOHOL_BEER_SALES_NOTIFICATION.getValue())));
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
+
+		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(partyAssetsIntegrationMock).findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID);
+		verifyNoMoreInteractions(supportManagementIntegrationMock, partyAssetsIntegrationMock);
+	}
+
+	@Test
+	void findOrCreateAssetKeepsNoCertificateOnTheErrandOfANewNotification() {
+		givenADraftFor(approval());
+
+		assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null);
+
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		verify(supportManagementIntegrationMock, never()).getAttachments(any(), any(), any());
+		verify(supportManagementIntegrationMock, never()).createPdfAttachment(any(), any(), any(), any(), any());
+	}
+
+	/**
 	 * The permit has the own case number also in Timrå, whose number the case worker gives in the decision. The
 	 * certificate is Timrå's and shows the number Timrå has for the deciding errand.
 	 */
@@ -250,7 +401,8 @@ class AssetServiceTest {
 			""");
 		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
 		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
-		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn("%PDF-1.7".getBytes());
+		final var pdf = "%PDF-1.7".getBytes();
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), templateParametersCaptor.capture())).thenReturn(pdf);
 
 		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, "22620001")).isEqualTo(ASSET_ID);
 
@@ -267,6 +419,9 @@ class AssetServiceTest {
 		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
+		// The copy on the errand is named for the number the certificate shows
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillståndsbevis TIMRA-1.pdf", pdf);
 		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
 	}
 
@@ -703,6 +858,46 @@ class AssetServiceTest {
 		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
 	}
 
+	@Test
+	void updateAssetKeepsTheNewCertificateOnTheErrandOnceItHasReplacedTheOldOne() {
+		final var pdf = "%PDF-1.7".getBytes();
+		givenAPermitToChange(approval().created(DECISION_CREATED), "{}", "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn(pdf);
+
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
+
+		final InOrder inOrder = inOrder(partyAssetsIntegrationMock, supportManagementIntegrationMock);
+		inOrder.verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
+		inOrder.verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		inOrder.verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, CERTIFICATE_COPY, pdf);
+		verify(partyAssetsIntegrationMock, never()).findCertificate(any(), any());
+	}
+
+	/** A rerun after the copy went up replaces the certificate in party-assets again, but uploads no second copy. */
+	@Test
+	void updateAssetUploadsNoSecondCopyOfTheCertificate() {
+		givenAPermitToChange(approval().created(DECISION_CREATED), "{}", "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(certificateCopy(DECISION_CREATED.plusMinutes(1))));
+
+		assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
+
+		verify(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
+		verify(supportManagementIntegrationMock, never()).createPdfAttachment(any(), any(), any(), any(), any());
+	}
+
+	@Test
+	void updateAssetPutsNoCertificateOnTheErrandThatPartyAssetsDoesNotHold() {
+		givenAPermitToChange(approval(), "{}", "{}");
+		when(templatingIntegrationMock.renderPdf(eq(MUNICIPALITY_ID), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).replaceCertificate(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
+
+		assertThatThrownBy(() -> assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isInstanceOf(ClientProblem.class);
+
+		verify(supportManagementIntegrationMock, never()).getAttachments(any(), any(), any());
+		verify(supportManagementIntegrationMock, never()).createPdfAttachment(any(), any(), any(), any(), any());
+	}
+
 	/** A new version of the schema is taken into use with the first change after the configuration names it. */
 	@Test
 	void updateAssetWritesThePermitByTheConfiguredVersionOfTheSchema() {
@@ -791,6 +986,7 @@ class AssetServiceTest {
 		assertThat(templateParametersCaptor.getValue()).containsEntry("premisesName", "Runt Hörnet").containsEntry("premisesPhone", "");
 		verify(partyAssetsIntegrationMock, never()).updateAsset(any(), any(), any(), any());
 		verify(partyAssetsIntegrationMock, never()).replaceCertificate(any(), any(), any());
+		verify(supportManagementIntegrationMock, never()).createPdfAttachment(any(), any(), any(), any(), any());
 	}
 
 	@Test
@@ -1203,7 +1399,8 @@ class AssetServiceTest {
 			{ "servingHours": [{ "from": "11:00", "to": "02:00" }] }
 			""");
 		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().jsonParameters(List.of(permitParameter("{}")))));
-		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn("%PDF-1.7".getBytes());
+		final var pdf = "%PDF-1.7".getBytes();
+		when(templatingIntegrationMock.renderPdf(eq("2262"), eq(CERTIFICATE_TEMPLATE), any())).thenReturn(pdf);
 
 		assertThat(assetService.updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isEqualTo(ASSET_ID);
 
@@ -1214,6 +1411,8 @@ class AssetServiceTest {
 		verify(supportManagementIntegrationMock).getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getDecisionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, DECISION_ID, ALCOHOL_DECISION_KEY);
+		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillståndsbevis TIMRA-1.pdf", pdf);
 		verifyNoMoreInteractions(partyAssetsIntegrationMock, templatingIntegrationMock, supportManagementIntegrationMock);
 	}
 
@@ -1251,6 +1450,16 @@ class AssetServiceTest {
 
 	private static Asset activeAsset() {
 		return new Asset().id(ASSET_ID).partyId(PARTY_ID).type(ALCOHOL_SERVING_PERMIT.getValue()).status(Status.ACTIVE);
+	}
+
+	private void givenThePermitAlreadyMadeFor(final Decision decision) {
+		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(decision));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.of(activeAsset()));
+	}
+
+	private static ErrandAttachment certificateCopy(final OffsetDateTime created) {
+		return new ErrandAttachment().id("certificate-copy").fileName(CERTIFICATE_COPY).created(created);
 	}
 
 	private void givenADraftFor(final Decision decision) {
