@@ -16,6 +16,7 @@
 		"jsonBody": {
 			"id": "0b93f26d-8c47-4e51-b27a-9d4c5e6f7081",
 			"errandNumber": "ALKT-2026-000001",
+			"assignedUserId": "er12lin",
 			"stakeholders": [
 				{
 					"role": "PRIMARY",

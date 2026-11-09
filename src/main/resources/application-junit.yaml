@@ -134,6 +134,11 @@ config:
     token-uri: token.url
     client-id: client.id
     client-secret: client.secret
+  employee:
+    base-url: employee.base.url
+    token-uri: ${config.common.token-uri}
+    client-id: ${config.common.client-id}
+    client-secret: ${config.common.client-secret}
   json-schema:
     base-url: json-schema.base.url
     token-uri: ${config.common.token-uri}
