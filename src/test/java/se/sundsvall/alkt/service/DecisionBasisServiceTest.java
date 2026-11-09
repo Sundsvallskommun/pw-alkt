@@ -110,7 +110,7 @@ class DecisionBasisServiceTest {
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(unanswered));
 		when(partyIntegrationMock.findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID))).thenReturn(Map.of(PBI_PARTY_ID, "198203154321"));
-		when(employeeIntegrationMock.findName(MUNICIPALITY_ID, CASE_WORKER)).thenReturn("Erik Lindqvist");
+		when(employeeIntegrationMock.getName(MUNICIPALITY_ID, CASE_WORKER)).thenReturn("Erik Lindqvist");
 		when(supportManagementIntegrationMock.getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of("APPROVAL", "Bifall"));
 		when(supportManagementIntegrationMock.getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of());
 		when(templatingIntegrationMock.renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap())).thenReturn(PDF);
@@ -123,7 +123,7 @@ class DecisionBasisServiceTest {
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
-		verify(employeeIntegrationMock).findName(MUNICIPALITY_ID, CASE_WORKER);
+		verify(employeeIntegrationMock).getName(MUNICIPALITY_ID, CASE_WORKER);
 		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, "2281_aot_alcohol_serving_permit_application_permanent_serving_1.0");
 		verify(supportManagementIntegrationMock).getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
 		verify(supportManagementIntegrationMock).getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
@@ -148,7 +148,7 @@ class DecisionBasisServiceTest {
 			.thenReturn(List.of(new ErrandAttachment().id("outdated-id").fileName(FILE_NAME).created(COMPLETED_AT.minusDays(1))));
 		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(partyIntegrationMock.findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID))).thenReturn(Map.of());
-		when(employeeIntegrationMock.findName(MUNICIPALITY_ID, CASE_WORKER)).thenReturn("Erik Lindqvist");
+		when(employeeIntegrationMock.getName(MUNICIPALITY_ID, CASE_WORKER)).thenReturn("Erik Lindqvist");
 		when(supportManagementIntegrationMock.getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of("APPROVAL", "Bifall"));
 		when(supportManagementIntegrationMock.getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of());
 		when(templatingIntegrationMock.renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap())).thenReturn(PDF);
@@ -161,40 +161,11 @@ class DecisionBasisServiceTest {
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
-		verify(employeeIntegrationMock).findName(MUNICIPALITY_ID, CASE_WORKER);
+		verify(employeeIntegrationMock).getName(MUNICIPALITY_ID, CASE_WORKER);
 		verify(supportManagementIntegrationMock).getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
 		verify(supportManagementIntegrationMock).getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
 		verify(templatingIntegrationMock).renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap());
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF);
-	}
-
-	@Test
-	void rendersTheDecisionBasisWithAnEmptyHandlerNameWhenTheRegisterDoesNotKnowTheCaseWorker() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand());
-		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(List.of(new Investigation().id("investigation-id").status("COMPLETED").completedAt(COMPLETED_AT)));
-		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
-		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
-		when(partyIntegrationMock.findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID))).thenReturn(Map.of());
-		when(employeeIntegrationMock.findName(MUNICIPALITY_ID, CASE_WORKER)).thenReturn("");
-		when(supportManagementIntegrationMock.getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of());
-		when(supportManagementIntegrationMock.getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of());
-		when(templatingIntegrationMock.renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap())).thenReturn(PDF);
-		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
-
-		assertThat(service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
-
-		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
-		verify(employeeIntegrationMock).findName(MUNICIPALITY_ID, CASE_WORKER);
-		verify(supportManagementIntegrationMock).getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
-		verify(supportManagementIntegrationMock).getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
-		verify(templatingIntegrationMock).renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), parametersCaptor.capture());
-		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF);
-		assertThat(parametersCaptor.getValue()).containsEntry("handlerName", "");
 	}
 
 	@Test

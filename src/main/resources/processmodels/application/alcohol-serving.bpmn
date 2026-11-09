@@ -128,7 +128,7 @@
       </bpmn:intermediateCatchEvent>
       <bpmn:sequenceFlow id="flow_investigation_await_to_create_decision_basis" sourceRef="await_investigation_completed" targetRef="external_task_create_decision_basis" />
       <bpmn:serviceTask id="external_task_create_decision_basis" name="Create decision basis" camunda:type="external" camunda:topic="CreateDecisionBasisTask">
-        <bpmn:documentation>Renders the decision basis from the errand, its investigation and its statements, and attaches it to the errand as a PDF named after the case number (in Timrå the one in externalCaseRegistrationNumber), so the decision phase starts with it in place. Stops when the errand has no investigation or more than one, or in Timrå no case number.</bpmn:documentation>
+        <bpmn:documentation>Renders the decision basis from the errand, its investigation and its statements, and attaches it to the errand as a PDF named after the case number (in Timrå the one in externalCaseRegistrationNumber), so the decision phase starts with it in place. Stops when the errand has no investigation or more than one, no assigned case worker, or in Timrå no case number, and after its retries when the employee register does not know the assigned case worker.</bpmn:documentation>
         <bpmn:extensionElements>
           <camunda:inputOutput>
             <camunda:inputParameter name="decisionBasisTemplate">serving-permit-decision-basis</camunda:inputParameter>

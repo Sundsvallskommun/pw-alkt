@@ -85,7 +85,7 @@ public class DecisionBasisService {
 			.orElse(MissingNode.getInstance());
 		return new Lookups(formSchema, supportManagementIntegration.getDecisionOutcomeNames(municipalityId, namespace),
 			supportManagementIntegration.getStatementOutcomeNames(municipalityId, namespace), legalIdsOfPersonsOfInfluence(municipalityId, errand),
-			employeeIntegration.findName(municipalityId, errand.getAssignedUserId()));
+			employeeIntegration.getName(municipalityId, errand.getAssignedUserId()));
 	}
 
 	private Map<String, String> legalIdsOfPersonsOfInfluence(final String municipalityId, final Errand errand) {
