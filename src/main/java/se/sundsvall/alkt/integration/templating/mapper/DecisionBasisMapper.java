@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
+import se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.MissingNode;
 
@@ -45,6 +46,7 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toStakeholderName;
 
 public final class DecisionBasisMapper {
 
@@ -145,7 +147,7 @@ public final class DecisionBasisMapper {
 		parameters.put("exciseTaxHtml", "");
 		parameters.put("proposal", Map.of("points", toProposalPoints(investigation, lookups)));
 		parameters.put("applicant", Map.of(
-			"name", applicant.map(DecisionBasisMapper::toName).orElse(""),
+			"name", applicant.map(SupportManagementMapper::toStakeholderName).orElse(""),
 			"orgNumber", applicant.map(stakeholder -> toParameterValues(stakeholder.getParameters()).getOrDefault("organizationNumber", "")).orElse(""),
 			STREET, applicant.map(Stakeholder::getAddress).orElse(""),
 			"postalAddress", applicant.map(stakeholder -> toPostalAddress(stakeholder.getZipCode(), stakeholder.getCity())).orElse("")));
@@ -374,7 +376,7 @@ public final class DecisionBasisMapper {
 			.or(() -> tests.stream().reduce((earlier, later) -> later))
 			.orElse(Map.of());
 		return Map.of(
-			"name", toName(person),
+			"name", toStakeholderName(person),
 			"personalNumber", Optional.ofNullable(person.getExternalId())
 				.map(legalIds::get)
 				.map(DecisionBasisMapper::toHyphenatedIdentity)
@@ -399,11 +401,6 @@ public final class DecisionBasisMapper {
 		values.forEach((key, value) -> Optional.of(KNOWLEDGE_TEST.matcher(key)).filter(Matcher::matches)
 			.ifPresent(matcher -> tests.computeIfAbsent(Integer.valueOf(matcher.group(1)), number -> new LinkedHashMap<>()).put(matcher.group(2), value)));
 		return tests;
-	}
-
-	private static String toName(final Stakeholder stakeholder) {
-		return Optional.ofNullable(stakeholder.getOrganizationName()).filter(StringUtils::isNotBlank)
-			.orElseGet(() -> Stream.of(stakeholder.getFirstName(), stakeholder.getLastName()).filter(StringUtils::isNotBlank).collect(joining(" ")));
 	}
 
 	private static String toHyphenatedIdentity(final String legalId) {

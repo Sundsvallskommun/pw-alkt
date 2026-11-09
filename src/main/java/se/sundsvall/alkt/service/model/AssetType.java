@@ -9,21 +9,21 @@ import static se.sundsvall.alkt.service.model.PermitSchema.TOBACCO;
 public enum AssetType {
 	ALCOHOL_SERVING_PERMIT("AlcoholServingPermit", "serving-permit-certificate", ALCOHOL),
 	TOBACCO_SALES_PERMIT("TobaccoSalesPermit", "tobacco-permit-certificate", TOBACCO),
-	LOW_ALCOHOL_BEER_SALES_NOTIFICATION("LowAlcoholBeerSalesNotification", null, null),
-	LOW_ALCOHOL_BEER_SERVING_NOTIFICATION("LowAlcoholBeerServingNotification", null, null),
-	LOW_ALCOHOL_BEER_SALES_AND_SERVING_NOTIFICATION("LowAlcoholBeerSalesAndServingNotification", null, null),
-	E_CIGARETTE_SALES_NOTIFICATION("ECigaretteSalesNotification", null, null),
-	TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION("TobaccoFreeNicotineProductSalesNotification", null, null),
-	CATERING_OCCASION_NOTIFICATION("CateringOccasionNotification", null, null);
+	LOW_ALCOHOL_BEER_SALES_NOTIFICATION("LowAlcoholBeerSalesNotification", null, ALCOHOL),
+	LOW_ALCOHOL_BEER_SERVING_NOTIFICATION("LowAlcoholBeerServingNotification", null, ALCOHOL),
+	LOW_ALCOHOL_BEER_SALES_AND_SERVING_NOTIFICATION("LowAlcoholBeerSalesAndServingNotification", null, ALCOHOL),
+	E_CIGARETTE_SALES_NOTIFICATION("ECigaretteSalesNotification", null, TOBACCO),
+	TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION("TobaccoFreeNicotineProductSalesNotification", null, TOBACCO),
+	CATERING_OCCASION_NOTIFICATION("CateringOccasionNotification", null, ALCOHOL);
 
 	private final String value;
 	private final String certificateTemplate;
-	private final PermitSchema permitSchema;
+	private final PermitSchema schema;
 
-	AssetType(final String value, final String certificateTemplate, final PermitSchema permitSchema) {
+	AssetType(final String value, final String certificateTemplate, final PermitSchema schema) {
 		this.value = value;
 		this.certificateTemplate = certificateTemplate;
-		this.permitSchema = permitSchema;
+		this.schema = schema;
 	}
 
 	/** The type as party-assets knows it. */
@@ -36,8 +36,12 @@ public enum AssetType {
 		return Optional.ofNullable(certificateTemplate);
 	}
 
-	/** The schema the JSON parameter of the asset follows. A notification has none. */
-	public Optional<PermitSchema> getPermitSchema() {
-		return Optional.ofNullable(permitSchema);
+	public PermitSchema getSchema() {
+		return schema;
+	}
+
+	/** A permit is granted from the JSON parameter of its decision and has a certificate; a notification from its form. */
+	public boolean isPermit() {
+		return certificateTemplate != null;
 	}
 }

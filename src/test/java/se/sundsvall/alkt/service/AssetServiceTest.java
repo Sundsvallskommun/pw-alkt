@@ -9,6 +9,7 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.DecisionTerm;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.io.IOException;
@@ -43,6 +44,7 @@ import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.integration.partyassets.model.VersionedAsset;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
+import se.sundsvall.alkt.service.model.AssetType;
 import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 import tools.jackson.databind.JsonNode;
@@ -64,7 +66,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
+import static se.sundsvall.alkt.service.model.AssetType.E_CIGARETTE_SALES_NOTIFICATION;
 import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SALES_NOTIFICATION;
+import static se.sundsvall.alkt.service.model.AssetType.LOW_ALCOHOL_BEER_SERVING_NOTIFICATION;
 import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_SALES_PERMIT;
 
 @ExtendWith(MockitoExtension.class)
@@ -125,7 +129,7 @@ class AssetServiceTest {
 		final var second = new ErrandAttachment().id("second").fileName("ritning.pdf").mimeType("application/pdf");
 		final var content = "file".getBytes();
 
-		givenADraftFor(approval().type("PERMIT").attachments(List.of(first, second)));
+		givenANotificationDraftFor(approval().type("PERMIT").attachments(List.of(first, second)));
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn(content);
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "second")).thenReturn(content);
 
@@ -148,17 +152,113 @@ class AssetServiceTest {
 		verifyNoInteractions(templatingIntegrationMock);
 	}
 
-	/** A notification has no decision of the case worker, so it keeps the parameters of its decision. */
-	@Test
-	void findOrCreateAssetGivesANotificationTheParametersOfItsDecisionAndNoJsonParameter() {
-		givenADraftFor(approval().legalBasis("8 kap. 6 § alkohollagen"));
+	@ParameterizedTest
+	@EnumSource(value = AssetType.class, names = {
+		"LOW_ALCOHOL_BEER_SALES_NOTIFICATION", "LOW_ALCOHOL_BEER_SALES_AND_SERVING_NOTIFICATION", "CATERING_OCCASION_NOTIFICATION"
+	})
+	void findOrCreateAssetBuildsAnAlcoholNotificationFromThePremisesOfItsForm(final AssetType assetType) {
+		givenNoAssetYetFor(approval(), errandWithForm("aot_alcohol_folkol_folkol_sales_notification", """
+			{ "premisesName": "Kiosken vid Torget" }
+			"""));
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
 
-		assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null);
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, assetType, null)).isEqualTo(ASSET_ID);
 
 		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
-		assertThat(assetCaptor.getValue().getAdditionalParameters()).containsEntry("errandId", ERRAND_ID).containsEntry("legalBasis", "8 kap. 6 § alkohollagen");
-		assertThat(assetCaptor.getValue().getJsonParameters()).isNull();
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		assertThat(assetCaptor.getValue().getType()).isEqualTo(assetType.getValue());
+		assertThat(assetCaptor.getValue().getAdditionalParameters()).isNull();
+		assertThat(assetCaptor.getValue().getJsonParameters()).singleElement().satisfies(parameter -> {
+			assertThat(parameter.getKey()).isEqualTo(ALCOHOL_PERMIT_KEY);
+			assertThat(parameter.getSchemaId()).isEqualTo(ALCOHOL_SCHEMA_ID);
+			assertThat(parameter.getValue().path("premises").path("name").asString()).isEqualTo("Kiosken vid Torget");
+		});
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = AssetType.class, names = {
+		"E_CIGARETTE_SALES_NOTIFICATION", "TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION"
+	})
+	void findOrCreateAssetBuildsATobaccoNotificationFromThePointOfSaleOfItsForm(final AssetType assetType) {
+		givenNoAssetYetFor(approval(), errandWithForm("aot_tobacco_ecigarette_sales_notification", """
+			{ "pointOfSaleName": "Kiosken i Bergsåker" }
+			"""));
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, assetType, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		assertThat(assetCaptor.getValue().getType()).isEqualTo(assetType.getValue());
+		assertThat(assetCaptor.getValue().getAdditionalParameters()).isNull();
+		assertThat(assetCaptor.getValue().getJsonParameters()).singleElement().satisfies(parameter -> {
+			assertThat(parameter.getKey()).isEqualTo("aot_tobacco_party_asset");
+			assertThat(parameter.getSchemaId()).isEqualTo("2281_aot_tobacco_party_asset_1.0");
+			assertThat(parameter.getValue().path("pointOfSale").path("name").asString()).isEqualTo("Kiosken i Bergsåker");
+		});
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	@Test
+	void findOrCreateAssetBuildsALowAlcoholBeerServingNotificationFromTheFormOfTheErrand() {
+		final var decision = approval()
+			.title("Anmälan om servering av folköl")
+			.decidedAt(OffsetDateTime.of(2026, 10, 6, 8, 0, 0, 0, ZoneOffset.UTC))
+			.validFrom(TODAY)
+			.validTo(TODAY.plusYears(1));
+		givenNoAssetYetFor(decision, errandWithForm("aot_alcohol_folkol_folkol_serving_notification", """
+			{
+			  "premisesName": "Kafé Solsidan",
+			  "premisesAddress": { "street": "Badhusparken 2", "postalCode": "85231", "city": "Sundsvall" },
+			  "premisesContact": { "phoneNumber": "060-15 40 20" },
+			  "invoiceReference": "Solsidan 12"
+			}
+			"""));
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+
+		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SERVING_NOTIFICATION, null)).isEqualTo(ASSET_ID);
+
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
+		verify(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
+		assertThat(assetCaptor.getValue().getJsonParameters()).singleElement().satisfies(parameter -> {
+			assertThat(parameter.getKey()).isEqualTo(ALCOHOL_PERMIT_KEY);
+			assertThat(parameter.getSchemaId()).isEqualTo(ALCOHOL_SCHEMA_ID);
+			assertThat(parameter.getValue()).isEqualTo(json("""
+				{
+				  "errandId": "errand-id",
+				  "caseRegistrationNumber": "ALKT-2026-000123",
+				  "permitHolder": { "name": "Solsidan Kafé AB" },
+				  "premises": {
+				    "name": "Kafé Solsidan",
+				    "address": { "street": "Badhusparken 2", "postalCode": "85231", "city": "Sundsvall" },
+				    "phoneNumber": "060-15 40 20",
+				    "municipalityId": "2281"
+				  },
+				  "decision": { "caseRegistrationNumber": "ALKT-2026-000123", "outcome": "APPROVAL", "decisionDate": "2026-10-06", "validFrom": "2026-10-06" }
+				}
+				"""));
+		});
 		verify(supportManagementIntegrationMock, never()).getDecisionJson(any(), any(), any(), any(), any());
+		verifyNoInteractions(templatingIntegrationMock);
+	}
+
+	/** The schema is the one of the process's municipality, as for a permit, whatever municipality the premises are in. */
+	@Test
+	void findOrCreateAssetWritesANotificationOfPremisesInTimraByTheSchemaOfTheProcessMunicipality() {
+		givenNoAssetYetFor(approval(), errandWithForm("aot_alcohol_folkol_folkol_serving_notification", """
+			{ "premisesName": "Kafé Strandkanten" }
+			""").parameters(List.of(new Parameter().key("premisesMunicipalityId").values(List.of("2262")))));
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
+
+		assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SERVING_NOTIFICATION, null);
+
+		verify(partyAssetsIntegrationMock).createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), assetCaptor.capture());
+		assertThat(assetCaptor.getValue().getJsonParameters()).singleElement().satisfies(parameter -> {
+			assertThat(parameter.getSchemaId()).isEqualTo("2281_aot_alcohol_party_asset_0.1");
+			assertThat(parameter.getValue().path("premises").path("municipalityId").asString()).isEqualTo("2262");
+			assertThat(parameter.getValue().path("caseRegistrationNumber").asString()).isEqualTo(ERRAND_NUMBER);
+		});
 	}
 
 	@Test
@@ -378,7 +478,7 @@ class AssetServiceTest {
 
 	@Test
 	void findOrCreateAssetKeepsNoCertificateOnTheErrandOfANewNotification() {
-		givenADraftFor(approval());
+		givenANotificationDraftFor(approval());
 
 		assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null);
 
@@ -467,7 +567,30 @@ class AssetServiceTest {
 
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Errand 'errand-id' has no errand number to give the permit as its case number");
+			.hasMessage("Errand 'errand-id' has no errand number to give the asset as its case number");
+
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
+	}
+
+	@Test
+	void findOrCreateAssetFailsWithoutRetryAndCreatesNoDraftForANotificationWithoutForm() {
+		givenNoAssetYetFor(approval(), errandWithPermitHolder().jsonParameters(null));
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no form to build its notification from");
+
+		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
+	}
+
+	@Test
+	void findOrCreateAssetFailsWithoutRetryAndCreatesNoDraftForANotificationWithOnlyTheOriginalForm() {
+		givenNoAssetYetFor(approval(), errandWithPermitHolder().jsonParameters(List.of(
+			new JsonParameter().key("aot_tobacco_ecigarette_sales_notification_original").value(json("{ \"pointOfSaleName\": \"Kiosken i Bergsåker\" }")))));
+
+		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, E_CIGARETTE_SALES_NOTIFICATION, null))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'errand-id' has no form to build its notification from");
 
 		verify(partyAssetsIntegrationMock, never()).createDraftAsset(any(), any(), any(), any());
 	}
@@ -530,7 +653,7 @@ class AssetServiceTest {
 	/** The asset id is the only way to find the draft left behind, so it travels with the incident as well. */
 	@Test
 	void findOrCreateAssetCarriesTheAssetIdWithoutRetryWhenTheDraftOfARefusedActivationCannotBeRemoved() {
-		givenADraftFor(approval());
+		givenANotificationDraftFor(approval());
 		doThrow(new NonRetryableException("Asset '%s' cannot be activated".formatted(ASSET_ID))).when(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
 
@@ -580,7 +703,7 @@ class AssetServiceTest {
 
 	@Test
 	void findOrCreateAssetCreatesAnAssetThatEndsAfterToday() {
-		givenADraftFor(approval().validTo(TODAY.plusDays(2)));
+		givenANotificationDraftFor(approval().validTo(TODAY.plusDays(2)));
 
 		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
 
@@ -606,7 +729,7 @@ class AssetServiceTest {
 
 	@Test
 	void findOrCreateAssetWithoutAttachmentsOnTheDecision() {
-		givenADraftFor(approval().attachments(null));
+		givenANotificationDraftFor(approval().attachments(null));
 
 		assertThat(assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null)).isEqualTo(ASSET_ID);
 
@@ -617,7 +740,7 @@ class AssetServiceTest {
 
 	@Test
 	void findOrCreateAssetRemovesTheDraftWhenAnAttachmentCannotBeFetched() {
-		givenADraftFor(approval().attachments(List.of(new ErrandAttachment().id("first"), new ErrandAttachment().id("second"))));
+		givenANotificationDraftFor(approval().attachments(List.of(new ErrandAttachment().id("first"), new ErrandAttachment().id("second"))));
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first"))
 			.thenThrow(Problem.valueOf(BAD_GATEWAY, "Support management is down"));
 
@@ -634,7 +757,7 @@ class AssetServiceTest {
 
 	@Test
 	void findOrCreateAssetRemovesTheDraftWhenAnAttachmentFails() {
-		givenADraftFor(approval().attachments(List.of(new ErrandAttachment().id("first"), new ErrandAttachment().id("second"))));
+		givenANotificationDraftFor(approval().attachments(List.of(new ErrandAttachment().id("first"), new ErrandAttachment().id("second"))));
 		when(supportManagementIntegrationMock.getAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "first")).thenReturn("file".getBytes());
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).addAttachmentToDraft(eq(MUNICIPALITY_ID), eq(ASSET_ID), any());
 
@@ -651,7 +774,7 @@ class AssetServiceTest {
 
 	@Test
 	void findOrCreateAssetRemovesTheDraftWhenTheActivationFails() {
-		givenADraftFor(approval());
+		givenANotificationDraftFor(approval());
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 
 		assertThatThrownBy(() -> assetService.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, LOW_ALCOHOL_BEER_SALES_NOTIFICATION, null))
@@ -665,7 +788,7 @@ class AssetServiceTest {
 
 	@Test
 	void findOrCreateAssetCarriesTheAssetIdWhenTheDraftCannotBeRemoved() {
-		givenADraftFor(approval());
+		givenANotificationDraftFor(approval());
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is down")).when(partyAssetsIntegrationMock).activateAsset(MUNICIPALITY_ID, ASSET_ID);
 		doThrow(new ClientProblem(BAD_GATEWAY, "Party assets is still down")).when(partyAssetsIntegrationMock).removeDraftAsset(MUNICIPALITY_ID, ASSET_ID);
 
@@ -1462,20 +1585,33 @@ class AssetServiceTest {
 		return new ErrandAttachment().id("certificate-copy").fileName(CERTIFICATE_COPY).created(created);
 	}
 
-	private void givenADraftFor(final Decision decision) {
-		givenNoAssetYetFor(decision);
+	private void givenANotificationDraftFor(final Decision decision) {
+		givenNoAssetYetFor(decision, errandWithForm("aot_alcohol_folkol_folkol_sales_notification", """
+			{ "premisesName": "Kiosken vid Torget" }
+			"""));
 		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
 	}
 
 	private void givenAPermitDraftFor(final Decision decision, final String decisionKey, final String decisionJson) {
-		givenADraftFor(decision);
+		givenNoAssetYetFor(decision);
+		when(partyAssetsIntegrationMock.createDraftAsset(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(ASSET_ID);
 		givenTheDecisionJson(decisionKey, decisionJson);
 	}
 
 	private void givenNoAssetYetFor(final Decision decision) {
+		givenNoAssetYetFor(decision, errandWithPermitHolder());
+	}
+
+	private void givenNoAssetYetFor(final Decision decision, final Errand errand) {
 		when(supportManagementIntegrationMock.getCompletedDecision(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(Optional.of(decision));
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder());
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(partyAssetsIntegrationMock.findAsset(MUNICIPALITY_ID, PARTY_ID, DECISION_ID)).thenReturn(Optional.empty());
+	}
+
+	private static Errand errandWithForm(final String formKey, final String form) {
+		return errandWithPermitHolder()
+			.stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId(PARTY_ID).organizationName("Solsidan Kafé AB")))
+			.jsonParameters(List.of(new JsonParameter().key(formKey).value(json(form))));
 	}
 
 	private static Decision approval() {

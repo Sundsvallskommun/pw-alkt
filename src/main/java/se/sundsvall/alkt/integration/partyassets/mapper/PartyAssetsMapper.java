@@ -9,12 +9,9 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.ErrandAttachmentPurpose;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.StringUtils;
 import se.sundsvall.alkt.integration.partyassets.model.AssetFile;
 import se.sundsvall.alkt.service.model.AssetType;
 import se.sundsvall.alkt.service.model.PermitSchema;
@@ -26,14 +23,8 @@ import static generated.se.sundsvall.partyassets.Status.EXPIRED;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditions;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecidedOn;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toFirstDay;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 
 public final class PartyAssetsMapper {
 
@@ -44,19 +35,8 @@ public final class PartyAssetsMapper {
 
 	private PartyAssetsMapper() {}
 
-	/** A notification carries the errand that granted it and what its decision says as additional parameters. */
-	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String errandId, final String partyId, final AssetType assetType) {
-		return toDraft(decision, partyId, assetType)
-			.additionalParameters(toAdditionalParameters(decision, errandId));
-	}
-
-	/** A permit is written by its JSON parameter alone, without additional parameters. */
-	public static AssetCreateRequest toPermitCreateRequest(final Decision decision, final String partyId, final AssetType assetType, final AssetJsonParameter permit) {
-		return toDraft(decision, partyId, assetType)
-			.jsonParameters(List.of(permit));
-	}
-
-	private static AssetCreateRequest toDraft(final Decision decision, final String partyId, final AssetType assetType) {
+	/** An asset is written by its JSON parameter alone, without additional parameters. */
+	public static AssetCreateRequest toAssetCreateRequest(final Decision decision, final String partyId, final AssetType assetType, final AssetJsonParameter parameter) {
 		return new AssetCreateRequest()
 			.assetId(decision.getId())
 			.status(DRAFT)
@@ -65,7 +45,8 @@ public final class PartyAssetsMapper {
 			.type(assetType.getValue())
 			.issued(toFirstDay(decision).orElse(null))
 			.validTo(decision.getValidTo())
-			.title(decision.getTitle());
+			.title(decision.getTitle())
+			.jsonParameters(List.of(parameter));
 	}
 
 	/**
@@ -132,24 +113,5 @@ public final class PartyAssetsMapper {
 	/** An attachment is the certificate of its asset by the category the certificate is attached in. */
 	public static boolean isCertificate(final AssetAttachment attachment) {
 		return CERTIFICATE_CATEGORY.equals(attachment.getCategory());
-	}
-
-	private static Map<String, String> toAdditionalParameters(final Decision decision, final String errandId) {
-		final var parameters = new LinkedHashMap<String, String>();
-		parameters.put(PERMIT_PARAMETER_ERRAND_ID, errandId);
-		parameters.putAll(toDecisionParameters(decision));
-		return parameters;
-	}
-
-	/** A parameter wins over the legal basis and delegation reference, the terms over a parameter named conditions. */
-	private static Map<String, String> toDecisionParameters(final Decision decision) {
-		final var parameters = new LinkedHashMap<String, String>();
-		Optional.ofNullable(decision.getLegalBasis()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_LEGAL_BASIS, value));
-		Optional.ofNullable(decision.getDelegationReference()).ifPresent(value -> parameters.put(PERMIT_PARAMETER_DELEGATION_REFERENCE, value));
-		parameters.putAll(toParameterValues(decision.getParameters()));
-		parameters.remove(PERMIT_PARAMETER_CONDITIONS);
-		Optional.of(toConditions(decision)).filter(StringUtils::isNotBlank).ifPresent(value -> parameters.put(PERMIT_PARAMETER_CONDITIONS, value));
-		parameters.remove(PERMIT_PARAMETER_ERRAND_ID);
-		return parameters;
 	}
 }
