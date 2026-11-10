@@ -81,7 +81,7 @@ class ProcessStateReportTest {
 
 	@Test
 	void nullCollectionsBecomeEmpty() {
-		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null, null, false);
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, null, null, null, null, false, null);
 
 		assertThat(report.activities()).isEmpty();
 		assertThat(report.awaitingSignals()).isEmpty();
@@ -92,7 +92,7 @@ class ProcessStateReportTest {
 	void activitiesAreCopied() {
 		final var activities = new ArrayList<>(List.of(new ProcessActivity().activityType("PHASE")));
 
-		final var report = new ProcessStateReport(COMPLETED, null, null, null, activities, null, null, null, false);
+		final var report = new ProcessStateReport(COMPLETED, null, null, null, activities, null, null, null, false, null);
 		activities.clear();
 
 		assertThat(report.activities()).hasSize(1);

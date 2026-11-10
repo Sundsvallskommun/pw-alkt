@@ -135,6 +135,13 @@ process-log:
       done: Det har kontrollerats om ärendet behöver ett diarienummer från Timrås diarium
       retry: Det kunde inte kontrolleras just nu om ärendet behöver ett diarienummer, ett nytt försök görs automatiskt
       failed: Lokalens kommun saknas i ärendet eller kunde inte läsas, så det går inte att avgöra om ett diarienummer behövs. Processen har stannat och felet behöver åtgärdas
+    "[external_task_send_permit_certificate]":
+      done: Tillståndsbeviset har skickats till tillståndshavaren
+      done-variants:
+        digital-mail: Tillståndsbeviset har skickats till tillståndshavaren som digital post
+        snail-mail: Tillståndsbeviset har skickats till tillståndshavaren som vanligt brev
+      retry: Tillståndsbeviset kunde inte skickas just nu, ett nytt försök görs automatiskt
+      failed: Tillståndsbeviset kunde inte skickas. Processen har stannat och felet behöver åtgärdas
   phases:
     "[registration_phase]":
       entered: Registrering har påbörjats

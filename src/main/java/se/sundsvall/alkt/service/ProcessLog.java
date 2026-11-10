@@ -8,6 +8,7 @@ import org.camunda.bpm.client.task.ExternalTask;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.configuration.ProcessLogProperties;
 import se.sundsvall.alkt.configuration.ProcessLogProperties.PhaseTexts;
+import se.sundsvall.alkt.configuration.ProcessLogProperties.StepTexts;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
 import se.sundsvall.dept44.requestid.RequestId;
 
@@ -68,6 +69,16 @@ public class ProcessLog {
 	public ProcessActivity taskDone(final ExternalTask externalTask, final String logMessage) {
 		return entry(ACTIVITY_TYPE_TASK, externalTask.getActivityId() + "#done", nameOf(externalTask, Outcome.DONE), SEVERITY_INFO, null,
 			"%s, x-request-id %s".formatted(logMessage, RequestId.get()), now());
+	}
+
+	/** As taskDone, named with the done text of the variant when the step has one, else with its done text. */
+	public ProcessActivity taskDone(final ExternalTask externalTask, final String logMessage, final String doneVariant) {
+		final var entry = taskDone(externalTask, logMessage);
+		Optional.ofNullable(properties.steps().get(externalTask.getActivityId()))
+			.map(StepTexts::doneVariants)
+			.map(variants -> variants.get(doneVariant))
+			.ifPresent(name -> entry.activityName(abbreviate(name, MAX_NAME_LENGTH)));
+		return entry;
 	}
 
 	/** A step with nothing to do for this errand. Nothing failed, so it is no warning. */
