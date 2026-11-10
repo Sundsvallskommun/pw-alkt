@@ -87,14 +87,17 @@ public class PermitCertificateService {
 			.findFirst();
 	}
 
-	/** Read again just before the write, so that a change made while the letter was sent is kept. */
+	/**
+	 * Read again just before the write, so that a change made while the letter was sent is kept. Written without If-Match,
+	 * as a 412 would retry the task and send the letter again.
+	 */
 	private void markSent(final String municipalityId, final String namespace, final String errandId, final CertificateDelivery delivery) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var parameters = Stream.concat(
 			Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream().filter(parameter -> !ERRAND_PARAMETER_PERMIT_CERTIFICATE_DELIVERY.equals(parameter.getKey())),
 			Stream.of(new Parameter().key(ERRAND_PARAMETER_PERMIT_CERTIFICATE_DELIVERY).values(List.of(delivery.channel().name(), delivery.messageId()))))
 			.toList();
-		supportManagementIntegration.updateErrandParameters(municipalityId, namespace, errandId, errand.getVersion(), parameters);
+		supportManagementIntegration.updateErrandParameters(municipalityId, namespace, errandId, null, parameters);
 	}
 
 	private static String requireDelivered(final String errandId, final Channel channel, final MessageResult message) {

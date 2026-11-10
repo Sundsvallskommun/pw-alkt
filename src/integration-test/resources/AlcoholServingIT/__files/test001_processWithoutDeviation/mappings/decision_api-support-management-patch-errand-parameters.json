@@ -13,9 +13,6 @@
 			},
 			"X-Trigger-Process": {
 				"equalTo": "false"
-			},
-			"If-Match": {
-				"equalTo": "\"3\""
 			}
 		},
 		"bodyPatterns": [

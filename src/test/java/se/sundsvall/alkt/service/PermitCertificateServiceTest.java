@@ -44,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -118,7 +119,7 @@ class PermitCertificateServiceTest {
 		verify(messagingIntegrationMock).getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID);
 		verify(partyAssetsIntegrationMock).findCertificate(MUNICIPALITY_ID, ASSET_ID);
 		verify(supportManagementIntegrationMock, times(2)).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).updateErrandParameters(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(4L), any());
+		verify(supportManagementIntegrationMock).updateErrandParameters(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), any());
 		verifyNoMoreInteractions(supportManagementIntegrationMock, partyAssetsIntegrationMock, messagingIntegrationMock);
 	}
 
@@ -161,7 +162,7 @@ class PermitCertificateServiceTest {
 		verify(messagingIntegrationMock).getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID);
 		verify(partyAssetsIntegrationMock).findCertificate(MUNICIPALITY_ID, ASSET_ID);
 		verify(supportManagementIntegrationMock, times(2)).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).updateErrandParameters(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(4L), any());
+		verify(supportManagementIntegrationMock).updateErrandParameters(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), any());
 		verifyNoMoreInteractions(supportManagementIntegrationMock, partyAssetsIntegrationMock, messagingIntegrationMock);
 	}
 
@@ -304,8 +305,10 @@ class PermitCertificateServiceTest {
 	}
 
 	@Test
-	void sentCertificateIsMarkedOnTheErrandWithTheChannelAndTheMessageId() {
-		final var reread = errandOfCompany().version(5L);
+	void sentCertificateIsMarkedOnTheErrandAsReadAgainWithTheChannelAndTheMessageIdAndWithoutIfMatch() {
+		final var reread = errandOfCompany().version(5L).parameters(List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
+			new Parameter().key("premisesName").values(List.of("Restaurang Norrsken"))));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany(), reread);
 		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
 		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
@@ -314,8 +317,9 @@ class PermitCertificateServiceTest {
 
 		service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
 
-		verify(supportManagementIntegrationMock).updateErrandParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, 5L, List.of(
+		verify(supportManagementIntegrationMock).updateErrandParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, null, List.of(
 			new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
+			new Parameter().key("premisesName").values(List.of("Restaurang Norrsken")),
 			new Parameter().key("permitCertificateDelivery").values(List.of("DIGITAL_MAIL", MESSAGE_ID.toString()))));
 	}
 
