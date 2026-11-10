@@ -17,6 +17,7 @@ import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -43,9 +44,13 @@ import se.sundsvall.alkt.integration.messaging.MessagingIntegration;
 import se.sundsvall.alkt.integration.partyassets.PartyAssetsIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.model.CertificateDelivery;
+import se.sundsvall.dept44.exception.ServerProblem;
+import se.sundsvall.dept44.problem.ThrowableProblem;
 
 import static generated.se.sundsvall.messaging.DigitalMailAttachment.ContentTypeEnum.APPLICATION_PDF;
 import static generated.se.sundsvall.messaging.DigitalMailRequest.ContentTypeEnum.TEXT_PLAIN;
+import static generated.se.sundsvall.messaging.MessageStatus.FAILED;
+import static generated.se.sundsvall.messaging.MessageStatus.NOT_SENT;
 import static generated.se.sundsvall.messaging.MessageStatus.SENT;
 import static generated.se.sundsvall.messaging.MessageType.DIGITAL_MAIL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,6 +62,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
 import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES;
 
@@ -260,6 +266,108 @@ class PermitCertificateServiceTest {
 		verifyNoInteractions(messagingIntegrationMock);
 	}
 
+	@Test
+	void digitalMailWithADeliveryThatFailedFailsWithRetry() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
+			.thenReturn(List.of(new Mailbox().partyId(PARTY_ID).reachable(true)));
+		final var result = sentDigitalMail();
+		result.getMessages().getFirst().getDeliveries().getFirst().status(FAILED);
+		when(messagingIntegrationMock.sendDigitalMail(anyString(), anyString(), any())).thenReturn(result);
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(ThrowableProblem.class)
+			.isNotInstanceOf(NonRetryableException.class)
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY)
+			.hasMessageContaining("The permit certificate of errand '%s' was not delivered as DIGITAL_MAIL".formatted(ERRAND_ID));
+	}
+
+	@Test
+	void digitalMailWithOneOfTwoDeliveriesNotSentFailsWithRetry() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
+			.thenReturn(List.of(new Mailbox().partyId(PARTY_ID).reachable(true)));
+		final var result = sentDigitalMail();
+		result.getMessages().getFirst().addDeliveriesItem(new DeliveryResult().messageType(DIGITAL_MAIL).status(NOT_SENT));
+		when(messagingIntegrationMock.sendDigitalMail(anyString(), anyString(), any())).thenReturn(result);
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(ThrowableProblem.class)
+			.isNotInstanceOf(NonRetryableException.class)
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
+	}
+
+	@Test
+	void digitalMailWithoutAnyDeliveryFailsWithRetry() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
+			.thenReturn(List.of(new Mailbox().partyId(PARTY_ID).reachable(true)));
+		when(messagingIntegrationMock.sendDigitalMail(anyString(), anyString(), any())).thenReturn(new MessageBatchResult().messages(List.of()));
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(ThrowableProblem.class)
+			.isNotInstanceOf(NonRetryableException.class)
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
+	}
+
+	@Test
+	void snailMailWithADeliveryThatWasNotSentFailsWithRetry() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID)).thenReturn(List.of());
+		final var result = sentSnailMail();
+		result.getDeliveries().getFirst().status(NOT_SENT);
+		when(messagingIntegrationMock.sendSnailMail(anyString(), any())).thenReturn(result);
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(ThrowableProblem.class)
+			.isNotInstanceOf(NonRetryableException.class)
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY)
+			.hasMessageContaining("The permit certificate of errand '%s' was not delivered as SNAIL_MAIL".formatted(ERRAND_ID));
+	}
+
+	@Test
+	void snailMailWithoutDeliveriesFailsWithRetry() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID)).thenReturn(List.of());
+		when(messagingIntegrationMock.sendSnailMail(anyString(), any())).thenReturn(new MessageResult().messageId(MESSAGE_ID));
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(ThrowableProblem.class)
+			.isNotInstanceOf(NonRetryableException.class)
+			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
+	}
+
+	@Test
+	void messagingFailingOnTheMailboxCheckFailsWithRetryAndSendsNothing() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		final var failure = new ServerProblem(BAD_GATEWAY, "messaging error: Bad Gateway");
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID)).thenThrow(failure);
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isSameAs(failure);
+		verify(messagingIntegrationMock, never()).sendSnailMail(anyString(), any());
+		verify(messagingIntegrationMock, never()).sendDigitalMail(anyString(), anyString(), any());
+	}
+
+	@Test
+	void messagingFailingToSendFailsWithRetry() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
+			.thenReturn(List.of(new Mailbox().partyId(PARTY_ID).reachable(true)));
+		final var failure = new ServerProblem(BAD_GATEWAY, "messaging error: Internal Server Error");
+		when(messagingIntegrationMock.sendDigitalMail(anyString(), anyString(), any())).thenThrow(failure);
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isSameAs(failure);
+	}
+
 	private static MessageResult sentSnailMail() {
 		return new MessageResult()
 			.messageId(MESSAGE_ID)
@@ -271,6 +379,6 @@ class PermitCertificateServiceTest {
 			.batchId(UUID.fromString("9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b"))
 			.messages(List.of(new MessageResult()
 				.messageId(MESSAGE_ID)
-				.deliveries(List.of(new DeliveryResult().deliveryId(UUID.fromString("5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a")).messageType(DIGITAL_MAIL).status(SENT)))));
+				.deliveries(new ArrayList<>(List.of(new DeliveryResult().deliveryId(UUID.fromString("5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a")).messageType(DIGITAL_MAIL).status(SENT))))));
 	}
 }
