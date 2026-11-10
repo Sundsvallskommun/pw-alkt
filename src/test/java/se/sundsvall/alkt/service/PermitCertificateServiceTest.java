@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.service;
 
+import generated.se.sundsvall.messaging.Address;
 import generated.se.sundsvall.messaging.DeliveryResult;
 import generated.se.sundsvall.messaging.DigitalMailAttachment;
 import generated.se.sundsvall.messaging.DigitalMailParty;
@@ -9,6 +10,9 @@ import generated.se.sundsvall.messaging.DigitalMailSenderSupportInfo;
 import generated.se.sundsvall.messaging.Mailbox;
 import generated.se.sundsvall.messaging.MessageBatchResult;
 import generated.se.sundsvall.messaging.MessageResult;
+import generated.se.sundsvall.messaging.SnailmailAttachment;
+import generated.se.sundsvall.messaging.SnailmailParty;
+import generated.se.sundsvall.messaging.SnailmailRequest;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
@@ -18,9 +22,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.configuration.PermitCertificateProperties;
@@ -40,6 +52,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -71,6 +84,9 @@ class PermitCertificateServiceTest {
 
 	@Mock
 	private MessagingIntegration messagingIntegrationMock;
+
+	@Captor
+	private ArgumentCaptor<SnailmailRequest> snailMailCaptor;
 
 	private PermitCertificateService service;
 
@@ -158,6 +174,96 @@ class PermitCertificateServiceTest {
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("No letter for the permit certificate is configured for process 'alcohol-serving'");
 		verifyNoInteractions(messagingIntegrationMock);
+	}
+
+	@Test
+	void sendsSnailMailToTheAddressOfTheCompanyWhenItHasNoReachableMailbox() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
+			.thenReturn(List.of(new Mailbox().partyId(PARTY_ID).reachable(false).reason("No mailbox")));
+		when(messagingIntegrationMock.sendSnailMail(anyString(), any())).thenReturn(sentSnailMail());
+
+		final var result = service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
+
+		assertThat(result).isEqualTo(new CertificateDelivery(CertificateDelivery.Channel.SNAIL_MAIL, MESSAGE_ID.toString(), false));
+		verify(messagingIntegrationMock).sendSnailMail(MUNICIPALITY_ID, new SnailmailRequest()
+			.party(new SnailmailParty().partyId(PARTY_ID))
+			.address(new Address()
+				.organizationName("Restaurang Norrsken AB")
+				.careOf("Anna Svensson")
+				.address("Storgatan 12")
+				.zipCode("852 30")
+				.city("Sundsvall")
+				.country("Sverige"))
+			.department("SBK(Alkohol och tobak)")
+			.attachments(List.of(new SnailmailAttachment()
+				.filename("Tillståndsbevis ALKT-2026-000123.pdf")
+				.contentType("application/pdf")
+				.content(Base64.getEncoder().encodeToString(CERTIFICATE)))));
+		verify(messagingIntegrationMock, never()).sendDigitalMail(anyString(), anyString(), any());
+	}
+
+	@Test
+	void snailMailToAPersonCarriesTheFirstAndLastName() {
+		final var errand = errandOfCompany();
+		errand.getStakeholders().getFirst().organizationName(null).careOf(null).country(null).firstName("Erik").lastName("Lindqvist");
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID)).thenReturn(List.of());
+		when(messagingIntegrationMock.sendSnailMail(anyString(), any())).thenReturn(sentSnailMail());
+
+		service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
+
+		verify(messagingIntegrationMock).sendSnailMail(eq(MUNICIPALITY_ID), snailMailCaptor.capture());
+		assertThat(snailMailCaptor.getValue().getAddress()).isEqualTo(new Address()
+			.firstName("Erik")
+			.lastName("Lindqvist")
+			.address("Storgatan 12")
+			.zipCode("852 30")
+			.city("Sundsvall"));
+	}
+
+	@ParameterizedTest
+	@MethodSource("incompleteAddresses")
+	void noReachableMailboxAndAnIncompleteAddressFailsWithoutRetryAndSendsNothing(final Consumer<Stakeholder> incomplete) {
+		final var errand = errandOfCompany();
+		incomplete.accept(errand.getStakeholders().getFirst());
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
+			.thenReturn(List.of(new Mailbox().partyId(PARTY_ID).reachable(false)));
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The permit holder of errand '%s' has no reachable mailbox and no complete address to send the permit certificate to".formatted(ERRAND_ID));
+		verify(messagingIntegrationMock, never()).sendSnailMail(anyString(), any());
+		verify(messagingIntegrationMock, never()).sendDigitalMail(anyString(), anyString(), any());
+	}
+
+	private static Stream<Arguments> incompleteAddresses() {
+		return Stream.of(
+			Arguments.of(Named.<Consumer<Stakeholder>>of("no street address", stakeholder -> stakeholder.address(null))),
+			Arguments.of(Named.<Consumer<Stakeholder>>of("blank street address", stakeholder -> stakeholder.address(" "))),
+			Arguments.of(Named.<Consumer<Stakeholder>>of("no zip code", stakeholder -> stakeholder.zipCode(null))),
+			Arguments.of(Named.<Consumer<Stakeholder>>of("no city", stakeholder -> stakeholder.city(""))));
+	}
+
+	@Test
+	void permitWithoutCertificateFailsWithoutRetryAndSendsNothing() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Asset '%s' has no permit certificate to send".formatted(ASSET_ID));
+		verifyNoInteractions(messagingIntegrationMock);
+	}
+
+	private static MessageResult sentSnailMail() {
+		return new MessageResult()
+			.messageId(MESSAGE_ID)
+			.deliveries(List.of(new DeliveryResult().deliveryId(UUID.fromString("5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a")).status(SENT)));
 	}
 
 	private static MessageBatchResult sentDigitalMail() {
