@@ -79,6 +79,8 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_send_permit_certificate#done')].activityName",
 				containing("Tillståndsbeviset har skickats till tillståndshavaren som digital post"))));
+		wiremock.verify(patchRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/parameters".formatted(ERRAND_ID)))
+			.withRequestBody(matchingJsonPath("$[?(@.key == 'permitCertificateDelivery' && @.values[0] == 'DIGITAL_MAIL' && @.values[1] == '8f2a4c6e-0b1d-4e3f-a5c7-9d1e3f5a7b9c')]")));
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)

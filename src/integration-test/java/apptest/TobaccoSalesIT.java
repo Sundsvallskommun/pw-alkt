@@ -12,6 +12,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -67,6 +68,8 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_send_permit_certificate#done')].activityName",
 				containing("Tillståndsbeviset har skickats till tillståndshavaren som vanligt brev"))));
+		wiremock.verify(patchRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/parameters".formatted(ERRAND_ID)))
+			.withRequestBody(matchingJsonPath("$[?(@.key == 'permitCertificateDelivery' && @.values[0] == 'SNAIL_MAIL' && @.values[1] == '4c6e8a0b-2d4f-4a6c-8e0a-b2d4f6a8c0e2')]")));
 
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
