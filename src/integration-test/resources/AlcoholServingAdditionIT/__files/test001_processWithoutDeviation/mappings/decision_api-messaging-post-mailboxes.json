@@ -1,0 +1,32 @@
+{
+	"name": "decision_api-messaging-post-mailboxes",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/2120002411/mailboxes",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"equalToJson": [
+					"d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f"
+				]
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"partyId": "d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f",
+				"supplier": "Kivra",
+				"reachable": true
+			}
+		],
+		"status": 200
+	}
+}
