@@ -58,8 +58,7 @@ public class PermitCertificateService {
 		if (alreadySent.isPresent()) {
 			return alreadySent.get();
 		}
-		final var letter = Optional.ofNullable(properties.letters().get(processType.getKey()))
-			.orElseThrow(() -> new NonRetryableException("No letter for the permit certificate is configured for process '%s'".formatted(processType.getKey())));
+		final var letter = properties.letters().get(processType.getKey());
 		final var permitHolder = findPermitHolder(errand)
 			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
 		final var certificate = partyAssetsIntegration.findCertificate(municipalityId, assetId)

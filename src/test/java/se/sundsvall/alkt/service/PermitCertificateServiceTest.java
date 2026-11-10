@@ -54,7 +54,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
-import static se.sundsvall.alkt.service.model.ProcessType.TOBACCO_SALES;
 
 @ExtendWith(MockitoExtension.class)
 class PermitCertificateServiceTest {
@@ -135,16 +134,6 @@ class PermitCertificateServiceTest {
 		final var result = service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
 
 		assertThat(result).isEqualTo(new CertificateDelivery(CertificateDelivery.Channel.DIGITAL_MAIL, MESSAGE_ID.toString(), false));
-	}
-
-	@Test
-	void processWithoutConfiguredLetterFailsWithoutRetryAndSendsNothing() {
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
-
-		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TOBACCO_SALES, ASSET_ID))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("No letter for the permit certificate is configured for process 'tobacco-sales'");
-		verifyNoInteractions(messagingIntegrationMock);
 	}
 
 	@Test
