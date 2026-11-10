@@ -345,6 +345,18 @@ class PermitCertificateServiceTest {
 	}
 
 	@Test
+	void errandWithAnUnknownChannelInTheParameterFailsWithoutRetryAndSendsNothing() {
+		final var errand = errandOfCompany().parameters(List.of(
+			new Parameter().key("permitCertificateDelivery").values(List.of("FAX", MESSAGE_ID.toString()))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand parameter 'permitCertificateDelivery' of errand '%s' holds an unknown channel".formatted(ERRAND_ID));
+		verifyNoInteractions(messagingIntegrationMock, partyAssetsIntegrationMock);
+	}
+
+	@Test
 	void failedDeliveryWritesNoParameter() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
 		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));

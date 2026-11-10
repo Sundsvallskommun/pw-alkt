@@ -6,6 +6,7 @@ import generated.se.sundsvall.messaging.MessageResult;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -88,8 +89,15 @@ public class PermitCertificateService {
 			.filter(parameter -> ERRAND_PARAMETER_PERMIT_CERTIFICATE_DELIVERY.equals(parameter.getKey()))
 			.map(Parameter::getValues)
 			.filter(values -> values != null && values.size() == 2)
-			.map(values -> new CertificateDelivery(Channel.valueOf(values.getFirst()), values.get(1), true))
+			.map(values -> new CertificateDelivery(channelOf(errand, values.getFirst()), values.get(1), true))
 			.findFirst();
+	}
+
+	private static Channel channelOf(final Errand errand, final String value) {
+		return Arrays.stream(Channel.values())
+			.filter(channel -> channel.name().equals(value))
+			.findFirst()
+			.orElseThrow(() -> new NonRetryableException("Errand parameter '%s' of errand '%s' holds an unknown channel".formatted(ERRAND_PARAMETER_PERMIT_CERTIFICATE_DELIVERY, errand.getId())));
 	}
 
 	/**
