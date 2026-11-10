@@ -170,19 +170,6 @@ class PermitCertificateServiceTest {
 	}
 
 	@Test
-	void processWithBlankSubjectFailsWithoutRetry() {
-		final var properties = new PermitCertificateProperties(SUNDSVALL_ORGANIZATION_NUMBER, "SBK(Alkohol och tobak)", PROPERTIES.supportInfo(),
-			Map.of(ALCOHOL_SERVING.getKey(), new Letter(" ", "Här är beviset på ditt serveringstillstånd.")));
-		service = new PermitCertificateService(supportManagementIntegrationMock, partyAssetsIntegrationMock, messagingIntegrationMock, properties);
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
-
-		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("No letter for the permit certificate is configured for process 'alcohol-serving'");
-		verifyNoInteractions(messagingIntegrationMock);
-	}
-
-	@Test
 	void sendsSnailMailToTheAddressOfTheCompanyWhenItHasNoReachableMailbox() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
 		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));

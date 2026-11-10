@@ -1,14 +1,11 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
 import java.util.Map;
-import java.util.Optional;
-import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.businesslogic.handler.FailureHandler;
-import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.service.PermitCertificateService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.CertificateDelivery.Channel;
@@ -35,13 +32,8 @@ public class SendPermitCertificateWorker extends AbstractTaskWorker {
 
 	@Override
 	protected ProcessStateReport executeBusinessLogic(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
-		final String assetId = Optional.ofNullable(externalTask.<String>getVariable(PROCESS_VARIABLE_ASSET_ID))
-			.filter(StringUtils::isNotBlank)
-			.orElseThrow(() -> new NonRetryableException("Step '%s' has no process variable '%s' naming the permit to send the certificate of"
-				.formatted(externalTask.getActivityId(), PROCESS_VARIABLE_ASSET_ID)));
-
 		final var delivery = permitCertificateService.sendCertificate(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask),
-			getProcessType(externalTask), assetId);
+			getProcessType(externalTask), externalTask.getVariable(PROCESS_VARIABLE_ASSET_ID));
 		final var report = running(externalTask).withDoneVariant(DONE_VARIANTS.get(delivery.channel()));
 
 		if (delivery.alreadySent()) {

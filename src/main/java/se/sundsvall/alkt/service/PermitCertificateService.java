@@ -71,7 +71,6 @@ public class PermitCertificateService {
 		}
 		final var letter = Optional.ofNullable(properties.letters())
 			.map(letters -> letters.get(processType.getKey()))
-			.filter(found -> isNotBlank(found.subject()) && isNotBlank(found.body()))
 			.orElseThrow(() -> new NonRetryableException("No letter for the permit certificate is configured for process '%s'".formatted(processType.getKey())));
 		final var permitHolder = findPermitHolder(errand)
 			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));

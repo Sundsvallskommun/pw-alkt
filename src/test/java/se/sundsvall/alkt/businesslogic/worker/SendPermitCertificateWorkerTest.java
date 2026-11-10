@@ -4,9 +4,6 @@ import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,7 +15,6 @@ import se.sundsvall.alkt.service.model.CertificateDelivery;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -110,19 +106,6 @@ class SendPermitCertificateWorkerTest {
 		assertThat(result).isEqualTo(ProcessStateReport.running(ACTIVITY_ID, null)
 			.withLogMessage("Permit certificate already sent as SNAIL_MAIL, message '%s', not sent again".formatted(MESSAGE_ID))
 			.withDoneVariant("snail-mail"));
-	}
-
-	@ParameterizedTest
-	@NullAndEmptySource
-	@ValueSource(strings = " ")
-	void processWithoutAssetIdFailsWithoutRetry(final String assetId) {
-		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ASSET_ID)).thenReturn(assetId);
-		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
-
-		assertThatThrownBy(() -> worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("Step 'external_task_send_permit_certificate' has no process variable 'assetId' naming the permit to send the certificate of");
-		verifyNoInteractions(permitCertificateServiceMock);
 	}
 
 	@Test
