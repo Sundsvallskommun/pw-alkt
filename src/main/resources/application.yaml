@@ -154,7 +154,7 @@ integration:
   messaging:
     url: ${config.messaging.base-url}
     connectTimeout: 5
-    readTimeout: 20
+    readTimeout: 30
     slack:
       token: ${config.messaging.slack.token}
       channel: ${config.messaging.slack.channel}

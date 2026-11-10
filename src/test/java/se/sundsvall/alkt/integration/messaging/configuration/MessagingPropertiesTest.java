@@ -19,7 +19,7 @@ class MessagingPropertiesTest {
 	@Test
 	void testProperties() {
 		assertThat(properties.connectTimeout()).isEqualTo(5);
-		assertThat(properties.readTimeout()).isEqualTo(20);
+		assertThat(properties.readTimeout()).isEqualTo(30);
 		assertThat(properties.slack().token()).isEqualTo("slack.token");
 		assertThat(properties.slack().channel()).isEqualTo("slack.channel");
 	}
