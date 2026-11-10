@@ -88,7 +88,7 @@ class ProcessReconciliationServiceTest {
 			Map.of("external_task_complete_process", new StepTexts("Processen är avslutad", "Nytt försök görs", "Processen kunde inte avslutas", null, null)),
 			Map.of("registration_phase", new PhaseTexts("Registrering har påbörjats")),
 			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock, Clock.systemUTC());
-		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2)),
+		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2), Duration.ofDays(7)),
 			processLog, Clock.systemUTC());
 	}
 
@@ -231,7 +231,7 @@ class ProcessReconciliationServiceTest {
 
 		verify(operatonClientMock).findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), captor.capture());
 		final var raisedAfter = OffsetDateTime.parse(captor.getValue(), DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
-		assertThat(raisedAfter).isCloseTo(OffsetDateTime.now().minusHours(2), within(1, ChronoUnit.MINUTES));
+		assertThat(raisedAfter).isCloseTo(OffsetDateTime.now().minusDays(7), within(1, ChronoUnit.MINUTES));
 	}
 
 	@Test
