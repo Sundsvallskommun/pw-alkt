@@ -1,0 +1,30 @@
+{
+	"name": "decision_api-party-assets-get-attachments",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-party-assets/2281/assets/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d/attachments",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "3b5d7f91-2c4e-4a6b-8d0f-1e3a5c7b9d2f",
+				"fileName": "tillstandsbevis.pdf",
+				"category": "Tillståndsbevis"
+			},
+			{
+				"id": "6c8e0a2b-4d6f-4b8a-9c1e-3f5a7b9c1d3e",
+				"fileName": "beslut.pdf",
+				"category": "Beslut om tillstånd"
+			}
+		],
+		"status": 200
+	}
+}
