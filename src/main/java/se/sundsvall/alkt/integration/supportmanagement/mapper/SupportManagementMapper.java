@@ -50,11 +50,6 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRE
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_CONDITIONS;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_DELEGATION_REFERENCE;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_ERRAND_ID;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_LEGAL_BASIS;
-import static se.sundsvall.alkt.Constants.PERMIT_PARAMETER_RESTAURANT_NUMBER;
 import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
@@ -64,6 +59,12 @@ import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 public final class SupportManagementMapper {
 
 	private static final Pattern CONTROL_CHARACTERS = Pattern.compile("\\p{Cntrl}");
+
+	private static final String PERMIT_PARAMETER_ERRAND_ID = "errandId";
+	private static final String PERMIT_PARAMETER_LEGAL_BASIS = "legalBasis";
+	private static final String PERMIT_PARAMETER_DELEGATION_REFERENCE = "delegationReference";
+	private static final String PERMIT_PARAMETER_CONDITIONS = "conditions";
+	private static final String PERMIT_PARAMETER_RESTAURANT_NUMBER = "premisesRestaurantNumber";
 
 	// The parameters of a change errand that are not part of the change the customer asks for. Every other one is.
 	private static final Set<String> ERRAND_PARAMETERS_OUTSIDE_CHANGE = Set.of(ERRAND_PARAMETER_ASSET_ID, PERMIT_PARAMETER_ERRAND_ID, PERMIT_PARAMETER_LEGAL_BASIS,
@@ -121,7 +122,7 @@ public final class SupportManagementMapper {
 	public static Optional<JsonParameter> findFormParameter(final Errand errand) {
 		return Optional.ofNullable(errand.getJsonParameters()).orElse(emptyList()).stream()
 			.filter(parameter -> !StringUtils.endsWith(parameter.getKey(), ORIGINAL_FORM_SUFFIX))
-			.filter(parameter -> nonNull(parameter.getValue()))
+			.filter(parameter -> nonNull(parameter.getValue()) && !parameter.getValue().isNull())
 			.findFirst();
 	}
 
@@ -168,11 +169,20 @@ public final class SupportManagementMapper {
 			.orElse(investigation.getCreated());
 	}
 
-	public static Optional<String> toPartyId(final Errand errand) {
+	public static Optional<Stakeholder> findPermitHolder(final Errand errand) {
 		return Optional.ofNullable(errand.getStakeholders()).orElse(emptyList()).stream()
 			.filter(SupportManagementMapper::isPermitHolder)
-			.map(Stakeholder::getExternalId)
 			.findFirst();
+	}
+
+	public static Optional<String> toPartyId(final Errand errand) {
+		return findPermitHolder(errand).map(Stakeholder::getExternalId);
+	}
+
+	/** The name of an organization, else the first and last name of a person. */
+	public static String toStakeholderName(final Stakeholder stakeholder) {
+		return Optional.ofNullable(stakeholder.getOrganizationName()).filter(StringUtils::isNotBlank)
+			.orElseGet(() -> Stream.of(stakeholder.getFirstName(), stakeholder.getLastName()).filter(StringUtils::isNotBlank).collect(joining(" ")));
 	}
 
 	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final LocalDate validTo, final OffsetDateTime decidedAt) {
@@ -251,11 +261,6 @@ public final class SupportManagementMapper {
 				? new Parameter().key(key).displayName(parameter.getDisplayName()).group(parameter.getGroup()).values(List.of(value))
 				: parameter)
 			.toList();
-	}
-
-	/** The terms of the decision are its conditions, one per line in their order, and empty for a decision without any. */
-	public static String toConditions(final Decision decision) {
-		return String.join("\n", toConditionList(decision));
 	}
 
 	/** The texts of the terms of the decision in their order, a term without text left out. */

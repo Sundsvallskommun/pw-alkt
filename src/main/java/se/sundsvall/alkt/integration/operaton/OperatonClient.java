@@ -85,9 +85,13 @@ public interface OperatonClient {
 	@GetMapping(path = "process-definition/{id}/xml", produces = APPLICATION_JSON_VALUE)
 	ProcessDefinitionDiagramDto getProcessDefinitionXml(@PathVariable String id);
 
-	/** processDefinitionKeyIn is comma separated, see OperatonMapper.toProcessDefinitionKeyIn. */
+	/**
+	 * processDefinitionKeyIn is comma separated, see OperatonMapper.toProcessDefinitionKeyIn. incidentTimestampAfter in
+	 * Operaton's timestamp format, see OperatonMapper.toOperatonTimestamp.
+	 */
 	@GetMapping(path = "incident", produces = APPLICATION_JSON_VALUE)
-	List<IncidentDto> findIncidents(@RequestParam("tenantIdIn") String tenantIdIn, @RequestParam("processDefinitionKeyIn") String processDefinitionKeyIn);
+	List<IncidentDto> findIncidents(@RequestParam("tenantIdIn") String tenantIdIn, @RequestParam("processDefinitionKeyIn") String processDefinitionKeyIn,
+		@RequestParam("incidentTimestampAfter") String incidentTimestampAfter);
 
 	/** finishedAfter in Operaton's timestamp format, see OperatonMapper.toOperatonTimestamp. */
 	@GetMapping(path = "history/process-instance", produces = APPLICATION_JSON_VALUE)

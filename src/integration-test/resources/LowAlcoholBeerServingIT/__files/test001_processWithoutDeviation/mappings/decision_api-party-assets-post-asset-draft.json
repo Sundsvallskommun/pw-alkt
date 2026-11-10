@@ -49,6 +49,96 @@
 					"expression": "$.title",
 					"equalTo": "Anmälan om servering av folköl"
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.additionalParameters",
+					"absent": true
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].key",
+					"equalTo": "aot_alcohol_party_asset"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].schemaId",
+					"equalTo": "2281_aot_alcohol_party_asset_0.1"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.errandId",
+					"equalTo": "c30a6f18-9d54-4b72-8e05-2f1a7c4b6d98"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.caseRegistrationNumber",
+					"equalTo": "ALKT-2026-000011"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.name",
+					"equalTo": "Kafé Solsidan"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.address.street",
+					"equalTo": "Badhusparken 2"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.phoneNumber",
+					"equalTo": "060-15 40 20"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.emailAddress",
+					"equalTo": "info@kafesolsidan.se"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.premises.municipalityId",
+					"equalTo": "2281"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.permitHolder.name",
+					"equalTo": "Solsidan Servering AB"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.permitHolder.organizationNumber",
+					"equalTo": "5591234567"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.permitHolder.address.street",
+					"equalTo": "Storgatan 10"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.decisionDate",
+					"equalTo": "2026-09-24"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.decision.validFrom",
+					"equalTo": "2026-09-24"
+				}
 			}
 		]
 	},

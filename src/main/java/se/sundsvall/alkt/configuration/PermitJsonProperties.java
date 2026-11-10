@@ -7,14 +7,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 import se.sundsvall.alkt.service.model.PermitSchema;
 
-/** The JSON parameter of a permit, per schema of its area. */
+/** The JSON parameter of an asset, per schema of its area. */
 @Validated
 @ConfigurationProperties("permit-json")
 public record PermitJsonProperties(@NotNull @Valid Settings alcohol, @NotNull @Valid Settings tobacco) {
 
 	/**
-	 * schemaVersion: the version of the schema party-assets writes the permit by. decisionKey: the key of the JSON
-	 * parameter of the decision in Support Management.
+	 * schemaVersion: the version of the schema party-assets writes the asset by. decisionKey: the key of the JSON
+	 * parameter of the decision on a permit in Support Management.
 	 */
 	public record Settings(@NotBlank String schemaVersion, @NotBlank String decisionKey) {
 	}

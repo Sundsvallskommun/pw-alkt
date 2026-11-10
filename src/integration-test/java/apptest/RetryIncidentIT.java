@@ -60,7 +60,7 @@ class RetryIncidentIT extends AbstractOperatonAppTest {
 		awaitProcessState(processInstanceId, "await_follow_up_completed");
 		awaitReportAt("follow_up_phase");
 
-		assertThat(operatonClient.findIncidents(TENANT_ID_ALKT, CATERING_OCCASION.getKey()))
+		assertThat(operatonClient.findIncidents(TENANT_ID_ALKT, CATERING_OCCASION.getKey(), ANY_INCIDENT_TIME))
 			.noneMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId()));
 		wiremock.verify(1, postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack")));
 		verifyAllStubs();

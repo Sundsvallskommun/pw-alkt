@@ -121,9 +121,9 @@ process-engine:
         dmnResourcePattern: classpath*:processmodels/reconciliation/*.dmn
         formResourcePattern: classpath*:processmodels/reconciliation/*.form
 
-# The JSON parameter of a permit, per schema of its area. The permit is written by the schema of its area in the version
-# here, so a new version is taken into use by changing it, and the decision is read under the key here. Quoted, as 0.10
-# would otherwise be read as 0.1.
+# The JSON parameter of an asset, per schema of its area. The asset is written by the schema of its area in the version
+# here, so a new version is taken into use by changing it, and the decision on a permit is read under the key here.
+# Quoted, as 0.10 would otherwise be read as 0.1.
 permit-json:
   alcohol:
     schema-version: "0.1"
@@ -134,6 +134,7 @@ permit-json:
 
 reconciliation:
   lookback: PT2H
+  incident-lookback: P7D
   worker:
     enabled: true
 

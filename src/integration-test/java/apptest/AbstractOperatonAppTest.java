@@ -61,6 +61,8 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	protected static final int DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS = 30;
 	protected static final String ERRAND_EVENTS_PATH = "/2281/ALKT/process/errand-events";
 	protected static final String REQUEST_FILE = "request.json";
+	/** An incidentTimestampAfter that takes in every incident of a test run. */
+	protected static final String ANY_INCIDENT_TIME = "2000-01-01T00:00:00.000+0000";
 
 	private static final String TOKEN_PATH = "/api-gateway/token";
 	// The external task client's client registration carries no scope, unlike the token requests of the Feign clients
@@ -271,7 +273,7 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	protected void awaitIncidentAt(String processKey, String processInstanceId, String activityId) {
 		await()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, processKey).stream()
+			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, processKey, ANY_INCIDENT_TIME).stream()
 				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId()) && activityId.equals(incident.getActivityId())));
 		await()
 			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)

@@ -289,6 +289,13 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
+	void findFormParameterIsEmptyWhenTheFormIsJsonNull() {
+		final var form = new JsonParameter().key("aot_alcohol_folkol_folkol_serving_notification").value(JsonNodeFactory.instance.nullNode());
+
+		assertThat(SupportManagementMapper.findFormParameter(new Errand().jsonParameters(List.of(form)))).isEmpty();
+	}
+
+	@Test
 	void toPartyIdIsEmptyWithoutStakeholders() {
 		assertThat(SupportManagementMapper.toPartyId(new Errand().stakeholders(null))).isEmpty();
 	}
@@ -301,14 +308,6 @@ class SupportManagementMapperTest {
 	}, nullValues = "null")
 	void isPermitHolderTakesThePrimaryStakeholderWithAnExternalId(final String role, final String externalId, final boolean expected) {
 		assertThat(SupportManagementMapper.isPermitHolder(new Stakeholder().role(role).externalId(externalId))).isEqualTo(expected);
-	}
-
-	@Test
-	void toConditionsPutsTheTermsOnePerLineAndIsEmptyWithoutTerms() {
-		final var decision = new Decision().terms(List.of(new DecisionTerm().sortOrder(2).text("Godkänd matsal ska finnas."), new DecisionTerm().sortOrder(1).text("Serveringsområdet ska vara avgränsat.")));
-
-		assertThat(SupportManagementMapper.toConditions(decision)).isEqualTo("Serveringsområdet ska vara avgränsat.\nGodkänd matsal ska finnas.");
-		assertThat(SupportManagementMapper.toConditions(new Decision().terms(null))).isEmpty();
 	}
 
 	@Test

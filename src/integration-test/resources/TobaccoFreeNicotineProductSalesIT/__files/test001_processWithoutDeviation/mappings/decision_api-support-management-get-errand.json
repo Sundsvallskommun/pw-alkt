@@ -16,11 +16,46 @@
 		"jsonBody": {
 			"id": "3b7e2c91-5d4a-4e8f-a1c6-9f0d2b8e7a54",
 			"title": "Anmälan om försäljning av tobaksfria nikotinprodukter, Kafé Solsidan",
+			"errandNumber": "ALKT-2026-000015",
+			"jsonParameters": [
+				{
+					"key": "form",
+					"schemaId": "2281_aot_tobacco_tobacco_free_nicotine_sales_notification_0.8",
+					"value": {
+						"pointOfSaleName": "Kafé Solsidan",
+						"pointOfSaleAddressSameAsCompany": "NO",
+						"pointOfSaleAddress": {
+							"street": "Badhusparken 2",
+							"postalCode": "85231",
+							"city": "Sundsvall"
+						},
+						"pointOfSaleContact": {
+							"phoneNumber": "060-15 40 20",
+							"emailAddress": "info@kafesolsidan.se"
+						},
+						"salesPeriod": "INDEFINITE",
+						"salesStartDate": "2026-11-01",
+						"includesDistanceSelling": "YES"
+					}
+				}
+			],
 			"stakeholders": [
 				{
 					"role": "PRIMARY",
 					"externalIdType": "ENTERPRISE",
-					"externalId": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
+					"externalId": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b",
+					"organizationName": "Solsidan Servering AB",
+					"address": "Storgatan 10",
+					"zipCode": "85230",
+					"city": "Sundsvall",
+					"parameters": [
+						{
+							"key": "organizationNumber",
+							"values": [
+								"5591234567"
+							]
+						}
+					]
 				}
 			],
 			"parameters": [

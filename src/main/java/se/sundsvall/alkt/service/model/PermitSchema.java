@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The AoT schemas of the JSON parameter of a permit in party-assets, one per area. The schema of the decision on a
+ * The AoT schemas of the JSON parameter of an asset in party-assets, one per area. The schema of the decision on a
  * permit extends the one of its area, so the decision carries the permit nearly as it is.
  */
 public enum PermitSchema {
@@ -22,7 +22,7 @@ public enum PermitSchema {
 		this.restaurantNumberField = restaurantNumberField;
 	}
 
-	/** The name of the schema in json-schema, which is also the key of the JSON parameter on the permit. */
+	/** The name of the schema in json-schema, which is also the key of the JSON parameter on the asset. */
 	public String getName() {
 		return name;
 	}

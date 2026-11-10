@@ -16,6 +16,26 @@
 		"jsonBody": {
 			"id": "e1c47b93-6a25-4f80-b3d6-9c052f7ae184",
 			"title": "Anmälan om cateringtillfälle, Kafé Solsidan",
+			"errandNumber": "ALKT-2026-000016",
+			"jsonParameters": [
+				{
+					"key": "form",
+					"schemaId": "2281_aot_alcohol_folkol_folkol_serving_notification_1.1",
+					"value": {
+						"premisesName": "Kafé Solsidan",
+						"premisesAddressSameAsCompany": "NO",
+						"premisesAddress": {
+							"street": "Badhusparken 2",
+							"postalCode": "85231",
+							"city": "Sundsvall"
+						},
+						"premisesContact": {
+							"phoneNumber": "060-15 40 20",
+							"emailAddress": "info@kafesolsidan.se"
+						}
+					}
+				}
+			],
 			"parameters": [
 				{
 					"key": "occasionEndDate",

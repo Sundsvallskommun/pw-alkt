@@ -5,6 +5,7 @@ import generated.se.sundsvall.operaton.HistoricVariableInstanceDto;
 import generated.se.sundsvall.operaton.IncidentDto;
 import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -74,11 +75,16 @@ public class ProcessReconciliationService {
 		settleEndedInstances();
 	}
 
-	/** One incident failing must not stop the others, so each is handled on its own. */
+	/**
+	 * Only incidents raised within the incident lookback are followed up, so an incident the errand never hears of is
+	 * reported again for that long and then left. One incident failing must not stop the others, so each is handled on its
+	 * own.
+	 */
 	private void reportIncidents() {
-		final var incidents = operatonClient.findIncidents(TENANT_ID_ALKT, toProcessDefinitionKeyIn(ProcessType.keys()));
+		final var raisedAfter = toStartOf(properties.incidentLookback());
+		final var incidents = operatonClient.findIncidents(TENANT_ID_ALKT, toProcessDefinitionKeyIn(ProcessType.keys()), raisedAfter);
 		if (!incidents.isEmpty()) {
-			LOG.info("Found {} incidents in tenant {}", incidents.size(), TENANT_ID_ALKT);
+			LOG.info("Found {} incidents in tenant {} raised after {}", incidents.size(), TENANT_ID_ALKT, raisedAfter);
 		}
 
 		for (final var incident : incidents) {
@@ -105,7 +111,7 @@ public class ProcessReconciliationService {
 
 	/** An instance that ended without a final report leaves the errand on RUNNING for good. */
 	private void settleEndedInstances() {
-		final var finishedAfter = toOperatonTimestamp(OffsetDateTime.now(clock.withZone(UTC)).minus(properties.lookback()));
+		final var finishedAfter = toStartOf(properties.lookback());
 		final var instances = operatonClient.findHistoricProcessInstances(TENANT_ID_ALKT, toProcessDefinitionKeyIn(ProcessType.keys()), true, finishedAfter);
 		if (!instances.isEmpty()) {
 			LOG.info("Found {} instances in tenant {} that ended after {}", instances.size(), TENANT_ID_ALKT, finishedAfter);
@@ -118,6 +124,10 @@ public class ProcessReconciliationService {
 				LOG.error("Could not settle ended process instance {}", sanitizeForLogging(instance.getId()), e);
 			}
 		}
+	}
+
+	private String toStartOf(final Duration lookback) {
+		return toOperatonTimestamp(OffsetDateTime.now(clock.withZone(UTC)).minus(lookback));
 	}
 
 	private void settleEndedInstance(final HistoricProcessInstanceDto instance) {

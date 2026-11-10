@@ -19,5 +19,6 @@ class ReconciliationPropertiesTest {
 	@Test
 	void testProperties() {
 		assertThat(properties.lookback()).isEqualTo(Duration.ofHours(2));
+		assertThat(properties.incidentLookback()).isEqualTo(Duration.ofDays(7));
 	}
 }

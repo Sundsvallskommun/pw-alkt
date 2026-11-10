@@ -6,6 +6,8 @@ import generated.se.sundsvall.partyassets.AssetJsonParameter;
 import generated.se.sundsvall.partyassets.AssetUpdateRequest;
 import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.JsonParameter;
+import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -39,21 +41,22 @@ import static org.springframework.http.HttpStatus.UNPROCESSABLE_CONTENT;
 import static se.sundsvall.alkt.Constants.DECISION_OUTCOMES_CREATING_ASSET;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_ASSET_ID;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
+import static se.sundsvall.alkt.integration.partyassets.mapper.NotificationJsonMapper.toNotification;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.findPermitParameter;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetClosureRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toAssetFile;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toCertificateFile;
-import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitCreateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitParameter;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PartyAssetsMapper.toPermitUpdateRequest;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PermitJsonMapper.toChangedPermit;
 import static se.sundsvall.alkt.integration.partyassets.mapper.PermitJsonMapper.toGrantedPermit;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findFormParameter;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findPermitHolder;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseFileName;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditionList;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPartyId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
 import static se.sundsvall.alkt.integration.templating.mapper.PermitCertificateMapper.toCertificateParameters;
 import static se.sundsvall.alkt.util.FailureDescription.describe;
@@ -81,7 +84,7 @@ public class AssetService {
 	/**
 	 * A permit is built from the JSON parameter of its decision and gets a certificate rendered from it, and without a
 	 * restaurant number it carries none. The certificate is kept on the errand as well, also by a rerun that finds the
-	 * permit already made. A notification gets the parameters of its decision as additional parameters and no certificate.
+	 * permit already made. A notification is built from the form of its errand and gets no certificate.
 	 * A decision with a validTo must end after today, as party-assets refuses to activate the asset otherwise.
 	 */
 	public String findOrCreateAsset(final String municipalityId, final String namespace, final String errandId, final AssetType assetType, final String restaurantNumber) {
@@ -89,21 +92,22 @@ public class AssetService {
 		requireId(decision, errandId);
 
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
-		final var partyId = requirePartyId(errand, errandId);
+		final var permitHolder = requirePermitHolder(errand, errandId);
 
-		return partyAssetsIntegration.findAsset(municipalityId, partyId, decision.getId())
+		return partyAssetsIntegration.findAsset(municipalityId, permitHolder.getExternalId(), decision.getId())
 			.map(asset -> {
 				requireAssetType(asset, assetType);
-				if (assetType.getCertificateTemplate().isPresent()) {
+				if (assetType.isPermit()) {
 					keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> partyAssetsIntegration.findCertificate(municipalityId, asset.getId()));
 				}
 				return asset.getId();
 			})
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
-				return assetType.getPermitSchema().isPresent()
-					? createPermit(municipalityId, namespace, errandId, errand, decision, assetType, restaurantNumber)
-					: createAsset(municipalityId, namespace, errandId, decision, toAssetCreateRequest(decision, errandId, partyId, assetType), Optional.empty());
+				if (assetType.isPermit()) {
+					return createPermit(municipalityId, namespace, errandId, errand, decision, assetType, restaurantNumber);
+				}
+				return createNotification(municipalityId, namespace, errandId, errand, permitHolder, decision, assetType);
 			});
 	}
 
@@ -116,8 +120,10 @@ public class AssetService {
 		final var decision = getApprovingDecision(municipalityId, namespace, errandId);
 		requireNotPassed(decision, errandId);
 		requireId(decision, errandId);
-		final var schema = assetType.getPermitSchema()
-			.orElseThrow(() -> new NonRetryableException("An asset of type '%s' is not changed by a decision".formatted(assetType.getValue())));
+		if (!assetType.isPermit()) {
+			throw new NonRetryableException("An asset of type '%s' is not changed by a decision".formatted(assetType.getValue()));
+		}
+		final var schema = assetType.getSchema();
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var versioned = getPermitOfTheErrand(municipalityId, errand, errandId, assetType);
 		final var asset = versioned.asset();
@@ -182,13 +188,15 @@ public class AssetService {
 	}
 
 	/**
-	 * The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. A permit of
-	 * an asset type with a schema must hold its JSON parameter, as a change goes on top of it.
+	 * The permit the errand names, which the customer chose, so a fault in it is not something a retry fixes. A permit must
+	 * hold its JSON parameter, as a change goes on top of it.
 	 */
 	public VersionedAsset getPermitToChange(final String municipalityId, final Errand errand, final String errandId, final AssetType assetType) {
 		final var versioned = getPermitOfTheErrand(municipalityId, errand, errandId, assetType);
 		requireActive(versioned.asset());
-		assetType.getPermitSchema().ifPresent(schema -> requirePermitParameter(versioned.asset(), schema));
+		if (assetType.isPermit()) {
+			requirePermitParameter(versioned.asset(), assetType.getSchema());
+		}
 		return versioned;
 	}
 
@@ -203,7 +211,7 @@ public class AssetService {
 		if (!UUID_VALIDATOR.isValid(assetId)) {
 			throw new NonRetryableException("Errand '%s' names asset '%s', which is not an asset id".formatted(errandId, assetId));
 		}
-		final var partyId = requirePartyId(errand, errandId);
+		final var partyId = requirePermitHolder(errand, errandId).getExternalId();
 		final var versioned = partyAssetsIntegration.getAsset(municipalityId, assetId);
 		final var asset = versioned.asset();
 		if (!partyId.equals(asset.getPartyId())) {
@@ -253,7 +261,7 @@ public class AssetService {
 	private static String toCaseRegistrationNumber(final Errand errand, final String errandId) {
 		return Optional.ofNullable(errand.getErrandNumber())
 			.filter(StringUtils::isNotBlank)
-			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no errand number to give the permit as its case number".formatted(errandId)));
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no errand number to give the asset as its case number".formatted(errandId)));
 	}
 
 	private static Optional<String> toAssetId(final Errand errand) {
@@ -295,11 +303,11 @@ public class AssetService {
 	 */
 	private String createPermit(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision,
 		final AssetType assetType, final String restaurantNumber) {
-		final var schema = assetType.getPermitSchema().orElseThrow();
+		final var schema = assetType.getSchema();
 		final var permit = toGrantedPermit(schema, getDecisionJson(municipalityId, namespace, errandId, decision, schema), errandId, toCaseRegistrationNumber(errand, errandId),
 			restaurantNumber, toConditionList(decision));
 		final var certificate = renderCertificate(assetType, schema, permit, decision, errand);
-		final var request = toPermitCreateRequest(decision, requirePartyId(errand, errandId), assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit));
+		final var request = toAssetCreateRequest(decision, requirePermitHolder(errand, errandId).getExternalId(), assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit));
 		final var assetId = createAsset(municipalityId, namespace, errandId, decision, request, certificate.map(PartyAssetsMapper::toCertificateFile));
 		if (certificate.isPresent()) {
 			keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> certificate);
@@ -307,8 +315,19 @@ public class AssetService {
 		return assetId;
 	}
 
-	private static String requirePartyId(final Errand errand, final String errandId) {
-		return toPartyId(errand)
+	private String createNotification(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Stakeholder permitHolder,
+		final Decision decision, final AssetType assetType) {
+		final var schema = assetType.getSchema();
+		final var form = findFormParameter(errand)
+			.map(JsonParameter::getValue)
+			.orElseThrow(() -> new NonRetryableException("Errand '%s' has no form to build its notification from".formatted(errandId)));
+		final var notification = toNotification(schema, form, errand, permitHolder, errandId, toCaseRegistrationNumber(errand, errandId), decision);
+		final var request = toAssetCreateRequest(decision, permitHolder.getExternalId(), assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), notification));
+		return createAsset(municipalityId, namespace, errandId, decision, request, Optional.empty());
+	}
+
+	private static Stakeholder requirePermitHolder(final Errand errand, final String errandId) {
+		return findPermitHolder(errand)
 			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
 	}
 

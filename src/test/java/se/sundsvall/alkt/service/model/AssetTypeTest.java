@@ -19,25 +19,32 @@ class AssetTypeTest {
 
 	@ParameterizedTest
 	@EnumSource(mode = MATCH_ALL, names = ".*_PERMIT")
-	void aPermitHasACertificateTemplate(final AssetType assetType) {
+	void aPermitIsAPermitWithACertificateTemplate(final AssetType assetType) {
+		assertThat(assetType.isPermit()).isTrue();
 		assertThat(assetType.getCertificateTemplate()).isPresent();
 	}
 
 	@ParameterizedTest
 	@EnumSource(mode = MATCH_ALL, names = ".*_NOTIFICATION")
-	void aNotificationHasNoCertificateTemplate(final AssetType assetType) {
+	void aNotificationIsNoPermitAndHasNoCertificateTemplate(final AssetType assetType) {
+		assertThat(assetType.isPermit()).isFalse();
 		assertThat(assetType.getCertificateTemplate()).isEmpty();
 	}
 
-	@Test
-	void eachPermitFollowsTheSchemaOfItsArea() {
-		assertThat(ALCOHOL_SERVING_PERMIT.getPermitSchema()).contains(PermitSchema.ALCOHOL);
-		assertThat(TOBACCO_SALES_PERMIT.getPermitSchema()).contains(PermitSchema.TOBACCO);
+	@ParameterizedTest
+	@EnumSource(names = {
+		"ALCOHOL_SERVING_PERMIT", "LOW_ALCOHOL_BEER_SALES_NOTIFICATION", "LOW_ALCOHOL_BEER_SERVING_NOTIFICATION", "LOW_ALCOHOL_BEER_SALES_AND_SERVING_NOTIFICATION",
+		"CATERING_OCCASION_NOTIFICATION"
+	})
+	void anAlcoholAssetTypeFollowsTheAlcoholSchema(final AssetType assetType) {
+		assertThat(assetType.getSchema()).isEqualTo(PermitSchema.ALCOHOL);
 	}
 
 	@ParameterizedTest
-	@EnumSource(mode = MATCH_ALL, names = ".*_NOTIFICATION")
-	void aNotificationHasNoPermitSchema(final AssetType assetType) {
-		assertThat(assetType.getPermitSchema()).isEmpty();
+	@EnumSource(names = {
+		"TOBACCO_SALES_PERMIT", "E_CIGARETTE_SALES_NOTIFICATION", "TOBACCO_FREE_NICOTINE_PRODUCT_SALES_NOTIFICATION"
+	})
+	void aTobaccoAssetTypeFollowsTheTobaccoSchema(final AssetType assetType) {
+		assertThat(assetType.getSchema()).isEqualTo(PermitSchema.TOBACCO);
 	}
 }
