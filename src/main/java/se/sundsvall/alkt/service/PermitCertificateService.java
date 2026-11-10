@@ -31,6 +31,7 @@ import static se.sundsvall.alkt.integration.messaging.mapper.MessagingMapper.toD
 import static se.sundsvall.alkt.integration.messaging.mapper.MessagingMapper.toSnailmailRequest;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findPermitHolder;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseFileName;
+import static se.sundsvall.alkt.util.FailureDescription.describe;
 
 @Service
 public class PermitCertificateService {
@@ -74,7 +75,12 @@ public class PermitCertificateService {
 			}
 			delivery = new CertificateDelivery(Channel.SNAIL_MAIL, requireDelivered(errandId, Channel.SNAIL_MAIL, sendSnailMail(municipalityId, permitHolder, fileName, certificate)), false);
 		}
-		markSent(municipalityId, namespace, errandId, delivery);
+		try {
+			markSent(municipalityId, namespace, errandId, delivery);
+		} catch (final RuntimeException e) {
+			throw new NonRetryableException("The permit certificate of errand '%s' was sent as %s with message id '%s' but could not be marked on the errand: %s"
+				.formatted(errandId, delivery.channel(), delivery.messageId(), describe(e)), e);
+		}
 		return delivery;
 	}
 

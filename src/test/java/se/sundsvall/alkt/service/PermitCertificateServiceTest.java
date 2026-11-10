@@ -45,6 +45,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -321,6 +322,23 @@ class PermitCertificateServiceTest {
 			new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
 			new Parameter().key("premisesName").values(List.of("Restaurang Norrsken")),
 			new Parameter().key("permitCertificateDelivery").values(List.of("DIGITAL_MAIL", MESSAGE_ID.toString()))));
+	}
+
+	@Test
+	void sentCertificateThatCannotBeMarkedOnTheErrandFailsWithoutRetryAndIsSentOnce() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
+			.thenReturn(List.of(new Mailbox().partyId(PARTY_ID).reachable(true)));
+		when(messagingIntegrationMock.sendDigitalMail(anyString(), anyString(), any())).thenReturn(sentDigitalMail());
+		doThrow(new ServerProblem(BAD_GATEWAY, "support-management error: {detail=Database is down, status=503 Service Unavailable, title=Service Unavailable}"))
+			.when(supportManagementIntegrationMock).updateErrandParameters(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), isNull(), any());
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("The permit certificate of errand '%s' was sent as DIGITAL_MAIL with message id '%s' but could not be marked on the errand: ServerProblem 502 from support-management (remote 503 Service Unavailable)"
+				.formatted(ERRAND_ID, MESSAGE_ID));
+		verify(messagingIntegrationMock).sendDigitalMail(eq(MUNICIPALITY_ID), eq(SUNDSVALL_ORGANIZATION_NUMBER), any());
 	}
 
 	@Test
