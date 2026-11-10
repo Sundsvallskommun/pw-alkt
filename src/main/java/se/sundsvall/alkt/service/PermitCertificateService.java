@@ -70,8 +70,8 @@ public class PermitCertificateService {
 		if (hasReachableMailbox(municipalityId, permitHolder)) {
 			delivery = new CertificateDelivery(Channel.DIGITAL_MAIL, requireDelivered(errandId, Channel.DIGITAL_MAIL, sendDigitalMail(municipalityId, permitHolder, letter, fileName, certificate)), false);
 		} else {
-			if (!hasCompleteAddress(permitHolder)) {
-				throw new NonRetryableException("The permit holder of errand '%s' has no reachable mailbox and no complete address to send the permit certificate to".formatted(errandId));
+			if (!hasCompleteRecipient(permitHolder)) {
+				throw new NonRetryableException("The permit holder of errand '%s' has no reachable mailbox and no complete name and address to send the permit certificate to".formatted(errandId));
 			}
 			delivery = new CertificateDelivery(Channel.SNAIL_MAIL, requireDelivered(errandId, Channel.SNAIL_MAIL, sendSnailMail(municipalityId, permitHolder, fileName, certificate)), false);
 		}
@@ -123,8 +123,9 @@ public class PermitCertificateService {
 		return message.getMessageId().toString();
 	}
 
-	private static boolean hasCompleteAddress(final Stakeholder permitHolder) {
-		return isNotBlank(permitHolder.getAddress()) && isNotBlank(permitHolder.getZipCode()) && isNotBlank(permitHolder.getCity());
+	private static boolean hasCompleteRecipient(final Stakeholder permitHolder) {
+		return (isNotBlank(permitHolder.getOrganizationName()) || (isNotBlank(permitHolder.getFirstName()) && isNotBlank(permitHolder.getLastName())))
+			&& isNotBlank(permitHolder.getAddress()) && isNotBlank(permitHolder.getZipCode()) && isNotBlank(permitHolder.getCity());
 	}
 
 	private MessageResult sendSnailMail(final String municipalityId, final Stakeholder permitHolder, final String fileName, final byte[] certificate) {

@@ -157,8 +157,8 @@ class PermitCertificateServiceTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("incompleteAddresses")
-	void noReachableMailboxAndAnIncompleteAddressFailsWithoutRetryAndSendsNothing(final Consumer<Stakeholder> incomplete) {
+	@MethodSource("incompleteRecipients")
+	void noReachableMailboxAndAnIncompleteRecipientFailsWithoutRetryAndSendsNothing(final Consumer<Stakeholder> incomplete) {
 		final var errand = errandOfCompany();
 		incomplete.accept(errand.getStakeholders().getFirst());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
@@ -168,13 +168,15 @@ class PermitCertificateServiceTest {
 
 		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("The permit holder of errand '%s' has no reachable mailbox and no complete address to send the permit certificate to".formatted(ERRAND_ID));
+			.hasMessage("The permit holder of errand '%s' has no reachable mailbox and no complete name and address to send the permit certificate to".formatted(ERRAND_ID));
 		verify(messagingIntegrationMock, never()).sendSnailMail(anyString(), any());
 		verify(messagingIntegrationMock, never()).sendDigitalMail(anyString(), anyString(), any());
 	}
 
-	private static Stream<Arguments> incompleteAddresses() {
+	private static Stream<Arguments> incompleteRecipients() {
 		return Stream.of(
+			Arguments.of(Named.<Consumer<Stakeholder>>of("no name", stakeholder -> stakeholder.organizationName(null))),
+			Arguments.of(Named.<Consumer<Stakeholder>>of("first name without last name", stakeholder -> stakeholder.organizationName(" ").firstName("Anna"))),
 			Arguments.of(Named.<Consumer<Stakeholder>>of("no street address", stakeholder -> stakeholder.address(null))),
 			Arguments.of(Named.<Consumer<Stakeholder>>of("blank street address", stakeholder -> stakeholder.address(" "))),
 			Arguments.of(Named.<Consumer<Stakeholder>>of("no zip code", stakeholder -> stakeholder.zipCode(null))),
