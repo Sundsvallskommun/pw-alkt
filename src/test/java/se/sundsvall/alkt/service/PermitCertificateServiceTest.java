@@ -59,8 +59,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 import static se.sundsvall.alkt.service.model.ProcessType.ALCOHOL_SERVING;
@@ -144,6 +146,11 @@ class PermitCertificateServiceTest {
 				.content(Base64.getEncoder().encodeToString(CERTIFICATE))
 				.filename("Tillståndsbevis ALKT-2026-000123.pdf"))));
 		verify(messagingIntegrationMock, never()).sendSnailMail(anyString(), any());
+		verify(messagingIntegrationMock).getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID);
+		verify(partyAssetsIntegrationMock).findCertificate(MUNICIPALITY_ID, ASSET_ID);
+		verify(supportManagementIntegrationMock, times(2)).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).updateErrandParameters(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(4L), any());
+		verifyNoMoreInteractions(supportManagementIntegrationMock, partyAssetsIntegrationMock, messagingIntegrationMock);
 	}
 
 	@Test
@@ -195,6 +202,11 @@ class PermitCertificateServiceTest {
 				.contentType("application/pdf")
 				.content(Base64.getEncoder().encodeToString(CERTIFICATE)))));
 		verify(messagingIntegrationMock, never()).sendDigitalMail(anyString(), anyString(), any());
+		verify(messagingIntegrationMock).getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID);
+		verify(partyAssetsIntegrationMock).findCertificate(MUNICIPALITY_ID, ASSET_ID);
+		verify(supportManagementIntegrationMock, times(2)).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).updateErrandParameters(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(4L), any());
+		verifyNoMoreInteractions(supportManagementIntegrationMock, partyAssetsIntegrationMock, messagingIntegrationMock);
 	}
 
 	@Test

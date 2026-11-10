@@ -92,6 +92,7 @@ class SendPermitCertificateWorkerTest {
 		assertThat(result).isEqualTo(ProcessStateReport.running(ACTIVITY_ID, null)
 			.withLogMessage("Permit certificate sent as SNAIL_MAIL, message '%s'".formatted(MESSAGE_ID))
 			.withDoneVariant("snail-mail"));
+		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 
 	@Test
@@ -106,6 +107,7 @@ class SendPermitCertificateWorkerTest {
 		assertThat(result).isEqualTo(ProcessStateReport.running(ACTIVITY_ID, null)
 			.withLogMessage("Permit certificate already sent as SNAIL_MAIL, message '%s', not sent again".formatted(MESSAGE_ID))
 			.withDoneVariant("snail-mail"));
+		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
 
 	@Test

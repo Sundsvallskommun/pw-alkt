@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -63,6 +64,8 @@ class MessagingIntegrationTest {
 		when(messagingClientMock.getMailboxes("2281", "2120002411", List.of(PARTY_ID))).thenReturn(ResponseEntity.ok(List.of(mailbox)));
 
 		assertThat(messagingIntegration.getMailboxes("2281", "2120002411", PARTY_ID)).containsExactly(mailbox);
+		verify(messagingClientMock).getMailboxes("2281", "2120002411", List.of(PARTY_ID));
+		verifyNoMoreInteractions(messagingClientMock);
 	}
 
 	@Test
@@ -70,6 +73,8 @@ class MessagingIntegrationTest {
 		when(messagingClientMock.getMailboxes("2281", "2120002411", List.of(PARTY_ID))).thenReturn(ResponseEntity.ok().build());
 
 		assertThat(messagingIntegration.getMailboxes("2281", "2120002411", PARTY_ID)).isEmpty();
+		verify(messagingClientMock).getMailboxes("2281", "2120002411", List.of(PARTY_ID));
+		verifyNoMoreInteractions(messagingClientMock);
 	}
 
 	@Test
@@ -79,6 +84,8 @@ class MessagingIntegrationTest {
 		when(messagingClientMock.sendDigitalMail("2281", "2120002411", false, request)).thenReturn(ResponseEntity.status(201).body(result));
 
 		assertThat(messagingIntegration.sendDigitalMail("2281", "2120002411", request)).isSameAs(result);
+		verify(messagingClientMock).sendDigitalMail("2281", "2120002411", false, request);
+		verifyNoMoreInteractions(messagingClientMock);
 	}
 
 	@Test
@@ -90,6 +97,8 @@ class MessagingIntegrationTest {
 			.isInstanceOf(ThrowableProblem.class)
 			.isNotInstanceOf(NonRetryableException.class)
 			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
+		verify(messagingClientMock).sendDigitalMail("2281", "2120002411", false, request);
+		verifyNoMoreInteractions(messagingClientMock);
 	}
 
 	@Test
@@ -101,6 +110,8 @@ class MessagingIntegrationTest {
 			.isInstanceOf(ThrowableProblem.class)
 			.isNotInstanceOf(NonRetryableException.class)
 			.hasFieldOrPropertyWithValue("status", BAD_GATEWAY);
+		verify(messagingClientMock).sendSnailMail(eq("2281"), anyString(), same(request));
+		verifyNoMoreInteractions(messagingClientMock);
 	}
 
 	@Test
@@ -114,5 +125,7 @@ class MessagingIntegrationTest {
 
 		assertThat(batchIdCaptor.getAllValues()).hasSize(2).doesNotHaveDuplicates()
 			.allSatisfy(batchId -> assertThat(UUID.fromString(batchId)).hasToString(batchId));
+		verify(messagingClientMock, times(2)).sendSnailMail(eq("2281"), anyString(), same(request));
+		verifyNoMoreInteractions(messagingClientMock);
 	}
 }
