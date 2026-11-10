@@ -8,6 +8,30 @@ reconciliation:
     enabled: false
 action-errand:
   label-id: a8561314-5335-40db-80a9-b7f426a4baa2
+permit-certificate:
+  organization-number: "2120002411"
+  department: "KSK(Alkohol och tobak)"
+  support-info:
+    text: Har du frågor om ditt tillstånd är du välkommen att kontakta alkohol- och tobaksenheten
+    email-address: alkohol.tobak@sundsvall.se
+    phone-number: "060-19 10 00"
+    url: https://sundsvall.se/alkohol-och-tobak
+  letters:
+    alcohol-serving:
+      subject: Bevis om serveringstillstånd
+      body: Här kommer beviset på ditt serveringstillstånd. Beslutet finns i ditt ärende på Mina sidor.
+    alcohol-serving-addition:
+      subject: Bevis om tillägg till serveringstillstånd
+      body: Här kommer beviset på tillägget till ditt serveringstillstånd. Beslutet finns i ditt ärende på Mina sidor.
+    alcohol-serving-change:
+      subject: Bevis om ändrat serveringstillstånd
+      body: Här kommer beviset på ditt ändrade serveringstillstånd. Beslutet finns i ditt ärende på Mina sidor.
+    tobacco-sales:
+      subject: Bevis om tobakstillstånd
+      body: Här kommer beviset på ditt tillstånd att sälja tobak. Beslutet finns i ditt ärende på Mina sidor.
+    tobacco-sales-change:
+      subject: Bevis om ändrat tobakstillstånd
+      body: Här kommer beviset på ditt ändrade tillstånd att sälja tobak. Beslutet finns i ditt ärende på Mina sidor.
 customer-message:
   texts:
     processing-started: "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
