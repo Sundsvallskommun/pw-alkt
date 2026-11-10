@@ -1,24 +1,13 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.messaging.Address;
 import generated.se.sundsvall.messaging.DeliveryResult;
-import generated.se.sundsvall.messaging.DigitalMailAttachment;
-import generated.se.sundsvall.messaging.DigitalMailParty;
-import generated.se.sundsvall.messaging.DigitalMailRequest;
-import generated.se.sundsvall.messaging.DigitalMailSender;
-import generated.se.sundsvall.messaging.DigitalMailSenderSupportInfo;
 import generated.se.sundsvall.messaging.Mailbox;
 import generated.se.sundsvall.messaging.MessageResult;
-import generated.se.sundsvall.messaging.SnailmailAttachment;
-import generated.se.sundsvall.messaging.SnailmailParty;
-import generated.se.sundsvall.messaging.SnailmailRequest;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
-import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.configuration.PermitCertificateProperties;
@@ -32,15 +21,14 @@ import se.sundsvall.alkt.service.model.CertificateDelivery.Channel;
 import se.sundsvall.alkt.service.model.ProcessType;
 import se.sundsvall.dept44.problem.Problem;
 
-import static generated.se.sundsvall.messaging.DigitalMailAttachment.ContentTypeEnum.APPLICATION_PDF;
-import static generated.se.sundsvall.messaging.DigitalMailRequest.ContentTypeEnum.TEXT_PLAIN;
 import static generated.se.sundsvall.messaging.MessageStatus.SENT;
 import static java.lang.Boolean.TRUE;
 import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
-import static org.springframework.http.MediaType.APPLICATION_PDF_VALUE;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
+import static se.sundsvall.alkt.integration.messaging.mapper.MessagingMapper.toDigitalMailRequest;
+import static se.sundsvall.alkt.integration.messaging.mapper.MessagingMapper.toSnailmailRequest;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findPermitHolder;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseFileName;
 
@@ -124,25 +112,7 @@ public class PermitCertificateService {
 	}
 
 	private MessageResult sendSnailMail(final String municipalityId, final Stakeholder permitHolder, final String fileName, final byte[] certificate) {
-		final var address = new Address()
-			.careOf(permitHolder.getCareOf())
-			.address(permitHolder.getAddress())
-			.zipCode(permitHolder.getZipCode())
-			.city(permitHolder.getCity())
-			.country(permitHolder.getCountry());
-		if (isNotBlank(permitHolder.getOrganizationName())) {
-			address.organizationName(permitHolder.getOrganizationName());
-		} else {
-			address.firstName(permitHolder.getFirstName()).lastName(permitHolder.getLastName());
-		}
-		return messagingIntegration.sendSnailMail(municipalityId, new SnailmailRequest()
-			.party(new SnailmailParty().partyId(permitHolder.getExternalId()))
-			.address(address)
-			.department(properties.department())
-			.attachments(List.of(new SnailmailAttachment()
-				.filename(fileName)
-				.contentType(APPLICATION_PDF_VALUE)
-				.content(Base64.getEncoder().encodeToString(certificate)))));
+		return messagingIntegration.sendSnailMail(municipalityId, toSnailmailRequest(permitHolder, properties.department(), fileName, certificate));
 	}
 
 	private boolean hasReachableMailbox(final String municipalityId, final Stakeholder permitHolder) {
@@ -152,22 +122,8 @@ public class PermitCertificateService {
 	}
 
 	private MessageResult sendDigitalMail(final String municipalityId, final Stakeholder permitHolder, final Letter letter, final String fileName, final byte[] certificate) {
-		final var supportInfo = properties.supportInfo();
-		final var result = messagingIntegration.sendDigitalMail(municipalityId, properties.organizationNumber(), new DigitalMailRequest()
-			.party(new DigitalMailParty().partyIds(List.of(UUID.fromString(permitHolder.getExternalId()))))
-			.sender(new DigitalMailSender().supportInfo(new DigitalMailSenderSupportInfo()
-				.text(supportInfo.text())
-				.emailAddress(supportInfo.emailAddress())
-				.phoneNumber(supportInfo.phoneNumber())
-				.url(supportInfo.url())))
-			.subject(letter.subject())
-			.department(properties.department())
-			.contentType(TEXT_PLAIN)
-			.body(letter.body())
-			.attachments(List.of(new DigitalMailAttachment()
-				.contentType(APPLICATION_PDF)
-				.content(Base64.getEncoder().encodeToString(certificate))
-				.filename(fileName))));
+		final var result = messagingIntegration.sendDigitalMail(municipalityId, properties.organizationNumber(),
+			toDigitalMailRequest(permitHolder, properties.supportInfo(), properties.department(), letter, fileName, certificate));
 		return Optional.ofNullable(result.getMessages()).orElse(emptyList()).stream().findFirst().orElseGet(MessageResult::new);
 	}
 }

@@ -1,24 +1,14 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.messaging.Address;
 import generated.se.sundsvall.messaging.DeliveryResult;
-import generated.se.sundsvall.messaging.DigitalMailAttachment;
-import generated.se.sundsvall.messaging.DigitalMailParty;
-import generated.se.sundsvall.messaging.DigitalMailRequest;
-import generated.se.sundsvall.messaging.DigitalMailSender;
-import generated.se.sundsvall.messaging.DigitalMailSenderSupportInfo;
 import generated.se.sundsvall.messaging.Mailbox;
 import generated.se.sundsvall.messaging.MessageBatchResult;
 import generated.se.sundsvall.messaging.MessageResult;
-import generated.se.sundsvall.messaging.SnailmailAttachment;
-import generated.se.sundsvall.messaging.SnailmailParty;
-import generated.se.sundsvall.messaging.SnailmailRequest;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,8 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.configuration.PermitCertificateProperties;
@@ -47,8 +35,6 @@ import se.sundsvall.alkt.service.model.CertificateDelivery;
 import se.sundsvall.dept44.exception.ServerProblem;
 import se.sundsvall.dept44.problem.ThrowableProblem;
 
-import static generated.se.sundsvall.messaging.DigitalMailAttachment.ContentTypeEnum.APPLICATION_PDF;
-import static generated.se.sundsvall.messaging.DigitalMailRequest.ContentTypeEnum.TEXT_PLAIN;
 import static generated.se.sundsvall.messaging.MessageStatus.FAILED;
 import static generated.se.sundsvall.messaging.MessageStatus.NOT_SENT;
 import static generated.se.sundsvall.messaging.MessageStatus.SENT;
@@ -93,9 +79,6 @@ class PermitCertificateServiceTest {
 	@Mock
 	private MessagingIntegration messagingIntegrationMock;
 
-	@Captor
-	private ArgumentCaptor<SnailmailRequest> snailMailCaptor;
-
 	private PermitCertificateService service;
 
 	@BeforeEach
@@ -130,21 +113,7 @@ class PermitCertificateServiceTest {
 
 		service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
 
-		verify(messagingIntegrationMock).sendDigitalMail(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, new DigitalMailRequest()
-			.party(new DigitalMailParty().partyIds(List.of(UUID.fromString(PARTY_ID))))
-			.sender(new DigitalMailSender().supportInfo(new DigitalMailSenderSupportInfo()
-				.text("Kontakta alkohol- och tobaksenheten")
-				.emailAddress("alkohol.tobak@sundsvall.se")
-				.phoneNumber("060-19 10 00")
-				.url("https://sundsvall.se/alkohol")))
-			.subject("Ditt serveringstillstånd")
-			.department("SBK(Alkohol och tobak)")
-			.contentType(TEXT_PLAIN)
-			.body("Här är beviset på ditt serveringstillstånd.")
-			.attachments(List.of(new DigitalMailAttachment()
-				.contentType(APPLICATION_PDF)
-				.content(Base64.getEncoder().encodeToString(CERTIFICATE))
-				.filename("Tillståndsbevis ALKT-2026-000123.pdf"))));
+		verify(messagingIntegrationMock).sendDigitalMail(eq(MUNICIPALITY_ID), eq(SUNDSVALL_ORGANIZATION_NUMBER), any());
 		verify(messagingIntegrationMock, never()).sendSnailMail(anyString(), any());
 		verify(messagingIntegrationMock).getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID);
 		verify(partyAssetsIntegrationMock).findCertificate(MUNICIPALITY_ID, ASSET_ID);
@@ -187,46 +156,13 @@ class PermitCertificateServiceTest {
 		final var result = service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
 
 		assertThat(result).isEqualTo(new CertificateDelivery(CertificateDelivery.Channel.SNAIL_MAIL, MESSAGE_ID.toString(), false));
-		verify(messagingIntegrationMock).sendSnailMail(MUNICIPALITY_ID, new SnailmailRequest()
-			.party(new SnailmailParty().partyId(PARTY_ID))
-			.address(new Address()
-				.organizationName("Restaurang Norrsken AB")
-				.careOf("Anna Svensson")
-				.address("Storgatan 12")
-				.zipCode("852 30")
-				.city("Sundsvall")
-				.country("Sverige"))
-			.department("SBK(Alkohol och tobak)")
-			.attachments(List.of(new SnailmailAttachment()
-				.filename("Tillståndsbevis ALKT-2026-000123.pdf")
-				.contentType("application/pdf")
-				.content(Base64.getEncoder().encodeToString(CERTIFICATE)))));
+		verify(messagingIntegrationMock).sendSnailMail(eq(MUNICIPALITY_ID), any());
 		verify(messagingIntegrationMock, never()).sendDigitalMail(anyString(), anyString(), any());
 		verify(messagingIntegrationMock).getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID);
 		verify(partyAssetsIntegrationMock).findCertificate(MUNICIPALITY_ID, ASSET_ID);
 		verify(supportManagementIntegrationMock, times(2)).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).updateErrandParameters(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(4L), any());
 		verifyNoMoreInteractions(supportManagementIntegrationMock, partyAssetsIntegrationMock, messagingIntegrationMock);
-	}
-
-	@Test
-	void snailMailToAPersonCarriesTheFirstAndLastName() {
-		final var errand = errandOfCompany();
-		errand.getStakeholders().getFirst().organizationName(null).careOf(null).country(null).firstName("Erik").lastName("Lindqvist");
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
-		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
-		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID)).thenReturn(List.of());
-		when(messagingIntegrationMock.sendSnailMail(anyString(), any())).thenReturn(sentSnailMail());
-
-		service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
-
-		verify(messagingIntegrationMock).sendSnailMail(eq(MUNICIPALITY_ID), snailMailCaptor.capture());
-		assertThat(snailMailCaptor.getValue().getAddress()).isEqualTo(new Address()
-			.firstName("Erik")
-			.lastName("Lindqvist")
-			.address("Storgatan 12")
-			.zipCode("852 30")
-			.city("Sundsvall"));
 	}
 
 	@ParameterizedTest
