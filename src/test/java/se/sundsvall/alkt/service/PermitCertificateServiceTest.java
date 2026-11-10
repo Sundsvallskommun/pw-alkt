@@ -368,6 +368,50 @@ class PermitCertificateServiceTest {
 			.isSameAs(failure);
 	}
 
+	@Test
+	void sentCertificateIsMarkedOnTheErrandWithTheChannelAndTheMessageId() {
+		final var reread = errandOfCompany().version(5L);
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany(), reread);
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID))
+			.thenReturn(List.of(new Mailbox().partyId(PARTY_ID).reachable(true)));
+		when(messagingIntegrationMock.sendDigitalMail(anyString(), anyString(), any())).thenReturn(sentDigitalMail());
+
+		service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
+
+		verify(supportManagementIntegrationMock).updateErrandParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, 5L, List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
+			new Parameter().key("permitCertificateDelivery").values(List.of("DIGITAL_MAIL", MESSAGE_ID.toString()))));
+	}
+
+	@Test
+	void errandWithTheCertificateAlreadySentSendsNothingAndGivesTheChannelOfTheParameter() {
+		final var errand = errandOfCompany().parameters(List.of(
+			new Parameter().key("premisesMunicipalityId").values(List.of("2281")),
+			new Parameter().key("permitCertificateDelivery").values(List.of("SNAIL_MAIL", MESSAGE_ID.toString()))));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
+
+		final var result = service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID);
+
+		assertThat(result).isEqualTo(new CertificateDelivery(CertificateDelivery.Channel.SNAIL_MAIL, MESSAGE_ID.toString(), true));
+		verifyNoInteractions(messagingIntegrationMock, partyAssetsIntegrationMock);
+		verify(supportManagementIntegrationMock, never()).updateErrandParameters(anyString(), anyString(), anyString(), any(), any());
+	}
+
+	@Test
+	void failedDeliveryWritesNoParameter() {
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandOfCompany());
+		when(partyAssetsIntegrationMock.findCertificate(MUNICIPALITY_ID, ASSET_ID)).thenReturn(Optional.of(CERTIFICATE));
+		when(messagingIntegrationMock.getMailboxes(MUNICIPALITY_ID, SUNDSVALL_ORGANIZATION_NUMBER, PARTY_ID)).thenReturn(List.of());
+		final var result = sentSnailMail();
+		result.getDeliveries().getFirst().status(FAILED);
+		when(messagingIntegrationMock.sendSnailMail(anyString(), any())).thenReturn(result);
+
+		assertThatThrownBy(() -> service.sendCertificate(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING, ASSET_ID))
+			.isInstanceOf(ThrowableProblem.class);
+		verify(supportManagementIntegrationMock, never()).updateErrandParameters(anyString(), anyString(), anyString(), any(), any());
+	}
+
 	private static MessageResult sentSnailMail() {
 		return new MessageResult()
 			.messageId(MESSAGE_ID)

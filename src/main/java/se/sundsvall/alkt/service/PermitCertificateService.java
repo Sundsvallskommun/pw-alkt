@@ -12,11 +12,14 @@ import generated.se.sundsvall.messaging.MessageResult;
 import generated.se.sundsvall.messaging.SnailmailAttachment;
 import generated.se.sundsvall.messaging.SnailmailParty;
 import generated.se.sundsvall.messaging.SnailmailRequest;
+import generated.se.sundsvall.supportmanagement.Errand;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import se.sundsvall.alkt.configuration.PermitCertificateProperties;
 import se.sundsvall.alkt.configuration.PermitCertificateProperties.Letter;
@@ -44,6 +47,9 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 @Service
 public class PermitCertificateService {
 
+	// Values: the channel, then the message id in messaging.
+	private static final String ERRAND_PARAMETER_PERMIT_CERTIFICATE_DELIVERY = "permitCertificateDelivery";
+
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final PartyAssetsIntegration partyAssetsIntegration;
 	private final MessagingIntegration messagingIntegration;
@@ -59,6 +65,10 @@ public class PermitCertificateService {
 
 	public CertificateDelivery sendCertificate(final String municipalityId, final String namespace, final String errandId, final ProcessType processType, final String assetId) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+		final var alreadySent = findDelivery(errand);
+		if (alreadySent.isPresent()) {
+			return alreadySent.get();
+		}
 		final var letter = Optional.ofNullable(properties.letters())
 			.map(letters -> letters.get(processType.getKey()))
 			.filter(found -> isNotBlank(found.subject()) && isNotBlank(found.body()))
@@ -69,13 +79,36 @@ public class PermitCertificateService {
 			.orElseThrow(() -> new NonRetryableException("Asset '%s' has no permit certificate to send".formatted(assetId)));
 		final var fileName = toCaseFileName("Tillståndsbevis", errand);
 
+		final CertificateDelivery delivery;
 		if (hasReachableMailbox(municipalityId, permitHolder)) {
-			return new CertificateDelivery(Channel.DIGITAL_MAIL, requireDelivered(errandId, Channel.DIGITAL_MAIL, sendDigitalMail(municipalityId, permitHolder, letter, fileName, certificate)), false);
+			delivery = new CertificateDelivery(Channel.DIGITAL_MAIL, requireDelivered(errandId, Channel.DIGITAL_MAIL, sendDigitalMail(municipalityId, permitHolder, letter, fileName, certificate)), false);
+		} else {
+			if (!hasCompleteAddress(permitHolder)) {
+				throw new NonRetryableException("The permit holder of errand '%s' has no reachable mailbox and no complete address to send the permit certificate to".formatted(errandId));
+			}
+			delivery = new CertificateDelivery(Channel.SNAIL_MAIL, requireDelivered(errandId, Channel.SNAIL_MAIL, sendSnailMail(municipalityId, permitHolder, fileName, certificate)), false);
 		}
-		if (!hasCompleteAddress(permitHolder)) {
-			throw new NonRetryableException("The permit holder of errand '%s' has no reachable mailbox and no complete address to send the permit certificate to".formatted(errandId));
-		}
-		return new CertificateDelivery(Channel.SNAIL_MAIL, requireDelivered(errandId, Channel.SNAIL_MAIL, sendSnailMail(municipalityId, permitHolder, fileName, certificate)), false);
+		markSent(municipalityId, namespace, errandId, delivery);
+		return delivery;
+	}
+
+	private static Optional<CertificateDelivery> findDelivery(final Errand errand) {
+		return Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
+			.filter(parameter -> ERRAND_PARAMETER_PERMIT_CERTIFICATE_DELIVERY.equals(parameter.getKey()))
+			.map(Parameter::getValues)
+			.filter(values -> values != null && values.size() == 2)
+			.map(values -> new CertificateDelivery(Channel.valueOf(values.getFirst()), values.get(1), true))
+			.findFirst();
+	}
+
+	/** Read again just before the write, so that a change made while the letter was sent is kept. */
+	private void markSent(final String municipalityId, final String namespace, final String errandId, final CertificateDelivery delivery) {
+		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
+		final var parameters = Stream.concat(
+			Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream().filter(parameter -> !ERRAND_PARAMETER_PERMIT_CERTIFICATE_DELIVERY.equals(parameter.getKey())),
+			Stream.of(new Parameter().key(ERRAND_PARAMETER_PERMIT_CERTIFICATE_DELIVERY).values(List.of(delivery.channel().name(), delivery.messageId()))))
+			.toList();
+		supportManagementIntegration.updateErrandParameters(municipalityId, namespace, errandId, errand.getVersion(), parameters);
 	}
 
 	/** Delivered means every delivery of the message has status SENT. */
