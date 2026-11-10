@@ -212,12 +212,18 @@
       <bpmn:serviceTask id="external_task_assign_restaurant_number" name="Assign restaurant number" camunda:type="external" camunda:topic="AssignRestaurantNumberTask">
         <bpmn:documentation>Assigns the restaurant number to the permit holder in licensed business. After the permit, so no number is assigned to a permit that was never created. Raises an incident instead of assigning when another errand assigned the number after it was chosen.</bpmn:documentation>
         <bpmn:incoming>flow_decision_create_asset_to_assign_restaurant_number</bpmn:incoming>
-        <bpmn:outgoing>flow_decision_assign_restaurant_number_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_decision_assign_restaurant_number_to_send_permit_certificate</bpmn:outgoing>
       </bpmn:serviceTask>
-      <bpmn:sequenceFlow id="flow_decision_assign_restaurant_number_to_end" sourceRef="external_task_assign_restaurant_number" targetRef="end_decision_phase" />
+      <bpmn:sequenceFlow id="flow_decision_assign_restaurant_number_to_send_permit_certificate" sourceRef="external_task_assign_restaurant_number" targetRef="external_task_send_permit_certificate" />
+      <bpmn:serviceTask id="external_task_send_permit_certificate" name="Send permit certificate" camunda:type="external" camunda:topic="SendPermitCertificateTask">
+        <bpmn:documentation>Sends the permit certificate to the permit holder: as digital mail when the permit holder has a reachable digital mailbox, else as a letter to the address of the permit holder on the errand. Marks the errand, so a rerun does not send it again.</bpmn:documentation>
+        <bpmn:incoming>flow_decision_assign_restaurant_number_to_send_permit_certificate</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_send_permit_certificate_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_decision_send_permit_certificate_to_end" sourceRef="external_task_send_permit_certificate" targetRef="end_decision_phase" />
       <bpmn:endEvent id="end_decision_phase" name="End decision phase">
         <bpmn:incoming>flow_decision_gateway_to_no_permit</bpmn:incoming>
-        <bpmn:incoming>flow_decision_assign_restaurant_number_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_decision_send_permit_certificate_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_decision_to_follow_up" sourceRef="decision_phase" targetRef="follow_up_phase" />
@@ -387,10 +393,13 @@
       <bpmndi:BPMNShape id="BPMNShape_external_task_assign_restaurant_number" bpmnElement="external_task_assign_restaurant_number">
         <dc:Bounds x="840" y="160" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_external_task_send_permit_certificate" bpmnElement="external_task_send_permit_certificate">
+        <dc:Bounds x="990" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_decision_phase" bpmnElement="end_decision_phase">
-        <dc:Bounds x="1002" y="182" width="36" height="36" />
+        <dc:Bounds x="1152" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="984" y="225" width="72" height="27" />
+          <dc:Bounds x="1134" y="225" width="72" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_gateway_await_decision" bpmnElement="gateway_await_decision">
@@ -434,15 +443,19 @@
         <di:waypoint x="790" y="200" />
         <di:waypoint x="840" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_assign_restaurant_number_to_end" bpmnElement="flow_decision_assign_restaurant_number_to_end">
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_assign_restaurant_number_to_send_permit_certificate" bpmnElement="flow_decision_assign_restaurant_number_to_send_permit_certificate">
         <di:waypoint x="940" y="200" />
-        <di:waypoint x="1002" y="200" />
+        <di:waypoint x="990" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_send_permit_certificate_to_end" bpmnElement="flow_decision_send_permit_certificate_to_end">
+        <di:waypoint x="1090" y="200" />
+        <di:waypoint x="1152" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_gateway_to_no_permit" bpmnElement="flow_decision_gateway_to_no_permit">
         <di:waypoint x="455" y="175" />
         <di:waypoint x="455" y="100" />
-        <di:waypoint x="1020" y="100" />
-        <di:waypoint x="1020" y="182" />
+        <di:waypoint x="1170" y="100" />
+        <di:waypoint x="1170" y="182" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="713" y="82" width="50" height="14" />
         </bpmndi:BPMNLabel>
