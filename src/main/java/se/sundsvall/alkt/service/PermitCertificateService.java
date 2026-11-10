@@ -69,8 +69,7 @@ public class PermitCertificateService {
 		if (alreadySent.isPresent()) {
 			return alreadySent.get();
 		}
-		final var letter = Optional.ofNullable(properties.letters())
-			.map(letters -> letters.get(processType.getKey()))
+		final var letter = Optional.ofNullable(properties.letters().get(processType.getKey()))
 			.orElseThrow(() -> new NonRetryableException("No letter for the permit certificate is configured for process '%s'".formatted(processType.getKey())));
 		final var permitHolder = findPermitHolder(errand)
 			.orElseThrow(() -> new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId)));
@@ -110,9 +109,8 @@ public class PermitCertificateService {
 		supportManagementIntegration.updateErrandParameters(municipalityId, namespace, errandId, errand.getVersion(), parameters);
 	}
 
-	/** Delivered means every delivery of the message has status SENT. */
 	private static String requireDelivered(final String errandId, final Channel channel, final MessageResult message) {
-		final var statuses = Optional.ofNullable(message).map(MessageResult::getDeliveries).orElse(emptyList()).stream()
+		final var statuses = Optional.ofNullable(message.getDeliveries()).orElse(emptyList()).stream()
 			.map(DeliveryResult::getStatus)
 			.toList();
 		if (statuses.isEmpty() || !statuses.stream().allMatch(SENT::equals)) {
@@ -125,7 +123,6 @@ public class PermitCertificateService {
 		return isNotBlank(permitHolder.getAddress()) && isNotBlank(permitHolder.getZipCode()) && isNotBlank(permitHolder.getCity());
 	}
 
-	/** An organization is addressed by its name, a person by first and last name. */
 	private MessageResult sendSnailMail(final String municipalityId, final Stakeholder permitHolder, final String fileName, final byte[] certificate) {
 		final var address = new Address()
 			.careOf(permitHolder.getCareOf())
@@ -171,6 +168,6 @@ public class PermitCertificateService {
 				.contentType(APPLICATION_PDF)
 				.content(Base64.getEncoder().encodeToString(certificate))
 				.filename(fileName))));
-		return Optional.ofNullable(result.getMessages()).orElse(emptyList()).stream().findFirst().orElse(null);
+		return Optional.ofNullable(result.getMessages()).orElse(emptyList()).stream().findFirst().orElseGet(MessageResult::new);
 	}
 }

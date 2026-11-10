@@ -43,7 +43,7 @@ public class MessagingIntegration {
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "The digital mail came back without a result"));
 	}
 
-	/** Each letter gets a batch of its own, which snailmail-sender sends on its schedule. */
+	/** Each letter gets a batch of its own. */
 	public MessageResult sendSnailMail(final String municipalityId, final SnailmailRequest request) {
 		return Optional.ofNullable(messagingClient.sendSnailMail(municipalityId, UUID.randomUUID().toString(), request).getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "The snail mail came back without a result"));

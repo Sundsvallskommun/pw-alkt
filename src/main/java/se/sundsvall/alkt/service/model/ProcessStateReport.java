@@ -84,7 +84,6 @@ public record ProcessStateReport(
 		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, true, doneVariant);
 	}
 
-	/** Names the done text the entry in the activity log takes, for a step whose done text depends on how it went. */
 	public ProcessStateReport withDoneVariant(final String doneVariant) {
 		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected, doneVariant);
 	}
