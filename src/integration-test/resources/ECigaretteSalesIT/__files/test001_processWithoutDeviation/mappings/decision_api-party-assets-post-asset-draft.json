@@ -173,6 +173,12 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.jsonParameters[0].value.salesTypes[0]",
+					"equalTo": "RETAIL"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.salesTypes[1]",
 					"equalTo": "DISTANCE_SELLING"
 				}
 			}

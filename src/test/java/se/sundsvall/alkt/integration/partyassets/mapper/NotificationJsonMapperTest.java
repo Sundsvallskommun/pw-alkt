@@ -63,7 +63,8 @@ class NotificationJsonMapperTest {
 			    "validFrom": "2026-10-06",
 			    "legalBasis": "8 kap. 8 § alkohollagen (2010:1622)",
 			    "delegationReference": "Delegationsordning 4.1"
-			  }
+			  },
+			  "conditions": ["Folköl ska stå skilt från lättdrycker."]
 			}
 			"""));
 	}
@@ -178,7 +179,7 @@ class NotificationJsonMapperTest {
 			    "municipalityId": "2281"
 			  },
 			  "salesPeriod": { "period": "INDEFINITE", "from": "2026-11-01" },
-			  "salesTypes": ["DISTANCE_SELLING"],
+			  "salesTypes": ["RETAIL", "DISTANCE_SELLING"],
 			  "decision": {
 			    "caseRegistrationNumber": "ALKT-2026-000123",
 			    "outcome": "APPROVAL",
@@ -186,7 +187,8 @@ class NotificationJsonMapperTest {
 			    "validFrom": "2026-10-06",
 			    "legalBasis": "8 kap. 8 § alkohollagen (2010:1622)",
 			    "delegationReference": "Delegationsordning 4.1"
-			  }
+			  },
+			  "conditions": ["Folköl ska stå skilt från lättdrycker."]
 			}
 			"""));
 	}
@@ -218,7 +220,18 @@ class NotificationJsonMapperTest {
 	}
 
 	@Test
-	void toNotificationHasNoSalesTypesWithoutDistanceSelling() {
+	void toNotificationSellsOnlyOverTheCounterAtAPointOfSaleWithoutDistanceSelling() {
+		final var result = toNotification(TOBACCO, json("""
+			{ "pointOfSaleName": "Kiosken i Bergsåker", "includesDistanceSelling": "NO" }
+			"""), errand("2281"), permitHolder(), ERRAND_ID, ERRAND_NUMBER, decision());
+
+		assertThat(result.path("salesTypes")).isEqualTo(json("""
+			["RETAIL"]
+			"""));
+	}
+
+	@Test
+	void toNotificationHasNoSalesTypesWithoutPointOfSaleOrDistanceSelling() {
 		final var result = toNotification(TOBACCO, json("""
 			{ "includesDistanceSelling": "NO" }
 			"""), errand("2281"), permitHolder(), ERRAND_ID, ERRAND_NUMBER, decision());

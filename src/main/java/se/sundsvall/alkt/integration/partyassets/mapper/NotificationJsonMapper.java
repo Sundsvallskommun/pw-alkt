@@ -4,6 +4,8 @@ import generated.se.sundsvall.supportmanagement.Decision;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import se.sundsvall.alkt.service.model.PermitSchema;
 import tools.jackson.databind.JsonNode;
@@ -12,6 +14,7 @@ import tools.jackson.databind.node.ObjectNode;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findCaseNumber;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditionList;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecidedOn;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toPremisesMunicipalityId;
@@ -31,6 +34,7 @@ public final class NotificationJsonMapper {
 	private static final String ORGANIZATION_NUMBER = "organizationNumber";
 	private static final String INDEFINITE = "INDEFINITE";
 	private static final String TEMPORARY = "TEMPORARY";
+	private static final String RETAIL = "RETAIL";
 	private static final String DISTANCE_SELLING = "DISTANCE_SELLING";
 
 	private NotificationJsonMapper() {}
@@ -46,14 +50,24 @@ public final class NotificationJsonMapper {
 		if (schema == TOBACCO) {
 			putObject(notification, "pointOfSale", toPlace("pointOfSale", form, permitHolder, municipalityId));
 			putObject(notification, "salesPeriod", toSalesPeriod(form));
-			if (isYes(form.path("includesDistanceSelling"))) {
-				notification.putArray("salesTypes").add(DISTANCE_SELLING);
-			}
+			putArray(notification, "salesTypes", toSalesTypes(form));
 		} else {
 			putObject(notification, "premises", toPlace("premises", form, permitHolder, municipalityId));
 		}
 		putObject(notification, "decision", toDecision(decision, caseRegistrationNumber));
+		putArray(notification, "conditions", toConditionList(decision));
 		return notification;
+	}
+
+	private static List<String> toSalesTypes(final JsonNode form) {
+		final var salesTypes = new ArrayList<String>();
+		if (isNotBlank(form.path("pointOfSaleName").asString(null))) {
+			salesTypes.add(RETAIL);
+		}
+		if (isYes(form.path("includesDistanceSelling"))) {
+			salesTypes.add(DISTANCE_SELLING);
+		}
+		return salesTypes;
 	}
 
 	private static ObjectNode toSalesPeriod(final JsonNode form) {
@@ -135,6 +149,12 @@ public final class NotificationJsonMapper {
 	private static void putObject(final ObjectNode target, final String name, final ObjectNode value) {
 		if (!value.isEmpty()) {
 			target.set(name, value);
+		}
+	}
+
+	private static void putArray(final ObjectNode target, final String name, final List<String> values) {
+		if (!values.isEmpty()) {
+			values.forEach(target.putArray(name)::add);
 		}
 	}
 }
