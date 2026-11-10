@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
+import se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper;
 import se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.MissingNode;
@@ -42,6 +43,8 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRE
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.findText;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.isYes;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findFormParameter;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toParameterValues;
@@ -51,7 +54,6 @@ import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportMana
 public final class DecisionBasisMapper {
 
 	private static final ZoneId SWEDISH_TIME = ZoneId.of("Europe/Stockholm");
-	private static final String YES = "YES";
 	private static final String RESCUE_SERVICE = "Medelpads Räddningstjänstförbund";
 	private static final String ISSUED_BY_UNIT = "Alkohol- och tobaksenheten";
 	private static final Map<String, String> ISSUING_AUTHORITIES = Map.of(
@@ -241,7 +243,7 @@ public final class DecisionBasisMapper {
 	private record Address(String street, String postalAddress) {}
 
 	private static Address toPremisesAddress(final JsonNode form, final Optional<Stakeholder> applicant, final Map<String, String> errandValues) {
-		if (YES.equals(findPremisesValue(form, "AddressSameAsCompany").asString(""))) {
+		if (isYes(findPremisesValue(form, "AddressSameAsCompany"))) {
 			return applicant
 				.map(owner -> new Address(Objects.toString(owner.getAddress(), ""), toPostalAddress(owner.getZipCode(), owner.getCity())))
 				.orElse(new Address("", ""));
@@ -328,7 +330,7 @@ public final class DecisionBasisMapper {
 
 	private static String toChoices(final JsonNode form, final JsonNode schema, final String field) {
 		final var options = schema.path("properties").path(field).path("items").path("oneOf");
-		return form.path(field).values().stream().map(DecisionBasisMapper::findText).flatMap(Optional::stream).map(code -> findTitle(options, code)).collect(joining(", "));
+		return form.path(field).values().stream().map(ErrandFormMapper::findText).flatMap(Optional::stream).map(code -> findTitle(options, code)).collect(joining(", "));
 	}
 
 	private static String findTitle(final JsonNode options, final String code) {
@@ -346,13 +348,6 @@ public final class DecisionBasisMapper {
 
 	private static String toHtml(final JsonNode value) {
 		return findText(value).map(HtmlSanitizer::sanitize).orElse("");
-	}
-
-	private static Optional<String> findText(final JsonNode value) {
-		return Optional.of(value)
-			.filter(node -> node.isString() || node.isNumber())
-			.map(node -> node.asString().strip())
-			.filter(StringUtils::isNotEmpty);
 	}
 
 	private static List<String> toFileNames(final List<ErrandAttachment> attachments, final List<String> purposes) {

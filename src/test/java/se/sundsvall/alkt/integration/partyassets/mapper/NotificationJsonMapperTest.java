@@ -87,6 +87,20 @@ class NotificationJsonMapperTest {
 	}
 
 	@Test
+	void toNotificationReadsTheFormAsTheDecisionBasisDoes() {
+		final var form = json("""
+			{ "premisesName": " Kafé Solsidan ", "premisesAddress": { "street": "Badhusparken 2", "postalCode": 85231, "city": "Sundsvall" } }
+			""");
+
+		final var result = toNotification(ALCOHOL, form, errand("2281"), permitHolder(), ERRAND_ID, ERRAND_NUMBER, decision());
+
+		assertThat(result.path("premises").path("name").asString()).isEqualTo("Kafé Solsidan");
+		assertThat(result.path("premises").path("address")).isEqualTo(json("""
+			{ "street": "Badhusparken 2", "postalCode": "85231", "city": "Sundsvall" }
+			"""));
+	}
+
+	@Test
 	void toNotificationTakesTheMunicipalityOfThePremisesFromTheErrand() {
 		final var result = toNotification(ALCOHOL, json("{}"), errand("2262"), permitHolder(), ERRAND_ID, ERRAND_NUMBER, decision());
 

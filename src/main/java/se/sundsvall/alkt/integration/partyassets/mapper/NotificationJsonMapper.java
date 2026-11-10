@@ -13,6 +13,8 @@ import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.findText;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.isYes;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findCaseNumber;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toConditionList;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toDecidedOn;
@@ -27,7 +29,6 @@ import static se.sundsvall.alkt.service.model.PermitSchema.TOBACCO;
  */
 public final class NotificationJsonMapper {
 
-	private static final String YES = "YES";
 	private static final String STREET = "street";
 	private static final String POSTAL_CODE = "postalCode";
 	private static final String CITY = "city";
@@ -61,7 +62,7 @@ public final class NotificationJsonMapper {
 
 	private static List<String> toSalesTypes(final JsonNode form) {
 		final var salesTypes = new ArrayList<String>();
-		if (isNotBlank(form.path("pointOfSaleName").asString(null))) {
+		if (findText(form.path("pointOfSaleName")).isPresent()) {
 			salesTypes.add(RETAIL);
 		}
 		if (isYes(form.path("includesDistanceSelling"))) {
@@ -72,7 +73,7 @@ public final class NotificationJsonMapper {
 
 	private static ObjectNode toSalesPeriod(final JsonNode form) {
 		final var salesPeriod = JsonNodeFactory.instance.objectNode();
-		final var period = form.path("salesPeriod").asString(null);
+		final var period = findText(form.path("salesPeriod")).orElse(null);
 		putText(salesPeriod, "period", period);
 		if (INDEFINITE.equals(period)) {
 			putText(salesPeriod, "from", form.path("salesStartDate"));
@@ -130,14 +131,8 @@ public final class NotificationJsonMapper {
 		return result;
 	}
 
-	private static boolean isYes(final JsonNode answer) {
-		return YES.equals(answer.asString(null));
-	}
-
-	private static void putText(final ObjectNode target, final String name, final JsonNode value) {
-		if (value.isString()) {
-			putText(target, name, value.asString());
-		}
+	private static void putText(final ObjectNode target, final String name, final JsonNode answer) {
+		findText(answer).ifPresent(value -> target.put(name, value));
 	}
 
 	private static void putText(final ObjectNode target, final String name, final String value) {

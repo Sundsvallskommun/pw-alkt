@@ -105,7 +105,7 @@ public class AssetService {
 			.orElseGet(() -> {
 				requireNotEnded(decision, errandId);
 				if (assetType.isPermit()) {
-					return createPermit(municipalityId, namespace, errandId, errand, decision, assetType, restaurantNumber);
+					return createPermit(municipalityId, namespace, errandId, errand, permitHolder, decision, assetType, restaurantNumber);
 				}
 				return createNotification(municipalityId, namespace, errandId, errand, permitHolder, decision, assetType);
 			});
@@ -301,13 +301,13 @@ public class AssetService {
 	 * The certificate goes on the errand once the permit is active, so an errand never shows a certificate of a permit
 	 * that was not made, and a copy that cannot be uploaded leaves the permit in place for the rerun to find.
 	 */
-	private String createPermit(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Decision decision,
-		final AssetType assetType, final String restaurantNumber) {
+	private String createPermit(final String municipalityId, final String namespace, final String errandId, final Errand errand, final Stakeholder permitHolder,
+		final Decision decision, final AssetType assetType, final String restaurantNumber) {
 		final var schema = assetType.getSchema();
 		final var permit = toGrantedPermit(schema, getDecisionJson(municipalityId, namespace, errandId, decision, schema), errandId, toCaseRegistrationNumber(errand, errandId),
 			restaurantNumber, toConditionList(decision));
 		final var certificate = renderCertificate(assetType, schema, permit, decision, errand);
-		final var request = toAssetCreateRequest(decision, requirePermitHolder(errand, errandId).getExternalId(), assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit));
+		final var request = toAssetCreateRequest(decision, permitHolder.getExternalId(), assetType, toPermitParameter(schema, toSchemaId(municipalityId, schema), permit));
 		final var assetId = createAsset(municipalityId, namespace, errandId, decision, request, certificate.map(PartyAssetsMapper::toCertificateFile));
 		if (certificate.isPresent()) {
 			keepCertificateOnErrand(municipalityId, namespace, errandId, errand, decision, () -> certificate);
