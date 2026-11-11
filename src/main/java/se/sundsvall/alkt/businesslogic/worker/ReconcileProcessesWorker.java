@@ -17,8 +17,8 @@ import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
- * The work step of process-reconciliation.bpmn, the scheduler of pw-alkt: the engine fires its timer once per cycle and
- * locks the task for one pod. No errand, so not an AbstractTaskWorker.
+ * The work step of both reconciliation models, the scheduler of pw-alkt: the engine fires their timers once per cycle
+ * and locks the task for one pod. No errand, so not an AbstractTaskWorker.
  */
 @Component
 @ConditionalOnProperty(name = "reconciliation.worker.enabled", matchIfMissing = true)
