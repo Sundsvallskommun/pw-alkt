@@ -178,7 +178,7 @@
 							<inputSpec>src/main/resources/integrations/messaging.yaml</inputSpec>
 							<output>${generated-sources-path}</output>
 							<generatorName>spring</generatorName>
-							<modelsToGenerate>SlackRequest</modelsToGenerate>
+							<modelsToGenerate>SlackRequest,Mailbox,DigitalMailRequest,DigitalMailParty,DigitalMailSender,DigitalMailSenderSupportInfo,DigitalMailAttachment,ExternalReference,MessageBatchResult,MessageResult,DeliveryResult,MessageStatus,MessageType,SnailmailRequest,SnailmailParty,SnailmailAttachment,Address</modelsToGenerate>
 							<generateApis>false</generateApis>
 							<generateSupportingFiles>false</generateSupportingFiles>
 							<configOptions>

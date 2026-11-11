@@ -46,7 +46,7 @@ class ProcessLogTest {
 	void setUp() {
 		RequestId.init("request-id");
 		processLog = new ProcessLog(new ProcessLogProperties(
-			Map.of(ACTIVITY_ID, new StepTexts("Tillståndet har registrerats", "Nytt försök görs", "Processen har stannat", "Hoppades över", "Avvisades")),
+			Map.of(ACTIVITY_ID, new StepTexts("Tillståndet har registrerats", "Nytt försök görs", "Processen har stannat", "Hoppades över", "Avvisades", null)),
 			Map.of("review_phase", new PhaseTexts("Granskning har påbörjats")),
 			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock, Clock.systemUTC());
 	}
@@ -177,11 +177,35 @@ class ProcessLogTest {
 		assertThat(processLog.taskDone(externalTaskMock, "Decision outcome APPROVAL").getActivityName()).isEqualTo("Check decision");
 	}
 
+	@Test
+	void taskDoneWithAVariantIsNamedWithTheTextOfTheVariant() {
+		processLog = new ProcessLog(new ProcessLogProperties(
+			Map.of("external_task_send_permit_certificate", new StepTexts("Tillståndsbeviset har skickats", "Nytt försök", "Stannat", null, null,
+				Map.of("digital-mail", "Tillståndsbeviset har skickats som digital post", "snail-mail", "Tillståndsbeviset har skickats som vanligt brev"))),
+			Map.of(),
+			new ProcessTexts("Avslutad", "Avbruten")), operatonIntegrationMock, Clock.systemUTC());
+		when(externalTaskMock.getActivityId()).thenReturn("external_task_send_permit_certificate");
+
+		final var entry = processLog.taskDone(externalTaskMock, "Permit certificate sent as SNAIL_MAIL", "snail-mail");
+
+		assertThat(entry.getActivityId()).isEqualTo("external_task_send_permit_certificate#done");
+		assertThat(entry.getActivityName()).isEqualTo("Tillståndsbeviset har skickats som vanligt brev");
+		assertThat(entry.getSeverity()).isEqualTo("INFO");
+		assertThat(entry.getMessage()).isEqualTo("Permit certificate sent as SNAIL_MAIL, x-request-id request-id");
+	}
+
+	@Test
+	void taskDoneWithAVariantWithoutTextIsNamedWithTheDoneText() {
+		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);
+
+		assertThat(processLog.taskDone(externalTaskMock, "Asset 'asset-id' found or created", "digital-mail").getActivityName()).isEqualTo("Tillståndet har registrerats");
+	}
+
 	/** A step the model cannot skip has no text for it, and is named after the model should it happen anyway. */
 	@Test
 	void outcomeWithoutTextIsNamedAfterTheModel() {
 		processLog = new ProcessLog(new ProcessLogProperties(
-			Map.of(ACTIVITY_ID, new StepTexts("Klart", "Nytt försök", "Stannat", null, null)),
+			Map.of(ACTIVITY_ID, new StepTexts("Klart", "Nytt försök", "Stannat", null, null, null)),
 			Map.of(),
 			new ProcessTexts("Avslutad", "Avbruten")), operatonIntegrationMock, Clock.systemUTC());
 		when(externalTaskMock.getActivityId()).thenReturn(ACTIVITY_ID);

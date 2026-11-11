@@ -27,7 +27,8 @@ public record ProcessStateReport(
 	List<AwaitingSignal> awaitingSignals,
 	Map<String, Object> variables,
 	String logMessage,
-	boolean rejected) {
+	boolean rejected,
+	String doneVariant) {
 
 	// The lengths Support Management accepts. A longer value is answered with 400, and that answer is swallowed further
 	// up, so the report is cut here rather than left to fail silently.
@@ -44,7 +45,7 @@ public record ProcessStateReport(
 	}
 
 	private static ProcessStateReport of(final ProcessStatus status, final String activityId, final String activityName, final ProcessError error) {
-		return new ProcessStateReport(status, activityId, activityName, error, null, null, null, null, false);
+		return new ProcessStateReport(status, activityId, activityName, error, null, null, null, null, false, null);
 	}
 
 	public static ProcessStateReport running(final String activityId, final String activityName) {
@@ -68,31 +69,35 @@ public record ProcessStateReport(
 	}
 
 	public ProcessStateReport atActivity(final String activityId) {
-		return new ProcessStateReport(status, activityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, activityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected, doneVariant);
 	}
 
 	public ProcessStateReport named(final String activityName) {
-		return new ProcessStateReport(status, currentActivityId, activityName, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, activityName, error, activities, awaitingSignals, variables, logMessage, rejected, doneVariant);
 	}
 
 	public ProcessStateReport withLogMessage(final String logMessage) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected, doneVariant);
 	}
 
 	public ProcessStateReport withRejection(final String logMessage) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, true);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, true, doneVariant);
+	}
+
+	public ProcessStateReport withDoneVariant(final String doneVariant) {
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected, doneVariant);
 	}
 
 	public ProcessStateReport withActivities(final List<ProcessActivity> activities) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected, doneVariant);
 	}
 
 	public ProcessStateReport withAwaitingSignals(final List<AwaitingSignal> awaitingSignals) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected, doneVariant);
 	}
 
 	public ProcessStateReport withVariables(final Map<String, Object> variables) {
-		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected);
+		return new ProcessStateReport(status, currentActivityId, currentActivityName, error, activities, awaitingSignals, variables, logMessage, rejected, doneVariant);
 	}
 
 	private static ProcessError toError(final String code, final String message) {

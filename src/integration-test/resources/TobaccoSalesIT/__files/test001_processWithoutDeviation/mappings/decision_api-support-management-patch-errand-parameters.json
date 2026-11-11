@@ -1,0 +1,31 @@
+{
+	"name": "decision_api-support-management-patch-errand-parameters",
+	"metadata": {
+		"comment": "Above the stub of the investigation, whose body pattern ignores extra elements and so matches this write too."
+	},
+	"priority": 1,
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-support-management/2281/ALKT/errands/5a2d7e13-4b98-4c26-8f71-3e0a9b6d5c82/parameters",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": "$[?(@.key == 'permitCertificateDelivery' && @.values[0] == 'SNAIL_MAIL' && @.values[1] == '4c6e8a0b-2d4f-4a6c-8e0a-b2d4f6a8c0e2')]"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "[]",
+		"status": 200
+	}
+}

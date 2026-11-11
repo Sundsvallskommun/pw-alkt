@@ -330,6 +330,20 @@ class ProcessReportServiceTest {
 	}
 
 	@Test
+	void reportDoneLeavesAnEntryWithTheDoneTextOfTheVariantTheStepNamed() {
+		mockExternalTask();
+		when(processLogMock.taskDone(externalTaskMock, "Permit certificate sent as DIGITAL_MAIL", "digital-mail")).thenReturn(TASK_ENTRY);
+		final var captor = ArgumentCaptor.forClass(ErrandProcessReport.class);
+
+		service.reportDone(externalTaskMock, ProcessStateReport.completed().withLogMessage("Permit certificate sent as DIGITAL_MAIL").withDoneVariant("digital-mail"));
+
+		verify(supportManagementIntegrationMock).reportProcess(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), eq(PROCESS_INSTANCE_ID), captor.capture());
+		assertThat(captor.getValue().getActivities()).containsExactly(TASK_ENTRY);
+		verify(processLogMock).taskDone(externalTaskMock, "Permit certificate sent as DIGITAL_MAIL", "digital-mail");
+		verifyNoMoreInteractions(processLogMock);
+	}
+
+	@Test
 	void reportDoneLeavesAWarningForAStepThatRefusedItsWork() {
 		mockExternalTask();
 		when(processLogMock.taskRejected(externalTaskMock, "No deficiencies")).thenReturn(TASK_ENTRY);

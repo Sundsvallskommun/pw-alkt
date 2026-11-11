@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
+import java.util.Map;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
@@ -9,6 +10,7 @@ import se.sundsvall.alkt.service.AssetService;
 import se.sundsvall.alkt.service.ProcessReportService;
 import se.sundsvall.alkt.service.model.ProcessStateReport;
 
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ASSET_ID;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 @Component
@@ -29,6 +31,7 @@ public class UpdateAssetWorker extends AbstractTaskWorker {
 		logInfo("Errand {} changed asset {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(assetId));
 
 		return running(externalTask)
-			.withLogMessage("Asset '%s' updated".formatted(assetId));
+			.withLogMessage("Asset '%s' updated".formatted(assetId))
+			.withVariables(Map.of(PROCESS_VARIABLE_ASSET_ID, assetId));
 	}
 }

@@ -15,6 +15,7 @@ import se.sundsvall.alkt.configuration.ProcessLogProperties.PhaseTexts;
 import se.sundsvall.alkt.configuration.ProcessLogProperties.ProcessTexts;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 @SpringBootTest(classes = Application.class)
 @ActiveProfiles("junit")
@@ -56,7 +57,12 @@ class ProcessLogPropertiesTest {
 			"external_task_set_complete_at",
 			"external_task_check_case_number",
 			"external_task_check_case_number_required",
-			"external_task_create_decision_basis");
+			"external_task_create_decision_basis",
+			"external_task_send_permit_certificate");
+		assertThat(properties.steps().get("external_task_send_permit_certificate").doneVariants()).containsOnly(
+			entry("digital-mail", "Tillståndsbeviset har skickats till tillståndshavaren som digital post"),
+			entry("snail-mail", "Tillståndsbeviset har skickats till tillståndshavaren som vanligt brev"));
+		assertThat(properties.steps().get("external_task_create_asset").doneVariants()).isNull();
 		assertThat(properties.steps().get("external_task_create_decision_basis").done()).isEqualTo("Beslutsunderlaget har skapats och lagts till i ärendet");
 		assertThat(properties.steps().get("external_task_create_decision_basis").retry()).isEqualTo("Beslutsunderlaget kunde inte skapas just nu, ett nytt försök görs automatiskt");
 		assertThat(properties.steps().get("external_task_create_decision_basis").failed()).isEqualTo("Beslutsunderlaget kunde inte skapas. Processen har stannat och felet behöver åtgärdas");

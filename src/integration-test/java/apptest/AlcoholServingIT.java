@@ -75,6 +75,13 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_asset#done' && @.severity == 'INFO')].message",
 				containing("x-request-id"))));
 
+		// The certificate went to the permit holder's digital mailbox, which the activity log names
+		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
+			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_send_permit_certificate#done')].activityName",
+				containing("Tillståndsbeviset har skickats till tillståndshavaren som digital post"))));
+		wiremock.verify(patchRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/parameters".formatted(ERRAND_ID)))
+			.withRequestBody(matchingJsonPath("$[?(@.key == 'permitCertificateDelivery' && @.values[0] == 'DIGITAL_MAIL' && @.values[1] == '8f2a4c6e-0b1d-4e3f-a5c7-9d1e3f5a7b9c')]")));
+
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
@@ -116,6 +123,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 				tuple("Resolve restaurant number", "external_task_resolve_restaurant_number"),
 				tuple("Create asset", "external_task_create_asset"),
 				tuple("Assign restaurant number", "external_task_assign_restaurant_number"),
+				tuple("Send permit certificate", "external_task_send_permit_certificate"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -173,7 +181,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
-			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset", "external_task_send_permit_certificate");
 	}
 
 	@Test
@@ -313,7 +321,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
-			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset", "external_task_send_permit_certificate");
 	}
 
 	/**
@@ -406,7 +414,7 @@ class AlcoholServingIT extends AbstractOperatonAppTest {
 		// are held to their order.
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
-			.containsSubsequence("external_task_resolve_restaurant_number", "external_task_create_asset", "external_task_assign_restaurant_number")
+			.containsSubsequence("external_task_resolve_restaurant_number", "external_task_create_asset", "external_task_assign_restaurant_number", "external_task_send_permit_certificate")
 			.contains("end_decision_phase");
 	}
 }

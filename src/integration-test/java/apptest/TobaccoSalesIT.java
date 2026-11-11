@@ -12,6 +12,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
+import static com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
@@ -63,6 +64,13 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_create_asset#done' && @.severity == 'INFO')].message",
 				containing("x-request-id"))));
 
+		// The permit holder has no reachable mailbox, so the certificate went as a letter to the address on the errand
+		wiremock.verify(putRequestedFor(urlPathMatching(".*/processes/[^/]+"))
+			.withRequestBody(matchingJsonPath("$.activities[?(@.activityType == 'TASK' && @.activityId == 'external_task_send_permit_certificate#done')].activityName",
+				containing("Tillståndsbeviset har skickats till tillståndshavaren som vanligt brev"))));
+		wiremock.verify(patchRequestedFor(urlPathEqualTo("/api-support-management/2281/ALKT/errands/%s/parameters".formatted(ERRAND_ID)))
+			.withRequestBody(matchingJsonPath("$[?(@.key == 'permitCertificateDelivery' && @.values[0] == 'SNAIL_MAIL' && @.values[1] == '4c6e8a0b-2d4f-4a6c-8e0a-b2d4f6a8c0e2')]")));
+
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityName, HistoricActivityInstanceDto::getActivityId)
 			.containsExactlyInAnyOrder(
@@ -103,6 +111,7 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 				tuple("Check decision", "external_task_check_decision"), // Approved
 				tuple("Decision outcome", "gateway_decision_outcome"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Send permit certificate", "external_task_send_permit_certificate"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -159,7 +168,7 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
-			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset", "external_task_send_permit_certificate");
 	}
 
 	@Test
@@ -309,6 +318,6 @@ class TobaccoSalesIT extends AbstractOperatonAppTest {
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
-			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset", "external_task_send_permit_certificate");
 	}
 }

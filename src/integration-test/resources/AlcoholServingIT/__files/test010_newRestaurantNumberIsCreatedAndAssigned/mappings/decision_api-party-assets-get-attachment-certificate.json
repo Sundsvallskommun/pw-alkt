@@ -1,0 +1,19 @@
+{
+	"name": "decision_api-party-assets-get-attachment-certificate",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-party-assets/2281/assets/9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d/attachments/3b5d7f91-2c4e-4a6b-8d0f-1e3a5c7b9d2f",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/pdf"
+		},
+		"body": "%PDF-1.7 tillstandsbevis",
+		"status": 200
+	}
+}

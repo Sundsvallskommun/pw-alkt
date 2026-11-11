@@ -1,0 +1,59 @@
+{
+	"name": "decision_api-messaging-post-snail-mail",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/snail-mail",
+		"queryParameters": {
+			"batchId": {
+				"matches": "^[0-9a-f-]{36}$"
+			}
+		},
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"equalToJson": {
+					"party": {
+						"partyId": "d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f"
+					},
+					"address": {
+						"organizationName": "Tobakshörnan AB",
+						"careOf": "Ekonomiavdelningen",
+						"address": "Esplanaden 12",
+						"zipCode": "852 31",
+						"city": "Sundsvall",
+						"country": "Sverige"
+					},
+					"department": "KSK(Alkohol och tobak)",
+					"attachments": [
+						{
+							"filename": "Tillståndsbevis ALKT-2026-000001.pdf",
+							"contentType": "application/pdf",
+							"content": "JVBERi0xLjcgdGlsbHN0YW5kc2Jldmlz"
+						}
+					]
+				},
+				"ignoreExtraElements": true
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"messageId": "4c6e8a0b-2d4f-4a6c-8e0a-b2d4f6a8c0e2",
+			"deliveries": [
+				{
+					"deliveryId": "9a1c3e5b-7d9f-4b1d-a3c5-e7f9a1b3c5d7",
+					"messageType": "SNAIL_MAIL",
+					"status": "SENT"
+				}
+			]
+		},
+		"status": 200
+	}
+}

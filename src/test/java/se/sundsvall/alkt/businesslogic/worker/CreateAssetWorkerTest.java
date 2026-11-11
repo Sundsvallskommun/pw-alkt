@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
+import java.util.Map;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ASSET_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -59,7 +61,8 @@ class CreateAssetWorkerTest {
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_asset", null).withLogMessage("Asset 'asset-id' found or created"));
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_create_asset", null).withLogMessage("Asset 'asset-id' found or created")
+			.withVariables(Map.of(PROCESS_VARIABLE_ASSET_ID, "asset-id")));
 		verify(assetServiceMock).findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, null);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
@@ -71,6 +74,7 @@ class CreateAssetWorkerTest {
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_ERRAND_ID)).thenReturn(ERRAND_ID);
 		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(ALCOHOL_SERVING.getKey());
 		when(externalTaskMock.getVariable(PROCESS_VARIABLE_RESTAURANT_NUMBER)).thenReturn("22810001");
+		when(assetServiceMock.findOrCreateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT, "22810001")).thenReturn("asset-id");
 
 		worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 

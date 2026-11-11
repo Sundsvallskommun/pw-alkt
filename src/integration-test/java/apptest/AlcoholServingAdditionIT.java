@@ -80,6 +80,7 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 				tuple("Decision outcome", "gateway_decision_outcome"),
 				tuple("Find restaurant number", "external_task_find_restaurant_number"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Send permit certificate", "external_task_send_permit_certificate"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up
@@ -191,6 +192,6 @@ class AlcoholServingAdditionIT extends AbstractOperatonAppTest {
 		assertThat(getProcessInstanceRoute(processInstanceId))
 			.extracting(HistoricActivityInstanceDto::getActivityId)
 			.contains("external_task_check_decision", "gateway_decision_outcome", "end_decision_phase")
-			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset");
+			.doesNotContain("gateway_await_decision", "await_decision_updated", "external_task_create_asset", "external_task_send_permit_certificate");
 	}
 }

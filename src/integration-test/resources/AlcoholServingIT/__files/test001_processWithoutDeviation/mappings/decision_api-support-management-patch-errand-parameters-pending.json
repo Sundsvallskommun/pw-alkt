@@ -1,0 +1,34 @@
+{
+	"name": "decision_api-support-management-patch-errand-parameters-pending",
+	"metadata": {
+		"comment": "Above the stub of the investigation, whose body pattern ignores extra elements and so matches this write too."
+	},
+	"priority": 1,
+	"request": {
+		"method": "PATCH",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/parameters",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": "$[?(@.key == 'premisesMunicipalityId')]"
+			},
+			{
+				"matchesJsonPath": "$[?(@.key == 'permitCertificateDelivery' && @.values[0] == 'PENDING')]"
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"body": "[]",
+		"status": 200
+	}
+}

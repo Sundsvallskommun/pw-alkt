@@ -1,0 +1,69 @@
+{
+	"name": "decision_api-messaging-post-digital-mail",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-messaging/2281/2120002411/digital-mail",
+		"queryParameters": {
+			"async": {
+				"equalTo": "false"
+			}
+		},
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"equalToJson": {
+					"party": {
+						"partyIds": [
+							"d1c4e2b8-3f5a-4c6d-8e9f-0a1b2c3d4e5f"
+						]
+					},
+					"sender": {
+						"supportInfo": {
+							"text": "Har du frågor om ditt tillstånd är du välkommen att kontakta alkohol- och tobaksenheten",
+							"emailAddress": "alkohol.tobak@sundsvall.se",
+							"phoneNumber": "060-19 10 00",
+							"url": "https://sundsvall.se/alkohol-och-tobak"
+						}
+					},
+					"subject": "Bevis om ändrat serveringstillstånd",
+					"department": "KSK(Alkohol och tobak)",
+					"contentType": "text/plain",
+					"body": "Här kommer beviset på ditt ändrade serveringstillstånd. Beslutet finns i ditt ärende på Mina sidor.",
+					"attachments": [
+						{
+							"contentType": "application/pdf",
+							"content": "JVBERi0xLjcgdGlsbHN0YW5kc2Jldmlz",
+							"filename": "Tillståndsbevis ALKT-2026-000001.pdf"
+						}
+					]
+				},
+				"ignoreExtraElements": true
+			}
+		]
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": {
+			"batchId": "5e7a9c1b-3d5f-4b7a-8c9e-1f3a5b7c9d0e",
+			"messages": [
+				{
+					"messageId": "8f2a4c6e-0b1d-4e3f-a5c7-9d1e3f5a7b9c",
+					"deliveries": [
+						{
+							"deliveryId": "2d4f6a8c-0e1b-4d3f-b5a7-c9e1f3a5b7d9",
+							"messageType": "DIGITAL_MAIL",
+							"status": "SENT"
+						}
+					]
+				}
+			]
+		},
+		"status": 200
+	}
+}

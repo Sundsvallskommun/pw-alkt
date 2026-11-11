@@ -21,13 +21,15 @@ public record ProcessLogProperties(
 
 	/**
 	 * skipped only for a step the model lets the process go on without, rejected only for a step that can refuse its work.
+	 * doneVariants only for a step whose done text depends on how it went, keyed by the variant the step names.
 	 */
 	public record StepTexts(
 		@NotBlank String done,
 		@NotBlank String retry,
 		@NotBlank String failed,
 		String skipped,
-		String rejected) {
+		String rejected,
+		Map<String, String> doneVariants) {
 	}
 
 	public record PhaseTexts(@NotBlank String entered) {

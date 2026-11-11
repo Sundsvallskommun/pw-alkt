@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
+import java.util.Map;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ASSET_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
@@ -58,7 +60,8 @@ class UpdateAssetWorkerTest {
 
 		final var result = worker.executeBusinessLogic(externalTaskMock, externalTaskServiceMock);
 
-		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_update_asset", null).withLogMessage("Asset 'asset-id' updated"));
+		assertThat(result).isEqualTo(ProcessStateReport.running("external_task_update_asset", null).withLogMessage("Asset 'asset-id' updated")
+			.withVariables(Map.of(PROCESS_VARIABLE_ASSET_ID, "asset-id")));
 		verify(assetServiceMock).updateAsset(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 		verifyNoInteractions(failureHandlerMock, processReportServiceMock);
 	}
