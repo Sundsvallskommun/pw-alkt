@@ -29,7 +29,6 @@ public final class ActionErrandMapper {
 			.priority(MEDIUM)
 			.reporterUserId(inspection.getAssignedUserId())
 			.description(inspection.getDescription())
-			.classification(inspection.getClassification())
 			.labels(List.of(new ErrandLabel().id(labelId)))
 			.stakeholders(Optional.ofNullable(inspection.getStakeholders()).orElse(emptyList()).stream()
 				.filter(SupportManagementMapper::isPermitHolder)
@@ -37,7 +36,10 @@ public final class ActionErrandMapper {
 			.measures(toActiveMeasures(inspection.getMeasures(), MEASURE_TYPE_ACTION_POINT).stream()
 				.map(ActionErrandMapper::toMeasure)
 				.toList())
-			.externalTags(Set.of(new ExternalTag().key(EXTERNAL_TAG_INSPECTION_ERRAND_ID).value(errandId)));
+			.externalTags(Set.of(new ExternalTag().key(EXTERNAL_TAG_INSPECTION_ERRAND_ID).value(errandId)))
+			.phases(null)
+			.activeNotifications(null)
+			.actions(null);
 	}
 
 	private static Measure toMeasure(final Measure measure) {
