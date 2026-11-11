@@ -22,6 +22,7 @@
 					"title": "Åtgärdsärende",
 					"status": "NEW",
 					"priority": "MEDIUM",
+					"channel": "WEB_UI",
 					"reporterUserId": "handlaggare",
 					"description": "Följande brister ska åtgärdas",
 					"labels": [

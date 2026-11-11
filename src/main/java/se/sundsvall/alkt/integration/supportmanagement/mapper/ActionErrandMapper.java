@@ -18,6 +18,7 @@ public final class ActionErrandMapper {
 	private static final String MEASURE_TYPE_ACTION_POINT = "EXTERNAL";
 	private static final String TITLE = "Åtgärdsärende";
 	private static final String STATUS_NEW = "NEW";
+	private static final String CHANNEL_WEB_UI = "WEB_UI";
 
 	private ActionErrandMapper() {}
 
@@ -27,6 +28,7 @@ public final class ActionErrandMapper {
 			.title(TITLE)
 			.status(STATUS_NEW)
 			.priority(MEDIUM)
+			.channel(CHANNEL_WEB_UI)
 			.reporterUserId(inspection.getAssignedUserId())
 			.description(inspection.getDescription())
 			.labels(List.of(new ErrandLabel().id(labelId)))

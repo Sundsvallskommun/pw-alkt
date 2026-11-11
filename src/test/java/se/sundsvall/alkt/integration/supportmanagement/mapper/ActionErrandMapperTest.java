@@ -43,6 +43,7 @@ class ActionErrandMapperTest {
 		assertThat(result.getTitle()).isEqualTo("Åtgärdsärende");
 		assertThat(result.getStatus()).isEqualTo("NEW");
 		assertThat(result.getPriority()).isEqualTo(MEDIUM);
+		assertThat(result.getChannel()).isEqualTo("WEB_UI");
 		assertThat(result.getReporterUserId()).isEqualTo("handlaggare");
 		assertThat(result.getDescription()).isEqualTo("Följande brister ska åtgärdas");
 		assertThat(result.getClassification()).isNull();
