@@ -1,5 +1,6 @@
 package se.sundsvall.alkt.businesslogic.worker;
 
+import java.time.Duration;
 import org.camunda.bpm.client.spring.annotation.ExternalTaskSubscription;
 import org.camunda.bpm.client.task.ExternalTask;
 import org.camunda.bpm.client.task.ExternalTaskHandler;
@@ -12,6 +13,7 @@ import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.service.ProcessReconciliationService;
 import se.sundsvall.dept44.requestid.RequestId;
 
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
@@ -50,9 +52,16 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 
 	private void sweep(final ExternalTask externalTask) {
 		try {
-			processReconciliationService.reconcile(properties.lookback());
+			processReconciliationService.reconcile(lookbackOf(externalTask));
 		} catch (final Exception e) {
 			LOG.error("Reconciliation failed in task {}, the next cycle is the retry", sanitizeForLogging(externalTask.getId()), e);
 		}
+	}
+
+	private Duration lookbackOf(final ExternalTask externalTask) {
+		if (PROCESS_KEY_RECONCILIATION_NIGHTLY.equals(externalTask.getProcessDefinitionKey())) {
+			return properties.nightlyLookback();
+		}
+		return properties.lookback();
 	}
 }
