@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.service.ProcessReconciliationService;
 import se.sundsvall.dept44.requestid.RequestId;
 
@@ -29,9 +30,11 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 	private static final Logger LOG = LoggerFactory.getLogger(ReconcileProcessesWorker.class);
 
 	private final ProcessReconciliationService processReconciliationService;
+	private final ReconciliationProperties properties;
 
-	ReconcileProcessesWorker(final ProcessReconciliationService processReconciliationService) {
+	ReconcileProcessesWorker(final ProcessReconciliationService processReconciliationService, final ReconciliationProperties properties) {
 		this.processReconciliationService = processReconciliationService;
+		this.properties = properties;
 	}
 
 	@Override
@@ -47,7 +50,7 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 
 	private void sweep(final ExternalTask externalTask) {
 		try {
-			processReconciliationService.reconcile();
+			processReconciliationService.reconcile(properties.lookback());
 		} catch (final Exception e) {
 			LOG.error("Reconciliation failed in task {}, the next cycle is the retry", sanitizeForLogging(externalTask.getId()), e);
 		}
