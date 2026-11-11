@@ -9,6 +9,8 @@ import generated.se.sundsvall.messaging.SnailmailRequest;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import se.sundsvall.alkt.integration.messaging.configuration.MessagingProperties;
 import se.sundsvall.dept44.problem.Problem;
@@ -18,6 +20,8 @@ import static org.springframework.http.HttpStatus.BAD_GATEWAY;
 
 @Component
 public class MessagingIntegration {
+
+	private static final Logger LOG = LoggerFactory.getLogger(MessagingIntegration.class);
 
 	private final MessagingClient messagingClient;
 	private final MessagingProperties properties;
@@ -43,9 +47,18 @@ public class MessagingIntegration {
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "The digital mail came back without a result"));
 	}
 
-	/** Each letter gets a batch of its own. */
+	/**
+	 * Each letter gets a batch of its own, sent off right away. A failed trigger is only logged, as the letter is in it.
+	 */
 	public MessageResult sendSnailMail(final String municipalityId, final SnailmailRequest request) {
-		return Optional.ofNullable(messagingClient.sendSnailMail(municipalityId, UUID.randomUUID().toString(), request).getBody())
+		final var batchId = UUID.randomUUID().toString();
+		final var result = Optional.ofNullable(messagingClient.sendSnailMail(municipalityId, batchId, request).getBody())
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "The snail mail came back without a result"));
+		try {
+			messagingClient.triggerSnailMailBatch(municipalityId, batchId);
+		} catch (final RuntimeException e) {
+			LOG.warn("Could not trigger snail mail batch {}", batchId, e);
+		}
+		return result;
 	}
 }

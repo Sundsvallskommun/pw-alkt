@@ -47,4 +47,9 @@ public interface MessagingClient {
 		@PathVariable String municipalityId,
 		@RequestParam("batchId") String batchId,
 		@RequestBody SnailmailRequest request);
+
+	@PostMapping(path = "/{municipalityId}/snail-mail/batch/{batchId}", produces = ALL_VALUE)
+	ResponseEntity<Void> triggerSnailMailBatch(
+		@PathVariable String municipalityId,
+		@PathVariable String batchId);
 }

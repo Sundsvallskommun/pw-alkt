@@ -1,0 +1,15 @@
+{
+	"name": "decision_api-messaging-post-snail-mail-batch",
+	"request": {
+		"method": "POST",
+		"urlPathPattern": "/api-messaging/2281/snail-mail/batch/[0-9a-f-]{36}",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"status": 200
+	}
+}

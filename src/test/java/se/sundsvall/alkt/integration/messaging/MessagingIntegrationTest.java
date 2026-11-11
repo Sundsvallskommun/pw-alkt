@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.messaging.configuration.MessagingProperties;
 import se.sundsvall.alkt.integration.messaging.configuration.MessagingProperties.Slack;
+import se.sundsvall.dept44.exception.ServerProblem;
 import se.sundsvall.dept44.problem.ThrowableProblem;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -115,7 +116,7 @@ class MessagingIntegrationTest {
 	}
 
 	@Test
-	void sendSnailMailPutsTheLetterInABatchOfItsOwn() {
+	void sendSnailMailPutsTheLetterInABatchOfItsOwnAndTriggersIt() {
 		final var request = new SnailmailRequest().department("SBK(Alkohol och tobak)");
 		final var result = new MessageResult().messageId(UUID.fromString("0b6c1d2e-8f3a-4b5c-9d7e-1a2b3c4d5e6f"));
 		when(messagingClientMock.sendSnailMail(eq("2281"), batchIdCaptor.capture(), same(request))).thenReturn(ResponseEntity.status(201).body(result));
@@ -123,9 +124,22 @@ class MessagingIntegrationTest {
 		assertThat(messagingIntegration.sendSnailMail("2281", request)).isSameAs(result);
 		messagingIntegration.sendSnailMail("2281", request);
 
-		assertThat(batchIdCaptor.getAllValues()).hasSize(2).doesNotHaveDuplicates()
+		final var batchIds = batchIdCaptor.getAllValues();
+		assertThat(batchIds).hasSize(2).doesNotHaveDuplicates()
 			.allSatisfy(batchId -> assertThat(UUID.fromString(batchId)).hasToString(batchId));
 		verify(messagingClientMock, times(2)).sendSnailMail(eq("2281"), anyString(), same(request));
+		verify(messagingClientMock).triggerSnailMailBatch("2281", batchIds.getFirst());
+		verify(messagingClientMock).triggerSnailMailBatch("2281", batchIds.getLast());
 		verifyNoMoreInteractions(messagingClientMock);
+	}
+
+	@Test
+	void sendSnailMailWhoseTriggerFailsStillGivesTheResult() {
+		final var request = new SnailmailRequest().department("SBK(Alkohol och tobak)");
+		final var result = new MessageResult().messageId(UUID.fromString("0b6c1d2e-8f3a-4b5c-9d7e-1a2b3c4d5e6f"));
+		when(messagingClientMock.sendSnailMail(eq("2281"), anyString(), same(request))).thenReturn(ResponseEntity.status(201).body(result));
+		when(messagingClientMock.triggerSnailMailBatch(eq("2281"), anyString())).thenThrow(new ServerProblem(BAD_GATEWAY, "messaging error: Bad Gateway"));
+
+		assertThat(messagingIntegration.sendSnailMail("2281", request)).isSameAs(result);
 	}
 }
