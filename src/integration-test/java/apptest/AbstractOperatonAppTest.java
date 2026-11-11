@@ -67,8 +67,8 @@ abstract class AbstractOperatonAppTest extends AbstractAppTest {
 	private static final String TOKEN_PATH = "/api-gateway/token";
 	// The external task client's client registration carries no scope, unlike the token requests of the Feign clients
 	private static final String EXTERNAL_TASK_CLIENT_TOKEN_REQUEST = "grant_type=client_credentials";
-	// The errand processes plus process-reconciliation, which is deployed on its own and has no key in ProcessType.keys()
-	private static final int EXPECTED_DEPLOYMENTS = ProcessType.values().length + 1;
+	// The errand processes plus the two reconciliation models, which have no key in ProcessType.keys()
+	private static final int EXPECTED_DEPLOYMENTS = ProcessType.values().length + 2;
 	private static final JsonMapper JSON_MAPPER = JsonMapper.builder().findAndAddModules().build();
 
 	/*
