@@ -1,0 +1,56 @@
+{
+	"name": "02_main_reconciliation---api-support-management-put-process-incident",
+	"metadata": {
+		"comment": "The one report the nightly sweep is allowed to send. There is deliberately no stub for a second one: a sweep that reported the same incident twice would go unmatched and fail the test."
+	},
+	"priority": 1,
+	"request": {
+		"method": "PUT",
+		"urlPathPattern": "/api-support-management/2281/ALKT/errands/d4b81f6e-2c93-4a07-8e5d-73a0c9f1b2e8/processes/[^/]+",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		},
+		"bodyPatterns": [
+			{
+				"matchesJsonPath": {
+					"expression": "$.processStatus",
+					"equalTo": "FAILED"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.error.code",
+					"equalTo": "INCIDENT"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.currentActivityId",
+					"equalTo": "external_task_create_submission_pdf"
+				}
+			},
+			{
+				"matchesJsonPath": "$.externalTaskId"
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.activities[0].activityType",
+					"equalTo": "INCIDENT"
+				}
+			}
+		]
+	},
+	"scenarioName": "nightly-incident-is-reported-once",
+	"requiredScenarioState": "first-sweep-is-running",
+	"newScenarioState": "incident-has-been-reported",
+	"response": {
+		"headers": {
+			"Content-Type": "application/json",
+			"Content-Encoding": "identity"
+		},
+		"body": "{}",
+		"status": 200
+	}
+}
