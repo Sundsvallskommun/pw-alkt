@@ -77,6 +77,8 @@ class ReconcileProcessesWorkerTest {
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
+		verify(processReconciliationServiceMock).reconcile(any());
+		verifyNoMoreInteractions(processReconciliationServiceMock);
 		verify(externalTaskServiceMock).complete(externalTaskMock);
 		verifyNoMoreInteractions(externalTaskServiceMock);
 		assertThat(RequestId.get()).isNull();

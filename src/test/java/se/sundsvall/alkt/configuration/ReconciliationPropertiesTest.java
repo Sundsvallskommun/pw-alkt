@@ -51,7 +51,7 @@ class ReconciliationPropertiesTest {
 	void refusesToStartWithoutTheShortWindow() {
 		contextRunner.withPropertyValues("reconciliation.nightly-lookback=P7D")
 			.run(context -> assertThat(context).hasFailed()
-				.getFailure().rootCause().hasMessageContaining("lookback"));
+				.getFailure().rootCause().hasMessageContaining("field 'lookback'"));
 	}
 
 	@Test
