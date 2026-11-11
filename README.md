@@ -144,6 +144,14 @@ a copy uploaded since the decision was created and uploads no second one, and a 
 copies the certificate party-assets holds. party-assets also links the permit to the errand by a relation as the permit
 is created.
 
+The process then sends the certificate to the permit holder. It goes as digital mail when messaging finds a reachable
+mailbox, and otherwise as a letter to the name and address on the errand. A digital mail that fails goes as a letter
+instead when the address is complete, so in the worst case the holder gets both. A holder with neither a mailbox nor a
+complete address raises an incident. The errand parameter `permitCertificateDelivery` keeps the channel and the message
+id in messaging, so a rerun sends nothing. It holds `PENDING` from just before the send. When the answer from messaging
+does not tell whether the certificate went out, `PENDING` stays and the step raises an incident instead of sending
+again. The incident says how to set or remove the parameter.
+
 The restaurant number and the premises it is kept at come from `premises` in the JSON parameter of the decision: the
 number in `restaurantNumber` the case worker chose, a new one when `newRestaurantNumber` is `true`, and otherwise the
 first free number at `address`, or a new one when none is free. The number and the address are kept in the process
@@ -273,6 +281,26 @@ Configuration is crucial for the application to run successfully. Ensure all nec
   key of the JSON parameter of the decision. A new version is taken into use by changing it here. The schema must be
   registered in json-schema for the municipality of the errands.
 
+- **Permit certificate:**
+
+  ```yaml
+  permit-certificate:
+    organization-number: "2120002411"
+    department: "KSK(Alkohol och tobak)"
+    support-info:
+      text: Har du frågor om ditt tillstånd är du välkommen att kontakta alkohol- och tobaksenheten
+      email-address: alkohol.tobak@sundsvall.se
+      phone-number: "060-19 10 00"
+      url: https://sundsvall.se/alkohol-och-tobak
+    letters:
+      alcohol-serving:
+        subject: Bevis om serveringstillstånd
+        body: Här kommer beviset på ditt serveringstillstånd.
+  ```
+
+  The sender of the certificate, and the subject and body of the digital mail per process key. Every process that sends
+  the certificate needs its letter, or the service does not start.
+
 - **Texts for the customer and the activity log:**
 
   ```yaml
@@ -289,7 +317,8 @@ Configuration is crucial for the application to run successfully. Ensure all nec
 
   A step listed under `steps` needs its `done`, `retry` and `failed` texts, or the service does not start. A step or
   phase without an entry is logged under its name in the model. `application-it.yaml` holds the full set. A key with an
-  underscore must be in brackets.
+  underscore must be in brackets. `done-variants` gives a step one done text per way it went, as
+  `[external_task_send_permit_certificate]` does with `digital-mail` and `snail-mail`.
 
 ### Additional Notes
 
