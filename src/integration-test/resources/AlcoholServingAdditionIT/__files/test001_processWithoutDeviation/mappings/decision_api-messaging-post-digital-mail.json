@@ -24,15 +24,15 @@
 					"sender": {
 						"supportInfo": {
 							"text": "Har du frågor om ditt tillstånd är du välkommen att kontakta alkohol- och tobaksenheten",
-							"emailAddress": "alkohol.tobak@sundsvall.se",
+							"emailAddress": "alkohol&tobaksenheten@sundsvall.se",
 							"phoneNumber": "060-19 10 00",
-							"url": "https://sundsvall.se/alkohol-och-tobak"
+							"url": "https://sundsvall.se"
 						}
 					},
-					"subject": "Bevis om tillägg till serveringstillstånd",
-					"department": "KSK(Alkohol och tobak)",
+					"subject": "Uppdaterat serveringstillstånd",
+					"department": "Individ- och arbetsmarknadsförvaltningen",
 					"contentType": "text/plain",
-					"body": "Här kommer beviset på tillägget till ditt serveringstillstånd. Beslutet finns i ditt ärende på Mina sidor.",
+					"body": "Här kommer ditt uppdaterade serveringstillstånd. Beslutet finns i ditt ärende på Mina sidor.",
 					"attachments": [
 						{
 							"contentType": "application/pdf",

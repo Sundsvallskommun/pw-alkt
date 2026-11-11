@@ -1,6 +1,5 @@
 package se.sundsvall.alkt.service;
 
-import generated.se.sundsvall.supportmanagement.Classification;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandLabel;
 import generated.se.sundsvall.supportmanagement.Measure;
@@ -60,10 +59,9 @@ class ActionErrandServiceTest {
 
 	@Test
 	void createsTheActionErrandWithTheLabelAndARelationToTheInspection() {
-		final var classification = new Classification().category("AOT").type("AOT.UNCATEGORIZED");
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(new Errand().id(ERRAND_ID).title("Brister vid tillsyn").assignedUserId("handlaggare").classification(classification)
+			.thenReturn(new Errand().id(ERRAND_ID).title("Brister vid tillsyn").assignedUserId("handlaggare")
 				.stakeholders(List.of(new Stakeholder().role("PRIMARY").externalId("party-id"))).measures(List.of(new Measure().type("EXTERNAL").status("ACTIVE"))));
 		when(supportManagementIntegrationMock.createErrand(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(REFERRED_FROM), errandCaptor.capture())).thenReturn("action-errand-id");
 
@@ -71,7 +69,6 @@ class ActionErrandServiceTest {
 
 		assertThat(errandCaptor.getValue().getTitle()).isEqualTo("Åtgärdsärende");
 		assertThat(errandCaptor.getValue().getReporterUserId()).isEqualTo("handlaggare");
-		assertThat(errandCaptor.getValue().getClassification()).isEqualTo(classification);
 		assertThat(errandCaptor.getValue().getLabels()).containsExactly(new ErrandLabel().id(LABEL_ID));
 		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
