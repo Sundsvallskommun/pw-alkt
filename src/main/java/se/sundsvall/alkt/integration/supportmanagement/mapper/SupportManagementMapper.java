@@ -54,6 +54,7 @@ import static se.sundsvall.alkt.Constants.PROCESS_SERVICE;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_MUNICIPALITY_ID;
 import static se.sundsvall.alkt.Constants.PROCESS_VARIABLE_NAMESPACE;
+import static se.sundsvall.alkt.Constants.STAKEHOLDER_PARAMETER_PBI;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 
 public final class SupportManagementMapper {
@@ -93,6 +94,11 @@ public final class SupportManagementMapper {
 	/** A permit holder is the primary stakeholder, known by its external id. */
 	public static boolean isPermitHolder(final Stakeholder stakeholder) {
 		return STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole()) && nonNull(stakeholder.getExternalId());
+	}
+
+	/** A person of significant influence is a stakeholder the case worker has marked as one. */
+	public static boolean isPersonOfSignificantInfluence(final Stakeholder stakeholder) {
+		return Boolean.parseBoolean(toParameterValues(stakeholder.getParameters()).get(STAKEHOLDER_PARAMETER_PBI));
 	}
 
 	/** Sundsvall when the errand names none. Any other municipality is a fault in the errand that a retry does not fix. */

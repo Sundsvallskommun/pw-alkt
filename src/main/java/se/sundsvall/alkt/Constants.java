@@ -67,6 +67,10 @@ public final class Constants {
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
 	public static final String NO_PERMIT_HOLDER_MESSAGE = "Errand '%s' has no stakeholder with role '" + STAKEHOLDER_ROLE_PERMIT_HOLDER + "'";
 
+	public static final String STAKEHOLDER_PARAMETER_PBI = "PBI";
+	public static final String STAKEHOLDER_PARAMETER_PBI_ROLE = "PBI_ROLE";
+	public static final String STAKEHOLDER_PARAMETER_PBI_SOURCE = "PBI_SOURCE";
+
 	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
 	public static final String ERRAND_PARAMETER_PREMISES_NAME = "premisesName";
 	public static final String ERRAND_PARAMETER_PREMISES_STREET_ADDRESS = "premisesStreetAddress";

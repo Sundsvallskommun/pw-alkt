@@ -11,6 +11,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.NO_PERMIT_HOLDER_MESSAGE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ActionErrandMapper.toActionErrand;
+import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findPermitHolder;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toErrandRelation;
 
 @Service
@@ -53,7 +54,7 @@ public class ActionErrandService {
 	}
 
 	private static void requirePermitHolder(final Errand actionErrand, final String errandId) {
-		if (actionErrand.getStakeholders().isEmpty()) {
+		if (findPermitHolder(actionErrand).isEmpty()) {
 			throw new NonRetryableException(NO_PERMIT_HOLDER_MESSAGE.formatted(errandId));
 		}
 	}

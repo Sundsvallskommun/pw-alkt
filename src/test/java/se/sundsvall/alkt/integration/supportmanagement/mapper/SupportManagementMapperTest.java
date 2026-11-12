@@ -311,6 +311,19 @@ class SupportManagementMapperTest {
 	}
 
 	@Test
+	void isPersonOfSignificantInfluenceTakesTheStakeholderCarryingTheMarking() {
+		final var marked = new Stakeholder().parameters(List.of(new Parameter().key("PBI").values(List.of("true"))));
+		final var unmarked = new Stakeholder().parameters(List.of(new Parameter().key("PBI").values(List.of("false"))));
+		final var otherParameter = new Stakeholder().parameters(List.of(new Parameter().key("PBI_ROLE").values(List.of("Styrelseledamot"))));
+
+		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(marked)).isTrue();
+		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(unmarked)).isFalse();
+		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(otherParameter)).isFalse();
+		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(new Stakeholder())).isFalse();
+		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(new Stakeholder().parameters(null))).isFalse();
+	}
+
+	@Test
 	void toConditionListGivesTheTermsInTheirOrderLeavingOutThoseWithoutText() {
 		final var decision = new Decision().terms(List.of(
 			new DecisionTerm().text("Ordningsvakt ska finnas efter 23.00."),

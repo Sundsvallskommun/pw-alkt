@@ -3,6 +3,7 @@ package se.sundsvall.alkt.service;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandLabel;
 import generated.se.sundsvall.supportmanagement.Measure;
+import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
 import java.util.List;
 import java.util.Optional;
@@ -89,6 +90,22 @@ class ActionErrandServiceTest {
 		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(new Errand().id(ERRAND_ID).stakeholders(List.of(new Stakeholder().role("CONTACT").externalId("contact-id"), new Stakeholder().role("PRIMARY"))).measures(List.of(new Measure().type("EXTERNAL").status("ACTIVE"))));
+
+		assertThatThrownBy(() -> service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessage("Errand 'inspection-id' has no stakeholder with role 'PRIMARY'");
+
+		verify(supportManagementIntegrationMock).findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID);
+		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+	}
+
+	@Test
+	void failsWithoutRetryWhenOnlyAPersonOfSignificantInfluenceFollowsTheInspection() {
+		when(supportManagementIntegrationMock.findErrandIdByExternalTag(MUNICIPALITY_ID, NAMESPACE, "inspectionErrandId", ERRAND_ID)).thenReturn(Optional.empty());
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
+			.thenReturn(new Errand().id(ERRAND_ID).assignedUserId("handlaggare")
+				.stakeholders(List.of(new Stakeholder().role("CONTACT").externalId("influence-party-id").parameters(List.of(new Parameter().key("PBI").values(List.of("true"))))))
+				.measures(List.of(new Measure().type("EXTERNAL").status("ACTIVE"))));
 
 		assertThatThrownBy(() -> service.createActionErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.isInstanceOf(NonRetryableException.class)
