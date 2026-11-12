@@ -128,7 +128,7 @@ public final class DecisionBasisMapper {
 			.orElse(Map.of());
 		final var stakeholders = Optional.ofNullable(errand.getStakeholders()).orElse(emptyList());
 		final var applicant = stakeholders.stream().filter(stakeholder -> STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole())).findFirst();
-		final var personsOfInfluence = stakeholders.stream().filter(DecisionBasisMapper::isPersonOfInfluence).toList();
+		final var personsOfInfluence = stakeholders.stream().filter(SupportManagementMapper::isPersonOfSignificantInfluence).toList();
 		final var errandValues = toParameterValues(errand.getParameters());
 		final var address = toPremisesAddress(form, applicant, errandValues);
 		final var referrals = Optional.ofNullable(statements).orElse(emptyList());
@@ -356,10 +356,6 @@ public final class DecisionBasisMapper {
 			.map(ErrandAttachment::getFileName)
 			.filter(StringUtils::isNotBlank)
 			.toList();
-	}
-
-	public static boolean isPersonOfInfluence(final Stakeholder stakeholder) {
-		return "true".equals(toParameterValues(stakeholder.getParameters()).get("PBI"));
 	}
 
 	private static Map<String, Object> toPersonOfInfluence(final Stakeholder person, final Map<String, String> legalIds) {

@@ -12,8 +12,8 @@ import se.sundsvall.alkt.integration.employee.EmployeeIntegration;
 import se.sundsvall.alkt.integration.jsonschema.JsonSchemaIntegration;
 import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
+import se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
-import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper;
 import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Lookups;
 import tools.jackson.databind.node.MissingNode;
 
@@ -90,7 +90,7 @@ public class DecisionBasisService {
 
 	private Map<String, String> legalIdsOfPersonsOfInfluence(final String municipalityId, final Errand errand) {
 		return partyIntegration.findLegalIds(municipalityId, Optional.ofNullable(errand.getStakeholders()).orElse(emptyList()).stream()
-			.filter(DecisionBasisMapper::isPersonOfInfluence)
+			.filter(SupportManagementMapper::isPersonOfSignificantInfluence)
 			.map(Stakeholder::getExternalId)
 			.toList());
 	}
