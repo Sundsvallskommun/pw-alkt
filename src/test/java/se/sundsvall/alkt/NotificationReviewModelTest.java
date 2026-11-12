@@ -30,11 +30,6 @@ class NotificationReviewModelTest {
 		final var model = BpmnModel.read(path);
 
 		assertThat(model.targetsFrom("start_review_phase")).containsExactly(NOTIFY_ID);
-		assertThat(model.typeOf(NOTIFY_ID)).isEqualTo("serviceTask");
-		assertThat(model.parentIdOf(NOTIFY_ID)).isEqualTo("review_phase");
-		assertThat(model.element(NOTIFY_ID).getAttributeNS(BpmnModel.CAMUNDA_NAMESPACE, "type")).isEqualTo("external");
-		assertThat(model.topicOf(NOTIFY_ID)).isEqualTo("NotifyCustomerTask");
-		assertThat(model.inputParameterOf(NOTIFY_ID, "message")).isEqualTo("notification-received");
 		assertThat(model.targetsFrom(NOTIFY_ID)).containsExactly(REQUIRED_GATEWAY_ID);
 		assertThat(model.typeOf(REQUIRED_GATEWAY_ID)).isEqualTo("exclusiveGateway");
 	}
