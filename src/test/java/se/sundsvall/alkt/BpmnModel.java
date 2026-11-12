@@ -123,6 +123,18 @@ final class BpmnModel {
 		return element(id).getAttributeNS(CAMUNDA_NAMESPACE, "topic");
 	}
 
+	/** The value of the named camunda input parameter on the element, or null when it has none. */
+	String inputParameterOf(final String id, final String name) {
+		final var parameters = element(id).getElementsByTagNameNS(CAMUNDA_NAMESPACE, "inputParameter");
+		return IntStream.range(0, parameters.getLength())
+			.mapToObj(parameters::item)
+			.map(Element.class::cast)
+			.filter(parameter -> name.equals(parameter.getAttribute("name")))
+			.map(parameter -> parameter.getTextContent().trim())
+			.findFirst()
+			.orElse(null);
+	}
+
 	/** The ids of the subprocess and every element inside it that is asynchronous before or after. */
 	List<String> asynchronousElementsIn(final String subProcessId) {
 		final var subProcess = element(subProcessId);

@@ -3,6 +3,7 @@ package se.sundsvall.alkt;
 import java.util.List;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.w3c.dom.Element;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class NotificationReviewModelTest {
 
+	private static final String NOTIFY_ID = "external_task_notify_notification_received";
 	private static final String REQUIRED_GATEWAY_ID = "gateway_case_number_required";
 	private static final String GATE_ID = "await_review_completed";
 	private static final String CHECK_ID = "external_task_check_case_number";
@@ -24,11 +26,29 @@ class NotificationReviewModelTest {
 
 	@ParameterizedTest
 	@MethodSource("models")
-	void theReviewOpensWithTheGatewayAndNoStep(final String path) throws Exception {
+	void theReviewOpensWithTheReceivedMessageAndThenTheGateway(final String path) throws Exception {
 		final var model = BpmnModel.read(path);
 
-		assertThat(model.targetsFrom("start_review_phase")).containsExactly(REQUIRED_GATEWAY_ID);
+		assertThat(model.targetsFrom("start_review_phase")).containsExactly(NOTIFY_ID);
+		assertThat(model.typeOf(NOTIFY_ID)).isEqualTo("serviceTask");
+		assertThat(model.parentIdOf(NOTIFY_ID)).isEqualTo("review_phase");
+		assertThat(model.element(NOTIFY_ID).getAttributeNS(BpmnModel.CAMUNDA_NAMESPACE, "type")).isEqualTo("external");
+		assertThat(model.topicOf(NOTIFY_ID)).isEqualTo("NotifyCustomerTask");
+		assertThat(model.inputParameterOf(NOTIFY_ID, "message")).isEqualTo("notification-received");
+		assertThat(model.targetsFrom(NOTIFY_ID)).containsExactly(REQUIRED_GATEWAY_ID);
 		assertThat(model.typeOf(REQUIRED_GATEWAY_ID)).isEqualTo("exclusiveGateway");
+	}
+
+	@ParameterizedTest
+	@MethodSource("models")
+	void aSkippedReceivedMessageGoesOnToTheGateway(final String path) throws Exception {
+		final var model = BpmnModel.read(path);
+		final var boundary = model.boundaryOf(NOTIFY_ID);
+		final var errorRef = ((Element) boundary.getElementsByTagNameNS(BpmnModel.BPMN_NAMESPACE, "errorEventDefinition").item(0)).getAttribute("errorRef");
+
+		assertThat(errorRef).isEqualTo("error_step_skipped");
+		assertThat(model.element(errorRef).getAttribute("errorCode")).isEqualTo("step_skipped");
+		assertThat(model.targetsFrom(boundary.getAttribute("id"))).containsExactly(REQUIRED_GATEWAY_ID);
 	}
 
 	@ParameterizedTest
