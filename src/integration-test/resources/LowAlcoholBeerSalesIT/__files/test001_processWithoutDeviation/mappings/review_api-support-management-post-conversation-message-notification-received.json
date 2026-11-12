@@ -1,0 +1,42 @@
+{
+	"name": "review_api-support-management-post-conversation-message-notification-received",
+	"scenarioName": "customer-messages",
+	"requiredScenarioState": "Started",
+	"newScenarioState": "notification-received-sent",
+	"request": {
+		"method": "POST",
+		"urlPath": "/api-support-management/2281/ALKT/errands/1e7d4b90-5c82-4f37-a6e1-9b0c2d8a3f56/communication/conversations/4e8a2c6d-1f3b-4a5c-9d7e-0b2f4a6c8e1d/messages",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			},
+			"X-Trigger-Process": {
+				"equalTo": "false"
+			}
+		},
+		"multipartPatterns": [
+			{
+				"matchingType": "ALL",
+				"headers": {
+					"Content-Disposition": {
+						"contains": "name=\"message\""
+					},
+					"Content-Type": {
+						"contains": "application/json"
+					}
+				},
+				"bodyPatterns": [
+					{
+						"equalToJson": {
+							"content": "Vi har tagit emot din anmälan. Du får ett nytt meddelande när anmälan är registrerad. Det här meddelandet är skickat automatiskt och behöver inte besvaras.",
+							"attachmentIds": []
+						}
+					}
+				]
+			}
+		]
+	},
+	"response": {
+		"status": 204
+	}
+}

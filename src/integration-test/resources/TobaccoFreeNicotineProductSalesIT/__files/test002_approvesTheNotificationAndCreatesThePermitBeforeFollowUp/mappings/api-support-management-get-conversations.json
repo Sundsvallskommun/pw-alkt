@@ -1,0 +1,31 @@
+{
+	"name": "api-support-management-get-conversations",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3b7e2c91-5d4a-4e8f-a1c6-9f0d2b8e7a54/communication/conversations",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"id": "4e8a2c6d-1f3b-4a5c-9d7e-0b2f4a6c8e1d",
+				"topic": "Mina Sidor",
+				"type": "EXTERNAL",
+				"participants": [
+					{
+						"type": "partyId",
+						"value": "8f3a2b1c-4d5e-4f60-9a7b-8c9d0e1f2a3b"
+					}
+				]
+			}
+		],
+		"status": 200
+	}
+}
