@@ -3,6 +3,7 @@ package apptest;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
@@ -21,6 +22,7 @@ import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/CateringOccasionIT/", classes = Application.class, sharedContext = false)
+@TestPropertySource(properties = "camunda.worker.max.retries=0")
 class CateringOccasionIT extends AbstractOperatonAppTest {
 
 	private static final String ERRAND_ID = "9696b9e6-6753-48ca-aa9d-cd1ca7f18d70";
@@ -59,6 +61,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				// Review - in Sundsvall without a case worker
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Notify customer notification received", "external_task_notify_notification_received"),
 				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 
@@ -72,6 +75,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("Start decision phase", "start_decision_phase"),
 				tuple("Create decision", "external_task_create_decision"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up - the first phase this model parks in
@@ -121,6 +125,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Notify customer notification received", "external_task_notify_notification_received"),
 				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
@@ -130,6 +135,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("Start decision phase", "start_decision_phase"),
 				tuple("Create decision", "external_task_create_decision"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Parked here: the follow up phase has not ended, so neither it nor its catch event is in the route yet
@@ -162,6 +168,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			tuple("End registration phase", "end_registration_phase"),
 			tuple("Review", "review_phase"),
 			tuple("Start review phase", "start_review_phase"),
+			tuple("Notify customer notification received", "external_task_notify_notification_received"),
 			tuple("Case number required?", "gateway_case_number_required"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
@@ -171,6 +178,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 			tuple("Start decision phase", "start_decision_phase"),
 			tuple("Create decision", "external_task_create_decision"),
 			tuple("Create asset", "external_task_create_asset"),
+			tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 			tuple("End decision phase", "end_decision_phase"),
 			tuple("Follow up", "follow_up_phase"),
 			tuple("Start follow up phase", "start_follow_up_phase"),
@@ -179,7 +187,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test004_errandWithoutPermitHolderLeavesAnIncidentBeforeTheDecision() throws JacksonException {
-		// The errand has no stakeholder with role PRIMARY
+		// The errand has no stakeholder with role PRIMARY, so the notice that the notification was received is skipped at once
 		final var processInstanceId = startProcess(ERRAND_ID, CATERING_OCCASION.getKey());
 
 		// A case worker created the errand, so it waits in the registration
@@ -214,6 +222,7 @@ class CateringOccasionIT extends AbstractOperatonAppTest {
 				tuple("Check case number required", "external_task_check_case_number_required"),
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Notify customer notification received", "external_task_notify_notification_received"),
 				tuple("Case number required?", "gateway_case_number_required"));
 	}
 }

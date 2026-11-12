@@ -4,12 +4,15 @@ import generated.se.sundsvall.operaton.ExternalTaskDto;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.alkt.api.model.ErrandEvent;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,10 +24,12 @@ import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 
 /**
  * A step that stands on an incident is tried once more when the case worker changes the errand. Catering occasion is
- * used since its first work step raises the incident at once on an errand without a permit holder.
+ * used since its decision step raises the incident at once on an errand without a permit holder. The notice to the
+ * customer before it is skipped, and max.retries=0 skips it without retries.
  */
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/RetryIncidentIT/", classes = Application.class, sharedContext = false)
+@TestPropertySource(properties = "camunda.worker.max.retries=0")
 class RetryIncidentIT extends AbstractOperatonAppTest {
 
 	private static final String ERRAND_ID = "9696b9e6-6753-48ca-aa9d-cd1ca7f18d70";
@@ -62,7 +67,8 @@ class RetryIncidentIT extends AbstractOperatonAppTest {
 
 		assertThat(operatonClient.findIncidents(TENANT_ID_ALKT, CATERING_OCCASION.getKey(), ANY_INCIDENT_TIME))
 			.noneMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId()));
-		wiremock.verify(1, postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack")));
+		wiremock.verify(1, postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack"))
+			.withRequestBody(matchingJsonPath("$.message", containing("Incident in external_task_create_decision"))));
 		verifyAllStubs();
 	}
 }
