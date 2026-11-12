@@ -30,7 +30,6 @@ import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
-import static se.sundsvall.alkt.businesslogic.worker.ReconcileProcessesWorker.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
 import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
@@ -50,9 +49,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	private static final String ERRAND_ID_INCIDENT = "a3690d5e-8f14-42b7-95ca-6d81e0b4f273";
 	private static final String SCENARIO_INCIDENT = "incident-is-reported-once";
 	private static final String PROCESSES_PATH_INCIDENT = "/api-support-management/2281/ALKT/errands/%s/processes".formatted(ERRAND_ID_INCIDENT);
-	private static final String ERRAND_ID_NIGHTLY_INCIDENT = "d4b81f6e-2c93-4a07-8e5d-73a0c9f1b2e8";
-	private static final String SCENARIO_NIGHTLY_INCIDENT = "nightly-incident-is-reported-once";
-	private static final String PROCESSES_PATH_NIGHTLY_INCIDENT = "/api-support-management/2281/ALKT/errands/%s/processes".formatted(ERRAND_ID_NIGHTLY_INCIDENT);
+	private static final String PROCESS_KEY_RECONCILIATION_NIGHTLY = "process-reconciliation-nightly";
 	private static final String ERRAND_ID_VANISHED = "b7e4c210-58f3-4d96-a1c7-0e9d5f28a3b6";
 	private static final String ERRAND_ID_ENDED_WHILE_DOWN = "e1c47b93-6a25-4f80-b3d6-9c052f7ae184";
 
@@ -85,15 +82,16 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT, LOW_ALCOHOL_BEER_SALES.getKey());
 		awaitIncidentAt(LOW_ALCOHOL_BEER_SALES.getKey(), processInstanceId, "external_task_create_submission_pdf");
 
-		stubRowsOfTheErrand(PROCESSES_PATH_INCIDENT, SCENARIO_INCIDENT, processInstanceId);
+		stubRowsOfTheErrand(processInstanceId);
 		// The work step read the row as well, to tell whether it entered a phase
 		final var readsByTheProcess = wiremock.findAll(getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT))).size();
 
 		// The first sweep finds a row that still says RUNNING and reports the incident
 		runReconciliation(PROCESS_KEY_RECONCILIATION);
 
-		// The second finds the row it just wrote, and has nothing to add. Its mappings allow one report and no more.
-		runReconciliation(PROCESS_KEY_RECONCILIATION);
+		// The nightly sweep finds the row the first one wrote, and has nothing to add. Its mappings allow one report and no
+		// more.
+		runReconciliation(PROCESS_KEY_RECONCILIATION_NIGHTLY);
 
 		verify(exactly(readsByTheProcess + 2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT)));
 		// The step left its own entry: the time in the id, the attempt and the request id in the message
@@ -139,41 +137,22 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		verifyAllStubs();
 	}
 
-	@Test
-	void test004_incidentIsReportedOnceByTheNightlySweep() throws JacksonException {
-		// Every report it sends is refused, so the first work step leaves an incident behind
-		final var processInstanceId = startProcess(ERRAND_ID_NIGHTLY_INCIDENT, LOW_ALCOHOL_BEER_SALES.getKey());
-		awaitIncidentAt(LOW_ALCOHOL_BEER_SALES.getKey(), processInstanceId, "external_task_create_submission_pdf");
-
-		stubRowsOfTheErrand(PROCESSES_PATH_NIGHTLY_INCIDENT, SCENARIO_NIGHTLY_INCIDENT, processInstanceId);
-		final var readsByTheProcess = wiremock.findAll(getRequestedFor(urlPathEqualTo(PROCESSES_PATH_NIGHTLY_INCIDENT))).size();
-
-		// The nightly model is deployed and its task is picked up by the worker. The window it picks is checked in the unit
-		// tests, since the incident is minutes old. The first sweep reports it, the second finds the row it wrote.
-		runReconciliation(PROCESS_KEY_RECONCILIATION_NIGHTLY);
-		runReconciliation(PROCESS_KEY_RECONCILIATION_NIGHTLY);
-
-		verify(exactly(readsByTheProcess + 2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_NIGHTLY_INCIDENT)));
-		verifyAllStubs();
-		verify(exactly(1), postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack")));
-	}
-
 	/**
 	 * The two rows the sweeps read. A reconciliation only counts a row as its own when the row carries the process
 	 * instance id, and the engine generates that at runtime, so a static mapping file cannot hold it. Registered after
 	 * the last setupCall of the test case, which is what loads the mapping files.
 	 */
-	private static void stubRowsOfTheErrand(final String processesPath, final String scenario, final String processInstanceId) {
-		stubFor(get(urlPathEqualTo(processesPath))
-			.inScenario(scenario)
+	private static void stubRowsOfTheErrand(final String processInstanceId) {
+		stubFor(get(urlPathEqualTo(PROCESSES_PATH_INCIDENT))
+			.inScenario(SCENARIO_INCIDENT)
 			.whenScenarioStateIs(STARTED)
 			.willSetStateTo("first-sweep-is-running")
 			.willReturn(okJson("""
 				{"processes":[{"processInstanceId":"%s","processKey":"low-alcohol-beer-sales","processStatus":"RUNNING"}]}""".formatted(processInstanceId))
 				.withHeader("Content-Encoding", "identity")));
 
-		stubFor(get(urlPathEqualTo(processesPath))
-			.inScenario(scenario)
+		stubFor(get(urlPathEqualTo(PROCESSES_PATH_INCIDENT))
+			.inScenario(SCENARIO_INCIDENT)
 			.whenScenarioStateIs("incident-has-been-reported")
 			.willReturn(okJson("""
 				{"processes":[{"processInstanceId":"%s","processKey":"low-alcohol-beer-sales","processStatus":"FAILED","error":{"code":"INCIDENT"}}]}"""

@@ -36,7 +36,7 @@ class ReconciliationPropertiesTest {
 	void refusesToStartWithoutTheNightlyWindow() {
 		contextRunner.withPropertyValues("reconciliation.lookback=PT2H")
 			.run(context -> assertThat(context).hasFailed()
-				.getFailure().rootCause().hasMessageContaining("nightlyLookback"));
+				.getFailure().rootCause().hasMessageContaining("field 'nightlyLookback'"));
 	}
 
 	@Test

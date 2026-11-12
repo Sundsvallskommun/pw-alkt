@@ -28,7 +28,7 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 	// The only cost of a long lock is that a sweep of a crashed pod is redone later.
 	static final long LOCK_DURATION_IN_MILLISECONDS = 30 * 60 * 1000L;
 
-	public static final String PROCESS_KEY_RECONCILIATION_NIGHTLY = "process-reconciliation-nightly";
+	private static final String PROCESS_KEY_RECONCILIATION_NIGHTLY = "process-reconciliation-nightly";
 
 	private static final Logger LOG = LoggerFactory.getLogger(ReconcileProcessesWorker.class);
 
