@@ -6,6 +6,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.w3c.dom.Element;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static se.sundsvall.alkt.BpmnModel.BPMN_NAMESPACE;
 
 /**
  * A notification that needs no case number passes the review on its own. One that needs a case number waits for
@@ -39,7 +40,7 @@ class NotificationReviewModelTest {
 	void aSkippedReceivedMessageGoesOnToTheGateway(final String path) throws Exception {
 		final var model = BpmnModel.read(path);
 		final var boundary = model.boundaryOf(NOTIFY_ID);
-		final var errorRef = ((Element) boundary.getElementsByTagNameNS(BpmnModel.BPMN_NAMESPACE, "errorEventDefinition").item(0)).getAttribute("errorRef");
+		final var errorRef = ((Element) boundary.getElementsByTagNameNS(BPMN_NAMESPACE, "errorEventDefinition").item(0)).getAttribute("errorRef");
 
 		assertThat(errorRef).isEqualTo("error_step_skipped");
 		assertThat(model.element(errorRef).getAttribute("errorCode")).isEqualTo("step_skipped");
