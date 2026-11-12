@@ -44,18 +44,10 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init();
 		try {
-			sweep(externalTask);
+			processReconciliationService.reconcile(lookbackOf(externalTask));
 			externalTaskService.complete(externalTask);
 		} finally {
 			RequestId.reset();
-		}
-	}
-
-	private void sweep(final ExternalTask externalTask) {
-		try {
-			processReconciliationService.reconcile(lookbackOf(externalTask));
-		} catch (final Exception e) {
-			LOG.error("Reconciliation failed in task {}, the next run of its timer is the retry", sanitizeForLogging(externalTask.getId()), e);
 		}
 	}
 

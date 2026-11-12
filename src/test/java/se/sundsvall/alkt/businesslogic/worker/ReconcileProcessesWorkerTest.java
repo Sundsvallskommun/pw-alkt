@@ -13,7 +13,6 @@ import se.sundsvall.alkt.service.ProcessReconciliationService;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -75,20 +74,5 @@ class ReconcileProcessesWorkerTest {
 		verifyNoMoreInteractions(processReconciliationServiceMock);
 		verify(externalTaskServiceMock).complete(externalTaskMock);
 		verifyNoMoreInteractions(externalTaskServiceMock);
-	}
-
-	/** The next run of the timer is the retry. An incident would only leave an instance standing in the engine. */
-	@Test
-	void completesTheTaskEvenWhenTheSweepFails() {
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_RECONCILIATION_NIGHTLY);
-		doThrow(new IllegalStateException("Support Management is down")).when(processReconciliationServiceMock).reconcile(Duration.ofDays(7));
-
-		worker.execute(externalTaskMock, externalTaskServiceMock);
-
-		verify(processReconciliationServiceMock).reconcile(Duration.ofDays(7));
-		verifyNoMoreInteractions(processReconciliationServiceMock);
-		verify(externalTaskServiceMock).complete(externalTaskMock);
-		verifyNoMoreInteractions(externalTaskServiceMock);
-		assertThat(RequestId.get()).isNull();
 	}
 }
