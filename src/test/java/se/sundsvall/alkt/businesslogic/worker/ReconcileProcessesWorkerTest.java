@@ -17,6 +17,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 
 @ExtendWith(MockitoExtension.class)
 class ReconcileProcessesWorkerTest {
@@ -39,7 +41,7 @@ class ReconcileProcessesWorkerTest {
 
 	@Test
 	void sweepsTheShortWindowForTheFiveMinuteReconciliation() {
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("process-reconciliation");
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_RECONCILIATION);
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
@@ -52,7 +54,7 @@ class ReconcileProcessesWorkerTest {
 
 	@Test
 	void sweepsTheNightlyWindowForTheNightlyReconciliation() {
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("process-reconciliation-nightly");
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_RECONCILIATION_NIGHTLY);
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
@@ -63,10 +65,22 @@ class ReconcileProcessesWorkerTest {
 		assertThat(RequestId.get()).isNull();
 	}
 
+	@Test
+	void sweepsTheShortWindowForAnUnknownReconciliation() {
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("process-reconciliation-weekly");
+
+		worker.execute(externalTaskMock, externalTaskServiceMock);
+
+		verify(processReconciliationServiceMock).reconcile(Duration.ofHours(2));
+		verifyNoMoreInteractions(processReconciliationServiceMock);
+		verify(externalTaskServiceMock).complete(externalTaskMock);
+		verifyNoMoreInteractions(externalTaskServiceMock);
+	}
+
 	/** The next run of the timer is the retry. An incident would only leave an instance standing in the engine. */
 	@Test
 	void completesTheTaskEvenWhenTheSweepFails() {
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("process-reconciliation-nightly");
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(PROCESS_KEY_RECONCILIATION_NIGHTLY);
 		doThrow(new IllegalStateException("Support Management is down")).when(processReconciliationServiceMock).reconcile(Duration.ofDays(7));
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);

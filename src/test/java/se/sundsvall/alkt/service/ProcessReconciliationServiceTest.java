@@ -267,6 +267,28 @@ class ProcessReconciliationServiceTest {
 		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
 	}
 
+	@Test
+	void settlesEndedInstancesWhenTheIncidentsCannotBeFound() {
+		when(operatonClientMock.findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any())).thenThrow(new IllegalStateException("Operaton is down"));
+		mockEndedInstance(StateEnum.COMPLETED);
+		mockErrandProcesses(row("RUNNING", null));
+
+		service.reconcile(LOOKBACK);
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
+	}
+
+	@Test
+	void reportsIncidentsWhenTheEndedInstancesCannotBeFound() {
+		mockIncident(incident());
+		mockErrandProcesses(row("RUNNING", null));
+		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any())).thenThrow(new IllegalStateException("Operaton is down"));
+
+		service.reconcile(LOOKBACK);
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), any());
+	}
+
 	/** Support Management requires occurredAt, but the engine leaves the incident timestamp nullable. */
 	@Test
 	void fallsBackToNowWhenTheIncidentHasNoTimestamp() {

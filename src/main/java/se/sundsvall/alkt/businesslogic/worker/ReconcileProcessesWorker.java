@@ -13,6 +13,8 @@ import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.service.ProcessReconciliationService;
 import se.sundsvall.dept44.requestid.RequestId;
 
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
@@ -27,8 +29,6 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 	// Generous on purpose: a lock that expires mid-sweep hands the task to the other pod, which then sweeps in parallel.
 	// The only cost of a long lock is that a sweep of a crashed pod is redone later.
 	static final long LOCK_DURATION_IN_MILLISECONDS = 30 * 60 * 1000L;
-
-	private static final String PROCESS_KEY_RECONCILIATION_NIGHTLY = "process-reconciliation-nightly";
 
 	private static final Logger LOG = LoggerFactory.getLogger(ReconcileProcessesWorker.class);
 
@@ -60,9 +60,16 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 	}
 
 	private Duration lookbackOf(final ExternalTask externalTask) {
-		if (PROCESS_KEY_RECONCILIATION_NIGHTLY.equals(externalTask.getProcessDefinitionKey())) {
-			return properties.nightlyLookback();
-		}
-		return properties.lookback();
+		final var processKey = externalTask.getProcessDefinitionKey();
+		final var lookback = switch (processKey) {
+			case PROCESS_KEY_RECONCILIATION -> properties.lookback();
+			case PROCESS_KEY_RECONCILIATION_NIGHTLY -> properties.nightlyLookback();
+			case null, default -> {
+				LOG.warn("Task {} belongs to unknown reconciliation process {}, sweeps the window of {}", sanitizeForLogging(externalTask.getId()), sanitizeForLogging(processKey), PROCESS_KEY_RECONCILIATION);
+				yield properties.lookback();
+			}
+		};
+		LOG.info("Reconciliation {} sweeps the last {}", sanitizeForLogging(processKey), lookback);
+		return lookback;
 	}
 }

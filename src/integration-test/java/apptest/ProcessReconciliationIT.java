@@ -29,6 +29,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
@@ -49,7 +50,6 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	private static final String ERRAND_ID_INCIDENT = "a3690d5e-8f14-42b7-95ca-6d81e0b4f273";
 	private static final String SCENARIO_INCIDENT = "incident-is-reported-once";
 	private static final String PROCESSES_PATH_INCIDENT = "/api-support-management/2281/ALKT/errands/%s/processes".formatted(ERRAND_ID_INCIDENT);
-	private static final String PROCESS_KEY_RECONCILIATION_NIGHTLY = "process-reconciliation-nightly";
 	private static final String ERRAND_ID_VANISHED = "b7e4c210-58f3-4d96-a1c7-0e9d5f28a3b6";
 	private static final String ERRAND_ID_ENDED_WHILE_DOWN = "e1c47b93-6a25-4f80-b3d6-9c052f7ae184";
 

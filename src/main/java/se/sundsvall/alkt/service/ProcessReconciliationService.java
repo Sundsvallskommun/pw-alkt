@@ -67,9 +67,18 @@ public class ProcessReconciliationService {
 		this.clock = clock;
 	}
 
+	/** Each half runs on its own, so a failing query in one does not skip the other. */
 	public void reconcile(final Duration lookback) {
-		reportIncidents(lookback);
-		settleEndedInstances(lookback);
+		try {
+			reportIncidents(lookback);
+		} catch (final Exception e) {
+			LOG.error("Could not follow up the incidents of the last {}", lookback, e);
+		}
+		try {
+			settleEndedInstances(lookback);
+		} catch (final Exception e) {
+			LOG.error("Could not settle the instances that ended in the last {}", lookback, e);
+		}
 	}
 
 	/**
