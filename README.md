@@ -196,7 +196,7 @@ type `internal_inspection`, with the checkpoints and observations of the errand.
 parameter raises an incident.
 
 The action errand gets the title `Åtgärdsärende`, status `NEW`, priority `MEDIUM`, and the case worker assigned to
-the inspection as reporter. An inspection without deficiencies or without an assigned case worker sends the process
+the inspection as reporter and assignee. An inspection without deficiencies or without an assigned case worker sends the process
 back to the choice with a refusal in the activity log. An inspection without a permit holder raises an incident.
 
 ### Decision outcomes

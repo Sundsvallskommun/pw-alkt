@@ -44,7 +44,7 @@ class ReconcileProcessesWorkerTest {
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(processReconciliationServiceMock).reconcile(Duration.ofHours(2));
+		verify(processReconciliationServiceMock).reconcile(PROCESS_KEY_RECONCILIATION, Duration.ofHours(2));
 		verifyNoMoreInteractions(processReconciliationServiceMock);
 		verify(externalTaskServiceMock).complete(externalTaskMock);
 		verifyNoMoreInteractions(externalTaskServiceMock);
@@ -57,7 +57,7 @@ class ReconcileProcessesWorkerTest {
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(processReconciliationServiceMock).reconcile(Duration.ofDays(7));
+		verify(processReconciliationServiceMock).reconcile(PROCESS_KEY_RECONCILIATION_NIGHTLY, Duration.ofDays(7));
 		verifyNoMoreInteractions(processReconciliationServiceMock);
 		verify(externalTaskServiceMock).complete(externalTaskMock);
 		verifyNoMoreInteractions(externalTaskServiceMock);
@@ -70,7 +70,7 @@ class ReconcileProcessesWorkerTest {
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(processReconciliationServiceMock).reconcile(Duration.ofHours(2));
+		verify(processReconciliationServiceMock).reconcile("process-reconciliation-weekly", Duration.ofHours(2));
 		verifyNoMoreInteractions(processReconciliationServiceMock);
 		verify(externalTaskServiceMock).complete(externalTaskMock);
 		verifyNoMoreInteractions(externalTaskServiceMock);

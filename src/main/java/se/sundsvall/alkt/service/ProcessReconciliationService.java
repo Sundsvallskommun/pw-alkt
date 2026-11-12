@@ -68,16 +68,16 @@ public class ProcessReconciliationService {
 	}
 
 	/** Each half runs on its own, so a failing query in one does not skip the other. */
-	public void reconcile(final Duration lookback) {
+	public void reconcile(final String processKey, final Duration lookback) {
 		try {
 			reportIncidents(lookback);
 		} catch (final Exception e) {
-			LOG.error("Could not follow up the incidents of the last {}", lookback, e);
+			LOG.error("Reconciliation {} could not follow up the incidents of the last {}", sanitizeForLogging(processKey), lookback, e);
 		}
 		try {
 			settleEndedInstances(lookback);
 		} catch (final Exception e) {
-			LOG.error("Could not settle the instances that ended in the last {}", lookback, e);
+			LOG.error("Reconciliation {} could not settle the instances that ended in the last {}", sanitizeForLogging(processKey), lookback, e);
 		}
 	}
 

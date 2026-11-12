@@ -52,7 +52,7 @@
 							"title": "Matsedel saknas",
 							"description": "Matsedel ska finnas tillgänglig för gästerna",
 							"addedByUser": "handlaggare",
-							"addedByRole": "CASE_WORKER"
+							"addedByRole": "PRIMARY"
 						}
 					],
 					"externalTags": [

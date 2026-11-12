@@ -70,7 +70,6 @@ public final class Constants {
 
 	public static final String STAKEHOLDER_PARAMETER_PBI = "PBI";
 	public static final String STAKEHOLDER_PARAMETER_PBI_ROLE = "PBI_ROLE";
-	public static final String STAKEHOLDER_PARAMETER_PBI_SOURCE = "PBI_SOURCE";
 
 	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
 	public static final String ERRAND_PARAMETER_PREMISES_NAME = "premisesName";

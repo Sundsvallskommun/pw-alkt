@@ -313,10 +313,12 @@ class SupportManagementMapperTest {
 	@Test
 	void isPersonOfSignificantInfluenceTakesTheStakeholderCarryingTheMarking() {
 		final var marked = new Stakeholder().parameters(List.of(new Parameter().key("PBI").values(List.of("true"))));
+		final var markedInCapitals = new Stakeholder().parameters(List.of(new Parameter().key("PBI").values(List.of("TRUE"))));
 		final var unmarked = new Stakeholder().parameters(List.of(new Parameter().key("PBI").values(List.of("false"))));
 		final var otherParameter = new Stakeholder().parameters(List.of(new Parameter().key("PBI_ROLE").values(List.of("Styrelseledamot"))));
 
 		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(marked)).isTrue();
+		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(markedInCapitals)).isTrue();
 		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(unmarked)).isFalse();
 		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(otherParameter)).isFalse();
 		assertThat(SupportManagementMapper.isPersonOfSignificantInfluence(new Stakeholder())).isFalse();

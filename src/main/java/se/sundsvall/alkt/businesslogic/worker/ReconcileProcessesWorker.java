@@ -44,7 +44,7 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 	public void execute(final ExternalTask externalTask, final ExternalTaskService externalTaskService) {
 		RequestId.init();
 		try {
-			processReconciliationService.reconcile(lookbackOf(externalTask));
+			processReconciliationService.reconcile(externalTask.getProcessDefinitionKey(), lookbackOf(externalTask));
 			externalTaskService.complete(externalTask);
 		} finally {
 			RequestId.reset();
@@ -61,7 +61,7 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 				yield properties.lookback();
 			}
 		};
-		LOG.info("Reconciliation {} sweeps the last {}", sanitizeForLogging(processKey), lookback);
+		LOG.debug("Reconciliation {} sweeps the last {}", sanitizeForLogging(processKey), lookback);
 		return lookback;
 	}
 }

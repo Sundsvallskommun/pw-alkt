@@ -42,6 +42,7 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_CODE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRESS;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
+import static se.sundsvall.alkt.Constants.STAKEHOLDER_PARAMETER_PBI_ROLE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.findText;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.isYes;
@@ -372,7 +373,7 @@ public final class DecisionBasisMapper {
 				.map(legalIds::get)
 				.map(DecisionBasisMapper::toHyphenatedIdentity)
 				.orElse(""),
-			"roles", values.getOrDefault("PBI_ROLE", ""),
+			"roles", values.getOrDefault(STAKEHOLDER_PARAMETER_PBI_ROLE, ""),
 			"motivation", toPlainTextLines(values.get("PBI_MOTIVATION")),
 			"knowledgeTest", Map.of(
 				"statusLabel", toLabel(KNOWLEDGE_TEST_STATUSES, shownTest.get(STATUS)),

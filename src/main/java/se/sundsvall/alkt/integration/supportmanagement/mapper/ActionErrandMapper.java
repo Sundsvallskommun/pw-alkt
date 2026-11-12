@@ -16,7 +16,6 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_MUNICIPALITY
 import static se.sundsvall.alkt.Constants.EXTERNAL_TAG_INSPECTION_ERRAND_ID;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_PARAMETER_PBI;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_PARAMETER_PBI_ROLE;
-import static se.sundsvall.alkt.Constants.STAKEHOLDER_PARAMETER_PBI_SOURCE;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.isPermitHolder;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.isPersonOfSignificantInfluence;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toActiveMeasures;
@@ -27,6 +26,8 @@ public final class ActionErrandMapper {
 	private static final String TITLE = "Åtgärdsärende";
 	private static final String STATUS_NEW = "NEW";
 	private static final String CHANNEL_WEB_UI = "WEB_UI";
+	private static final String PBI_PARAMETER_PREFIX = "PBI_";
+	private static final String STAKEHOLDER_PARAMETER_PBI_SOURCE = "PBI_SOURCE";
 	private static final Set<String> PBI_PARAMETERS_CARRIED_OVER = Set.of(STAKEHOLDER_PARAMETER_PBI, STAKEHOLDER_PARAMETER_PBI_ROLE, STAKEHOLDER_PARAMETER_PBI_SOURCE);
 
 	private ActionErrandMapper() {}
@@ -53,7 +54,10 @@ public final class ActionErrandMapper {
 			.actions(null);
 	}
 
-	/** The permit holder whole, and each person of significant influence with the marking alone. */
+	/**
+	 * The permit holder and the persons of significant influence. Of the PBI parameters only the marking, role and source
+	 * follow.
+	 */
 	private static List<Stakeholder> toStakeholders(final Errand inspection) {
 		return Optional.ofNullable(inspection.getStakeholders()).orElse(emptyList()).stream()
 			.filter(stakeholder -> isPermitHolder(stakeholder) || isPersonOfSignificantInfluence(stakeholder))
@@ -62,7 +66,29 @@ public final class ActionErrandMapper {
 	}
 
 	private static Stakeholder toActionErrandStakeholder(final Stakeholder stakeholder) {
-		return isPermitHolder(stakeholder) ? stakeholder : toPersonOfSignificantInfluence(stakeholder);
+		return Optional.of(stakeholder)
+			.filter(SupportManagementMapper::isPermitHolder)
+			.map(ActionErrandMapper::toPermitHolder)
+			.orElseGet(() -> toPersonOfSignificantInfluence(stakeholder));
+	}
+
+	private static Stakeholder toPermitHolder(final Stakeholder stakeholder) {
+		return new Stakeholder()
+			.externalId(stakeholder.getExternalId())
+			.externalIdType(stakeholder.getExternalIdType())
+			.role(stakeholder.getRole())
+			.city(stakeholder.getCity())
+			.organizationName(stakeholder.getOrganizationName())
+			.firstName(stakeholder.getFirstName())
+			.lastName(stakeholder.getLastName())
+			.address(stakeholder.getAddress())
+			.careOf(stakeholder.getCareOf())
+			.zipCode(stakeholder.getZipCode())
+			.country(stakeholder.getCountry())
+			.contactChannels(stakeholder.getContactChannels())
+			.parameters(Optional.ofNullable(stakeholder.getParameters()).orElse(emptyList()).stream()
+				.filter(parameter -> !isPbiParameterLeftBehind(parameter))
+				.toList());
 	}
 
 	private static Stakeholder toPersonOfSignificantInfluence(final Stakeholder stakeholder) {
@@ -78,7 +104,13 @@ public final class ActionErrandMapper {
 				.toList());
 	}
 
-	/** The municipality of the premises the inspection names; none of its own when the inspection names none. */
+	private static boolean isPbiParameterLeftBehind(final Parameter parameter) {
+		return Optional.ofNullable(parameter.getKey())
+			.filter(key -> key.startsWith(PBI_PARAMETER_PREFIX))
+			.filter(key -> !PBI_PARAMETERS_CARRIED_OVER.contains(key))
+			.isPresent();
+	}
+
 	private static List<Parameter> toPremisesMunicipality(final Errand inspection) {
 		return Optional.ofNullable(inspection.getParameters()).orElse(emptyList()).stream()
 			.filter(parameter -> ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID.equals(parameter.getKey()))
