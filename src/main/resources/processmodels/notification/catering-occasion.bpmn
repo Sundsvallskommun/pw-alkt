@@ -158,11 +158,29 @@
       <bpmn:serviceTask id="external_task_create_asset" name="Create asset" camunda:type="external" camunda:topic="CreateAssetTask">
         <bpmn:documentation>Creates the permit in party-assets from the decision.</bpmn:documentation>
         <bpmn:incoming>flow_decision_create_decision_to_create_asset</bpmn:incoming>
-        <bpmn:outgoing>flow_decision_create_asset_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_decision_create_asset_to_notify</bpmn:outgoing>
       </bpmn:serviceTask>
-      <bpmn:sequenceFlow id="flow_decision_create_asset_to_end" sourceRef="external_task_create_asset" targetRef="end_decision_phase" />
+      <bpmn:sequenceFlow id="flow_decision_create_asset_to_notify" sourceRef="external_task_create_asset" targetRef="external_task_notify_notification_registered" />
+      <bpmn:serviceTask id="external_task_notify_notification_registered" name="Notify customer notification registered" camunda:type="external" camunda:topic="NotifyCustomerTask">
+        <bpmn:documentation>Tells the customer, in the external conversation of the errand, that the notification has been registered. The text is the one configured under customer-message.texts with the name in the input parameter.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="message">notification-registered</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_decision_create_asset_to_notify</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_notify_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_decision_notify_to_end" sourceRef="external_task_notify_notification_registered" targetRef="end_decision_phase" />
+      <bpmn:boundaryEvent id="boundary_notify_notification_registered_skipped" name="Notice skipped" attachedToRef="external_task_notify_notification_registered">
+        <bpmn:documentation>Takes the process past the notice once its retries are spent, so a failing notice never holds the errand. The failure is alerted instead of raised as an incident.</bpmn:documentation>
+        <bpmn:outgoing>flow_decision_notify_skipped_to_end</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="errordef_notify_notification_registered_skipped" errorRef="error_step_skipped" />
+      </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="flow_decision_notify_skipped_to_end" sourceRef="boundary_notify_notification_registered_skipped" targetRef="end_decision_phase" />
       <bpmn:endEvent id="end_decision_phase" name="End decision phase">
-        <bpmn:incoming>flow_decision_create_asset_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_decision_notify_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_decision_notify_skipped_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_decision_to_follow_up" sourceRef="decision_phase" targetRef="follow_up_phase" />
@@ -321,9 +339,9 @@
         <dc:Bounds x="420" y="160" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_decision_phase" bpmnElement="end_decision_phase">
-        <dc:Bounds x="572" y="182" width="36" height="36" />
+        <dc:Bounds x="722" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="554" y="225" width="72" height="27" />
+          <dc:Bounds x="704" y="225" width="72" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_start_to_create_decision" bpmnElement="flow_decision_start_to_create_decision">
@@ -334,9 +352,28 @@
         <di:waypoint x="370" y="200" />
         <di:waypoint x="420" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_create_asset_to_end" bpmnElement="flow_decision_create_asset_to_end">
+      <bpmndi:BPMNShape id="BPMNShape_external_task_notify_notification_registered" bpmnElement="external_task_notify_notification_registered">
+        <dc:Bounds x="570" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_boundary_notify_notification_registered_skipped" bpmnElement="boundary_notify_notification_registered_skipped">
+        <dc:Bounds x="602" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="648" y="258" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_create_asset_to_notify" bpmnElement="flow_decision_create_asset_to_notify">
         <di:waypoint x="520" y="200" />
-        <di:waypoint x="572" y="200" />
+        <di:waypoint x="570" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_notify_to_end" bpmnElement="flow_decision_notify_to_end">
+        <di:waypoint x="670" y="200" />
+        <di:waypoint x="722" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_notify_skipped_to_end" bpmnElement="flow_decision_notify_skipped_to_end">
+        <di:waypoint x="620" y="258" />
+        <di:waypoint x="620" y="290" />
+        <di:waypoint x="740" y="290" />
+        <di:waypoint x="740" y="218" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
