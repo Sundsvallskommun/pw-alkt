@@ -40,6 +40,8 @@ class ProcessLogPropertiesTest {
 		assertThat(properties.steps()).containsOnlyKeys(
 			"external_task_create_submission_pdf",
 			"external_task_notify_processing_started",
+			"external_task_notify_notification_received",
+			"external_task_notify_notification_registered",
 			"external_task_check_decision",
 			"external_task_create_decision",
 			"external_task_create_asset",
@@ -70,6 +72,14 @@ class ProcessLogPropertiesTest {
 		assertThat(properties.steps().get("external_task_create_asset").skipped()).isNull();
 		assertThat(properties.steps().get("external_task_create_asset").rejected()).isNull();
 		assertThat(properties.steps().get("external_task_notify_processing_started").skipped()).isNotBlank();
+		assertThat(properties.steps().get("external_task_notify_notification_received").done()).isEqualTo("Kunden har fått besked om att anmälan har tagits emot");
+		assertThat(properties.steps().get("external_task_notify_notification_received").retry()).isNotBlank();
+		assertThat(properties.steps().get("external_task_notify_notification_received").failed()).isNotBlank();
+		assertThat(properties.steps().get("external_task_notify_notification_received").skipped()).isNotBlank();
+		assertThat(properties.steps().get("external_task_notify_notification_registered").done()).isEqualTo("Kunden har fått besked om att anmälan har registrerats");
+		assertThat(properties.steps().get("external_task_notify_notification_registered").retry()).isNotBlank();
+		assertThat(properties.steps().get("external_task_notify_notification_registered").failed()).isNotBlank();
+		assertThat(properties.steps().get("external_task_notify_notification_registered").skipped()).isNotBlank();
 		assertThat(properties.steps().get("external_task_create_submission_pdf").skipped()).isNotBlank();
 		assertThat(properties.steps().get("external_task_create_action_errand").rejected()).isNotBlank();
 		assertThat(properties.steps().get("external_task_check_case_number").rejected()).isEqualTo("Diarienummer från Timrås diarium saknas. Fyll i diarienumret och klicka vidare igen");
