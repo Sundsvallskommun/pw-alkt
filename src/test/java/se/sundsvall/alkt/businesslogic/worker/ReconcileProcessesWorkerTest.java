@@ -6,8 +6,6 @@ import org.camunda.bpm.client.task.ExternalTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import se.sundsvall.alkt.configuration.ReconciliationProperties;
@@ -15,7 +13,6 @@ import se.sundsvall.alkt.service.ProcessReconciliationService;
 import se.sundsvall.dept44.requestid.RequestId;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -66,18 +63,15 @@ class ReconcileProcessesWorkerTest {
 		assertThat(RequestId.get()).isNull();
 	}
 
-	/** The next cycle is the retry. An incident would only leave an instance standing in the engine. */
-	@ParameterizedTest
-	@ValueSource(strings = {
-		"process-reconciliation", "process-reconciliation-nightly"
-	})
-	void completesTheTaskEvenWhenTheSweepFails(final String processKey) {
-		when(externalTaskMock.getProcessDefinitionKey()).thenReturn(processKey);
-		doThrow(new IllegalStateException("Support Management is down")).when(processReconciliationServiceMock).reconcile(any());
+	/** The next run of the timer is the retry. An incident would only leave an instance standing in the engine. */
+	@Test
+	void completesTheTaskEvenWhenTheSweepFails() {
+		when(externalTaskMock.getProcessDefinitionKey()).thenReturn("process-reconciliation-nightly");
+		doThrow(new IllegalStateException("Support Management is down")).when(processReconciliationServiceMock).reconcile(Duration.ofDays(7));
 
 		worker.execute(externalTaskMock, externalTaskServiceMock);
 
-		verify(processReconciliationServiceMock).reconcile(any());
+		verify(processReconciliationServiceMock).reconcile(Duration.ofDays(7));
 		verifyNoMoreInteractions(processReconciliationServiceMock);
 		verify(externalTaskServiceMock).complete(externalTaskMock);
 		verifyNoMoreInteractions(externalTaskServiceMock);

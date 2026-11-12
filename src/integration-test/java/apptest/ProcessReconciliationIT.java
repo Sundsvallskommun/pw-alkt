@@ -27,12 +27,10 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
+import static se.sundsvall.alkt.businesslogic.worker.ReconcileProcessesWorker.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
 import static se.sundsvall.alkt.service.model.ProcessType.LOW_ALCOHOL_BEER_SALES;
@@ -85,11 +83,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	void test001_incidentIsReportedOnce() throws JacksonException {
 		// Every report it sends is refused, so the first work step leaves an incident behind
 		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT, LOW_ALCOHOL_BEER_SALES.getKey());
-
-		await()
-			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, LOW_ALCOHOL_BEER_SALES.getKey(), ANY_INCIDENT_TIME).stream()
-				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
+		awaitIncidentAt(LOW_ALCOHOL_BEER_SALES.getKey(), processInstanceId, "external_task_create_submission_pdf");
 
 		stubRowsOfTheErrand(PROCESSES_PATH_INCIDENT, SCENARIO_INCIDENT, processInstanceId);
 		// The work step read the row as well, to tell whether it entered a phase
@@ -149,21 +143,19 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	void test004_incidentIsReportedOnceByTheNightlySweep() throws JacksonException {
 		// Every report it sends is refused, so the first work step leaves an incident behind
 		final var processInstanceId = startProcess(ERRAND_ID_NIGHTLY_INCIDENT, LOW_ALCOHOL_BEER_SALES.getKey());
-
-		await()
-			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, LOW_ALCOHOL_BEER_SALES.getKey(), ANY_INCIDENT_TIME).stream()
-				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
+		awaitIncidentAt(LOW_ALCOHOL_BEER_SALES.getKey(), processInstanceId, "external_task_create_submission_pdf");
 
 		stubRowsOfTheErrand(PROCESSES_PATH_NIGHTLY_INCIDENT, SCENARIO_NIGHTLY_INCIDENT, processInstanceId);
 		final var readsByTheProcess = wiremock.findAll(getRequestedFor(urlPathEqualTo(PROCESSES_PATH_NIGHTLY_INCIDENT))).size();
 
-		// The first nightly sweep reports the incident, the second finds the row it wrote. Its mappings allow one report.
+		// The nightly model is deployed and its task is picked up by the worker. The window it picks is checked in the unit
+		// tests, since the incident is minutes old. The first sweep reports it, the second finds the row it wrote.
 		runReconciliation(PROCESS_KEY_RECONCILIATION_NIGHTLY);
 		runReconciliation(PROCESS_KEY_RECONCILIATION_NIGHTLY);
 
 		verify(exactly(readsByTheProcess + 2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_NIGHTLY_INCIDENT)));
 		verifyAllStubs();
+		verify(exactly(1), postRequestedFor(urlPathEqualTo("/api-messaging/2281/slack")));
 	}
 
 	/**

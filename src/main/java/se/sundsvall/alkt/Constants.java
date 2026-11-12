@@ -14,7 +14,6 @@ public final class Constants {
 
 	// Outside ProcessType on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
-	public static final String PROCESS_KEY_RECONCILIATION_NIGHTLY = "process-reconciliation-nightly";
 
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";

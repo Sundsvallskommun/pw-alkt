@@ -13,7 +13,6 @@ import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.service.ProcessReconciliationService;
 import se.sundsvall.dept44.requestid.RequestId;
 
-import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.dept44.util.LogUtils.sanitizeForLogging;
 
 /**
@@ -28,6 +27,8 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 	// Generous on purpose: a lock that expires mid-sweep hands the task to the other pod, which then sweeps in parallel.
 	// The only cost of a long lock is that a sweep of a crashed pod is redone later.
 	static final long LOCK_DURATION_IN_MILLISECONDS = 30 * 60 * 1000L;
+
+	public static final String PROCESS_KEY_RECONCILIATION_NIGHTLY = "process-reconciliation-nightly";
 
 	private static final Logger LOG = LoggerFactory.getLogger(ReconcileProcessesWorker.class);
 
@@ -54,7 +55,7 @@ public class ReconcileProcessesWorker implements ExternalTaskHandler {
 		try {
 			processReconciliationService.reconcile(lookbackOf(externalTask));
 		} catch (final Exception e) {
-			LOG.error("Reconciliation failed in task {}, the next cycle is the retry", sanitizeForLogging(externalTask.getId()), e);
+			LOG.error("Reconciliation failed in task {}, the next run of its timer is the retry", sanitizeForLogging(externalTask.getId()), e);
 		}
 	}
 

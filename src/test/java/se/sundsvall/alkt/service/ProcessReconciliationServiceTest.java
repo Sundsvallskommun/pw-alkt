@@ -12,7 +12,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -37,7 +36,6 @@ import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -65,10 +63,10 @@ class ProcessReconciliationServiceTest {
 	private static final String PROCESS_KEY = "alcohol-serving";
 	private static final String PROCESS_DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
 	private static final String EXTERNAL_TASK_ID = UUID.randomUUID().toString();
-	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now().minusMinutes(10);
-	private static final OffsetDateTime END_TIME = OffsetDateTime.now().minusMinutes(3);
-	private static final Duration LOOKBACK = Duration.ofHours(2);
 	private static final Clock NOW = Clock.fixed(Instant.parse("2026-11-11T12:00:00Z"), ZoneOffset.UTC);
+	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now(NOW).minusMinutes(10);
+	private static final OffsetDateTime END_TIME = OffsetDateTime.now(NOW).minusMinutes(3);
+	private static final Duration LOOKBACK = Duration.ofHours(2);
 
 	@Mock
 	private OperatonClient operatonClientMock;
@@ -89,7 +87,7 @@ class ProcessReconciliationServiceTest {
 		final var processLog = new ProcessLog(new ProcessLogProperties(
 			Map.of("external_task_complete_process", new StepTexts("Processen är avslutad", "Nytt försök görs", "Processen kunde inte avslutas", null, null, null)),
 			Map.of("registration_phase", new PhaseTexts("Registrering har påbörjats")),
-			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock, Clock.systemUTC());
+			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock, NOW);
 		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, processLog, NOW);
 	}
 
@@ -225,18 +223,12 @@ class ProcessReconciliationServiceTest {
 	}
 
 	@Test
-	void looksBackForIncidentsAsFarAsTheGivenWindow() {
+	void looksBackForIncidentsAndEndedInstancesAsFarAsTheGivenWindow() {
 		service.reconcile(Duration.ofHours(2));
 
 		verify(operatonClientMock).findIncidents(TENANT, ALL_PROCESS_KEYS, "2026-11-11T10:00:00.000+0000");
-	}
-
-	@Test
-	void looksBackSevenDaysForIncidentsAndEndedInstancesWithTheNightlyWindow() {
-		service.reconcile(Duration.ofDays(7));
-
-		verify(operatonClientMock).findIncidents(TENANT, ALL_PROCESS_KEYS, "2026-11-04T12:00:00.000+0000");
-		verify(operatonClientMock).findHistoricProcessInstances(TENANT, ALL_PROCESS_KEYS, true, "2026-11-04T12:00:00.000+0000");
+		verify(operatonClientMock).findHistoricProcessInstances(TENANT, ALL_PROCESS_KEYS, true, "2026-11-11T10:00:00.000+0000");
+		verifyNoMoreInteractions(operatonClientMock);
 	}
 
 	@Test
@@ -286,17 +278,10 @@ class ProcessReconciliationServiceTest {
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().activities()).singleElement()
-			.satisfies(activity -> assertThat(activity.getOccurredAt()).isCloseTo(OffsetDateTime.now(), within(1, ChronoUnit.MINUTES)));
+			.satisfies(activity -> assertThat(activity.getOccurredAt()).isEqualTo(OffsetDateTime.now(NOW)));
 	}
 
 	// Ended instances
-
-	@Test
-	void looksBackForEndedInstancesAsFarAsTheGivenWindow() {
-		service.reconcile(Duration.ofHours(2));
-
-		verify(operatonClientMock).findHistoricProcessInstances(TENANT, ALL_PROCESS_KEYS, true, "2026-11-11T10:00:00.000+0000");
-	}
 
 	@Test
 	void settlesAnInstanceThatCompletedWithoutAFinalReport() {
@@ -473,7 +458,7 @@ class ProcessReconciliationServiceTest {
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().activities()).singleElement()
-			.satisfies(activity -> assertThat(activity.getOccurredAt()).isCloseTo(OffsetDateTime.now(), within(1, ChronoUnit.MINUTES)));
+			.satisfies(activity -> assertThat(activity.getOccurredAt()).isEqualTo(OffsetDateTime.now(NOW)));
 	}
 
 	// Helpers

@@ -73,9 +73,8 @@ public class ProcessReconciliationService {
 	}
 
 	/**
-	 * Only incidents raised within the lookback are followed up, so an incident the errand never hears of is
-	 * reported again for that long and then left. One incident failing must not stop the others, so each is handled on its
-	 * own.
+	 * Only incidents raised within the given lookback are followed up. One incident failing must not stop the others, so
+	 * each is handled on its own.
 	 */
 	private void reportIncidents(final Duration lookback) {
 		final var raisedAfter = toStartOf(lookback);

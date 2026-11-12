@@ -211,7 +211,9 @@ back to the choice with a refusal in the activity log. An inspection without a p
 ### Process reconciliation
 
 `process-reconciliation` runs every five minutes in the engine and reports processes that ended or stopped without
-telling Support Management. It is not started by an event.
+telling Support Management, looking back `reconciliation.lookback` (two hours). `process-reconciliation-nightly` does the
+same at 03:02, looking back `reconciliation.nightly-lookback` (seven days), to catch what was missed while Support
+Management was down. Neither is started by an event.
 
 ### Incidents
 

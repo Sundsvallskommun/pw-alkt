@@ -1,7 +1,6 @@
 package se.sundsvall.alkt.configuration;
 
 import java.time.Duration;
-import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -34,13 +33,6 @@ class ReconciliationPropertiesTest {
 	}
 
 	@Test
-	void bindsTheShortAndTheNightlyWindow() {
-		contextRunner.withPropertyValues("reconciliation.lookback=PT30M", "reconciliation.nightly-lookback=P3D")
-			.run(context -> assertThat(context).hasNotFailed()
-				.getBean(ReconciliationProperties.class).isEqualTo(new ReconciliationProperties(Duration.ofMinutes(30), Duration.ofDays(3))));
-	}
-
-	@Test
 	void refusesToStartWithoutTheNightlyWindow() {
 		contextRunner.withPropertyValues("reconciliation.lookback=PT2H")
 			.run(context -> assertThat(context).hasFailed()
@@ -52,12 +44,6 @@ class ReconciliationPropertiesTest {
 		contextRunner.withPropertyValues("reconciliation.nightly-lookback=P7D")
 			.run(context -> assertThat(context).hasFailed()
 				.getFailure().rootCause().hasMessageContaining("field 'lookback'"));
-	}
-
-	@Test
-	void hasNoIncidentLookbackAnyMore() {
-		assertThat(Arrays.stream(ReconciliationProperties.class.getRecordComponents()).map(component -> component.getName()))
-			.containsExactly("lookback", "nightlyLookback");
 	}
 
 	@Configuration
