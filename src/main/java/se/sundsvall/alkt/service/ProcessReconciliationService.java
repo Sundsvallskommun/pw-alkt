@@ -15,7 +15,6 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.service.ProcessLog.Outcome;
@@ -56,32 +55,38 @@ public class ProcessReconciliationService {
 	private final OperatonClient operatonClient;
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final ProcessReportService processReportService;
-	private final ReconciliationProperties properties;
 	private final ProcessLog processLog;
 	private final Clock clock;
 
-	ProcessReconciliationService(final OperatonClient operatonClient, final SupportManagementIntegration supportManagementIntegration, final ProcessReportService processReportService,
-		final ReconciliationProperties properties, final ProcessLog processLog, final Clock clock) {
+	ProcessReconciliationService(final OperatonClient operatonClient, final SupportManagementIntegration supportManagementIntegration, final ProcessReportService processReportService, final ProcessLog processLog,
+		final Clock clock) {
 		this.operatonClient = operatonClient;
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.processReportService = processReportService;
-		this.properties = properties;
 		this.processLog = processLog;
 		this.clock = clock;
 	}
 
-	public void reconcile() {
-		reportIncidents();
-		settleEndedInstances();
+	/** Each half runs on its own, so a failing query in one does not skip the other. */
+	public void reconcile(final String processKey, final Duration lookback) {
+		try {
+			reportIncidents(lookback);
+		} catch (final Exception e) {
+			LOG.error("Reconciliation {} could not follow up the incidents of the last {}", sanitizeForLogging(processKey), lookback, e);
+		}
+		try {
+			settleEndedInstances(lookback);
+		} catch (final Exception e) {
+			LOG.error("Reconciliation {} could not settle the instances that ended in the last {}", sanitizeForLogging(processKey), lookback, e);
+		}
 	}
 
 	/**
-	 * Only incidents raised within the incident lookback are followed up, so an incident the errand never hears of is
-	 * reported again for that long and then left. One incident failing must not stop the others, so each is handled on its
-	 * own.
+	 * Only incidents raised within the given lookback are followed up. One incident failing must not stop the others, so
+	 * each is handled on its own.
 	 */
-	private void reportIncidents() {
-		final var raisedAfter = toStartOf(properties.incidentLookback());
+	private void reportIncidents(final Duration lookback) {
+		final var raisedAfter = toStartOf(lookback);
 		final var incidents = operatonClient.findIncidents(TENANT_ID_ALKT, toProcessDefinitionKeyIn(ProcessType.keys()), raisedAfter);
 		if (!incidents.isEmpty()) {
 			LOG.info("Found {} incidents in tenant {} raised after {}", incidents.size(), TENANT_ID_ALKT, raisedAfter);
@@ -110,8 +115,8 @@ public class ProcessReconciliationService {
 	}
 
 	/** An instance that ended without a final report leaves the errand on RUNNING for good. */
-	private void settleEndedInstances() {
-		final var finishedAfter = toStartOf(properties.lookback());
+	private void settleEndedInstances(final Duration lookback) {
+		final var finishedAfter = toStartOf(lookback);
 		final var instances = operatonClient.findHistoricProcessInstances(TENANT_ID_ALKT, toProcessDefinitionKeyIn(ProcessType.keys()), true, finishedAfter);
 		if (!instances.isEmpty()) {
 			LOG.info("Found {} instances in tenant {} that ended after {}", instances.size(), TENANT_ID_ALKT, finishedAfter);

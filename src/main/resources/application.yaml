@@ -134,7 +134,7 @@ permit-json:
 
 reconciliation:
   lookback: PT2H
-  incident-lookback: P7D
+  nightly-lookback: P7D
   worker:
     enabled: true
 

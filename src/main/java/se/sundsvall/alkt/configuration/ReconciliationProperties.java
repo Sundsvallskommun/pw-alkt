@@ -6,10 +6,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * lookback: how far back in the history of the engine the reconciliation looks for instances that ended.
- * incidentLookback: how long it follows up an incident after it was raised.
+ * lookback: how far back the five-minute reconciliation looks for incidents and instances that ended.
+ * nightlyLookback: how far back the nightly reconciliation looks for the same.
  */
 @Validated
 @ConfigurationProperties("reconciliation")
-public record ReconciliationProperties(@NotNull Duration lookback, @NotNull Duration incidentLookback) {
+public record ReconciliationProperties(@NotNull Duration lookback, @NotNull Duration nightlyLookback) {
 }

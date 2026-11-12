@@ -42,6 +42,39 @@
 					"role": "PRIMARY",
 					"externalIdType": "PRIVATE",
 					"externalId": "8f2a4c6e-1b3d-4e5f-9a7b-0c1d2e3f4a5b"
+				},
+				{
+					"role": "CONTACT",
+					"externalIdType": "PRIVATE",
+					"externalId": "c3e9a1f7-2d4b-4c86-9e05-7b1f3a6d8e24",
+					"firstName": "Karin",
+					"lastName": "Lindqvist",
+					"parameters": [
+						{
+							"key": "PBI",
+							"values": [
+								"true"
+							]
+						},
+						{
+							"key": "PBI_ROLE",
+							"values": [
+								"Styrelseledamot"
+							]
+						},
+						{
+							"key": "PBI_SOURCE",
+							"values": [
+								"COMPANY"
+							]
+						},
+						{
+							"key": "PBI_ASSESSMENT",
+							"values": [
+								"APPROVED"
+							]
+						}
+					]
 				}
 			],
 			"measures": [
@@ -60,7 +93,7 @@
 					"title": "Matsedel saknas",
 					"description": "Matsedel ska finnas tillgänglig för gästerna",
 					"addedByUser": "handlaggare",
-					"addedByRole": "CASE_WORKER",
+					"addedByRole": "PRIMARY",
 					"created": "2026-09-20T10:00:00+02:00"
 				}
 			]

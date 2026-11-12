@@ -42,6 +42,7 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_CODE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRESS;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
+import static se.sundsvall.alkt.Constants.STAKEHOLDER_PARAMETER_PBI_ROLE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.findText;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.isYes;
@@ -128,7 +129,7 @@ public final class DecisionBasisMapper {
 			.orElse(Map.of());
 		final var stakeholders = Optional.ofNullable(errand.getStakeholders()).orElse(emptyList());
 		final var applicant = stakeholders.stream().filter(stakeholder -> STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole())).findFirst();
-		final var personsOfInfluence = stakeholders.stream().filter(DecisionBasisMapper::isPersonOfInfluence).toList();
+		final var personsOfInfluence = stakeholders.stream().filter(SupportManagementMapper::isPersonOfSignificantInfluence).toList();
 		final var errandValues = toParameterValues(errand.getParameters());
 		final var address = toPremisesAddress(form, applicant, errandValues);
 		final var referrals = Optional.ofNullable(statements).orElse(emptyList());
@@ -358,10 +359,6 @@ public final class DecisionBasisMapper {
 			.toList();
 	}
 
-	public static boolean isPersonOfInfluence(final Stakeholder stakeholder) {
-		return "true".equals(toParameterValues(stakeholder.getParameters()).get("PBI"));
-	}
-
 	private static Map<String, Object> toPersonOfInfluence(final Stakeholder person, final Map<String, String> legalIds) {
 		final var values = toParameterValues(person.getParameters());
 		final var tests = toKnowledgeTests(person).values();
@@ -376,7 +373,7 @@ public final class DecisionBasisMapper {
 				.map(legalIds::get)
 				.map(DecisionBasisMapper::toHyphenatedIdentity)
 				.orElse(""),
-			"roles", values.getOrDefault("PBI_ROLE", ""),
+			"roles", values.getOrDefault(STAKEHOLDER_PARAMETER_PBI_ROLE, ""),
 			"motivation", toPlainTextLines(values.get("PBI_MOTIVATION")),
 			"knowledgeTest", Map.of(
 				"statusLabel", toLabel(KNOWLEDGE_TEST_STATUSES, shownTest.get(STATUS)),

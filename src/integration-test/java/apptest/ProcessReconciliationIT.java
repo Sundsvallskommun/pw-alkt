@@ -1,6 +1,7 @@
 package apptest;
 
 import generated.se.sundsvall.operaton.StartProcessInstanceDto;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,10 +27,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION;
+import static se.sundsvall.alkt.Constants.PROCESS_KEY_RECONCILIATION_NIGHTLY;
 import static se.sundsvall.alkt.Constants.TENANT_ID_ALKT;
 import static se.sundsvall.alkt.service.model.ProcessType.CATERING_OCCASION;
 import static se.sundsvall.alkt.service.model.ProcessType.EXTERNAL_INSPECTION;
@@ -57,42 +57,41 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	private String operatonUrl;
 
 	/**
-	 * The timer fires on the clock every fifth minute, and a sweep of its own while a test runs reads the rows once more
-	 * than the test counts. Suspended for the shared engine, then what it may already have started is removed.
+	 * The timers fire on the clock, and a sweep of their own while a test runs reads the rows once more than the test
+	 * counts. Suspended for the shared engine, then what they may already have started is removed.
 	 */
 	@BeforeEach
-	void suspendTheTimer() {
-		RestClient.create().put()
-			.uri(operatonUrl + "/job-definition/suspended")
-			.contentType(APPLICATION_JSON)
-			.body("""
-				{"processDefinitionKey":"%s","processDefinitionTenantId":"%s","suspended":true,"includeJobs":true}""".formatted(PROCESS_KEY_RECONCILIATION, TENANT_ID_ALKT))
-			.retrieve()
-			.toBodilessEntity();
+	void suspendTheTimers() {
+		List.of(PROCESS_KEY_RECONCILIATION, PROCESS_KEY_RECONCILIATION_NIGHTLY).forEach(processKey -> {
+			RestClient.create().put()
+				.uri(operatonUrl + "/job-definition/suspended")
+				.contentType(APPLICATION_JSON)
+				.body("""
+					{"processDefinitionKey":"%s","processDefinitionTenantId":"%s","suspended":true,"includeJobs":true}""".formatted(processKey, TENANT_ID_ALKT))
+				.retrieve()
+				.toBodilessEntity();
 
-		operatonClient.findProcessInstances(null, PROCESS_KEY_RECONCILIATION, TENANT_ID_ALKT)
-			.forEach(instance -> operatonClient.deleteProcessInstance(instance.getId(), false));
+			operatonClient.findProcessInstances(null, processKey, TENANT_ID_ALKT)
+				.forEach(instance -> operatonClient.deleteProcessInstance(instance.getId(), false));
+		});
 	}
 
 	@Test
 	void test001_incidentIsReportedOnce() throws JacksonException {
 		// Every report it sends is refused, so the first work step leaves an incident behind
 		final var processInstanceId = startProcess(ERRAND_ID_INCIDENT, LOW_ALCOHOL_BEER_SALES.getKey());
-
-		await()
-			.atMost(DEFAULT_TESTCASE_TIMEOUT_IN_SECONDS, SECONDS)
-			.until(() -> operatonClient.findIncidents(TENANT_ID_ALKT, LOW_ALCOHOL_BEER_SALES.getKey(), ANY_INCIDENT_TIME).stream()
-				.anyMatch(incident -> processInstanceId.equals(incident.getProcessInstanceId())));
+		awaitIncidentAt(LOW_ALCOHOL_BEER_SALES.getKey(), processInstanceId, "external_task_create_submission_pdf");
 
 		stubRowsOfTheErrand(processInstanceId);
 		// The work step read the row as well, to tell whether it entered a phase
 		final var readsByTheProcess = wiremock.findAll(getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT))).size();
 
 		// The first sweep finds a row that still says RUNNING and reports the incident
-		runReconciliation();
+		runReconciliation(PROCESS_KEY_RECONCILIATION);
 
-		// The second finds the row it just wrote, and has nothing to add. Its mappings allow one report and no more.
-		runReconciliation();
+		// The nightly sweep finds the row the first one wrote, and has nothing to add. Its mappings allow one report and no
+		// more.
+		runReconciliation(PROCESS_KEY_RECONCILIATION_NIGHTLY);
 
 		verify(exactly(readsByTheProcess + 2), getRequestedFor(urlPathEqualTo(PROCESSES_PATH_INCIDENT)));
 		// The step left its own entry: the time in the id, the attempt and the request id in the message
@@ -114,7 +113,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 		awaitProcessState(processInstanceId, "await_registration_completed");
 		operatonClient.deleteProcessInstance(processInstanceId, false);
 
-		runReconciliation();
+		runReconciliation(PROCESS_KEY_RECONCILIATION);
 
 		verifyAllStubs();
 	}
@@ -133,7 +132,7 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 
 		// Support Management is back and never heard the process end
 		wiremock.setScenarioState("support-management-comes-back", "support-management-is-back");
-		runReconciliation();
+		runReconciliation(PROCESS_KEY_RECONCILIATION);
 
 		verifyAllStubs();
 	}
@@ -162,8 +161,8 @@ class ProcessReconciliationIT extends AbstractOperatonAppTest {
 	}
 
 	/** A sweep runs as its own process instance, so the test waits it out before looking at what it sent. */
-	private void runReconciliation() {
-		final var run = operatonClient.startProcessWithTenant(PROCESS_KEY_RECONCILIATION, TENANT_ID_ALKT, new StartProcessInstanceDto());
+	private void runReconciliation(final String processKey) {
+		final var run = operatonClient.startProcessWithTenant(processKey, TENANT_ID_ALKT, new StartProcessInstanceDto());
 
 		awaitProcessCompleted(run.getId());
 	}

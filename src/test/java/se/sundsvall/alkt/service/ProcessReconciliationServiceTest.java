@@ -9,9 +9,9 @@ import generated.se.sundsvall.supportmanagement.ErrandProcess;
 import generated.se.sundsvall.supportmanagement.ProcessError;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,7 +27,6 @@ import se.sundsvall.alkt.configuration.ProcessLogProperties;
 import se.sundsvall.alkt.configuration.ProcessLogProperties.PhaseTexts;
 import se.sundsvall.alkt.configuration.ProcessLogProperties.ProcessTexts;
 import se.sundsvall.alkt.configuration.ProcessLogProperties.StepTexts;
-import se.sundsvall.alkt.configuration.ReconciliationProperties;
 import se.sundsvall.alkt.integration.operaton.OperatonClient;
 import se.sundsvall.alkt.integration.operaton.OperatonIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
@@ -37,7 +36,6 @@ import se.sundsvall.alkt.service.model.ReportTarget;
 import se.sundsvall.dept44.exception.ClientProblem;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -65,8 +63,10 @@ class ProcessReconciliationServiceTest {
 	private static final String PROCESS_KEY = "alcohol-serving";
 	private static final String PROCESS_DEFINITION_ID = "alcohol-serving:1:3c3755ad-b1a7-11f1-af7f-7aca4f79b75a";
 	private static final String EXTERNAL_TASK_ID = UUID.randomUUID().toString();
-	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now().minusMinutes(10);
-	private static final OffsetDateTime END_TIME = OffsetDateTime.now().minusMinutes(3);
+	private static final Clock NOW = Clock.fixed(Instant.parse("2026-11-11T12:00:00Z"), ZoneOffset.UTC);
+	private static final OffsetDateTime INCIDENT_TIMESTAMP = OffsetDateTime.now(NOW).minusMinutes(10);
+	private static final OffsetDateTime END_TIME = OffsetDateTime.now(NOW).minusMinutes(3);
+	private static final Duration LOOKBACK = Duration.ofHours(2);
 
 	@Mock
 	private OperatonClient operatonClientMock;
@@ -87,9 +87,8 @@ class ProcessReconciliationServiceTest {
 		final var processLog = new ProcessLog(new ProcessLogProperties(
 			Map.of("external_task_complete_process", new StepTexts("Processen är avslutad", "Nytt försök görs", "Processen kunde inte avslutas", null, null, null)),
 			Map.of("registration_phase", new PhaseTexts("Registrering har påbörjats")),
-			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock, Clock.systemUTC());
-		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, new ReconciliationProperties(Duration.ofHours(2), Duration.ofDays(7)),
-			processLog, Clock.systemUTC());
+			new ProcessTexts("Avstämd som avslutad", "Avstämd som avbruten")), operatonIntegrationMock, NOW);
+		service = new ProcessReconciliationService(operatonClientMock, supportManagementIntegrationMock, processReportServiceMock, processLog, NOW);
 	}
 
 	// Incidents
@@ -102,7 +101,7 @@ class ProcessReconciliationServiceTest {
 		when(processReportServiceMock.processWideSignalsOf(PROCESS_INSTANCE_ID, PROCESS_DEFINITION_ID)).thenReturn(List.of(cancellation));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).processWideSignalsOf(PROCESS_INSTANCE_ID, PROCESS_DEFINITION_ID);
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), reportCaptor.capture());
@@ -130,7 +129,7 @@ class ProcessReconciliationServiceTest {
 		mockIncident(incident());
 		mockErrandProcesses(row("FAILED", "INCIDENT"));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verifyNoInteractions(processReportServiceMock);
 	}
@@ -141,7 +140,7 @@ class ProcessReconciliationServiceTest {
 		mockIncident(incident());
 		mockErrandProcesses(row("RUNNING", null).modified(INCIDENT_TIMESTAMP.plusSeconds(1)));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verifyNoInteractions(processReportServiceMock);
 	}
@@ -151,7 +150,7 @@ class ProcessReconciliationServiceTest {
 		mockIncident(incident());
 		mockErrandProcesses(row("RETRYING", "RETRY").modified(INCIDENT_TIMESTAMP.minusSeconds(1)));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), any());
 	}
@@ -163,7 +162,7 @@ class ProcessReconciliationServiceTest {
 		final var otherInstance = row("FAILED", "INCIDENT").processInstanceId(UUID.randomUUID().toString());
 		mockErrandProcesses(row("FAILED", "TERMINATED"), row("FAILED", null), otherInstance);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), any());
 	}
@@ -173,7 +172,7 @@ class ProcessReconciliationServiceTest {
 		mockIncident(incident());
 		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), any());
 	}
@@ -183,7 +182,7 @@ class ProcessReconciliationServiceTest {
 		mockIncident(incident().incidentType("failedJob"));
 		mockErrandProcesses(row("RUNNING", null));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
 	}
@@ -193,7 +192,7 @@ class ProcessReconciliationServiceTest {
 		mockIncident(incident());
 		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verifyNoInteractions(processReportServiceMock);
 	}
@@ -205,7 +204,7 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("RUNNING", null));
 		doThrow(new ClientProblem(HttpStatus.CONFLICT, "Process life over")).when(processReportServiceMock).report(any(ReportTarget.class), any());
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), any());
 	}
@@ -218,20 +217,18 @@ class ProcessReconciliationServiceTest {
 			variable(PROCESS_VARIABLE_REQUEST_ID, "abc"),
 			variable(PROCESS_VARIABLE_ERRAND_ID, null)));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
 	}
 
 	@Test
-	void looksBackAsFarAsConfiguredForIncidents() {
-		final var captor = ArgumentCaptor.forClass(String.class);
+	void looksBackForIncidentsAndEndedInstancesAsFarAsTheGivenWindow() {
+		service.reconcile("process-reconciliation", Duration.ofHours(2));
 
-		service.reconcile();
-
-		verify(operatonClientMock).findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), captor.capture());
-		final var raisedAfter = OffsetDateTime.parse(captor.getValue(), DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
-		assertThat(raisedAfter).isCloseTo(OffsetDateTime.now().minusDays(7), within(1, ChronoUnit.MINUTES));
+		verify(operatonClientMock).findIncidents(TENANT, ALL_PROCESS_KEYS, "2026-11-11T10:00:00.000+0000");
+		verify(operatonClientMock).findHistoricProcessInstances(TENANT, ALL_PROCESS_KEYS, true, "2026-11-11T10:00:00.000+0000");
+		verifyNoMoreInteractions(operatonClientMock);
 	}
 
 	@Test
@@ -239,7 +236,7 @@ class ProcessReconciliationServiceTest {
 		when(operatonClientMock.findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any())).thenReturn(List.of(incident()));
 		when(operatonClientMock.getHistoricProcessInstance(PROCESS_INSTANCE_ID)).thenReturn(Optional.empty());
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
 	}
@@ -254,7 +251,7 @@ class ProcessReconciliationServiceTest {
 		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Support Management is down")).when(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), any());
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), any());
 		verify(processReportServiceMock).report(eq(target(secondInstanceId, EXTERNAL_TASK_ID)), any());
@@ -262,12 +259,34 @@ class ProcessReconciliationServiceTest {
 
 	@Test
 	void doesNothingWithoutIncidentsOrEndedInstances() {
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(operatonClientMock).findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any());
 		verify(operatonClientMock).findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any());
 		verifyNoMoreInteractions(operatonClientMock);
 		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
+	}
+
+	@Test
+	void settlesEndedInstancesWhenTheIncidentsCannotBeFound() {
+		when(operatonClientMock.findIncidents(eq(TENANT), eq(ALL_PROCESS_KEYS), any())).thenThrow(new IllegalStateException("Operaton is down"));
+		mockEndedInstance(StateEnum.COMPLETED);
+		mockErrandProcesses(row("RUNNING", null));
+
+		service.reconcile("process-reconciliation", LOOKBACK);
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
+	}
+
+	@Test
+	void reportsIncidentsWhenTheEndedInstancesCannotBeFound() {
+		mockIncident(incident());
+		mockErrandProcesses(row("RUNNING", null));
+		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any())).thenThrow(new IllegalStateException("Operaton is down"));
+
+		service.reconcile("process-reconciliation", LOOKBACK);
+
+		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, EXTERNAL_TASK_ID)), any());
 	}
 
 	/** Support Management requires occurredAt, but the engine leaves the incident timestamp nullable. */
@@ -277,25 +296,14 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("RUNNING", null));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().activities()).singleElement()
-			.satisfies(activity -> assertThat(activity.getOccurredAt()).isCloseTo(OffsetDateTime.now(), within(1, ChronoUnit.MINUTES)));
+			.satisfies(activity -> assertThat(activity.getOccurredAt()).isEqualTo(OffsetDateTime.now(NOW)));
 	}
 
 	// Ended instances
-
-	@Test
-	void looksBackAsFarAsConfiguredForEndedInstances() {
-		final var captor = ArgumentCaptor.forClass(String.class);
-
-		service.reconcile();
-
-		verify(operatonClientMock).findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), captor.capture());
-		final var finishedAfter = OffsetDateTime.parse(captor.getValue(), DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ"));
-		assertThat(finishedAfter).isCloseTo(OffsetDateTime.now().minusHours(2), within(1, ChronoUnit.MINUTES));
-	}
 
 	@Test
 	void settlesAnInstanceThatCompletedWithoutAFinalReport() {
@@ -303,7 +311,7 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("RUNNING", null));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
 		final var report = reportCaptor.getValue();
@@ -327,7 +335,7 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("WAITING", null));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().status()).isEqualTo(COMPLETED);
@@ -339,7 +347,7 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("RUNNING", null));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
 		final var report = reportCaptor.getValue();
@@ -363,7 +371,7 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("RUNNING", null));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().status()).isEqualTo(COMPLETED);
@@ -376,7 +384,7 @@ class ProcessReconciliationServiceTest {
 		mockEndedInstance(StateEnum.COMPLETED);
 		mockErrandProcesses(row("COMPLETED", null));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verifyNoInteractions(processReportServiceMock);
 		verify(operatonClientMock, never()).getHistoricActivities(any());
@@ -387,7 +395,7 @@ class ProcessReconciliationServiceTest {
 		mockEndedInstance(StateEnum.EXTERNALLY_TERMINATED);
 		mockErrandProcesses(row("FAILED", "TERMINATED"));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verifyNoInteractions(processReportServiceMock);
 	}
@@ -400,7 +408,7 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("FAILED", "INCIDENT"));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().status()).isEqualTo(COMPLETED);
@@ -413,7 +421,7 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("FAILED", "INCIDENT"));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().status()).isEqualTo(FAILED);
@@ -425,7 +433,7 @@ class ProcessReconciliationServiceTest {
 		mockEndedInstance(StateEnum.EXTERNALLY_TERMINATED);
 		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenThrow(new ClientProblem(HttpStatus.NOT_FOUND, "Not Found"));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verifyNoInteractions(processReportServiceMock);
 	}
@@ -437,7 +445,7 @@ class ProcessReconciliationServiceTest {
 		final var unknown = new HistoricProcessInstanceDto().id(UUID.randomUUID().toString()).processDefinitionKey(PROCESS_KEY);
 		when(operatonClientMock.findHistoricProcessInstances(eq(TENANT), eq(ALL_PROCESS_KEYS), eq(true), any())).thenReturn(List.of(active, unknown));
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(operatonClientMock, never()).getHistoricVariableInstances(any());
 		verifyNoInteractions(supportManagementIntegrationMock, processReportServiceMock);
@@ -453,7 +461,7 @@ class ProcessReconciliationServiceTest {
 		when(supportManagementIntegrationMock.getErrandProcesses(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		doThrow(new ClientProblem(HttpStatus.BAD_GATEWAY, "Support Management is down")).when(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(eq(target(PROCESS_INSTANCE_ID, null)), any());
 		verify(processReportServiceMock).report(eq(target(secondInstanceId, null)), any());
@@ -468,11 +476,11 @@ class ProcessReconciliationServiceTest {
 		mockErrandProcesses(row("RUNNING", null));
 		final var reportCaptor = ArgumentCaptor.forClass(ProcessStateReport.class);
 
-		service.reconcile();
+		service.reconcile("process-reconciliation", LOOKBACK);
 
 		verify(processReportServiceMock).report(any(ReportTarget.class), reportCaptor.capture());
 		assertThat(reportCaptor.getValue().activities()).singleElement()
-			.satisfies(activity -> assertThat(activity.getOccurredAt()).isCloseTo(OffsetDateTime.now(), within(1, ChronoUnit.MINUTES)));
+			.satisfies(activity -> assertThat(activity.getOccurredAt()).isEqualTo(OffsetDateTime.now(NOW)));
 	}
 
 	// Helpers

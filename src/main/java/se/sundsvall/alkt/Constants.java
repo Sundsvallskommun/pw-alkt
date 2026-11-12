@@ -14,6 +14,7 @@ public final class Constants {
 
 	// Outside ProcessType on purpose: it belongs to no errand and must not be startable from an errand event.
 	public static final String PROCESS_KEY_RECONCILIATION = "process-reconciliation";
+	public static final String PROCESS_KEY_RECONCILIATION_NIGHTLY = "process-reconciliation-nightly";
 
 	public static final String PROCESS_VARIABLE_ERRAND_ID = "errandId";
 	public static final String PROCESS_VARIABLE_MUNICIPALITY_ID = "municipalityId";
@@ -66,6 +67,9 @@ public final class Constants {
 
 	public static final String STAKEHOLDER_ROLE_PERMIT_HOLDER = "PRIMARY";
 	public static final String NO_PERMIT_HOLDER_MESSAGE = "Errand '%s' has no stakeholder with role '" + STAKEHOLDER_ROLE_PERMIT_HOLDER + "'";
+
+	public static final String STAKEHOLDER_PARAMETER_PBI = "PBI";
+	public static final String STAKEHOLDER_PARAMETER_PBI_ROLE = "PBI_ROLE";
 
 	public static final String ERRAND_PARAMETER_ASSET_ID = "assetId";
 	public static final String ERRAND_PARAMETER_PREMISES_NAME = "premisesName";

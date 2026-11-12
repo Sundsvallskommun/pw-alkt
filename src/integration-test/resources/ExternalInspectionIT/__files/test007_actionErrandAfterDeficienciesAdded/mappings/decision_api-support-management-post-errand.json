@@ -22,11 +22,21 @@
 					"title": "Åtgärdsärende",
 					"status": "NEW",
 					"priority": "MEDIUM",
+					"channel": "WEB_UI",
 					"reporterUserId": "handlaggare",
+					"assignedUserId": "handlaggare",
 					"description": "Följande brister ska åtgärdas",
 					"labels": [
 						{
 							"id": "a8561314-5335-40db-80a9-b7f426a4baa2"
+						}
+					],
+					"parameters": [
+						{
+							"key": "premisesMunicipalityId",
+							"values": [
+								"2281"
+							]
 						}
 					],
 					"stakeholders": [
@@ -42,7 +52,7 @@
 							"title": "Matsedel saknas",
 							"description": "Matsedel ska finnas tillgänglig för gästerna",
 							"addedByUser": "handlaggare",
-							"addedByRole": "CASE_WORKER"
+							"addedByRole": "PRIMARY"
 						}
 					],
 					"externalTags": [
