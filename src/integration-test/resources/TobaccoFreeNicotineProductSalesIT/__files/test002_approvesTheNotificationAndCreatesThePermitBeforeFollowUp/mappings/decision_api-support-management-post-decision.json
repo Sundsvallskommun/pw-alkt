@@ -45,7 +45,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.description",
-					"equalTo": "Anmälan om försäljning av tobaksfria nikotinprodukter, Kafé Solsidan"
+					"absent": true
 				}
 			},
 			{

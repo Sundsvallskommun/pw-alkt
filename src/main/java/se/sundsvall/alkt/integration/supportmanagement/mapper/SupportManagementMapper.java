@@ -191,7 +191,7 @@ public final class SupportManagementMapper {
 			.orElseGet(() -> Stream.of(stakeholder.getFirstName(), stakeholder.getLastName()).filter(StringUtils::isNotBlank).collect(joining(" ")));
 	}
 
-	public static Decision toAutomaticDecision(final String title, final Errand errand, final LocalDate validFrom, final LocalDate validTo, final OffsetDateTime decidedAt) {
+	public static Decision toAutomaticDecision(final String title, final LocalDate validFrom, final LocalDate validTo, final OffsetDateTime decidedAt) {
 		return new Decision()
 			.type(DECISION_TYPE_PERMIT)
 			.status(DECISION_STATUS_DRAFT)
@@ -200,7 +200,6 @@ public final class SupportManagementMapper {
 			.decidedAt(decidedAt)
 			.outcome(DECISION_OUTCOME_APPROVAL)
 			.title(title)
-			.description(errand.getTitle())
 			.validFrom(validFrom)
 			.validTo(validTo);
 	}
@@ -214,7 +213,6 @@ public final class SupportManagementMapper {
 			.decidedAt(decidedAt)
 			.outcome(DECISION_OUTCOME_APPROVAL)
 			.title(title)
-			.description(errand.getTitle())
 			.parameters(Optional.ofNullable(errand.getParameters()).orElse(emptyList()).stream()
 				.filter(parameter -> !ERRAND_PARAMETERS_OUTSIDE_CHANGE.contains(parameter.getKey()))
 				.toList());

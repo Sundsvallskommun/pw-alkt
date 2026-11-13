@@ -97,7 +97,7 @@ class DecisionServiceTest {
 	@Test
 	void approveAutomaticallyWritesADraftLinksEveryAttachmentAndThenCompletesIt() {
 		when(supportManagementIntegrationMock.getDecisions(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().title("Anmälan om försäljning av folköl, Kafé Solsidan"));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errandWithPermitHolder().title("Empty errand"));
 		when(supportManagementIntegrationMock.createDecision(eq(MUNICIPALITY_ID), eq(NAMESPACE), eq(ERRAND_ID), any())).thenReturn(DECISION_ID);
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new ErrandAttachment().id("first"), new ErrandAttachment().id("second")));
@@ -113,7 +113,7 @@ class DecisionServiceTest {
 		final var draft = decisionCaptor.getAllValues().getFirst();
 		assertThat(draft.getStatus()).isEqualTo("DRAFT");
 		assertThat(draft.getTitle()).isEqualTo("Anmälan om försäljning av folköl");
-		assertThat(draft.getDescription()).isEqualTo("Anmälan om försäljning av folköl, Kafé Solsidan");
+		assertThat(draft.getDescription()).isNull();
 		assertThat(draft.getOutcome()).isEqualTo("APPROVAL");
 		assertThat(draft.getValidFrom()).isEqualTo(LocalDate.of(2026, 3, 29));
 		assertThat(draft.getValidTo()).isNull();
