@@ -115,7 +115,6 @@ class SupportManagementMapperTest {
 	void toChangeDraftCarriesTheChangeOfTheErrandAsAnAutomaticDraft() {
 		final var decidedAt = OffsetDateTime.parse("2026-10-05T10:00:00+02:00");
 		final var errand = new Errand()
-			.title("Ändring av serveringstillstånd, Runt Hörnet")
 			.parameters(List.of(
 				new Parameter().key("assetId").values(List.of("9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d")),
 				new Parameter().key("conditions").values(List.of("Inga villkor")),
@@ -133,7 +132,7 @@ class SupportManagementMapperTest {
 		assertThat(result.getDecidedAt()).isEqualTo(decidedAt);
 		assertThat(result.getOutcome()).isEqualTo("APPROVAL");
 		assertThat(result.getTitle()).isEqualTo("Ändring av serveringstillstånd");
-		assertThat(result.getDescription()).isEqualTo("Ändring av serveringstillstånd, Runt Hörnet");
+		assertThat(result.getDescription()).isNull();
 		assertThat(result.getParameters()).extracting(Parameter::getKey).containsExactly("serveringstid", "uteservering");
 	}
 
@@ -195,7 +194,7 @@ class SupportManagementMapperTest {
 		final var validFrom = LocalDate.of(2026, 9, 24);
 		final var decidedAt = OffsetDateTime.now();
 
-		final var result = SupportManagementMapper.toAutomaticDecision("Anmälan om servering av folköl", new Errand().title("Anmälan om servering av folköl, Kafé Solsidan"), validFrom, null, decidedAt);
+		final var result = SupportManagementMapper.toAutomaticDecision("Anmälan om servering av folköl", validFrom, null, decidedAt);
 
 		assertThat(result.getType()).isEqualTo("PERMIT");
 		assertThat(result.getStatus()).isEqualTo("DRAFT");
@@ -203,7 +202,7 @@ class SupportManagementMapperTest {
 		assertThat(result.getDecidedBy()).isEqualTo("pw-alkt");
 		assertThat(result.getOutcome()).isEqualTo("APPROVAL");
 		assertThat(result.getTitle()).isEqualTo("Anmälan om servering av folköl");
-		assertThat(result.getDescription()).isEqualTo("Anmälan om servering av folköl, Kafé Solsidan");
+		assertThat(result.getDescription()).isNull();
 		assertThat(result.getValidFrom()).isEqualTo(validFrom);
 		assertThat(result.getValidTo()).isNull();
 		assertThat(result.getDecidedAt()).isEqualTo(decidedAt);

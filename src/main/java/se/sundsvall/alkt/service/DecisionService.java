@@ -79,7 +79,7 @@ public class DecisionService {
 
 		final var decisionId = draft.map(Decision::getId)
 			.orElseGet(() -> supportManagementIntegration.createDecision(municipalityId, namespace, errandId,
-				toAutomaticDecision(title, errand, decidedAt.toLocalDate(), validTo.orElse(null), decidedAt)));
+				toAutomaticDecision(title, decidedAt.toLocalDate(), validTo.orElse(null), decidedAt)));
 
 		final var linked = draft.map(Decision::getAttachments).orElse(emptyList()).stream()
 			.map(ErrandAttachment::getId)
