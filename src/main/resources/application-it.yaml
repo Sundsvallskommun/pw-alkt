@@ -8,6 +8,13 @@ reconciliation:
     enabled: false
 action-errand:
   label-id: a8561314-5335-40db-80a9-b7f426a4baa2
+permit-json:
+  alcohol:
+    schema-version: "0.1"
+    decision-key: aot_alcohol_decision
+  tobacco:
+    schema-version: "0.1"
+    decision-key: aot_tobacco_decision
 permit-certificate:
   organization-number: "2120002411"
   department: "Individ- och arbetsmarknadsförvaltningen"
