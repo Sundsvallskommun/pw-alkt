@@ -115,7 +115,6 @@ class SupportManagementMapperTest {
 	void toChangeDraftCarriesTheChangeOfTheErrandAsAnAutomaticDraft() {
 		final var decidedAt = OffsetDateTime.parse("2026-10-05T10:00:00+02:00");
 		final var errand = new Errand()
-			.title("Empty errand")
 			.parameters(List.of(
 				new Parameter().key("assetId").values(List.of("9c8b7a6d-5e4f-4a3b-2c1d-0e9f8a7b6c5d")),
 				new Parameter().key("conditions").values(List.of("Inga villkor")),

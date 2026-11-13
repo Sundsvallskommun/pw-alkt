@@ -43,6 +43,12 @@
 				}
 			},
 			{
+				"matchesJsonPath": {
+					"expression": "$.description",
+					"absent": true
+				}
+			},
+			{
 				"matchesJsonPath": "$.parameters[?(@.key == 'serveringstid' && @.values[0] == 'Servering får ske mellan 11.00 och 02.00.')]"
 			},
 			{
