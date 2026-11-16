@@ -45,7 +45,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.description",
-					"equalTo": "Anmälan om servering av folköl, Kafé Solsidan"
+					"absent": true
 				}
 			},
 			{

@@ -280,7 +280,8 @@ Configuration is crucial for the application to run successfully. Ensure all nec
 
   The version of the schema each permit is written by, as `{municipalityId}_aot_alcohol_party_asset_{version}` or
   `{municipalityId}_aot_tobacco_party_asset_{version}`, and the
-  key of the JSON parameter of the decision. A new version is taken into use by changing it here. The schema must be
+  key of the JSON parameter of the decision. A new version is taken into use by changing it in the configuration of each
+  environment, and the service does not start without these settings. The schema must be
   registered in json-schema for the municipality of the errands.
 
 - **Permit certificate:**
