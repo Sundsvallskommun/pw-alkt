@@ -21,7 +21,7 @@
 				"completedAt": "2026-09-20T10:00:00+02:00",
 				"modified": "2026-09-20T10:00:00+02:00",
 				"title": "Tillsyn av serveringsställe",
-				"type": "serving_permit"
+				"type": "external_inspection"
 			}
 		],
 		"status": 200

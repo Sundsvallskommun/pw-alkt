@@ -287,32 +287,32 @@ class SupportManagementIntegrationTest {
 
 	@Test
 	void getInvestigationJsonAnswersWithTheValueOfTheParameter() {
-		final var parameter = new JsonParameter().key("aot_inspection_internal").value(JsonNodeFactory.instance.objectNode().put("businessName", "Runt Hörnet AB"));
-		when(supportManagementClientMock.getInvestigationJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_inspection_internal"))
+		final var parameter = new JsonParameter().key("aot_internal_inspection_protocol").value(JsonNodeFactory.instance.objectNode().put("businessName", "Runt Hörnet AB"));
+		when(supportManagementClientMock.getInvestigationJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_internal_inspection_protocol"))
 			.thenReturn(ResponseEntity.ok(parameter));
 
-		assertThat(supportManagementIntegration.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_inspection_internal")).isSameAs(parameter.getValue());
+		assertThat(supportManagementIntegration.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_internal_inspection_protocol")).isSameAs(parameter.getValue());
 	}
 
 	@Test
 	void getInvestigationJsonFailsWithoutRetryWhenTheInvestigationHasNone() {
-		final var problem = new ClientProblem(NOT_FOUND, "No JSON parameter with key 'aot_inspection_internal'");
-		when(supportManagementClientMock.getInvestigationJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_inspection_internal")).thenThrow(problem);
+		final var problem = new ClientProblem(NOT_FOUND, "No JSON parameter with key 'aot_internal_inspection_protocol'");
+		when(supportManagementClientMock.getInvestigationJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_internal_inspection_protocol")).thenThrow(problem);
 
-		assertThatThrownBy(() -> supportManagementIntegration.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_inspection_internal"))
+		assertThatThrownBy(() -> supportManagementIntegration.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_internal_inspection_protocol"))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessageStartingWith("Investigation 'investigation-id' of errand '%s' has no JSON parameter 'aot_inspection_internal'".formatted(ERRAND_ID))
+			.hasMessageStartingWith("Investigation 'investigation-id' of errand '%s' has no JSON parameter 'aot_internal_inspection_protocol'".formatted(ERRAND_ID))
 			.hasCause(problem);
 	}
 
 	@Test
 	void getInvestigationJsonFailsWithoutRetryWhenTheParameterHasNoValue() {
-		when(supportManagementClientMock.getInvestigationJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_inspection_internal"))
-			.thenReturn(ResponseEntity.ok(new JsonParameter().key("aot_inspection_internal")));
+		when(supportManagementClientMock.getInvestigationJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_internal_inspection_protocol"))
+			.thenReturn(ResponseEntity.ok(new JsonParameter().key("aot_internal_inspection_protocol")));
 
-		assertThatThrownBy(() -> supportManagementIntegration.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_inspection_internal"))
+		assertThatThrownBy(() -> supportManagementIntegration.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "aot_internal_inspection_protocol"))
 			.isInstanceOf(NonRetryableException.class)
-			.hasMessage("JSON parameter 'aot_inspection_internal' of investigation 'investigation-id' of errand '%s' has no value".formatted(ERRAND_ID));
+			.hasMessage("JSON parameter 'aot_internal_inspection_protocol' of investigation 'investigation-id' of errand '%s' has no value".formatted(ERRAND_ID));
 	}
 
 	@Test

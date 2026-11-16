@@ -7,15 +7,15 @@
 			}
 		},
 		"method": "GET",
-		"urlPath": "/api-support-management/2281/ALKT/errands/4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345/investigations/6c1e3a5f-8b2d-4c7e-9f0a-1d2e3f4a5b6c/json-parameters/aot_inspection_serving_permit"
+		"urlPath": "/api-support-management/2281/ALKT/errands/4f8a1d62-3b07-4e94-a1c5-7d2f6b9e0345/investigations/6c1e3a5f-8b2d-4c7e-9f0a-1d2e3f4a5b6c/json-parameters/aot_external_inspection_protocol"
 	},
 	"response": {
 		"headers": {
 			"Content-Type": "application/json"
 		},
 		"jsonBody": {
-			"key": "aot_inspection_serving_permit",
-			"schemaId": "2281_aot_inspection_serving_permit_1.0",
+			"key": "aot_external_inspection_protocol",
+			"schemaId": "2281_aot_external_inspection_protocol_1.0",
 			"value": {
 				"permitHolderName": "Runt Hörnet AB"
 			}

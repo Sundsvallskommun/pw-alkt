@@ -22,8 +22,8 @@ public class InspectionProtocolService {
 
 	private static final String INVESTIGATION_STATUS_COMPLETED = "COMPLETED";
 	private static final Map<String, Protocol> PROTOCOLS_BY_INVESTIGATION_TYPE = Map.of(
-		"serving_permit", new Protocol("serving-inspection-protocol", "aot_inspection_serving_permit"),
-		"internal_inspection", new Protocol("internal-inspection-protocol", "aot_inspection_internal"));
+		"external_inspection", new Protocol("aot-external-inspection-protocol", "aot_external_inspection_protocol"),
+		"internal_inspection", new Protocol("aot-internal-inspection-protocol", "aot_internal_inspection_protocol"));
 
 	/** The template of a protocol, and the key of the JSON parameter of the investigation that holds its answers. */
 	private record Protocol(String template, String answersKey) {}

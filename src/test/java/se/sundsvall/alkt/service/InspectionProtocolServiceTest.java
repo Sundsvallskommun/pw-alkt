@@ -40,9 +40,9 @@ class InspectionProtocolServiceTest {
 	private static final String MUNICIPALITY_ID = "2281";
 	private static final String NAMESPACE = "ALKT";
 	private static final String ERRAND_ID = "errand-id";
-	private static final String TEMPLATE = "internal-inspection-protocol";
+	private static final String TEMPLATE = "aot-internal-inspection-protocol";
 	private static final String INVESTIGATION_ID = "investigation-id";
-	private static final String ANSWERS_KEY = "aot_inspection_internal";
+	private static final String ANSWERS_KEY = "aot_internal_inspection_protocol";
 	private static final String ERRAND_NUMBER = "AOT-26100148";
 	private static final String FILE_NAME = "Tillsynsprotokoll AOT-26100148.pdf";
 	private static final OffsetDateTime CREATED = OffsetDateTime.parse("2026-09-15T09:00:00+02:00");
@@ -103,16 +103,16 @@ class InspectionProtocolServiceTest {
 	}
 
 	@Test
-	void createsTheProtocolOfAServingPermitFromItsOwnAnswers() {
+	void createsTheProtocolOfAnExternalInspectionFromItsOwnAnswers() {
 		final var expectedParameters = Map.of("guestCount", "40", "measures", CHECKPOINT_ROWS, "orderWithoutRemarks", "true", "caseNumber", ERRAND_NUMBER);
-		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type("serving_permit")));
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type("external_inspection")));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
-		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_inspection_serving_permit"))
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_external_inspection_protocol"))
 			.thenReturn(json("""
 				{ "guestCount": "40" }
 				"""));
-		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, "serving-inspection-protocol", expectedParameters)).thenReturn(PDF);
+		when(templatingIntegrationMock.renderPdf(MUNICIPALITY_ID, "aot-external-inspection-protocol", expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
 
 		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
@@ -120,15 +120,15 @@ class InspectionProtocolServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_inspection_serving_permit");
-		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, "serving-inspection-protocol", expectedParameters);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_external_inspection_protocol");
+		verify(templatingIntegrationMock).renderPdf(MUNICIPALITY_ID, "aot-external-inspection-protocol", expectedParameters);
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF);
 	}
 
 	/** The case worker fills in the protocol, so one not filled in waits for the case worker, not for a retry. */
 	@Test
 	void failsWithoutRetryAndUploadsNothingWhenTheInvestigationHasNoAnswers() {
-		final var problem = new NonRetryableException("Investigation 'investigation-id' of errand 'errand-id' has no JSON parameter 'aot_inspection_internal'");
+		final var problem = new NonRetryableException("Investigation 'investigation-id' of errand 'errand-id' has no JSON parameter 'aot_internal_inspection_protocol'");
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation()));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(sundsvallErrand());
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
@@ -268,7 +268,7 @@ class InspectionProtocolServiceTest {
 	@ParameterizedTest
 	@NullSource
 	@ValueSource(strings = {
-		"", "external_inspection"
+		"", "serving_permit"
 	})
 	void failsWithoutRetryWhenTheInvestigationTypeNamesNoProtocol(final String type) {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type(type)));
@@ -282,7 +282,7 @@ class InspectionProtocolServiceTest {
 	}
 
 	@Test
-	void rendersTheServingProtocolWithItsOrderInTimra() {
+	void rendersTheExternalInspectionProtocolWithItsOrderInTimra() {
 		final var errand = new Errand().id(ERRAND_ID).errandNumber(ERRAND_NUMBER)
 			.parameters(List.of(
 				new Parameter().key("premisesMunicipalityId").values(List.of("2262")),
@@ -290,11 +290,11 @@ class InspectionProtocolServiceTest {
 			.measures(List.of(CHECKPOINT,
 				new Measure().type("OBSERVATION").status("ACTIVE").title("Uteservering").result("NOT_COMPLETED").resultText("Smoking").created(CREATED)));
 		final var expectedParameters = Map.of("measures", CHECKPOINT_ROWS, "observationSmokingOutdoor", "X", "orderWithRemarks", "true", "caseNumber", "KS 2026/00123");
-		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type("serving_permit")));
+		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(completedInvestigation().type("external_inspection")));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
-		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_inspection_serving_permit")).thenReturn(json("{}"));
-		when(templatingIntegrationMock.renderPdf("2262", "serving-inspection-protocol", expectedParameters)).thenReturn(PDF);
+		when(supportManagementIntegrationMock.getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_external_inspection_protocol")).thenReturn(json("{}"));
+		when(templatingIntegrationMock.renderPdf("2262", "aot-external-inspection-protocol", expectedParameters)).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll KS 2026-00123.pdf", PDF)).thenReturn("attachment-id");
 
 		assertThat(service.createProtocol(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).isEqualTo("attachment-id");
@@ -302,8 +302,8 @@ class InspectionProtocolServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
-		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_inspection_serving_permit");
-		verify(templatingIntegrationMock).renderPdf("2262", "serving-inspection-protocol", expectedParameters);
+		verify(supportManagementIntegrationMock).getInvestigationJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, INVESTIGATION_ID, "aot_external_inspection_protocol");
+		verify(templatingIntegrationMock).renderPdf("2262", "aot-external-inspection-protocol", expectedParameters);
 		verify(supportManagementIntegrationMock).createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "Tillsynsprotokoll KS 2026-00123.pdf", PDF);
 	}
 

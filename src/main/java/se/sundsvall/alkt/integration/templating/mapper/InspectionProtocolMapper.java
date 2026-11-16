@@ -24,7 +24,7 @@ public final class InspectionProtocolMapper {
 	private static final String RESULT_NOT_APPLICABLE = "NOT_APPLICABLE";
 	private static final String MARK = "X";
 	private static final String BOX_TICKED = "true";
-	private static final String SERVING_TEMPLATE = "serving-inspection-protocol";
+	private static final String EXTERNAL_INSPECTION_TEMPLATE = "aot-external-inspection-protocol";
 	private static final String MEASURE_TYPE_OBSERVATION = "OBSERVATION";
 	private static final Map<String, String> PLACES = Map.of(
 		"Serveringsyta inomhus", "Indoor",
@@ -74,7 +74,7 @@ public final class InspectionProtocolMapper {
 			.sorted(Comparator.comparing(Measure::getCreated, nullsLast(Comparator.naturalOrder())))
 			.map(InspectionProtocolMapper::toRow)
 			.toList());
-		if (SERVING_TEMPLATE.equals(template)) {
+		if (EXTERNAL_INSPECTION_TEMPLATE.equals(template)) {
 			parameters.putAll(toOrder(errandId, toActiveMeasures(measures, MEASURE_TYPE_OBSERVATION)));
 		}
 		parameters.put("caseNumber", caseNumber);

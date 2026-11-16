@@ -20,8 +20,8 @@ class InspectionProtocolMapperTest {
 	private static final JsonNode NO_ANSWERS = json("{}");
 	private static final String ERRAND_ID = "errand-id";
 	private static final String CASE_NUMBER = "AOT-26100148";
-	private static final String INTERNAL_TEMPLATE = "internal-inspection-protocol";
-	private static final String SERVING_TEMPLATE = "serving-inspection-protocol";
+	private static final String INTERNAL_TEMPLATE = "aot-internal-inspection-protocol";
+	private static final String EXTERNAL_TEMPLATE = "aot-external-inspection-protocol";
 	private static final OffsetDateTime CREATED = OffsetDateTime.parse("2026-10-01T09:00:00+02:00");
 
 	private static Measure checkpoint(final String title, final String result, final String description) {
@@ -228,7 +228,7 @@ class InspectionProtocolMapperTest {
 	void ticksTheObservedThingsOfAPlaceWithDeficiencies() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "CrowdedTables|Littering"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "observationCrowdedTablesOutdoor", "observationLitteringOutdoor", "orderWithRemarks")
 			.containsEntry("observationCrowdedTablesOutdoor", "X")
@@ -246,7 +246,7 @@ class InspectionProtocolMapperTest {
 	void namesTheCellAfterThePlace(final String label, final String cell) {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place(label, "NOT_COMPLETED", "GlassBreakage"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", cell, "orderWithRemarks").containsEntry(cell, "X");
 	}
@@ -259,7 +259,7 @@ class InspectionProtocolMapperTest {
 	void knowsEveryObservedThing(final String thing) {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Toaletter", "NOT_COMPLETED", thing));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsEntry("observation" + thing + "Toilets", "X");
 	}
@@ -268,14 +268,14 @@ class InspectionProtocolMapperTest {
 	void ticksNothingForAPlaceWithoutDeficiencies() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "COMPLETED", "CrowdedTables|Littering"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
 	}
 
 	@Test
 	void isWithoutRemarksWhenNoPlaceWasAssessed() {
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, List.of(checkpoint("Tillstånd", "COMPLETED", null)), CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
 	}
@@ -285,7 +285,7 @@ class InspectionProtocolMapperTest {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", null),
 			place("Toaletter", "NOT_COMPLETED", "").created(CREATED.plusMinutes(1)));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "orderWithRemarks").containsEntry("orderWithRemarks", "true");
 	}
@@ -294,7 +294,7 @@ class InspectionProtocolMapperTest {
 	void skipsEmptyPartsOfTheObservedThings() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking||"));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "observationSmokingOutdoor", "orderWithRemarks").containsEntry("observationSmokingOutdoor", "X");
 	}
@@ -304,7 +304,7 @@ class InspectionProtocolMapperTest {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null),
 			new Measure().type("OBSERVATION").status("CANCELLED").title("Uteservering").result("NOT_COMPLETED").resultText("Smoking").created(CREATED));
 
-		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
+		final var parameters = InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER);
 
 		assertThat(parameters).containsOnlyKeys("caseNumber", "measures", "orderWithoutRemarks").containsEntry("orderWithoutRemarks", "true");
 	}
@@ -322,7 +322,7 @@ class InspectionProtocolMapperTest {
 	void failsWithoutRetryOnAnUnknownPlaceWithoutDeficiencies() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Bakgården", "COMPLETED", null));
 
-		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has an observation of the place 'Bakgården', which is not among the places of the inspection protocol in pw-alkt");
 	}
@@ -331,7 +331,7 @@ class InspectionProtocolMapperTest {
 	void failsWithoutRetryOnAPlaceWithoutTitle() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place(null, "NOT_COMPLETED", "Smoking"));
 
-		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has an observation of the place 'null', which is not among the places of the inspection protocol in pw-alkt");
 	}
@@ -340,7 +340,7 @@ class InspectionProtocolMapperTest {
 	void failsWithoutRetryOnAnUnknownObservedThing() {
 		final var measures = List.of(checkpoint("Tillstånd", "COMPLETED", null), place("Uteservering", "NOT_COMPLETED", "Smoking|Fireworks"));
 
-		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, SERVING_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
+		assertThatThrownBy(() -> InspectionProtocolMapper.toTemplateParameters(ERRAND_ID, EXTERNAL_TEMPLATE, NO_ANSWERS, measures, CASE_NUMBER))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'errand-id' has observed 'Fireworks' at the place 'Uteservering', which is not among the observations of the inspection protocol in pw-alkt");
 	}
