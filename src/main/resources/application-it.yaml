@@ -42,6 +42,8 @@ permit-certificate:
 customer-message:
   texts:
     processing-started: "Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
+    notification-received: "Vi har tagit emot din anmälan. Du får ett nytt meddelande när anmälan är registrerad. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
+    notification-registered: "Din anmälan är nu registrerad. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."
 process-log:
   steps:
     "[external_task_create_submission_pdf]":
@@ -54,6 +56,16 @@ process-log:
       retry: Beskedet till kunden kunde inte skickas just nu, ett nytt försök görs automatiskt
       failed: Beskedet till kunden kunde inte skickas
       skipped: Beskedet till kunden kunde inte skickas och hoppades över. Kontakta kunden vid behov
+    "[external_task_notify_notification_received]":
+      done: Kunden har fått besked om att anmälan har tagits emot
+      retry: Beskedet till kunden om att anmälan har tagits emot kunde inte skickas just nu, ett nytt försök görs automatiskt
+      failed: Beskedet till kunden om att anmälan har tagits emot kunde inte skickas
+      skipped: Beskedet till kunden om att anmälan har tagits emot kunde inte skickas och hoppades över. Kontakta kunden vid behov
+    "[external_task_notify_notification_registered]":
+      done: Kunden har fått besked om att anmälan har registrerats
+      retry: Beskedet till kunden om att anmälan har registrerats kunde inte skickas just nu, ett nytt försök görs automatiskt
+      failed: Beskedet till kunden om att anmälan har registrerats kunde inte skickas
+      skipped: Beskedet till kunden om att anmälan har registrerats kunde inte skickas och hoppades över. Kontakta kunden vid behov
     "[external_task_check_decision]":
       done: Beslutet i ärendet har kontrollerats
       retry: Beslutet kunde inte kontrolleras just nu, ett nytt försök görs automatiskt

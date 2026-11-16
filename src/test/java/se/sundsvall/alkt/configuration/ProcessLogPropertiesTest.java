@@ -13,9 +13,11 @@ import org.springframework.test.context.ActiveProfiles;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.alkt.configuration.ProcessLogProperties.PhaseTexts;
 import se.sundsvall.alkt.configuration.ProcessLogProperties.ProcessTexts;
+import se.sundsvall.alkt.configuration.ProcessLogProperties.StepTexts;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.assertj.core.api.Assertions.tuple;
 
 @SpringBootTest(classes = Application.class)
 @ActiveProfiles("junit")
@@ -40,6 +42,8 @@ class ProcessLogPropertiesTest {
 		assertThat(properties.steps()).containsOnlyKeys(
 			"external_task_create_submission_pdf",
 			"external_task_notify_processing_started",
+			"external_task_notify_notification_received",
+			"external_task_notify_notification_registered",
 			"external_task_check_decision",
 			"external_task_create_decision",
 			"external_task_create_asset",
@@ -70,6 +74,13 @@ class ProcessLogPropertiesTest {
 		assertThat(properties.steps().get("external_task_create_asset").skipped()).isNull();
 		assertThat(properties.steps().get("external_task_create_asset").rejected()).isNull();
 		assertThat(properties.steps().get("external_task_notify_processing_started").skipped()).isNotBlank();
+		assertThat(properties.steps()).extractingByKeys("external_task_notify_notification_received", "external_task_notify_notification_registered")
+			.extracting(StepTexts::done, StepTexts::skipped)
+			.containsExactly(
+				tuple("Kunden har fått besked om att anmälan har tagits emot",
+					"Beskedet till kunden om att anmälan har tagits emot kunde inte skickas och hoppades över. Kontakta kunden vid behov"),
+				tuple("Kunden har fått besked om att anmälan har registrerats",
+					"Beskedet till kunden om att anmälan har registrerats kunde inte skickas och hoppades över. Kontakta kunden vid behov"));
 		assertThat(properties.steps().get("external_task_create_submission_pdf").skipped()).isNotBlank();
 		assertThat(properties.steps().get("external_task_create_action_errand").rejected()).isNotBlank();
 		assertThat(properties.steps().get("external_task_check_case_number").rejected()).isEqualTo("Diarienummer från Timrås diarium saknas. Fyll i diarienumret och klicka vidare igen");

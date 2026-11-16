@@ -18,7 +18,12 @@ class CustomerMessagePropertiesTest {
 
 	@Test
 	void testProperties() {
-		assertThat(properties.texts()).containsExactly(entry("processing-started",
-			"Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."));
+		assertThat(properties.texts()).containsOnly(
+			entry("processing-started",
+				"Vi har nu börjat handlägga ditt ärende. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."),
+			entry("notification-received",
+				"Vi har tagit emot din anmälan. Du får ett nytt meddelande när anmälan är registrerad. Det här meddelandet är skickat automatiskt och behöver inte besvaras."),
+			entry("notification-registered",
+				"Din anmälan är nu registrerad. Om vi behöver mer information från dig kontaktar vi dig. Det här meddelandet är skickat automatiskt och behöver inte besvaras."));
 	}
 }
