@@ -12,7 +12,7 @@
 			{
 				"matchesJsonPath": {
 					"expression": "$.identifier",
-					"equalTo": "internal-inspection-protocol"
+					"equalTo": "aot-internal-inspection-protocol"
 				}
 			},
 			{

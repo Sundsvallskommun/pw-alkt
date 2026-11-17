@@ -7,15 +7,15 @@
 			}
 		},
 		"method": "GET",
-		"urlPath": "/api-support-management/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7/investigations/6c1e3a5f-8b2d-4c7e-9f0a-1d2e3f4a5b6c/json-parameters/aot_inspection_internal"
+		"urlPath": "/api-support-management/2281/ALKT/errands/8b5c9e04-7f31-4a68-9d2b-0e6a3c1f54d7/investigations/6c1e3a5f-8b2d-4c7e-9f0a-1d2e3f4a5b6c/json-parameters/aot_internal_inspection_protocol"
 	},
 	"response": {
 		"headers": {
 			"Content-Type": "application/json"
 		},
 		"jsonBody": {
-			"key": "aot_inspection_internal",
-			"schemaId": "2281_aot_inspection_internal_1.0",
+			"key": "aot_internal_inspection_protocol",
+			"schemaId": "2281_aot_internal_inspection_protocol_1.0",
 			"value": {
 				"coordinatedWith": [
 					"police",
