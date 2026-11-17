@@ -157,7 +157,7 @@ class InspectionProtocolMapperTest {
 	@CsvSource({
 		"visit, premises, visitInPremises",
 		"visit, closed, visitClosed",
-		"coordinatedWith, none, coordinatedNone",
+		"coordinatedWith, enforcementAuthority, coordinatedEnforcementAuthority",
 		"coordinatedWith, police, coordinatedPolice",
 		"coordinatedWith, taxAgency, coordinatedTaxAgency",
 		"coordinatedWith, rescueService, coordinatedRescueService",

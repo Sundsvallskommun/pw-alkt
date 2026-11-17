@@ -35,7 +35,7 @@ public final class InspectionProtocolMapper {
 		"DancingOnFurniture", "InadequateBoundary", "MissingSeating", "AlcoholOutsideServingArea", "Smoking", "HighNoiseLevel");
 	private static final Map<String, Map<String, String>> CHOICES = Map.of(
 		"visit", Map.of("premises", "visitInPremises", "closed", "visitClosed"),
-		"coordinatedWith", Map.of("none", "coordinatedNone", "police", "coordinatedPolice", "taxAgency", "coordinatedTaxAgency", "rescueService", "coordinatedRescueService",
+		"coordinatedWith", Map.of("enforcementAuthority", "coordinatedEnforcementAuthority", "police", "coordinatedPolice", "taxAgency", "coordinatedTaxAgency", "rescueService", "coordinatedRescueService",
 			"environmentHealth", "coordinatedEnvironmentHealth", "other", "coordinatedOther"),
 		"securityGuard", Map.of("yes", "securityGuardYes", "no", "securityGuardNo"),
 		"entranceHost", Map.of("yes", "entranceHostYes", "no", "entranceHostNo"),
@@ -47,7 +47,8 @@ public final class InspectionProtocolMapper {
 
 	/**
 	 * The placeholders of the protocol: each answer under its key, a ticked box for each choice made, the checkpoints and,
-	 * in the serving protocol, the order. Fails without retry when the answers are not a JSON object, a choice is not one
+	 * in the external inspection protocol, the order. Fails without retry when the answers are not a JSON object, a choice
+	 * is not one
 	 * of the protocol, or there are no active checkpoints.
 	 */
 	public static Map<String, Object> toTemplateParameters(final String errandId, final String template, final JsonNode answers, final List<Measure> measures,
