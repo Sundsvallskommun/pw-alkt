@@ -3,6 +3,7 @@ package apptest;
 import generated.se.sundsvall.operaton.HistoricActivityInstanceDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import se.sundsvall.alkt.Application;
 import se.sundsvall.dept44.test.annotation.wiremock.WireMockAppTestSuite;
 import tools.jackson.core.JacksonException;
@@ -18,6 +19,7 @@ import static se.sundsvall.alkt.service.model.ProcessType.E_CIGARETTE_SALES;
 
 @DirtiesContext
 @WireMockAppTestSuite(files = "classpath:/ECigaretteSalesIT/", classes = Application.class, sharedContext = false)
+@TestPropertySource(properties = "camunda.worker.max.retries=0")
 class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 	private static final String ERRAND_ID = "6d19b3e8-7a24-4f60-9c83-5b0e2d4a8f15";
@@ -68,6 +70,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 				// Review - in Timrå it waits for the case worker, twice, since the first check found no case number
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Notify customer notification received", "external_task_notify_notification_received"),
 				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("Review completed", "await_review_completed"),
 				tuple("Check case number", "external_task_check_case_number"),
@@ -87,6 +90,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 				tuple("Start decision phase", "start_decision_phase"),
 				tuple("Create decision", "external_task_create_decision"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up - no gate between the review and here
@@ -136,6 +140,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Notify customer notification received", "external_task_notify_notification_received"),
 				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
@@ -145,6 +150,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 				tuple("Start decision phase", "start_decision_phase"),
 				tuple("Create decision", "external_task_create_decision"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Parked here: the follow up phase has not ended, so neither it nor its catch event is in the route yet
@@ -177,6 +183,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			tuple("End registration phase", "end_registration_phase"),
 			tuple("Review", "review_phase"),
 			tuple("Start review phase", "start_review_phase"),
+			tuple("Notify customer notification received", "external_task_notify_notification_received"),
 			tuple("Case number required?", "gateway_case_number_required"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
@@ -186,6 +193,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 			tuple("Start decision phase", "start_decision_phase"),
 			tuple("Create decision", "external_task_create_decision"),
 			tuple("Create asset", "external_task_create_asset"),
+			tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 			tuple("End decision phase", "end_decision_phase"),
 			tuple("Follow up", "follow_up_phase"),
 			tuple("Start follow up phase", "start_follow_up_phase"),
@@ -194,7 +202,7 @@ class ECigaretteSalesIT extends AbstractOperatonAppTest {
 
 	@Test
 	void test004_errandWithoutPermitHolderLeavesAnIncidentBeforeTheDecision() throws JacksonException {
-		// The errand has no stakeholder with role PRIMARY
+		// The errand has no stakeholder with role PRIMARY, so the notice that the notification was received is skipped at once
 		final var processInstanceId = startProcess(ERRAND_ID, E_CIGARETTE_SALES.getKey());
 
 		// A case worker created the errand, so it waits in the registration

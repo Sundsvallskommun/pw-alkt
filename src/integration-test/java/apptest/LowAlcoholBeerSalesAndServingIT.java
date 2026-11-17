@@ -48,6 +48,7 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 				// Review - in Sundsvall without a case worker
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Notify customer notification received", "external_task_notify_notification_received"),
 				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 
@@ -61,6 +62,7 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 				tuple("Start decision phase", "start_decision_phase"),
 				tuple("Create decision", "external_task_create_decision"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Follow up - the first phase after the registration to wait
@@ -110,6 +112,7 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 				tuple("End registration phase", "end_registration_phase"),
 				tuple("Review", "review_phase"),
 				tuple("Start review phase", "start_review_phase"),
+				tuple("Notify customer notification received", "external_task_notify_notification_received"),
 				tuple("Case number required?", "gateway_case_number_required"),
 				tuple("End review phase", "end_review_phase"),
 				tuple("Investigation", "investigation_phase"),
@@ -119,6 +122,7 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 				tuple("Start decision phase", "start_decision_phase"),
 				tuple("Create decision", "external_task_create_decision"),
 				tuple("Create asset", "external_task_create_asset"),
+				tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 				tuple("End decision phase", "end_decision_phase"),
 
 				// Parked here: the follow up phase has not ended, so neither it nor its catch event is in the route yet
@@ -151,6 +155,7 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 			tuple("End registration phase", "end_registration_phase"),
 			tuple("Review", "review_phase"),
 			tuple("Start review phase", "start_review_phase"),
+			tuple("Notify customer notification received", "external_task_notify_notification_received"),
 			tuple("Case number required?", "gateway_case_number_required"),
 			tuple("End review phase", "end_review_phase"),
 			tuple("Investigation", "investigation_phase"),
@@ -160,6 +165,7 @@ class LowAlcoholBeerSalesAndServingIT extends AbstractOperatonAppTest {
 			tuple("Start decision phase", "start_decision_phase"),
 			tuple("Create decision", "external_task_create_decision"),
 			tuple("Create asset", "external_task_create_asset"),
+			tuple("Notify customer notification registered", "external_task_notify_notification_registered"),
 			tuple("End decision phase", "end_decision_phase"),
 			tuple("Follow up", "follow_up_phase"),
 			tuple("Start follow up phase", "start_follow_up_phase"),

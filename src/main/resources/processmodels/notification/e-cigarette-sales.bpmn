@@ -58,12 +58,30 @@
       <bpmn:incoming>flow_registration_to_review</bpmn:incoming>
       <bpmn:outgoing>flow_review_to_investigation</bpmn:outgoing>
       <bpmn:startEvent id="start_review_phase" name="Start review phase">
-        <bpmn:outgoing>flow_review_start_to_gateway</bpmn:outgoing>
+        <bpmn:outgoing>flow_review_start_to_notify</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:sequenceFlow id="flow_review_start_to_gateway" sourceRef="start_review_phase" targetRef="gateway_case_number_required" />
+      <bpmn:sequenceFlow id="flow_review_start_to_notify" sourceRef="start_review_phase" targetRef="external_task_notify_notification_received" />
+      <bpmn:serviceTask id="external_task_notify_notification_received" name="Notify customer notification received" camunda:type="external" camunda:topic="NotifyCustomerTask">
+        <bpmn:documentation>Tells the customer, in the external conversation of the errand, that the notification has been received. The text is the one configured under customer-message.texts with the name in the input parameter. Kept out of any loop so the message is sent once.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="message">notification-received</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_review_start_to_notify</bpmn:incoming>
+        <bpmn:outgoing>flow_review_notify_to_gateway</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_review_notify_to_gateway" sourceRef="external_task_notify_notification_received" targetRef="gateway_case_number_required" />
+      <bpmn:boundaryEvent id="boundary_notify_notification_received_skipped" name="Notice skipped" attachedToRef="external_task_notify_notification_received">
+        <bpmn:documentation>Takes the process past the notice once its retries are spent, so a failing notice never holds the errand. The failure is alerted instead of raised as an incident.</bpmn:documentation>
+        <bpmn:outgoing>flow_review_notify_skipped_to_gateway</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="errordef_notify_notification_received_skipped" errorRef="error_step_skipped" />
+      </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="flow_review_notify_skipped_to_gateway" sourceRef="boundary_notify_notification_received_skipped" targetRef="gateway_case_number_required" />
       <bpmn:exclusiveGateway id="gateway_case_number_required" name="Case number required?">
         <bpmn:documentation>A notification that needs no case number is reviewed without a case worker. One that needs a case number waits for the case worker and for the case number.</bpmn:documentation>
-        <bpmn:incoming>flow_review_start_to_gateway</bpmn:incoming>
+        <bpmn:incoming>flow_review_notify_to_gateway</bpmn:incoming>
+        <bpmn:incoming>flow_review_notify_skipped_to_gateway</bpmn:incoming>
         <bpmn:outgoing>flow_review_gateway_to_end</bpmn:outgoing>
         <bpmn:outgoing>flow_review_gateway_to_await</bpmn:outgoing>
       </bpmn:exclusiveGateway>
@@ -135,11 +153,29 @@
       <bpmn:serviceTask id="external_task_create_asset" name="Create asset" camunda:type="external" camunda:topic="CreateAssetTask">
         <bpmn:documentation>Creates the permit in party-assets from the decision.</bpmn:documentation>
         <bpmn:incoming>flow_decision_create_decision_to_create_asset</bpmn:incoming>
-        <bpmn:outgoing>flow_decision_create_asset_to_end</bpmn:outgoing>
+        <bpmn:outgoing>flow_decision_create_asset_to_notify</bpmn:outgoing>
       </bpmn:serviceTask>
-      <bpmn:sequenceFlow id="flow_decision_create_asset_to_end" sourceRef="external_task_create_asset" targetRef="end_decision_phase" />
+      <bpmn:sequenceFlow id="flow_decision_create_asset_to_notify" sourceRef="external_task_create_asset" targetRef="external_task_notify_notification_registered" />
+      <bpmn:serviceTask id="external_task_notify_notification_registered" name="Notify customer notification registered" camunda:type="external" camunda:topic="NotifyCustomerTask">
+        <bpmn:documentation>Tells the customer, in the external conversation of the errand, that the notification has been registered. The text is the one configured under customer-message.texts with the name in the input parameter.</bpmn:documentation>
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="message">notification-registered</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>flow_decision_create_asset_to_notify</bpmn:incoming>
+        <bpmn:outgoing>flow_decision_notify_to_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="flow_decision_notify_to_end" sourceRef="external_task_notify_notification_registered" targetRef="end_decision_phase" />
+      <bpmn:boundaryEvent id="boundary_notify_notification_registered_skipped" name="Notice skipped" attachedToRef="external_task_notify_notification_registered">
+        <bpmn:documentation>Takes the process past the notice once its retries are spent, so a failing notice never holds the errand. The failure is alerted instead of raised as an incident.</bpmn:documentation>
+        <bpmn:outgoing>flow_decision_notify_skipped_to_end</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="errordef_notify_notification_registered_skipped" errorRef="error_step_skipped" />
+      </bpmn:boundaryEvent>
+      <bpmn:sequenceFlow id="flow_decision_notify_skipped_to_end" sourceRef="boundary_notify_notification_registered_skipped" targetRef="end_decision_phase" />
       <bpmn:endEvent id="end_decision_phase" name="End decision phase">
-        <bpmn:incoming>flow_decision_create_asset_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_decision_notify_to_end</bpmn:incoming>
+        <bpmn:incoming>flow_decision_notify_skipped_to_end</bpmn:incoming>
       </bpmn:endEvent>
     </bpmn:subProcess>
     <bpmn:sequenceFlow id="flow_decision_to_follow_up" sourceRef="decision_phase" targetRef="follow_up_phase" />
@@ -298,9 +334,9 @@
         <dc:Bounds x="420" y="160" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_decision_phase" bpmnElement="end_decision_phase">
-        <dc:Bounds x="572" y="182" width="36" height="36" />
+        <dc:Bounds x="722" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="554" y="225" width="72" height="27" />
+          <dc:Bounds x="704" y="225" width="72" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_start_to_create_decision" bpmnElement="flow_decision_start_to_create_decision">
@@ -311,9 +347,28 @@
         <di:waypoint x="370" y="200" />
         <di:waypoint x="420" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_create_asset_to_end" bpmnElement="flow_decision_create_asset_to_end">
+      <bpmndi:BPMNShape id="BPMNShape_external_task_notify_notification_registered" bpmnElement="external_task_notify_notification_registered">
+        <dc:Bounds x="570" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_boundary_notify_notification_registered_skipped" bpmnElement="boundary_notify_notification_registered_skipped">
+        <dc:Bounds x="602" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="648" y="258" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_create_asset_to_notify" bpmnElement="flow_decision_create_asset_to_notify">
         <di:waypoint x="520" y="200" />
-        <di:waypoint x="572" y="200" />
+        <di:waypoint x="570" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_notify_to_end" bpmnElement="flow_decision_notify_to_end">
+        <di:waypoint x="670" y="200" />
+        <di:waypoint x="722" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_decision_notify_skipped_to_end" bpmnElement="flow_decision_notify_skipped_to_end">
+        <di:waypoint x="620" y="258" />
+        <di:waypoint x="620" y="290" />
+        <di:waypoint x="740" y="290" />
+        <di:waypoint x="740" y="218" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
@@ -379,63 +434,82 @@
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_gateway_case_number_required" bpmnElement="gateway_case_number_required" isMarkerVisible="true">
-        <dc:Bounds x="260" y="175" width="50" height="50" />
+        <dc:Bounds x="410" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="240" y="145" width="90" height="27" />
+          <dc:Bounds x="390" y="145" width="90" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_await_review_completed" bpmnElement="await_review_completed">
-        <dc:Bounds x="355" y="302" width="36" height="36" />
+        <dc:Bounds x="505" y="302" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="329" y="345" width="88" height="14" />
+          <dc:Bounds x="479" y="345" width="88" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_external_task_check_case_number" bpmnElement="external_task_check_case_number">
-        <dc:Bounds x="435" y="280" width="100" height="80" />
+        <dc:Bounds x="585" y="280" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_gateway_case_number_accepted" bpmnElement="gateway_case_number_accepted" isMarkerVisible="true">
-        <dc:Bounds x="580" y="295" width="50" height="50" />
+        <dc:Bounds x="730" y="295" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="565" y="265" width="80" height="27" />
+          <dc:Bounds x="715" y="265" width="80" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="BPMNShape_end_review_phase" bpmnElement="end_review_phase">
-        <dc:Bounds x="697" y="182" width="36" height="36" />
+        <dc:Bounds x="847" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="672" y="225" width="86" height="27" />
+          <dc:Bounds x="822" y="225" width="86" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_gateway" bpmnElement="flow_review_start_to_gateway">
+      <bpmndi:BPMNShape id="BPMNShape_external_task_notify_notification_received" bpmnElement="external_task_notify_notification_received">
+        <dc:Bounds x="266" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_boundary_notify_notification_received_skipped" bpmnElement="boundary_notify_notification_received_skipped">
+        <dc:Bounds x="298" y="142" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="280" y="100" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_start_to_notify" bpmnElement="flow_review_start_to_notify">
         <di:waypoint x="216" y="200" />
-        <di:waypoint x="260" y="200" />
+        <di:waypoint x="266" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_notify_to_gateway" bpmnElement="flow_review_notify_to_gateway">
+        <di:waypoint x="366" y="200" />
+        <di:waypoint x="410" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_flow_review_notify_skipped_to_gateway" bpmnElement="flow_review_notify_skipped_to_gateway">
+        <di:waypoint x="316" y="142" />
+        <di:waypoint x="316" y="125" />
+        <di:waypoint x="435" y="125" />
+        <di:waypoint x="435" y="175" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_gateway_to_end" bpmnElement="flow_review_gateway_to_end">
-        <di:waypoint x="310" y="200" />
-        <di:waypoint x="697" y="200" />
+        <di:waypoint x="460" y="200" />
+        <di:waypoint x="847" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_gateway_to_await" bpmnElement="flow_review_gateway_to_await">
-        <di:waypoint x="285" y="225" />
-        <di:waypoint x="285" y="320" />
-        <di:waypoint x="355" y="320" />
+        <di:waypoint x="435" y="225" />
+        <di:waypoint x="435" y="320" />
+        <di:waypoint x="505" y="320" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_await_to_check_case_number" bpmnElement="flow_review_await_to_check_case_number">
-        <di:waypoint x="391" y="320" />
-        <di:waypoint x="435" y="320" />
+        <di:waypoint x="541" y="320" />
+        <di:waypoint x="585" y="320" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_check_case_number_to_gateway" bpmnElement="flow_review_check_case_number_to_gateway">
-        <di:waypoint x="535" y="320" />
-        <di:waypoint x="580" y="320" />
+        <di:waypoint x="685" y="320" />
+        <di:waypoint x="730" y="320" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_case_number_accepted_to_end" bpmnElement="flow_review_case_number_accepted_to_end">
-        <di:waypoint x="630" y="320" />
-        <di:waypoint x="715" y="320" />
-        <di:waypoint x="715" y="218" />
+        <di:waypoint x="780" y="320" />
+        <di:waypoint x="865" y="320" />
+        <di:waypoint x="865" y="218" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="BPMNEdge_flow_review_case_number_missing_to_await" bpmnElement="flow_review_case_number_missing_to_await">
-        <di:waypoint x="605" y="345" />
-        <di:waypoint x="605" y="400" />
-        <di:waypoint x="373" y="400" />
-        <di:waypoint x="373" y="338" />
+        <di:waypoint x="755" y="345" />
+        <di:waypoint x="755" y="400" />
+        <di:waypoint x="523" y="400" />
+        <di:waypoint x="523" y="338" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
