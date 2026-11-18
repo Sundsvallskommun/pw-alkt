@@ -18,6 +18,9 @@
 		},
 		"bodyPatterns": [
 			{
+				"doesNotMatch": "(?s).*\"version\".*"
+			},
+			{
 				"equalToJson": {
 					"title": "Åtgärdsärende",
 					"status": "NEW",
