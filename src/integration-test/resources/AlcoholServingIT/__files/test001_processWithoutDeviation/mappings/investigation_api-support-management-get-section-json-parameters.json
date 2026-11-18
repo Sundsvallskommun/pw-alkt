@@ -1,0 +1,34 @@
+{
+	"name": "investigation_api-support-management-get-section-json-parameters",
+	"request": {
+		"method": "GET",
+		"urlPath": "/api-support-management/2281/ALKT/errands/3f7d5c21-9a44-4c6e-8b52-1e9f0a2d7c31/investigations/6d2e8f41-0a7b-4c93-b5e1-2f8a9c3d7e60/sections/9b4c1e72-3f58-4d0a-a6e9-7c2d5b8f1a34/json-parameters",
+		"headers": {
+			"X-Sent-By": {
+				"equalTo": "pw-alkt; type=processEngine"
+			}
+		}
+	},
+	"response": {
+		"headers": {
+			"Content-Type": "application/json"
+		},
+		"jsonBody": [
+			{
+				"key": "aot_investigation_premises_section",
+				"schemaId": "2281_aot_investigation_premises_section_1.0",
+				"value": {
+					"inspectedAt": "2026-10-10",
+					"rightOfDisposal": {
+						"status": "PROVEN",
+						"note": "Hyresavtal till och med 2029"
+					},
+					"servingArea": {
+						"description": "Matsal och bar"
+					}
+				}
+			}
+		],
+		"status": 200
+	}
+}

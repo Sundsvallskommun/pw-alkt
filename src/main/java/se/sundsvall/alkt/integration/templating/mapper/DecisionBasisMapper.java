@@ -117,16 +117,12 @@ public final class DecisionBasisMapper {
 
 	private DecisionBasisMapper() {}
 
-	public static Map<String, Object> toTemplateParameters(final Errand errand, final Investigation investigation, final List<Statement> statements,
-		final List<ErrandAttachment> attachments, final Lookups lookups, final LocalDate today) {
+	public static Map<String, Object> toTemplateParameters(final Errand errand, final Investigation investigation, final JsonNode premisesExamination,
+		final List<Statement> statements, final List<ErrandAttachment> attachments, final Lookups lookups, final LocalDate today) {
 		final var form = findFormParameter(errand).map(JsonParameter::getValue).orElse(MissingNode.getInstance());
 		final var schema = lookups.formSchema();
 		final var sections = Optional.ofNullable(investigation.getSections()).orElse(emptyList());
-		final var premisesExamination = sections.stream()
-			.filter(section -> PREMISES.equals(section.getSectionKey()))
-			.findFirst()
-			.map(section -> toParameterValues(section.getParameters()))
-			.orElse(Map.of());
+		final var rightOfDisposal = premisesExamination.path("rightOfDisposal");
 		final var stakeholders = Optional.ofNullable(errand.getStakeholders()).orElse(emptyList());
 		final var applicant = stakeholders.stream().filter(stakeholder -> STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole())).findFirst();
 		final var personsOfInfluence = stakeholders.stream().filter(SupportManagementMapper::isPersonOfSignificantInfluence).toList();
@@ -166,10 +162,10 @@ public final class DecisionBasisMapper {
 			Map.entry("seatsIndoor", findText(form.path("seating").path("seatsIndoor")).orElse("")),
 			Map.entry("seatsOutdoor", findText(form.path("seating").path("seatsOutdoor")).orElse("")),
 			Map.entry("maxPersons", findText(form.path("maxPersonsInPremises").path("maxPersons")).orElse("")),
-			Map.entry("inspectedAt", premisesExamination.getOrDefault("PREMISES_INSPECTED_AT", "")),
-			Map.entry("rightOfDisposalLabel", toLabel(RIGHTS_OF_DISPOSAL, premisesExamination.get("PREMISES_RIGHT_OF_DISPOSAL"))),
-			Map.entry("rightOfDisposalNote", premisesExamination.getOrDefault("PREMISES_RIGHT_OF_DISPOSAL_NOTE", "")),
-			Map.entry("servingAreaDescription", premisesExamination.getOrDefault("PREMISES_SERVING_AREA", "")),
+			Map.entry("inspectedAt", findText(premisesExamination.path("inspectedAt")).orElse("")),
+			Map.entry("rightOfDisposalLabel", toLabel(RIGHTS_OF_DISPOSAL, findText(rightOfDisposal.path("status")).orElse(""))),
+			Map.entry("rightOfDisposalNote", findText(rightOfDisposal.path("note")).orElse("")),
+			Map.entry("servingAreaDescription", findText(premisesExamination.path("servingArea").path("description")).orElse("")),
 			Map.entry("salesAreaDescription", toHtml(form.path("salesAreaDescription"))),
 			Map.entry("leaseHtml", toSectionText(sections, "lease")),
 			Map.entry("floorPlanFiles", toFileNames(attachments, FLOOR_PLAN_PURPOSES)),

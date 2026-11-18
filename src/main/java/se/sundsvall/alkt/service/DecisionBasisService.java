@@ -30,6 +30,8 @@ import static se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMappe
 public class DecisionBasisService {
 
 	private static final String INVESTIGATION_STATUS_CANCELLED = "CANCELLED";
+	private static final String PREMISES_SECTION = "premises";
+	private static final String PREMISES_EXAMINATION_KEY = "aot_investigation_premises_section";
 
 	private final SupportManagementIntegration supportManagementIntegration;
 	private final TemplatingIntegration templatingIntegration;
@@ -73,7 +75,14 @@ public class DecisionBasisService {
 					throw new NonRetryableException("Errand '%s' has no assigned case worker to put in the decision basis".formatted(errandId));
 				}
 				final var statements = supportManagementIntegration.getStatements(municipalityId, namespace, errandId);
-				final var parameters = toTemplateParameters(errand, investigation, statements, attachments, lookupsOf(municipalityId, namespace, errand), LocalDate.now(clock));
+				final var premisesExamination = Optional.ofNullable(investigation.getSections()).orElse(emptyList()).stream()
+					.filter(section -> PREMISES_SECTION.equals(section.getSectionKey()))
+					.findFirst()
+					.map(section -> supportManagementIntegration.getInvestigationSectionJson(municipalityId, namespace, errandId, investigation.getId(), section.getId(),
+						PREMISES_EXAMINATION_KEY))
+					.orElse(MissingNode.getInstance());
+				final var parameters = toTemplateParameters(errand, investigation, premisesExamination, statements, attachments, lookupsOf(municipalityId, namespace, errand),
+					LocalDate.now(clock));
 				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
 				return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 			});

@@ -316,6 +316,25 @@ class SupportManagementIntegrationTest {
 	}
 
 	@Test
+	void getInvestigationSectionJsonAnswersWithTheValueOfTheParameterWithTheKey() {
+		final var examination = new JsonParameter().key("aot_investigation_premises_section").value(JsonNodeFactory.instance.objectNode().put("inspectedAt", "2026-10-02"));
+		when(supportManagementClientMock.getInvestigationSectionJsonParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id"))
+			.thenReturn(ResponseEntity.ok(List.of(new JsonParameter().key("aot_investigation_other_section").value(JsonNodeFactory.instance.objectNode()), examination)));
+
+		assertThat(supportManagementIntegration.getInvestigationSectionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id",
+			"aot_investigation_premises_section")).isSameAs(examination.getValue());
+	}
+
+	@Test
+	void getInvestigationSectionJsonAnswersWithAMissingNodeWhenTheSectionHasNone() {
+		when(supportManagementClientMock.getInvestigationSectionJsonParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id"))
+			.thenReturn(ResponseEntity.ok(List.of()));
+
+		assertThat(supportManagementIntegration.getInvestigationSectionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id",
+			"aot_investigation_premises_section").isMissingNode()).isTrue();
+	}
+
+	@Test
 	void getDecisionJsonFailsWithoutABody() {
 		when(supportManagementClientMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).thenReturn(ResponseEntity.ok().build());
 
