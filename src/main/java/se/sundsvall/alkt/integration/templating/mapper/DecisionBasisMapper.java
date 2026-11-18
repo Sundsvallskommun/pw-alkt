@@ -113,22 +113,26 @@ public final class DecisionBasisMapper {
 		"closedCompanyServingPeriod", "closedCompanyServingPeriodDates",
 		"salesPeriod", "salesPeriodDates");
 
+	/** What the case worker found when examining the premises, and the permit an errand changes. */
+	public record Premises(JsonNode examination, JsonNode permit) {}
+
 	public record Lookups(JsonNode formSchema, Map<String, String> decisionOutcomes, Map<String, String> statementOutcomes, Map<String, String> legalIds,
 		String handlerName) {}
 
 	private DecisionBasisMapper() {}
 
-	public static Map<String, Object> toTemplateParameters(final Errand errand, final Investigation investigation, final JsonNode premisesExamination, final JsonNode permit,
+	public static Map<String, Object> toTemplateParameters(final Errand errand, final Investigation investigation, final Premises premises,
 		final List<Statement> statements, final List<ErrandAttachment> attachments, final Lookups lookups, final LocalDate today) {
 		final var form = findFormParameter(errand).map(JsonParameter::getValue).orElse(MissingNode.getInstance());
 		final var schema = lookups.formSchema();
 		final var sections = Optional.ofNullable(investigation.getSections()).orElse(emptyList());
+		final var premisesExamination = premises.examination();
 		final var rightOfDisposal = premisesExamination.path("rightOfDisposal");
 		final var stakeholders = Optional.ofNullable(errand.getStakeholders()).orElse(emptyList());
 		final var applicant = stakeholders.stream().filter(stakeholder -> STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole())).findFirst();
 		final var personsOfInfluence = stakeholders.stream().filter(SupportManagementMapper::isPersonOfSignificantInfluence).toList();
 		final var errandValues = toParameterValues(errand.getParameters());
-		final var permitPlace = findPremisesValue(permit, "");
+		final var permitPlace = findPremisesValue(premises.permit(), "");
 		final var address = toPremisesAddress(form, permitPlace, applicant, errandValues);
 		final var referrals = Optional.ofNullable(statements).orElse(emptyList());
 

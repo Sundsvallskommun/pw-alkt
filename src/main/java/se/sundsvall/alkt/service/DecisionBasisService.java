@@ -15,6 +15,7 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Lookups;
+import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Premises;
 import se.sundsvall.alkt.service.model.AssetType;
 import tools.jackson.databind.node.MissingNode;
 
@@ -85,7 +86,7 @@ public class DecisionBasisService {
 						PREMISES_EXAMINATION_KEY))
 					.orElse(MissingNode.getInstance());
 				final var permit = assetService.findPermitJson(municipalityId, errand, errandId, assetType);
-				final var parameters = toTemplateParameters(errand, investigation, premisesExamination, permit, statements, attachments,
+				final var parameters = toTemplateParameters(errand, investigation, new Premises(premisesExamination, permit), statements, attachments,
 					lookupsOf(municipalityId, namespace, errand), LocalDate.now(clock));
 				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
 				return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
