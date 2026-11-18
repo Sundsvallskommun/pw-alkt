@@ -16,6 +16,24 @@
 				}
 			},
 			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.premises.name",
+					"equalTo": "Tobaksbutiken Runt Hörnet"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.premises.street",
+					"equalTo": "Storgatan 1"
+				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.parameters.premises.postalAddress",
+					"equalTo": "85230 Sundsvall"
+				}
+			},
+			{
 				"matchesJsonPath": "$.parameters.caseNumber"
 			}
 		]

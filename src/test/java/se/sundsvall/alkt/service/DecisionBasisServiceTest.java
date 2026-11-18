@@ -7,7 +7,6 @@ import generated.se.sundsvall.supportmanagement.InvestigationSection;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
-import generated.se.sundsvall.supportmanagement.Statement;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -32,6 +31,7 @@ import se.sundsvall.alkt.integration.party.PartyIntegration;
 import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegration;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.MissingNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,6 +42,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static se.sundsvall.alkt.service.model.AssetType.ALCOHOL_SERVING_PERMIT;
+import static se.sundsvall.alkt.service.model.AssetType.TOBACCO_SALES_PERMIT;
 
 @ExtendWith(MockitoExtension.class)
 class DecisionBasisServiceTest {
@@ -63,6 +65,9 @@ class DecisionBasisServiceTest {
 	private SupportManagementIntegration supportManagementIntegrationMock;
 
 	@Mock
+	private AssetService assetServiceMock;
+
+	@Mock
 	private TemplatingIntegration templatingIntegrationMock;
 
 	@Mock
@@ -82,12 +87,12 @@ class DecisionBasisServiceTest {
 	@BeforeEach
 	void setUp() {
 		final var clock = Clock.fixed(Instant.parse("2026-11-03T08:00:00Z"), ZoneId.of("Europe/Stockholm"));
-		service = new DecisionBasisService(supportManagementIntegrationMock, templatingIntegrationMock, partyIntegrationMock, jsonSchemaIntegrationMock, employeeIntegrationMock, clock);
+		service = new DecisionBasisService(supportManagementIntegrationMock, assetServiceMock, templatingIntegrationMock, partyIntegrationMock, jsonSchemaIntegrationMock, employeeIntegrationMock, clock);
 	}
 
 	@AfterEach
 	void verifyNoUnexpectedInteractions() {
-		verifyNoMoreInteractions(supportManagementIntegrationMock, templatingIntegrationMock, partyIntegrationMock, jsonSchemaIntegrationMock, employeeIntegrationMock);
+		verifyNoMoreInteractions(supportManagementIntegrationMock, assetServiceMock, templatingIntegrationMock, partyIntegrationMock, jsonSchemaIntegrationMock, employeeIntegrationMock);
 	}
 
 	private static Errand errand() {
@@ -105,15 +110,18 @@ class DecisionBasisServiceTest {
 		final var investigation = new Investigation().id("investigation-id").status("DRAFT").created(COMPLETED_AT)
 			.sections(List.of(new InvestigationSection().id("premises-section-id").sectionKey("premises")));
 		final var premisesExamination = JsonMapper.builder().build().readTree("{\"inspectedAt\":\"2026-10-02\"}");
-		final var unanswered = new Statement().id("referral-id").type("REFERRAL").status("SENT").counterpartyName("Polismyndigheten").sentAt(COMPLETED_AT);
-		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
-			.thenReturn(errand().jsonParameters(List.of(new JsonParameter().key("aot_alcohol_serving_permit_application_permanent_serving").schemaId("2281_aot_alcohol_serving_permit_application_permanent_serving_1.0").value(form))));
+		final var permit = JsonMapper.builder().build().readTree("""
+			{ "premises": { "name": "Restaurang Kajen", "address": { "street": "Hamngatan 4", "postalCode": "852 30", "city": "Sundsvall" } } }
+			""");
+		final var errand = errand().jsonParameters(List.of(new JsonParameter().key("aot_alcohol_serving_permit_application_permanent_serving").schemaId("2281_aot_alcohol_serving_permit_application_permanent_serving_1.0").value(form)));
+		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(jsonSchemaIntegrationMock.getSchema(MUNICIPALITY_ID, "2281_aot_alcohol_serving_permit_application_permanent_serving_1.0")).thenReturn(schema);
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(investigation));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
-		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(unanswered));
+		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getInvestigationSectionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id", "aot_investigation_premises_section"))
 			.thenReturn(premisesExamination);
+		when(assetServiceMock.findPermitJson(MUNICIPALITY_ID, errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT)).thenReturn(permit);
 		when(partyIntegrationMock.findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID))).thenReturn(Map.of(PBI_PARTY_ID, "198203154321"));
 		when(employeeIntegrationMock.getName(MUNICIPALITY_ID, CASE_WORKER)).thenReturn("Erik Lindqvist");
 		when(supportManagementIntegrationMock.getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of("APPROVAL", "Bifall"));
@@ -121,12 +129,13 @@ class DecisionBasisServiceTest {
 		when(templatingIntegrationMock.renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap())).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
 
-		assertThat(service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
+		assertThat(service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, ALCOHOL_SERVING_PERMIT)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(assetServiceMock).findPermitJson(MUNICIPALITY_ID, errand, ERRAND_ID, ALCOHOL_SERVING_PERMIT);
 		verify(supportManagementIntegrationMock).getInvestigationSectionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id", "aot_investigation_premises_section");
 		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
 		verify(employeeIntegrationMock).getName(MUNICIPALITY_ID, CASE_WORKER);
@@ -139,16 +148,16 @@ class DecisionBasisServiceTest {
 		assertThat(parameters).containsEntry("documentDate", "2026-11-03").containsEntry("caseNumber", "MBN 2026/123")
 			.containsEntry("handlerName", "Erik Lindqvist");
 		assertThat(parameters.get("application")).asInstanceOf(MAP).containsEntry("servingTo", "Allmänheten");
-		assertThat(parameters.get("premises")).asInstanceOf(MAP).containsEntry("inspectedAt", "2026-10-02");
+		assertThat(parameters.get("premises")).asInstanceOf(MAP).containsEntry("inspectedAt", "2026-10-02").containsEntry("name", "Restaurang Kajen")
+			.containsEntry("street", "Hamngatan 4").containsEntry("postalAddress", "852 30 Sundsvall");
 		assertThat(parameters.get("personsOfInfluence")).asInstanceOf(LIST).singleElement()
 			.asInstanceOf(MAP).containsEntry("name", "Anna Svensson").containsEntry("personalNumber", "19820315-4321");
-		assertThat(parameters.get("statements")).asInstanceOf(LIST).singleElement()
-			.asInstanceOf(MAP).containsEntry("counterparty", "Polismyndigheten").containsEntry("respondedAt", "");
 	}
 
 	@Test
 	void createsANewDecisionBasisWhenTheFileOfThatNameWasUploadedBeforeTheInvestigationWasCompleted() {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand());
+		when(assetServiceMock.findPermitJson(MUNICIPALITY_ID, errand(), ERRAND_ID, TOBACCO_SALES_PERMIT)).thenReturn(MissingNode.getInstance());
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new Investigation().id("investigation-id").status("COMPLETED").completedAt(COMPLETED_AT)));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
@@ -161,12 +170,13 @@ class DecisionBasisServiceTest {
 		when(templatingIntegrationMock.renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), anyMap())).thenReturn(PDF);
 		when(supportManagementIntegrationMock.createPdfAttachment(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, FILE_NAME, PDF)).thenReturn("attachment-id");
 
-		assertThat(service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("attachment-id");
+		assertThat(service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, TOBACCO_SALES_PERMIT)).isEqualTo("attachment-id");
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(assetServiceMock).findPermitJson(MUNICIPALITY_ID, errand(), ERRAND_ID, TOBACCO_SALES_PERMIT);
 		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
 		verify(employeeIntegrationMock).getName(MUNICIPALITY_ID, CASE_WORKER);
 		verify(supportManagementIntegrationMock).getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
@@ -180,7 +190,7 @@ class DecisionBasisServiceTest {
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand());
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 
-		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has no investigation that is not cancelled to create a decision basis from");
 
@@ -194,7 +204,7 @@ class DecisionBasisServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new Investigation().id("cancelled-id").status("CANCELLED")));
 
-		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has no investigation that is not cancelled to create a decision basis from");
 
@@ -208,7 +218,7 @@ class DecisionBasisServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new Investigation().id("completed-id").status("COMPLETED"), new Investigation().id("draft-id").status("DRAFT")));
 
-		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has 2 investigations that are not cancelled, the decision basis is created from exactly one");
 
@@ -225,7 +235,7 @@ class DecisionBasisServiceTest {
 			.thenReturn(List.of(new Investigation().id("investigation-id").status("COMPLETED").completedAt(COMPLETED_AT)));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 
-		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE))
+		assertThatThrownBy(() -> service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Errand 'c2b1f9a4-3d1e-4a57-9a0e-6f1e2b7d8c90' has no assigned case worker to put in the decision basis");
 
@@ -242,7 +252,7 @@ class DecisionBasisServiceTest {
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(List.of(new ErrandAttachment().id("existing-id").fileName(FILE_NAME).created(COMPLETED_AT.plusMinutes(1))));
 
-		assertThat(service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE)).isEqualTo("existing-id");
+		assertThat(service.createDecisionBasis(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, TEMPLATE, ALCOHOL_SERVING_PERMIT)).isEqualTo("existing-id");
 
 		verify(supportManagementIntegrationMock).getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);

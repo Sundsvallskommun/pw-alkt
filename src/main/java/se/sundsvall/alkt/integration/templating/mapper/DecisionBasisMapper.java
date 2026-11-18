@@ -118,7 +118,7 @@ public final class DecisionBasisMapper {
 
 	private DecisionBasisMapper() {}
 
-	public static Map<String, Object> toTemplateParameters(final Errand errand, final Investigation investigation, final JsonNode premisesExamination,
+	public static Map<String, Object> toTemplateParameters(final Errand errand, final Investigation investigation, final JsonNode premisesExamination, final JsonNode permit,
 		final List<Statement> statements, final List<ErrandAttachment> attachments, final Lookups lookups, final LocalDate today) {
 		final var form = findFormParameter(errand).map(JsonParameter::getValue).orElse(MissingNode.getInstance());
 		final var schema = lookups.formSchema();
@@ -128,7 +128,8 @@ public final class DecisionBasisMapper {
 		final var applicant = stakeholders.stream().filter(stakeholder -> STAKEHOLDER_ROLE_PERMIT_HOLDER.equals(stakeholder.getRole())).findFirst();
 		final var personsOfInfluence = stakeholders.stream().filter(SupportManagementMapper::isPersonOfSignificantInfluence).toList();
 		final var errandValues = toParameterValues(errand.getParameters());
-		final var address = toPremisesAddress(form, applicant, errandValues);
+		final var permitPlace = findPremisesValue(permit, "");
+		final var address = toPremisesAddress(form, permitPlace, applicant, errandValues);
 		final var referrals = Optional.ofNullable(statements).orElse(emptyList());
 
 		final var parameters = new LinkedHashMap<String, Object>();
@@ -144,7 +145,6 @@ public final class DecisionBasisMapper {
 		parameters.put("marketingHtml", toSectionText(sections, "marketing"));
 		parameters.put("selfMonitoringHtml", toSectionText(sections, "self_monitoring"));
 		parameters.put("legislationHtml", toSectionText(sections, "legal_basis"));
-		parameters.put("exciseTaxHtml", "");
 		parameters.put("proposal", Map.of("points", toProposalPoints(investigation, lookups)));
 		parameters.put("applicant", Map.of(
 			"name", applicant.map(SupportManagementMapper::toStakeholderName).orElse(""),
@@ -155,6 +155,7 @@ public final class DecisionBasisMapper {
 		parameters.put("application", toApplication(errand, form, schema, sections, attachments, personsOfInfluence));
 		parameters.put(PREMISES, Map.ofEntries(
 			Map.entry("name", findText(findPremisesValue(form, "Name"))
+				.or(() -> findText(permitPlace.path("name")))
 				.or(() -> Optional.ofNullable(errandValues.get(ERRAND_PARAMETER_PREMISES_NAME)))
 				.or(() -> applicant.map(Stakeholder::getOrganizationName))
 				.orElse("")),
@@ -173,7 +174,10 @@ public final class DecisionBasisMapper {
 			Map.entry("fireSafety", toFireSafety(referrals, lookups)),
 			Map.entry("fireSafetyHtml", toSectionText(sections, "fire_safety"))));
 		parameters.put("personsOfInfluence", personsOfInfluence.stream().map(person -> toPersonOfInfluence(person, lookups.legalIds())).toList());
-		parameters.put("statements", referrals.stream().map(statement -> toStatement(statement, lookups)).toList());
+		parameters.put("statements", referrals.stream()
+			.filter(statement -> isNotBlank(statement.getOutcome()) || isNotBlank(statement.getResponseText()))
+			.map(statement -> toStatement(statement, lookups))
+			.toList());
 		parameters.put("investigation", Map.of(
 			"recommendationLabel", toLabel(lookups.decisionOutcomes(), investigation.getRecommendation()),
 			"financialAssessmentHtml", toSectionText(sections, "financial_suitability"),
@@ -230,9 +234,9 @@ public final class DecisionBasisMapper {
 		return application;
 	}
 
-	private static JsonNode findPremisesValue(final JsonNode form, final String field) {
+	private static JsonNode findPremisesValue(final JsonNode node, final String field) {
 		return PREMISES_PREFIXES.stream()
-			.map(prefix -> form.path(prefix + field))
+			.map(prefix -> node.path(prefix + field))
 			.filter(value -> !value.isMissingNode())
 			.findFirst()
 			.orElse(MissingNode.getInstance());
@@ -240,21 +244,26 @@ public final class DecisionBasisMapper {
 
 	private record Address(String street, String postalAddress) {}
 
-	private static Address toPremisesAddress(final JsonNode form, final Optional<Stakeholder> applicant, final Map<String, String> errandValues) {
+	private static Address toPremisesAddress(final JsonNode form, final JsonNode permitPlace, final Optional<Stakeholder> applicant, final Map<String, String> errandValues) {
 		if (isYes(findPremisesValue(form, "AddressSameAsCompany"))) {
 			return applicant
 				.map(owner -> new Address(Objects.toString(owner.getAddress(), ""), toPostalAddress(owner.getZipCode(), owner.getCity())))
 				.orElse(new Address("", ""));
 		}
-		final var address = findPremisesValue(form, "Address");
+		return toAddress(findPremisesValue(form, "Address"))
+			.or(() -> toAddress(permitPlace.path("address")))
+			.orElseGet(() -> new Address(errandValues.getOrDefault(ERRAND_PARAMETER_PREMISES_STREET_ADDRESS, ""),
+				toPostalAddress(errandValues.get(ERRAND_PARAMETER_PREMISES_POSTAL_CODE), errandValues.get(ERRAND_PARAMETER_PREMISES_POSTAL_AREA))));
+	}
+
+	private static Optional<Address> toAddress(final JsonNode address) {
 		final var street = findText(address.path(STREET));
 		final var postalCode = findText(address.path("postalCode"));
 		final var city = findText(address.path("city"));
-		if (street.isPresent() || postalCode.isPresent() || city.isPresent()) {
-			return new Address(street.orElse(""), toPostalAddress(postalCode.orElse(null), city.orElse(null)));
+		if (street.isEmpty() && postalCode.isEmpty() && city.isEmpty()) {
+			return Optional.empty();
 		}
-		return new Address(errandValues.getOrDefault(ERRAND_PARAMETER_PREMISES_STREET_ADDRESS, ""),
-			toPostalAddress(errandValues.get(ERRAND_PARAMETER_PREMISES_POSTAL_CODE), errandValues.get(ERRAND_PARAMETER_PREMISES_POSTAL_AREA)));
+		return Optional.of(new Address(street.orElse(""), toPostalAddress(postalCode.orElse(null), city.orElse(null))));
 	}
 
 	private static String toPostalAddress(final String postalCode, final String city) {
