@@ -70,8 +70,7 @@ class DecisionBasisMapperTest {
 			.sections(List.of(
 				new InvestigationSection().sectionKey("ownership").text("<p>Aktiebolag med aktiekapital 25 000 kr</p>"),
 				new InvestigationSection().sectionKey("communication").text("<div>Kommunicerat 2026-10-20</div><div>Inga synpunkter</div>"),
-				new InvestigationSection().sectionKey("premises").text("")
-					.parameters(List.of(parameter("PREMISES_INSPECTED_AT", "2026-10-02"), parameter("PREMISES_RIGHT_OF_DISPOSAL", "PROVEN"))),
+				new InvestigationSection().sectionKey("premises").text(""),
 				new InvestigationSection().sectionKey("legal_basis").text("<h3>Alkohollagen</h3>")));
 		final var statements = List.of(
 			new Statement().counterpartyName("Medelpads Räddningstjänstförbund").status("RESPONDED").sentAt(OffsetDateTime.parse("2026-09-20T10:00:00+02:00"))
@@ -91,7 +90,15 @@ class DecisionBasisMapperTest {
 			new ErrandAttachment().fileName("Planritning.pdf").purpose(new ErrandAttachmentPurpose().name("FLOOR_PLAN")),
 			new ErrandAttachment().fileName("Meny.pdf").purpose(new ErrandAttachmentPurpose().name("MENU")));
 
-		final var parameters = toTemplateParameters(errand, investigation, statements, attachments, lookups, TODAY);
+		final var premisesExamination = JsonMapper.builder().build().readTree("""
+			{
+			  "inspectedAt": "2026-10-02",
+			  "rightOfDisposal": { "status": "PROVEN", "note": "Hyresavtal till och med 2029" },
+			  "servingArea": { "description": "Matsal och bar" }
+			}
+			""");
+
+		final var parameters = toTemplateParameters(errand, investigation, premisesExamination, statements, attachments, lookups, TODAY);
 
 		assertThat(parameters)
 			.containsEntry("documentDate", "2026-11-03")
@@ -132,6 +139,8 @@ class DecisionBasisMapperTest {
 			.containsEntry("maxPersons", "150")
 			.containsEntry("inspectedAt", "2026-10-02")
 			.containsEntry("rightOfDisposalLabel", "Ja")
+			.containsEntry("rightOfDisposalNote", "Hyresavtal till och med 2029")
+			.containsEntry("servingAreaDescription", "Matsal och bar")
 			.containsEntry("floorPlanFiles", List.of("Planritning.pdf"))
 			.containsEntry("fireSafety", "Medelpads Räddningstjänstförbund: Inget att erinra");
 		assertThat(parameters.get("investigation")).asInstanceOf(MAP)
@@ -143,7 +152,7 @@ class DecisionBasisMapperTest {
 
 	@Test
 	void sendsEveryKeyOfTheTemplatesForAnErrandWithoutApplicationSectionsOrReferrals() {
-		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), List.of(), List.of(), NO_LOOKUPS, TODAY);
+		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), MissingNode.getInstance(), List.of(), List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters).containsOnlyKeys("documentDate", "caseNumber", "caseType", "handlerName", "handlerTitle", "issuedByUnit", "issuedByAuthority",
 			"communication", "childPerspectiveHtml", "marketingHtml", "selfMonitoringHtml", "legislationHtml", "exciseTaxHtml", "proposal", "applicant", "company",
@@ -167,7 +176,7 @@ class DecisionBasisMapperTest {
 			.jsonParameters(List.of(new JsonParameter().key("aot_tobacco_sales_permit_application").value(form)))
 			.stakeholders(List.of(new Stakeholder().role("PRIMARY").organizationName("Torgkiosken AB").address("Torget 2").zipCode("852 31").city("Sundsvall")));
 
-		final var parameters = toTemplateParameters(errand, new Investigation(), List.of(), List.of(), NO_LOOKUPS, TODAY);
+		final var parameters = toTemplateParameters(errand, new Investigation(), MissingNode.getInstance(), List.of(), List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters.get("premises")).asInstanceOf(MAP)
 			.containsEntry("name", "Kiosken Torget")
@@ -180,7 +189,7 @@ class DecisionBasisMapperTest {
 		final var errand = new Errand().parameters(List.of(IN_SUNDSVALL, parameter("premisesName", "Runt Hörnet"), parameter("premisesStreetAddress", "Storgatan 33"),
 			parameter("premisesPostalCode", "852 30"), parameter("premisesPostalArea", "Sundsvall")));
 
-		final var parameters = toTemplateParameters(errand, new Investigation(), List.of(), List.of(), NO_LOOKUPS, TODAY);
+		final var parameters = toTemplateParameters(errand, new Investigation(), MissingNode.getInstance(), List.of(), List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters.get("premises")).asInstanceOf(MAP)
 			.containsEntry("name", "Runt Hörnet")
@@ -192,7 +201,7 @@ class DecisionBasisMapperTest {
 	void findsTheRescueServiceWhateverTheCaseAndSpacesAroundItsName() {
 		final var statement = new Statement().counterpartyName(" medelpads räddningstjänstförbund ").status("RESPONDED").outcome("NO_OBJECTION");
 
-		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), List.of(statement), List.of(), NO_LOOKUPS, TODAY);
+		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), MissingNode.getInstance(), List.of(statement), List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters.get("premises")).asInstanceOf(MAP).containsEntry("fireSafety", "Medelpads Räddningstjänstförbund: NO_OBJECTION");
 	}
@@ -201,7 +210,7 @@ class DecisionBasisMapperTest {
 	void leavesOutStylesAndTagsThatSpanSeveralLinesOfAReferralAnswer() {
 		final var answer = "<style>\np.MsoNormal {margin:0cm}\n</style><p>Polisen har inget\n<span\nclass=\"x\">att erinra</span></p>";
 
-		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), List.of(new Statement().counterpartyName("Polismyndigheten").responseText(answer)),
+		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), MissingNode.getInstance(), List.of(new Statement().counterpartyName("Polismyndigheten").responseText(answer)),
 			List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters.get("statements")).asInstanceOf(LIST).singleElement().asInstanceOf(MAP)

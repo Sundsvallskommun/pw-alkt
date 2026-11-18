@@ -33,35 +33,10 @@
 						"text": ""
 					},
 					{
+						"id": "9b4c1e72-3f58-4d0a-a6e9-7c2d5b8f1a34",
 						"sectionKey": "premises",
 						"heading": "Serveringsställe",
-						"text": "<p>Lokalen är ändamålsenlig</p>",
-						"parameters": [
-							{
-								"key": "PREMISES_INSPECTED_AT",
-								"values": [
-									"2026-10-10"
-								]
-							},
-							{
-								"key": "PREMISES_RIGHT_OF_DISPOSAL",
-								"values": [
-									"PROVEN"
-								]
-							},
-							{
-								"key": "PREMISES_RIGHT_OF_DISPOSAL_NOTE",
-								"values": [
-									"Hyresavtal till och med 2029"
-								]
-							},
-							{
-								"key": "PREMISES_SERVING_AREA",
-								"values": [
-									"Matsal och bar"
-								]
-							}
-						]
+						"text": "<p>Lokalen är ändamålsenlig</p>"
 					},
 					{
 						"sectionKey": "communication",

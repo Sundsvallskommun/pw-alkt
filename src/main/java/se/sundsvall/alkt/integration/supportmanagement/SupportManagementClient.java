@@ -138,6 +138,14 @@ public interface SupportManagementClient {
 		@PathVariable String investigationId,
 		@PathVariable String key);
 
+	@GetMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/investigations/{investigationId}/sections/{sectionId}/json-parameters", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<List<JsonParameter>> getInvestigationSectionJsonParameters(
+		@PathVariable String municipalityId,
+		@PathVariable String namespace,
+		@PathVariable String errandId,
+		@PathVariable String investigationId,
+		@PathVariable String sectionId);
+
 	/** Links an attachment already on the errand, nothing is uploaded. */
 	@PostMapping(path = "/{municipalityId}/{namespace}/errands/{errandId}/decisions/{decisionId}/attachments/{attachmentId}", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<ErrandAttachment> linkDecisionAttachment(

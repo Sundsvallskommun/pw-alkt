@@ -28,6 +28,7 @@ import se.sundsvall.alkt.integration.supportmanagement.model.MessagePage;
 import se.sundsvall.alkt.util.ByteArrayMultipartFile;
 import se.sundsvall.dept44.problem.Problem;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.MissingNode;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toMap;
@@ -135,6 +136,17 @@ public class SupportManagementIntegration {
 	public JsonNode getInvestigationJson(final String municipalityId, final String namespace, final String errandId, final String investigationId, final String key) {
 		return getJsonParameter("investigation '%s'".formatted(investigationId), errandId, key,
 			() -> supportManagementClient.getInvestigationJsonParameter(municipalityId, namespace, errandId, investigationId, key)).getValue();
+	}
+
+	/** The value of the JSON parameter of the investigation section, or a missing node when the section has none. */
+	public JsonNode getInvestigationSectionJson(final String municipalityId, final String namespace, final String errandId, final String investigationId, final String sectionId,
+		final String key) {
+		return Optional.ofNullable(supportManagementClient.getInvestigationSectionJsonParameters(municipalityId, namespace, errandId, investigationId, sectionId).getBody())
+			.orElse(emptyList()).stream()
+			.filter(parameter -> key.equals(parameter.getKey()))
+			.findFirst()
+			.map(JsonParameter::getValue)
+			.orElse(MissingNode.getInstance());
 	}
 
 	private static JsonParameter getJsonParameter(final String owner, final String errandId, final String key, final Supplier<ResponseEntity<JsonParameter>> request) {

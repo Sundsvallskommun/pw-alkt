@@ -3,6 +3,7 @@ package se.sundsvall.alkt.service;
 import generated.se.sundsvall.supportmanagement.Errand;
 import generated.se.sundsvall.supportmanagement.ErrandAttachment;
 import generated.se.sundsvall.supportmanagement.Investigation;
+import generated.se.sundsvall.supportmanagement.InvestigationSection;
 import generated.se.sundsvall.supportmanagement.JsonParameter;
 import generated.se.sundsvall.supportmanagement.Parameter;
 import generated.se.sundsvall.supportmanagement.Stakeholder;
@@ -101,7 +102,9 @@ class DecisionBasisServiceTest {
 	void rendersTheDecisionBasisFromAnInvestigationThatIsADraftAndUploadsItToTheErrand() {
 		final var form = JsonMapper.builder().build().readTree("{\"servingAudience\":\"PUBLIC\"}");
 		final var schema = JsonMapper.builder().build().readTree("{\"properties\":{\"servingAudience\":{\"oneOf\":[{\"const\":\"PUBLIC\",\"title\":\"Allmänheten\"}]}}}");
-		final var investigation = new Investigation().id("investigation-id").status("DRAFT").created(COMPLETED_AT);
+		final var investigation = new Investigation().id("investigation-id").status("DRAFT").created(COMPLETED_AT)
+			.sections(List.of(new InvestigationSection().id("premises-section-id").sectionKey("premises")));
+		final var premisesExamination = JsonMapper.builder().build().readTree("{\"inspectedAt\":\"2026-10-02\"}");
 		final var unanswered = new Statement().id("referral-id").type("REFERRAL").status("SENT").counterpartyName("Polismyndigheten").sentAt(COMPLETED_AT);
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID))
 			.thenReturn(errand().jsonParameters(List.of(new JsonParameter().key("aot_alcohol_serving_permit_application_permanent_serving").schemaId("2281_aot_alcohol_serving_permit_application_permanent_serving_1.0").value(form))));
@@ -109,6 +112,8 @@ class DecisionBasisServiceTest {
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(investigation));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(unanswered));
+		when(supportManagementIntegrationMock.getInvestigationSectionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id", "aot_investigation_premises_section"))
+			.thenReturn(premisesExamination);
 		when(partyIntegrationMock.findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID))).thenReturn(Map.of(PBI_PARTY_ID, "198203154321"));
 		when(employeeIntegrationMock.getName(MUNICIPALITY_ID, CASE_WORKER)).thenReturn("Erik Lindqvist");
 		when(supportManagementIntegrationMock.getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE)).thenReturn(Map.of("APPROVAL", "Bifall"));
@@ -122,6 +127,7 @@ class DecisionBasisServiceTest {
 		verify(supportManagementIntegrationMock).getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
 		verify(supportManagementIntegrationMock).getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID);
+		verify(supportManagementIntegrationMock).getInvestigationSectionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id", "aot_investigation_premises_section");
 		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
 		verify(employeeIntegrationMock).getName(MUNICIPALITY_ID, CASE_WORKER);
 		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, "2281_aot_alcohol_serving_permit_application_permanent_serving_1.0");
@@ -133,6 +139,7 @@ class DecisionBasisServiceTest {
 		assertThat(parameters).containsEntry("documentDate", "2026-11-03").containsEntry("caseNumber", "MBN 2026/123")
 			.containsEntry("handlerName", "Erik Lindqvist");
 		assertThat(parameters.get("application")).asInstanceOf(MAP).containsEntry("servingTo", "Allmänheten");
+		assertThat(parameters.get("premises")).asInstanceOf(MAP).containsEntry("inspectedAt", "2026-10-02");
 		assertThat(parameters.get("personsOfInfluence")).asInstanceOf(LIST).singleElement()
 			.asInstanceOf(MAP).containsEntry("name", "Anna Svensson").containsEntry("personalNumber", "19820315-4321");
 		assertThat(parameters.get("statements")).asInstanceOf(LIST).singleElement()
