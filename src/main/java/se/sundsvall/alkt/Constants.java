@@ -87,5 +87,7 @@ public final class Constants {
 
 	public static final String EXTERNAL_TAG_INSPECTION_ERRAND_ID = "inspectionErrandId";
 
+	public static final String INVESTIGATION_SECTION_PREMISES = "premises";
+
 	private Constants() {}
 }

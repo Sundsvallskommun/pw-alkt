@@ -138,10 +138,15 @@ public class SupportManagementIntegration {
 			() -> supportManagementClient.getInvestigationJsonParameter(municipalityId, namespace, errandId, investigationId, key)).getValue();
 	}
 
-	/** The value of the JSON parameter of the investigation section, or a missing node when the section has none. */
+	/**
+	 * The value of the JSON parameter of the investigation section, or a missing node when the section has none. A section
+	 * that is not found fails without retry.
+	 */
 	public JsonNode getInvestigationSectionJson(final String municipalityId, final String namespace, final String errandId, final String investigationId, final String sectionId,
 		final String key) {
-		return Optional.ofNullable(supportManagementClient.getInvestigationSectionJsonParameters(municipalityId, namespace, errandId, investigationId, sectionId).getBody())
+		final var response = failWithoutRetryOn(NOT_FOUND, "Section '%s' of investigation '%s' of errand '%s' was not found".formatted(sectionId, investigationId, errandId),
+			() -> supportManagementClient.getInvestigationSectionJsonParameters(municipalityId, namespace, errandId, investigationId, sectionId));
+		return Optional.ofNullable(response.getBody())
 			.orElse(emptyList()).stream()
 			.filter(parameter -> key.equals(parameter.getKey()))
 			.findFirst()

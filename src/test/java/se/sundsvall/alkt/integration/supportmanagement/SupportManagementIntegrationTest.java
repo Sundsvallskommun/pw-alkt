@@ -335,6 +335,18 @@ class SupportManagementIntegrationTest {
 	}
 
 	@Test
+	void getInvestigationSectionJsonFailsWithoutRetryWhenTheSectionIsNotFound() {
+		final var problem = new ClientProblem(NOT_FOUND, "No section with id 'premises-section-id'");
+		when(supportManagementClientMock.getInvestigationSectionJsonParameters(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id")).thenThrow(problem);
+
+		assertThatThrownBy(() -> supportManagementIntegration.getInvestigationSectionJson(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "investigation-id", "premises-section-id",
+			"aot_investigation_premises_section"))
+			.isInstanceOf(NonRetryableException.class)
+			.hasMessageStartingWith("Section 'premises-section-id' of investigation 'investigation-id' of errand '%s' was not found".formatted(ERRAND_ID))
+			.hasCause(problem);
+	}
+
+	@Test
 	void getDecisionJsonFailsWithoutABody() {
 		when(supportManagementClientMock.getDecisionJsonParameter(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID, "decision-id", "aot_alcohol_decision")).thenReturn(ResponseEntity.ok().build());
 

@@ -40,6 +40,7 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_NAME;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_AREA;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_POSTAL_CODE;
 import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRESS;
+import static se.sundsvall.alkt.Constants.INVESTIGATION_SECTION_PREMISES;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_PARAMETER_PBI_ROLE;
@@ -176,7 +177,7 @@ public final class DecisionBasisMapper {
 		parameters.put("investigation", Map.of(
 			"recommendationLabel", toLabel(lookups.decisionOutcomes(), investigation.getRecommendation()),
 			"financialAssessmentHtml", toSectionText(sections, "financial_suitability"),
-			"premisesRemarksHtml", Optional.of(toSectionText(sections, PREMISES)).filter(StringUtils::isNotEmpty).orElseGet(() -> toSectionText(sections, "sales_point")),
+			"premisesRemarksHtml", Optional.of(toSectionText(sections, INVESTIGATION_SECTION_PREMISES)).filter(StringUtils::isNotEmpty).orElseGet(() -> toSectionText(sections, "sales_point")),
 			"conclusionHtml", toSanitizedHtml(investigation.getConclusion()),
 			"recommendationMotivationHtml", toSanitizedHtml(investigation.getRecommendationMotivation())));
 		return parameters;
