@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Lookups;
+import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Premises;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.MissingNode;
 
@@ -28,6 +29,7 @@ class DecisionBasisMapperTest {
 
 	private static final LocalDate TODAY = LocalDate.parse("2026-11-03");
 	private static final Parameter IN_SUNDSVALL = new Parameter().key("premisesMunicipalityId").values(List.of("2281"));
+	private static final Premises NO_PREMISES = new Premises(MissingNode.getInstance(), MissingNode.getInstance());
 	private static final Lookups NO_LOOKUPS = new Lookups(MissingNode.getInstance(), Map.of(), Map.of(), Map.of(), "");
 
 	private static Parameter parameter(final String key, final String value) {
@@ -75,7 +77,8 @@ class DecisionBasisMapperTest {
 		final var statements = List.of(
 			new Statement().counterpartyName("Medelpads Räddningstjänstförbund").status("RESPONDED").sentAt(OffsetDateTime.parse("2026-09-20T10:00:00+02:00"))
 				.respondedAt(OffsetDateTime.parse("2026-10-05T23:30:00Z")).outcome("NO_OBJECTION").responseText("<p>Inget att erinra.</p>"),
-			new Statement().counterpartyName("Polismyndigheten").status("DRAFT"));
+			new Statement().counterpartyName("Polismyndigheten").status("RESPONDED").outcome("NO_OBJECTION"),
+			new Statement().counterpartyName("Miljökontoret").status("DRAFT"));
 		final var schema = JsonMapper.builder().build().readTree("""
 			{
 			  "properties": {
@@ -98,7 +101,7 @@ class DecisionBasisMapperTest {
 			}
 			""");
 
-		final var parameters = toTemplateParameters(errand, investigation, premisesExamination, statements, attachments, lookups, TODAY);
+		final var parameters = toTemplateParameters(errand, investigation, new Premises(premisesExamination, MissingNode.getInstance()), statements, attachments, lookups, TODAY);
 
 		assertThat(parameters)
 			.containsEntry("documentDate", "2026-11-03")
@@ -115,7 +118,7 @@ class DecisionBasisMapperTest {
 			.containsEntry("statements", List.of(
 				Map.of("counterparty", "Medelpads Räddningstjänstförbund", "sentAt", "2026-09-20", "respondedAt", "2026-10-06", "status", "RESPONDED",
 					"outcomeLabel", "Inget att erinra", "responseText", "Inget att erinra."),
-				Map.of("counterparty", "Polismyndigheten", "sentAt", "", "respondedAt", "", "status", "DRAFT", "outcomeLabel", "", "responseText", "")))
+				Map.of("counterparty", "Polismyndigheten", "sentAt", "", "respondedAt", "", "status", "RESPONDED", "outcomeLabel", "Inget att erinra", "responseText", "")))
 			.containsEntry("personsOfInfluence", List.of(Map.of("name", "Karl Berg", "personalNumber", "19800101-1234", "roles", "Styrelseledamot",
 				"motivation", "Äger 60 %", "knowledgeTest", Map.of("statusLabel", "Godkänt", "testType", "", "testedAt", "2026-08-20", "comment", ""))));
 		assertThat(parameters.get("application")).asInstanceOf(MAP)
@@ -152,10 +155,10 @@ class DecisionBasisMapperTest {
 
 	@Test
 	void sendsEveryKeyOfTheTemplatesForAnErrandWithoutApplicationSectionsOrReferrals() {
-		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), MissingNode.getInstance(), List.of(), List.of(), NO_LOOKUPS, TODAY);
+		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), NO_PREMISES, List.of(), List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters).containsOnlyKeys("documentDate", "caseNumber", "caseType", "handlerName", "handlerTitle", "issuedByUnit", "issuedByAuthority",
-			"communication", "childPerspectiveHtml", "marketingHtml", "selfMonitoringHtml", "legislationHtml", "exciseTaxHtml", "proposal", "applicant", "company",
+			"communication", "childPerspectiveHtml", "marketingHtml", "selfMonitoringHtml", "legislationHtml", "proposal", "applicant", "company",
 			"application", "premises", "personsOfInfluence", "statements", "investigation");
 		assertThat(parameters.get("application")).asInstanceOf(MAP).containsOnlyKeys("receivedAt", "completeAt",
 			"servingTo", "beverages", "period", "servingHours", "orientation", "orientationHtml", "businessDescriptionHtml", "orderAndSobrietyHtml", "rightOfDisposal",
@@ -176,7 +179,7 @@ class DecisionBasisMapperTest {
 			.jsonParameters(List.of(new JsonParameter().key("aot_tobacco_sales_permit_application").value(form)))
 			.stakeholders(List.of(new Stakeholder().role("PRIMARY").organizationName("Torgkiosken AB").address("Torget 2").zipCode("852 31").city("Sundsvall")));
 
-		final var parameters = toTemplateParameters(errand, new Investigation(), MissingNode.getInstance(), List.of(), List.of(), NO_LOOKUPS, TODAY);
+		final var parameters = toTemplateParameters(errand, new Investigation(), NO_PREMISES, List.of(), List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters.get("premises")).asInstanceOf(MAP)
 			.containsEntry("name", "Kiosken Torget")
@@ -185,11 +188,12 @@ class DecisionBasisMapperTest {
 	}
 
 	@Test
-	void readsThePremisesFromTheErrandWhenItHasNoApplicationForm() {
+	void readsThePremisesFromTheErrandBeforeTheOwnerWhenItHasNoApplicationForm() {
 		final var errand = new Errand().parameters(List.of(IN_SUNDSVALL, parameter("premisesName", "Runt Hörnet"), parameter("premisesStreetAddress", "Storgatan 33"),
-			parameter("premisesPostalCode", "852 30"), parameter("premisesPostalArea", "Sundsvall")));
+			parameter("premisesPostalCode", "852 30"), parameter("premisesPostalArea", "Sundsvall")))
+			.stakeholders(List.of(new Stakeholder().role("PRIMARY").organizationName("Runt Hörnet AB").address("Kontorsvägen 5").zipCode("852 33").city("Sundsvall")));
 
-		final var parameters = toTemplateParameters(errand, new Investigation(), MissingNode.getInstance(), List.of(), List.of(), NO_LOOKUPS, TODAY);
+		final var parameters = toTemplateParameters(errand, new Investigation(), NO_PREMISES, List.of(), List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters.get("premises")).asInstanceOf(MAP)
 			.containsEntry("name", "Runt Hörnet")
@@ -198,10 +202,45 @@ class DecisionBasisMapperTest {
 	}
 
 	@Test
+	void readsThePointOfSaleFromThePermitBeforeTheErrandWhenItHasNoApplicationForm() {
+		final var permit = JsonMapper.builder().build().readTree("""
+			{ "pointOfSale": { "name": "Tobaksbutiken Runt Hörnet", "address": { "street": "Storgatan 1", "postalCode": "852 30", "city": "Sundsvall" } } }
+			""");
+		final var errand = new Errand().parameters(List.of(IN_SUNDSVALL, parameter("premisesName", "Gamla Kiosken"), parameter("premisesStreetAddress", "Bergsgatan 12")))
+			.stakeholders(List.of(new Stakeholder().role("PRIMARY").organizationName("Runt Hörnet AB").address("Kontorsvägen 5").zipCode("852 33").city("Sundsvall")));
+
+		final var parameters = toTemplateParameters(errand, new Investigation(), new Premises(MissingNode.getInstance(), permit), List.of(), List.of(), NO_LOOKUPS, TODAY);
+
+		assertThat(parameters.get("premises")).asInstanceOf(MAP)
+			.containsEntry("name", "Tobaksbutiken Runt Hörnet")
+			.containsEntry("street", "Storgatan 1")
+			.containsEntry("postalAddress", "852 30 Sundsvall");
+	}
+
+	@Test
+	void readsTheNewPointOfSaleFromTheFormBeforeThePermit() {
+		final var permit = JsonMapper.builder().build().readTree("""
+			{ "pointOfSale": { "name": "Tobaksbutiken Runt Hörnet", "address": { "street": "Storgatan 1", "postalCode": "852 30", "city": "Sundsvall" } } }
+			""");
+		final var form = JsonMapper.builder().build().readTree("""
+			{ "pointOfSaleName": "Hörnbutiken", "pointOfSaleAddress": { "street": "Torggatan 3", "postalCode": "852 31", "city": "Sundsvall" } }
+			""");
+		final var errand = new Errand().parameters(List.of(IN_SUNDSVALL))
+			.jsonParameters(List.of(new JsonParameter().key("aot_tobacco_sales_permit_application").value(form)));
+
+		final var parameters = toTemplateParameters(errand, new Investigation(), new Premises(MissingNode.getInstance(), permit), List.of(), List.of(), NO_LOOKUPS, TODAY);
+
+		assertThat(parameters.get("premises")).asInstanceOf(MAP)
+			.containsEntry("name", "Hörnbutiken")
+			.containsEntry("street", "Torggatan 3")
+			.containsEntry("postalAddress", "852 31 Sundsvall");
+	}
+
+	@Test
 	void findsTheRescueServiceWhateverTheCaseAndSpacesAroundItsName() {
 		final var statement = new Statement().counterpartyName(" medelpads räddningstjänstförbund ").status("RESPONDED").outcome("NO_OBJECTION");
 
-		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), MissingNode.getInstance(), List.of(statement), List.of(), NO_LOOKUPS, TODAY);
+		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), NO_PREMISES, List.of(statement), List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters.get("premises")).asInstanceOf(MAP).containsEntry("fireSafety", "Medelpads Räddningstjänstförbund: NO_OBJECTION");
 	}
@@ -210,7 +249,8 @@ class DecisionBasisMapperTest {
 	void leavesOutStylesAndTagsThatSpanSeveralLinesOfAReferralAnswer() {
 		final var answer = "<style>\np.MsoNormal {margin:0cm}\n</style><p>Polisen har inget\n<span\nclass=\"x\">att erinra</span></p>";
 
-		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), MissingNode.getInstance(), List.of(new Statement().counterpartyName("Polismyndigheten").responseText(answer)),
+		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), NO_PREMISES, List.of(new Statement().counterpartyName("Polismyndigheten").responseText(
+			answer)),
 			List.of(), NO_LOOKUPS, TODAY);
 
 		assertThat(parameters.get("statements")).asInstanceOf(LIST).singleElement().asInstanceOf(MAP)

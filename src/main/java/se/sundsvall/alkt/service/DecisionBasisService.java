@@ -15,6 +15,8 @@ import se.sundsvall.alkt.integration.supportmanagement.SupportManagementIntegrat
 import se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper;
 import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Lookups;
+import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Premises;
+import se.sundsvall.alkt.service.model.AssetType;
 import tools.jackson.databind.node.MissingNode;
 
 import static java.util.Collections.emptyList;
@@ -34,15 +36,17 @@ public class DecisionBasisService {
 	private static final String PREMISES_EXAMINATION_KEY = "aot_investigation_premises_section";
 
 	private final SupportManagementIntegration supportManagementIntegration;
+	private final AssetService assetService;
 	private final TemplatingIntegration templatingIntegration;
 	private final PartyIntegration partyIntegration;
 	private final JsonSchemaIntegration jsonSchemaIntegration;
 	private final EmployeeIntegration employeeIntegration;
 	private final Clock clock;
 
-	DecisionBasisService(final SupportManagementIntegration supportManagementIntegration, final TemplatingIntegration templatingIntegration,
+	DecisionBasisService(final SupportManagementIntegration supportManagementIntegration, final AssetService assetService, final TemplatingIntegration templatingIntegration,
 		final PartyIntegration partyIntegration, final JsonSchemaIntegration jsonSchemaIntegration, final EmployeeIntegration employeeIntegration, final Clock clock) {
 		this.supportManagementIntegration = supportManagementIntegration;
+		this.assetService = assetService;
 		this.templatingIntegration = templatingIntegration;
 		this.partyIntegration = partyIntegration;
 		this.jsonSchemaIntegration = jsonSchemaIntegration;
@@ -54,7 +58,7 @@ public class DecisionBasisService {
 	 * A rerun finds the decision basis an earlier attempt uploaded by its file name and by it being uploaded after the
 	 * investigation was completed, or last changed when it has no completion time, and uploads no second one.
 	 */
-	public String createDecisionBasis(final String municipalityId, final String namespace, final String errandId, final String template) {
+	public String createDecisionBasis(final String municipalityId, final String namespace, final String errandId, final String template, final AssetType assetType) {
 		final var errand = supportManagementIntegration.getErrand(municipalityId, namespace, errandId);
 		final var investigations = supportManagementIntegration.getInvestigations(municipalityId, namespace, errandId).stream()
 			.filter(investigation -> !INVESTIGATION_STATUS_CANCELLED.equals(investigation.getStatus()))
@@ -81,8 +85,9 @@ public class DecisionBasisService {
 					.map(section -> supportManagementIntegration.getInvestigationSectionJson(municipalityId, namespace, errandId, investigation.getId(), section.getId(),
 						PREMISES_EXAMINATION_KEY))
 					.orElse(MissingNode.getInstance());
-				final var parameters = toTemplateParameters(errand, investigation, premisesExamination, statements, attachments, lookupsOf(municipalityId, namespace, errand),
-					LocalDate.now(clock));
+				final var permit = assetService.findPermitJson(municipalityId, errand, errandId, assetType);
+				final var parameters = toTemplateParameters(errand, investigation, new Premises(premisesExamination, permit), statements, attachments,
+					lookupsOf(municipalityId, namespace, errand), LocalDate.now(clock));
 				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
 				return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 			});

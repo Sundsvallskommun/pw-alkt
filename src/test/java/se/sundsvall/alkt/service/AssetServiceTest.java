@@ -49,6 +49,7 @@ import se.sundsvall.dept44.exception.ClientProblem;
 import se.sundsvall.dept44.problem.Problem;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.MissingNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -1207,6 +1208,22 @@ class AssetServiceTest {
 			ERRAND_ID, ALCOHOL_SERVING_PERMIT))
 			.isInstanceOf(NonRetryableException.class)
 			.hasMessage("Asset '%s' has no JSON parameter 'aot_alcohol_party_asset' to change".formatted(ASSET_ID));
+	}
+
+	@Test
+	void findPermitJsonAnswersWithTheJsonOfThePermitTheErrandChanges() {
+		final var permit = permitParameter("{\"premises\":{\"name\":\"Restaurang Runt Hörnet\"}}");
+		when(partyAssetsIntegrationMock.getAsset(MUNICIPALITY_ID, ASSET_ID)).thenReturn(versioned(activeAsset().jsonParameters(List.of(permit))));
+
+		assertThat(assetService.findPermitJson(MUNICIPALITY_ID, errandWithPermitHolder().parameters(List.of(new Parameter().key("assetId").values(List.of(ASSET_ID)))), ERRAND_ID,
+			ALCOHOL_SERVING_PERMIT)).isSameAs(permit.getValue());
+	}
+
+	@Test
+	void findPermitJsonAnswersWithAMissingNodeWhenTheErrandNamesNoPermit() {
+		assertThat(assetService.findPermitJson(MUNICIPALITY_ID, errandWithPermitHolder(), ERRAND_ID, ALCOHOL_SERVING_PERMIT)).isSameAs(MissingNode.getInstance());
+
+		verifyNoInteractions(partyAssetsIntegrationMock);
 	}
 
 	@ParameterizedTest

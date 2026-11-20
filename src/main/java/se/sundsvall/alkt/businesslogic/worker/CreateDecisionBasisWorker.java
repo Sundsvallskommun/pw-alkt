@@ -33,7 +33,8 @@ public class CreateDecisionBasisWorker extends AbstractTaskWorker {
 			throw new NonRetryableException("The step has no decision basis template, see the input parameters in the bpmn schema");
 		}
 
-		final var attachmentId = decisionBasisService.createDecisionBasis(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), template);
+		final var attachmentId = decisionBasisService.createDecisionBasis(getMunicipalityId(externalTask), getNamespace(externalTask), getErrandId(externalTask), template,
+			getProcessType(externalTask).getAssetType());
 
 		logInfo("Errand {} has decision basis {}", sanitizeForLogging(getErrandId(externalTask)), sanitizeForLogging(attachmentId));
 

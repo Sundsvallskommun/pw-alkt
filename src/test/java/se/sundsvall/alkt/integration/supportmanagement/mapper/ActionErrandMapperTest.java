@@ -24,10 +24,11 @@ class ActionErrandMapperTest {
 	@Test
 	void toActionErrandCarriesTheInspectionOver() {
 		final var dueAt = OffsetDateTime.parse("2026-10-15T00:00:00+02:00");
-		final var permitHolder = new Stakeholder().role("PRIMARY").externalId("party-id");
+		final var permitHolder = new Stakeholder().role("PRIMARY").externalId("party-id")
+			.parameters(List.of(new Parameter().key("organizationNumber").values(List.of("5560021361")).version(3L)));
 		final var personOfInfluence = new Stakeholder().role("CONTACT").externalId("influence-party-id").externalIdType("PRIVATE")
 			.firstName("Karin").lastName("Lindqvist").organizationName("Karin Lindqvist")
-			.parameters(List.of(parameter("PBI", "true"), parameter("PBI_ROLE", "Styrelseledamot"), parameter("PBI_SOURCE", "COMPANY")));
+			.parameters(List.of(parameter("PBI", "true").version(2L), parameter("PBI_ROLE", "Styrelseledamot"), parameter("PBI_SOURCE", "COMPANY")));
 		final var inspection = new Errand()
 			.id("inspection-id")
 			.title("Brister vid tillsyn")
@@ -36,7 +37,7 @@ class ActionErrandMapperTest {
 			.classification(new Classification().category("AOT").type("AOT.UNCATEGORIZED"))
 			.labels(List.of(new ErrandLabel().id("inspection-label-id")))
 			.parameters(List.of(
-				new Parameter().key("premisesMunicipalityId").displayName("Kommun").values(List.of("2262")),
+				new Parameter().key("premisesMunicipalityId").displayName("Kommun").values(List.of("2262")).version(5L),
 				parameter("restaurantNumber", "2262-0001")))
 			.stakeholders(List.of(permitHolder, new Stakeholder().role("CONTACT").externalId("contact-id"), new Stakeholder().role("PRIMARY"), personOfInfluence))
 			.measures(List.of(new Measure().id("measure-id").type("EXTERNAL").title("Matsedel saknas").description("Matsedel ska finnas").goal("Matsedel finns").dueAt(dueAt)
@@ -61,7 +62,10 @@ class ActionErrandMapperTest {
 		assertThat(result.getClassification()).isNull();
 		assertThat(result.getLabels()).containsExactly(new ErrandLabel().id("label-id"));
 		assertThat(result.getParameters()).containsExactly(new Parameter().key("premisesMunicipalityId").displayName("Kommun").values(List.of("2262")));
-		assertThat(result.getStakeholders()).containsExactly(permitHolder, personOfInfluence);
+		assertThat(result.getStakeholders()).containsExactly(
+			new Stakeholder().role("PRIMARY").externalId("party-id").parameters(List.of(new Parameter().key("organizationNumber").values(List.of("5560021361")))),
+			new Stakeholder().role("CONTACT").externalId("influence-party-id").externalIdType("PRIVATE").firstName("Karin").lastName("Lindqvist").organizationName("Karin Lindqvist")
+				.parameters(List.of(parameter("PBI", "true"), parameter("PBI_ROLE", "Styrelseledamot"), parameter("PBI_SOURCE", "COMPANY"))));
 		assertThat(result.getMeasures()).containsExactly(new Measure().type("EXTERNAL").title("Matsedel saknas").description("Matsedel ska finnas").goal("Matsedel finns").dueAt(dueAt)
 			.addedByUser("handlaggare").addedByRole("PRIMARY"));
 		assertThat(result.getExternalTags()).containsExactly(new ExternalTag().key("inspectionErrandId").value("errand-id"));

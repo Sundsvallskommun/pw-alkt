@@ -19,6 +19,7 @@
 			"parameters": [
 				{
 					"key": "premisesMunicipalityId",
+					"version": 2,
 					"values": [
 						"2281"
 					]
@@ -52,6 +53,7 @@
 					"parameters": [
 						{
 							"key": "PBI",
+							"version": 1,
 							"values": [
 								"true"
 							]

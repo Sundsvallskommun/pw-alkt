@@ -88,6 +88,7 @@ public final class ActionErrandMapper {
 			.contactChannels(stakeholder.getContactChannels())
 			.parameters(Optional.ofNullable(stakeholder.getParameters()).orElse(emptyList()).stream()
 				.filter(parameter -> !isPbiParameterLeftBehind(parameter))
+				.map(ActionErrandMapper::withoutVersion)
 				.toList());
 	}
 
@@ -101,6 +102,7 @@ public final class ActionErrandMapper {
 			.organizationName(stakeholder.getOrganizationName())
 			.parameters(Optional.ofNullable(stakeholder.getParameters()).orElse(emptyList()).stream()
 				.filter(parameter -> PBI_PARAMETERS_CARRIED_OVER.contains(parameter.getKey()))
+				.map(ActionErrandMapper::withoutVersion)
 				.toList());
 	}
 
@@ -114,7 +116,16 @@ public final class ActionErrandMapper {
 	private static List<Parameter> toPremisesMunicipality(final Errand inspection) {
 		return Optional.ofNullable(inspection.getParameters()).orElse(emptyList()).stream()
 			.filter(parameter -> ERRAND_PARAMETER_PREMISES_MUNICIPALITY_ID.equals(parameter.getKey()))
+			.map(ActionErrandMapper::withoutVersion)
 			.toList();
+	}
+
+	private static Parameter withoutVersion(final Parameter parameter) {
+		return new Parameter()
+			.key(parameter.getKey())
+			.displayName(parameter.getDisplayName())
+			.group(parameter.getGroup())
+			.values(parameter.getValues());
 	}
 
 	private static Measure toMeasure(final Measure measure) {

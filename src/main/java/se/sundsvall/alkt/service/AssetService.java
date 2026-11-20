@@ -30,6 +30,7 @@ import se.sundsvall.alkt.service.model.PermitSchema;
 import se.sundsvall.dept44.common.validators.annotation.impl.ValidUuidConstraintValidator;
 import se.sundsvall.dept44.problem.Problem;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.MissingNode;
 
 import static generated.se.sundsvall.partyassets.Status.ACTIVE;
 import static generated.se.sundsvall.partyassets.Status.EXPIRED;
@@ -198,6 +199,15 @@ public class AssetService {
 			requirePermitParameter(versioned.asset(), assetType.getSchema());
 		}
 		return versioned;
+	}
+
+	/** The JSON of the permit the errand changes, or a missing node when the errand names no permit. */
+	public JsonNode findPermitJson(final String municipalityId, final Errand errand, final String errandId, final AssetType assetType) {
+		return toAssetId(errand)
+			.map(_ -> getPermitOfTheErrand(municipalityId, errand, errandId, assetType).asset())
+			.flatMap(asset -> findPermitParameter(asset, assetType.getSchema()))
+			.map(AssetJsonParameter::getValue)
+			.orElse(MissingNode.getInstance());
 	}
 
 	private static AssetJsonParameter requirePermitParameter(final Asset asset, final PermitSchema schema) {
