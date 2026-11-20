@@ -312,7 +312,7 @@ public final class DecisionBasisMapper {
 	private static String toCategoryCodeLabel(final JsonNode premisesExamination, final JsonNode decisionSchema) {
 		final var options = decisionSchema.path("properties").path("categoryCode").path("oneOf");
 		return findText(premisesExamination.path(PREMISES_EXAMINATION_PROPOSED_CATEGORY_CODE))
-			.map(code -> Optional.of(findTitle(options, code)).filter(title -> !title.equals(code)).map(title -> code + " – " + title).orElse(code))
+			.map(code -> findOptionTitle(options, code).map(title -> code + " – " + title).orElse(code))
 			.orElse("");
 	}
 
@@ -356,12 +356,15 @@ public final class DecisionBasisMapper {
 	}
 
 	private static String findTitle(final JsonNode options, final String code) {
+		return findOptionTitle(options, code).orElse(code);
+	}
+
+	private static Optional<String> findOptionTitle(final JsonNode options, final String code) {
 		return options.values().stream()
 			.filter(option -> code.equals(option.path("const").asString(null)))
 			.map(option -> option.path("title").asString(null))
 			.filter(StringUtils::isNotBlank)
-			.findFirst()
-			.orElse(code);
+			.findFirst();
 	}
 
 	private static String toLabel(final Map<String, String> labels, final String code) {
