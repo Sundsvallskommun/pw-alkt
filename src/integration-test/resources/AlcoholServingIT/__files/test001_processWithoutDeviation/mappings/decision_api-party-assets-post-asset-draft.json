@@ -121,6 +121,12 @@
 					"expression": "$.jsonParameters[0].value.premises.restaurantNumber",
 					"equalTo": "22620001"
 				}
+			},
+			{
+				"matchesJsonPath": {
+					"expression": "$.jsonParameters[0].value.categoryCode",
+					"equalTo": "21"
+				}
 			}
 		]
 	},
