@@ -21,6 +21,11 @@ public interface JsonSchemaClient {
 		@PathVariable String municipalityId,
 		@PathVariable String id);
 
+	@GetMapping(path = "/{municipalityId}/schemas/{name}/versions/latest", produces = APPLICATION_JSON_VALUE)
+	ResponseEntity<JsonSchema> getLatestSchemaByName(
+		@PathVariable String municipalityId,
+		@PathVariable String name);
+
 	@GetMapping(path = "/{municipalityId}/schemas/{id}/ui-schema", produces = APPLICATION_JSON_VALUE)
 	ResponseEntity<UiSchema> getUiSchema(
 		@PathVariable String municipalityId,

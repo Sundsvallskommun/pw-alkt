@@ -21,7 +21,7 @@ class PermitCertificateMapperTest {
 	 * template that reads something new needs it added here.
 	 */
 	private static final String[] SERVING_TEMPLATE_PLACEHOLDERS = {
-		"caseNumber", "conditions", "decisionDate", "decisionDateAndCaseNumber", "decisionMaker", "decisionText", "executionDate", "issuedByNameAndTitle", "issuedByUnit",
+		"caseNumber", "categoryCode", "conditions", "decisionDate", "decisionDateAndCaseNumber", "decisionMaker", "decisionText", "executionDate", "issuedByNameAndTitle", "issuedByUnit",
 		"permitHolderName", "permitHolderOrgNumber", "permitHolderPhone", "permitHolderPostalAddress", "permitHolderStreet", "premisesName", "premisesPhone",
 		"premisesPostalAddress", "premisesRestaurantNumber", "premisesStreet", "replacesDecision", "scopePeriodFromTo", "servingAreaDescription",
 		"servingAreaDrawingReference", "servingAreaMaxPersons", "servingAreaSeats", "servingHours", "validFrom", "beverageBeer", "beverageOtherFermented",
@@ -48,6 +48,7 @@ class PermitCertificateMapperTest {
 		  "caseRegistrationNumber": "ALKT-2026-000123",
 		  "externalCaseRegistrationNumber": "2026/0456",
 		  "servingPermitType": "PERMANENT_SERVING",
+		  "categoryCode": "21",
 		  "permitHolder": {
 		    "name": "Bolaget AB",
 		    "organizationNumber": "556677-8899",
@@ -149,6 +150,7 @@ class PermitCertificateMapperTest {
 			entry("premisesPostalAddress", "85230 Sundsvall"),
 			entry("premisesPhone", "060-123456"),
 			entry("premisesRestaurantNumber", "22810012"),
+			entry("categoryCode", "21"),
 			entry("servingAreaDescription", "Matsal och bar"),
 			entry("servingAreaDrawingReference", "ritning.pdf"),
 			entry("servingAreaMaxPersons", "150"),

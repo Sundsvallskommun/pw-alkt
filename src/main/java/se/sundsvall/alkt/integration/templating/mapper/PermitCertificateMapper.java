@@ -75,6 +75,7 @@ public final class PermitCertificateMapper {
 		put(parameters, "permitHolderPhone", text(holder.path("phoneNumber")));
 		putPlace(parameters, premises);
 		put(parameters, "premisesRestaurantNumber", text(premises.path("restaurantNumber")));
+		put(parameters, "categoryCode", text(permit.path("categoryCode")));
 		put(parameters, "servingAreaDescription", text(servingArea.path(DESCRIPTION)));
 		put(parameters, "servingAreaDrawingReference", text(servingArea.path("drawingReference")));
 		put(parameters, "servingAreaMaxPersons", text(servingArea.path("maxPersons")));

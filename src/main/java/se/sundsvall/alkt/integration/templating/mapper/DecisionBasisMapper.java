@@ -43,6 +43,7 @@ import static se.sundsvall.alkt.Constants.ERRAND_PARAMETER_PREMISES_STREET_ADDRE
 import static se.sundsvall.alkt.Constants.INVESTIGATION_SECTION_PREMISES;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_SUNDSVALL;
 import static se.sundsvall.alkt.Constants.MUNICIPALITY_ID_TIMRA;
+import static se.sundsvall.alkt.Constants.PREMISES_EXAMINATION_PROPOSED_CATEGORY_CODE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_PARAMETER_PBI_ROLE;
 import static se.sundsvall.alkt.Constants.STAKEHOLDER_ROLE_PERMIT_HOLDER;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.findText;
@@ -116,7 +117,7 @@ public final class DecisionBasisMapper {
 	/** What the case worker found when examining the premises, and the permit an errand changes. */
 	public record Premises(JsonNode examination, JsonNode permit) {}
 
-	public record Lookups(JsonNode formSchema, Map<String, String> decisionOutcomes, Map<String, String> statementOutcomes, Map<String, String> legalIds,
+	public record Lookups(JsonNode formSchema, JsonNode decisionSchema, Map<String, String> decisionOutcomes, Map<String, String> statementOutcomes, Map<String, String> legalIds,
 		String handlerName) {}
 
 	private DecisionBasisMapper() {}
@@ -149,7 +150,9 @@ public final class DecisionBasisMapper {
 		parameters.put("marketingHtml", toSectionText(sections, "marketing"));
 		parameters.put("selfMonitoringHtml", toSectionText(sections, "self_monitoring"));
 		parameters.put("legislationHtml", toSectionText(sections, "legal_basis"));
-		parameters.put("proposal", Map.of("points", toProposalPoints(investigation, lookups)));
+		parameters.put("proposal", Map.of(
+			"points", toProposalPoints(investigation, lookups),
+			"categoryCodeLabel", toCategoryCodeLabel(premisesExamination, lookups.decisionSchema())));
 		parameters.put("applicant", Map.of(
 			"name", applicant.map(SupportManagementMapper::toStakeholderName).orElse(""),
 			"orgNumber", applicant.map(stakeholder -> toParameterValues(stakeholder.getParameters()).getOrDefault("organizationNumber", "")).orElse(""),
@@ -303,6 +306,14 @@ public final class DecisionBasisMapper {
 			return points;
 		}
 		return Optional.of(toLabel(lookups.decisionOutcomes(), investigation.getRecommendation())).filter(StringUtils::isNotEmpty).map(List::of).orElse(emptyList());
+	}
+
+	/** "21 – Allmänheten – Alla drycker – Året runt", or the code alone when the decision schema has no text for it. */
+	private static String toCategoryCodeLabel(final JsonNode premisesExamination, final JsonNode decisionSchema) {
+		final var options = decisionSchema.path("properties").path("categoryCode").path("oneOf");
+		return findText(premisesExamination.path(PREMISES_EXAMINATION_PROPOSED_CATEGORY_CODE))
+			.map(code -> Optional.of(findTitle(options, code)).filter(title -> !title.equals(code)).map(title -> code + " – " + title).orElse(code))
+			.orElse("");
 	}
 
 	private static String toPeriod(final JsonNode form, final JsonNode schema) {
