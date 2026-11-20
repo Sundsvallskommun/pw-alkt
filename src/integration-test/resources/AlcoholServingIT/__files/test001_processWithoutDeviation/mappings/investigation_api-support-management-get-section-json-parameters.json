@@ -16,7 +16,7 @@
 		"jsonBody": [
 			{
 				"key": "aot_investigation_premises_section",
-				"schemaId": "2281_aot_investigation_premises_section_1.1",
+				"schemaId": "2281_aot_investigation_premises_section_1.0",
 				"value": {
 					"inspectedAt": "2026-10-10",
 					"rightOfDisposal": {
@@ -25,8 +25,7 @@
 					},
 					"servingArea": {
 						"description": "Matsal och bar"
-					},
-					"proposedCategoryCode": "21"
+					}
 				}
 			}
 		],

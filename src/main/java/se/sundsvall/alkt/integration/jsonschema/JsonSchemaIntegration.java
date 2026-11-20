@@ -26,12 +26,6 @@ public class JsonSchemaIntegration {
 			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Schema '%s' came back without content".formatted(schemaId)));
 	}
 
-	public JsonNode getLatestSchema(final String municipalityId, final String name) {
-		return Optional.ofNullable(failWithoutRetryOn(NOT_FOUND, "Schema '%s' has no version".formatted(name), () -> jsonSchemaClient.getLatestSchemaByName(municipalityId, name)).getBody())
-			.map(JsonSchema::getValue)
-			.orElseThrow(() -> Problem.valueOf(BAD_GATEWAY, "Latest version of schema '%s' came back without content".formatted(name)));
-	}
-
 	public JsonNode getUiSchema(final String municipalityId, final String schemaId) {
 		return Optional.ofNullable(failWithoutRetryOn(NOT_FOUND, "UI schema of schema '%s' does not exist".formatted(schemaId), () -> jsonSchemaClient.getUiSchema(municipalityId, schemaId)).getBody())
 			.map(UiSchema::getValue)

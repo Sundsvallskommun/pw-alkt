@@ -24,8 +24,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import se.sundsvall.alkt.configuration.PermitJsonProperties;
-import se.sundsvall.alkt.configuration.PermitJsonProperties.Settings;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.employee.EmployeeIntegration;
 import se.sundsvall.alkt.integration.jsonschema.JsonSchemaIntegration;
@@ -89,8 +87,7 @@ class DecisionBasisServiceTest {
 	@BeforeEach
 	void setUp() {
 		final var clock = Clock.fixed(Instant.parse("2026-11-03T08:00:00Z"), ZoneId.of("Europe/Stockholm"));
-		service = new DecisionBasisService(supportManagementIntegrationMock, assetServiceMock, templatingIntegrationMock, partyIntegrationMock, jsonSchemaIntegrationMock, employeeIntegrationMock,
-			new PermitJsonProperties(new Settings("1.1", "aot_alcohol_decision"), new Settings("1.0", "aot_tobacco_decision")), clock);
+		service = new DecisionBasisService(supportManagementIntegrationMock, assetServiceMock, templatingIntegrationMock, partyIntegrationMock, jsonSchemaIntegrationMock, employeeIntegrationMock, clock);
 	}
 
 	@AfterEach
@@ -112,15 +109,13 @@ class DecisionBasisServiceTest {
 		final var schema = JsonMapper.builder().build().readTree("{\"properties\":{\"servingAudience\":{\"oneOf\":[{\"const\":\"PUBLIC\",\"title\":\"Allmänheten\"}]}}}");
 		final var investigation = new Investigation().id("investigation-id").status("DRAFT").created(COMPLETED_AT)
 			.sections(List.of(new InvestigationSection().id("premises-section-id").sectionKey("premises")));
-		final var premisesExamination = JsonMapper.builder().build().readTree("{\"inspectedAt\":\"2026-10-02\",\"proposedCategoryCode\":\"21\"}");
-		final var decisionSchema = JsonMapper.builder().build().readTree("{\"properties\":{\"categoryCode\":{\"oneOf\":[{\"const\":\"21\",\"title\":\"Allmänheten – Alla drycker – Året runt\"}]}}}");
+		final var premisesExamination = JsonMapper.builder().build().readTree("{\"inspectedAt\":\"2026-10-02\"}");
 		final var permit = JsonMapper.builder().build().readTree("""
 			{ "premises": { "name": "Restaurang Kajen", "address": { "street": "Hamngatan 4", "postalCode": "852 30", "city": "Sundsvall" } } }
 			""");
 		final var errand = errand().jsonParameters(List.of(new JsonParameter().key("aot_alcohol_serving_permit_application_permanent_serving").schemaId("2281_aot_alcohol_serving_permit_application_permanent_serving_1.0").value(form)));
 		when(supportManagementIntegrationMock.getErrand(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(errand);
 		when(jsonSchemaIntegrationMock.getSchema(MUNICIPALITY_ID, "2281_aot_alcohol_serving_permit_application_permanent_serving_1.0")).thenReturn(schema);
-		when(jsonSchemaIntegrationMock.getLatestSchema(MUNICIPALITY_ID, "aot_alcohol_decision")).thenReturn(decisionSchema);
 		when(supportManagementIntegrationMock.getInvestigations(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of(investigation));
 		when(supportManagementIntegrationMock.getAttachments(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
 		when(supportManagementIntegrationMock.getStatements(MUNICIPALITY_ID, NAMESPACE, ERRAND_ID)).thenReturn(List.of());
@@ -145,7 +140,6 @@ class DecisionBasisServiceTest {
 		verify(partyIntegrationMock).findLegalIds(MUNICIPALITY_ID, List.of(PBI_PARTY_ID));
 		verify(employeeIntegrationMock).getName(MUNICIPALITY_ID, CASE_WORKER);
 		verify(jsonSchemaIntegrationMock).getSchema(MUNICIPALITY_ID, "2281_aot_alcohol_serving_permit_application_permanent_serving_1.0");
-		verify(jsonSchemaIntegrationMock).getLatestSchema(MUNICIPALITY_ID, "aot_alcohol_decision");
 		verify(supportManagementIntegrationMock).getDecisionOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
 		verify(supportManagementIntegrationMock).getStatementOutcomeNames(MUNICIPALITY_ID, NAMESPACE);
 		verify(templatingIntegrationMock).renderPdf(eq(PREMISES_MUNICIPALITY_ID), eq(TEMPLATE), parametersCaptor.capture());
@@ -154,7 +148,6 @@ class DecisionBasisServiceTest {
 		assertThat(parameters).containsEntry("documentDate", "2026-11-03").containsEntry("caseNumber", "MBN 2026/123")
 			.containsEntry("handlerName", "Erik Lindqvist");
 		assertThat(parameters.get("application")).asInstanceOf(MAP).containsEntry("servingTo", "Allmänheten");
-		assertThat(parameters.get("proposal")).asInstanceOf(MAP).containsEntry("categoryCodeLabel", "21 – Allmänheten – Alla drycker – Året runt");
 		assertThat(parameters.get("premises")).asInstanceOf(MAP).containsEntry("inspectedAt", "2026-10-02").containsEntry("name", "Restaurang Kajen")
 			.containsEntry("street", "Hamngatan 4").containsEntry("postalAddress", "852 30 Sundsvall");
 		assertThat(parameters.get("personsOfInfluence")).asInstanceOf(LIST).singleElement()

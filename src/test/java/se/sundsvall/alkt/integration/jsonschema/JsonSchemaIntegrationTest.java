@@ -50,28 +50,6 @@ class JsonSchemaIntegrationTest {
 	}
 
 	@Test
-	void getLatestSchemaAnswersWithTheValueOfTheHighestVersionOfThatName() {
-		final var value = JsonMapper.builder().build().readTree("{\"title\":\"AoT alkohol – beslut\",\"type\":\"object\"}");
-		when(jsonSchemaClientMock.getLatestSchemaByName(MUNICIPALITY_ID, "aot_alcohol_decision")).thenReturn(ResponseEntity.ok(new JsonSchema().value(value)));
-
-		assertThat(jsonSchemaIntegration.getLatestSchema(MUNICIPALITY_ID, "aot_alcohol_decision")).isEqualTo(value);
-
-		verify(jsonSchemaClientMock).getLatestSchemaByName(MUNICIPALITY_ID, "aot_alcohol_decision");
-	}
-
-	@Test
-	void getLatestSchemaFailsWithoutRetryForANameWithoutVersions() {
-		when(jsonSchemaClientMock.getLatestSchemaByName(MUNICIPALITY_ID, "aot_alcohol_decision")).thenThrow(new ClientProblem(NOT_FOUND, "Not found"));
-
-		assertThatThrownBy(() -> jsonSchemaIntegration.getLatestSchema(MUNICIPALITY_ID, "aot_alcohol_decision"))
-			.isInstanceOf(NonRetryableException.class)
-			.hasMessageContaining("aot_alcohol_decision")
-			.hasMessageContaining("has no version");
-
-		verify(jsonSchemaClientMock).getLatestSchemaByName(MUNICIPALITY_ID, "aot_alcohol_decision");
-	}
-
-	@Test
 	void getUiSchemaAnswersWithTheValueOfTheUiSchemaOfThatId() {
 		final var value = JsonMapper.builder().build().readTree("{\"ui:order\":[\"namn\",\"telefon\"]}");
 		when(jsonSchemaClientMock.getUiSchema(MUNICIPALITY_ID, SCHEMA_ID)).thenReturn(ResponseEntity.ok(new UiSchema().value(value)));

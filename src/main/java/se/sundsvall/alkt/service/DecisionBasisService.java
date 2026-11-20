@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
-import se.sundsvall.alkt.configuration.PermitJsonProperties;
 import se.sundsvall.alkt.exception.NonRetryableException;
 import se.sundsvall.alkt.integration.employee.EmployeeIntegration;
 import se.sundsvall.alkt.integration.jsonschema.JsonSchemaIntegration;
@@ -18,14 +17,11 @@ import se.sundsvall.alkt.integration.templating.TemplatingIntegration;
 import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Lookups;
 import se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMapper.Premises;
 import se.sundsvall.alkt.service.model.AssetType;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.MissingNode;
 
 import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static se.sundsvall.alkt.Constants.INVESTIGATION_SECTION_PREMISES;
-import static se.sundsvall.alkt.Constants.PREMISES_EXAMINATION_PROPOSED_CATEGORY_CODE;
-import static se.sundsvall.alkt.integration.supportmanagement.mapper.ErrandFormMapper.findText;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findFormParameter;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseFileName;
@@ -45,19 +41,16 @@ public class DecisionBasisService {
 	private final PartyIntegration partyIntegration;
 	private final JsonSchemaIntegration jsonSchemaIntegration;
 	private final EmployeeIntegration employeeIntegration;
-	private final PermitJsonProperties permitJsonProperties;
 	private final Clock clock;
 
 	DecisionBasisService(final SupportManagementIntegration supportManagementIntegration, final AssetService assetService, final TemplatingIntegration templatingIntegration,
-		final PartyIntegration partyIntegration, final JsonSchemaIntegration jsonSchemaIntegration, final EmployeeIntegration employeeIntegration,
-		final PermitJsonProperties permitJsonProperties, final Clock clock) {
+		final PartyIntegration partyIntegration, final JsonSchemaIntegration jsonSchemaIntegration, final EmployeeIntegration employeeIntegration, final Clock clock) {
 		this.supportManagementIntegration = supportManagementIntegration;
 		this.assetService = assetService;
 		this.templatingIntegration = templatingIntegration;
 		this.partyIntegration = partyIntegration;
 		this.jsonSchemaIntegration = jsonSchemaIntegration;
 		this.employeeIntegration = employeeIntegration;
-		this.permitJsonProperties = permitJsonProperties;
 		this.clock = clock;
 	}
 
@@ -94,20 +87,17 @@ public class DecisionBasisService {
 					.orElse(MissingNode.getInstance());
 				final var permit = assetService.findPermitJson(municipalityId, errand, errandId, assetType);
 				final var parameters = toTemplateParameters(errand, investigation, new Premises(premisesExamination, permit), statements, attachments,
-					lookupsOf(municipalityId, namespace, errand, premisesExamination, assetType), LocalDate.now(clock));
+					lookupsOf(municipalityId, namespace, errand), LocalDate.now(clock));
 				final var pdf = templatingIntegration.renderPdf(toPremisesMunicipalityId(errand), template, parameters);
 				return supportManagementIntegration.createPdfAttachment(municipalityId, namespace, errandId, fileName, pdf);
 			});
 	}
 
-	private Lookups lookupsOf(final String municipalityId, final String namespace, final Errand errand, final JsonNode premisesExamination, final AssetType assetType) {
+	private Lookups lookupsOf(final String municipalityId, final String namespace, final Errand errand) {
 		final var formSchema = findFormParameter(errand)
 			.map(form -> jsonSchemaIntegration.getSchema(municipalityId, form.getSchemaId()))
 			.orElse(MissingNode.getInstance());
-		final var decisionSchema = findText(premisesExamination.path(PREMISES_EXAMINATION_PROPOSED_CATEGORY_CODE))
-			.map(code -> jsonSchemaIntegration.getLatestSchema(municipalityId, permitJsonProperties.of(assetType.getSchema()).decisionKey()))
-			.orElse(MissingNode.getInstance());
-		return new Lookups(formSchema, decisionSchema, supportManagementIntegration.getDecisionOutcomeNames(municipalityId, namespace),
+		return new Lookups(formSchema, supportManagementIntegration.getDecisionOutcomeNames(municipalityId, namespace),
 			supportManagementIntegration.getStatementOutcomeNames(municipalityId, namespace), legalIdsOfPersonsOfInfluence(municipalityId, errand),
 			employeeIntegration.getName(municipalityId, errand.getAssignedUserId()));
 	}

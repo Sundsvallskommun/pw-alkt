@@ -30,7 +30,7 @@ class DecisionBasisMapperTest {
 	private static final LocalDate TODAY = LocalDate.parse("2026-11-03");
 	private static final Parameter IN_SUNDSVALL = new Parameter().key("premisesMunicipalityId").values(List.of("2281"));
 	private static final Premises NO_PREMISES = new Premises(MissingNode.getInstance(), MissingNode.getInstance());
-	private static final Lookups NO_LOOKUPS = new Lookups(MissingNode.getInstance(), MissingNode.getInstance(), Map.of(), Map.of(), Map.of(), "");
+	private static final Lookups NO_LOOKUPS = new Lookups(MissingNode.getInstance(), Map.of(), Map.of(), Map.of(), "");
 
 	private static Parameter parameter(final String key, final String value) {
 		return new Parameter().key(key).values(List.of(value));
@@ -88,7 +88,7 @@ class DecisionBasisMapperTest {
 			  }
 			}
 			""");
-		final var lookups = new Lookups(schema, MissingNode.getInstance(), Map.of("APPROVAL", "Bifall"), Map.of("NO_OBJECTION", "Inget att erinra"), Map.of("party-of-karl", "198001011234"), "Erik Lindqvist");
+		final var lookups = new Lookups(schema, Map.of("APPROVAL", "Bifall"), Map.of("NO_OBJECTION", "Inget att erinra"), Map.of("party-of-karl", "198001011234"), "Erik Lindqvist");
 		final var attachments = List.of(
 			new ErrandAttachment().fileName("Planritning.pdf").purpose(new ErrandAttachmentPurpose().name("FLOOR_PLAN")),
 			new ErrandAttachment().fileName("Meny.pdf").purpose(new ErrandAttachmentPurpose().name("MENU")));
@@ -112,7 +112,7 @@ class DecisionBasisMapperTest {
 			.containsEntry("issuedByAuthority", "Individ- och arbetsmarknadsförvaltningen, Sundsvalls kommun")
 			.containsEntry("communication", "Kommunicerat 2026-10-20\nInga synpunkter")
 			.containsEntry("legislationHtml", "<h3>Alkohollagen</h3>")
-			.containsEntry("proposal", Map.of("points", List.of("Bifall", "Villkor om ordningsvakter"), "categoryCodeLabel", ""))
+			.containsEntry("proposal", Map.of("points", List.of("Bifall", "Villkor om ordningsvakter")))
 			.containsEntry("applicant", Map.of("name", "Kajen Krog AB", "orgNumber", "559162-8136", "street", "Storgatan 1", "postalAddress", "85230 Sundsvall"))
 			.containsEntry("company", Map.of("ownershipHtml", "<p>Aktiebolag med aktiekapital 25 000 kr</p>"))
 			.containsEntry("statements", List.of(
@@ -167,7 +167,7 @@ class DecisionBasisMapperTest {
 		assertThat(parameters.get("premises")).asInstanceOf(MAP).containsOnlyKeys("name", "street", "postalAddress",
 			"seatsIndoor", "seatsOutdoor", "maxPersons", "inspectedAt", "rightOfDisposalLabel", "rightOfDisposalNote", "servingAreaDescription", "salesAreaDescription",
 			"leaseHtml", "floorPlanFiles", "fireSafety", "fireSafetyHtml");
-		assertThat(parameters).containsEntry("proposal", Map.of("points", List.of(), "categoryCodeLabel", "")).containsEntry("statements", List.of()).containsEntry("communication", "");
+		assertThat(parameters).containsEntry("proposal", Map.of("points", List.of())).containsEntry("statements", List.of()).containsEntry("communication", "");
 	}
 
 	@Test
@@ -234,37 +234,6 @@ class DecisionBasisMapperTest {
 			.containsEntry("name", "Hörnbutiken")
 			.containsEntry("street", "Torggatan 3")
 			.containsEntry("postalAddress", "852 31 Sundsvall");
-	}
-
-	@Test
-	void writesTheProposedCategoryCodeWithItsTextFromTheDecisionSchema() {
-		final var premisesExamination = JsonMapper.builder().build().readTree("{\"proposedCategoryCode\":\"21\"}");
-		final var decisionSchema = JsonMapper.builder().build().readTree("""
-			{ "properties": { "categoryCode": { "oneOf": [
-			  { "const": "21", "title": "Allmänheten – Alla drycker – Året runt", "x-group": "Allmänheten" },
-			  { "const": "24", "title": "Slutet sällskap – Alla drycker – Året runt", "x-group": "Slutet sällskap" }
-			] } } }
-			""");
-		final var lookups = new Lookups(MissingNode.getInstance(), decisionSchema, Map.of(), Map.of(), Map.of(), "Erik Lindqvist");
-
-		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), new Premises(premisesExamination, MissingNode.getInstance()),
-			List.of(), List.of(), lookups, TODAY);
-
-		assertThat(parameters.get("proposal")).asInstanceOf(MAP).containsEntry("categoryCodeLabel", "21 – Allmänheten – Alla drycker – Året runt");
-	}
-
-	@Test
-	void writesTheProposedCategoryCodeAloneWhenTheDecisionSchemaHasNoTextForIt() {
-		final var premisesExamination = JsonMapper.builder().build().readTree("{\"proposedCategoryCode\":\"23\"}");
-		final var decisionSchema = JsonMapper.builder().build().readTree("""
-			{ "properties": { "categoryCode": { "oneOf": [ { "const": "21", "title": "Allmänheten – Alla drycker – Året runt", "x-group": "Allmänheten" } ] } } }
-			""");
-		final var lookups = new Lookups(MissingNode.getInstance(), decisionSchema, Map.of(), Map.of(), Map.of(), "Erik Lindqvist");
-
-		final var parameters = toTemplateParameters(new Errand().parameters(List.of(IN_SUNDSVALL)), new Investigation(), new Premises(premisesExamination, MissingNode.getInstance()),
-			List.of(), List.of(), lookups, TODAY);
-
-		assertThat(parameters.get("proposal")).asInstanceOf(MAP).containsEntry("categoryCodeLabel", "23");
 	}
 
 	@Test
