@@ -19,6 +19,7 @@ import tools.jackson.databind.node.MissingNode;
 
 import static java.util.Collections.emptyList;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static se.sundsvall.alkt.Constants.INVESTIGATION_SECTION_PREMISES;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findAttachmentId;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.findFormParameter;
 import static se.sundsvall.alkt.integration.supportmanagement.mapper.SupportManagementMapper.toCaseFileName;
@@ -30,7 +31,6 @@ import static se.sundsvall.alkt.integration.templating.mapper.DecisionBasisMappe
 public class DecisionBasisService {
 
 	private static final String INVESTIGATION_STATUS_CANCELLED = "CANCELLED";
-	private static final String PREMISES_SECTION = "premises";
 	private static final String PREMISES_EXAMINATION_KEY = "aot_investigation_premises_section";
 
 	private final SupportManagementIntegration supportManagementIntegration;
@@ -76,7 +76,7 @@ public class DecisionBasisService {
 				}
 				final var statements = supportManagementIntegration.getStatements(municipalityId, namespace, errandId);
 				final var premisesExamination = Optional.ofNullable(investigation.getSections()).orElse(emptyList()).stream()
-					.filter(section -> PREMISES_SECTION.equals(section.getSectionKey()))
+					.filter(section -> INVESTIGATION_SECTION_PREMISES.equals(section.getSectionKey()))
 					.findFirst()
 					.map(section -> supportManagementIntegration.getInvestigationSectionJson(municipalityId, namespace, errandId, investigation.getId(), section.getId(),
 						PREMISES_EXAMINATION_KEY))
